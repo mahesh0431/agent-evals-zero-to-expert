@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11 · Multi-agent and long-horizon · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 11 · Agent evals, every modality</div>
+<h1>Multi-agent and long-horizon evals</h1>
+<p class="lede">Two frontiers break the "one prompt, one answer" picture completely: agents that work for hours on a single task, and systems where several agents talk to each other. Both need new yardsticks: time horizons instead of accuracy, milestones instead of pass/fail, and trace trees instead of transcripts.</p>
+<div class="meta"><span class="pill level-3">Advanced</span><span class="pill">~50 min</span><span class="pill">Prereqs: Modules 04, 05, 07</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Explain, with numbers, why errors compound over long tasks and why "per-step accuracy" hides it.</li>
+<li>Describe METR's 50% time-horizon metric precisely, compute one yourself with logistic regression, and state its limitations.</li>
+<li>Compare how RE-Bench, MLE-bench, PaperBench, GDPval and Vending-Bench score long tasks, and design milestone-based partial credit for your own.</li>
+<li>Evaluate context management and memory in long runs, and report cost and wall-clock budgets alongside success.</li>
+<li>Name the common multi-agent architectures and say what to measure in each: end-to-end outcome, per-agent contribution, communication overhead and token multiplier.</li>
+<li>Use the MAST failure taxonomy to label coordination failures, walk a trace tree to assign credit, and reason about emergent risks like collusion and cascading errors.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>Two ways an eval gets "big"</h2>
+<p>Everything so far in this course has had a comfortable shape: one agent, one task, a few dozen steps, a grader at the end. This module is about the two directions in which that shape stretches until it breaks.</p>
+<div class="grid2">
+<div class="card accent"><h4>Long-horizon: stretched in time</h4><p>One agent works on one task for a long time: hundreds of tool calls, hours of wall-clock time, millions of tokens. Think "train a model that wins a Kaggle medal", "replicate this research paper", or "run a small business for a simulated year".</p></div>
+<div class="card violet"><h4>Multi-agent: stretched in width</h4><p>Several agents (often copies of the same model with different instructions) split a task, pass messages, check each other, or argue. Think "a lead researcher agent that spawns five search agents and a citation checker".</p></div>
+</div>
+<p>They share a common difficulty: <b>the thing you care about (did the whole job get done?) is far away from the things you can easily observe (individual steps, individual messages)</b>. The rest of this module is about closing that gap: measuring the whole, and also measuring the parts well enough to know <em>why</em> the whole failed.</p>
+
+<div class="callout analogy"><span class="t">Analogy: the relay team and the marathon</span>
+<p>A marathon runner who holds a great pace for 30 km but collapses at 35 km still does not finish. That is long-horizon failure: every step looked fine, the total did not. A relay team can have four fast runners and still lose because of a dropped baton. That is multi-agent failure: the individual parts are good, the <b>handoffs</b> are not. A coach of either needs split times (milestones), not just the final result.</p>
+</div>
+
+<h2>Part A · Why long tasks are hard: compounding error</h2>
+<p>Start with the simplest possible model of an agent. Each step (a tool call, an edit, a decision) succeeds with probability <code>p</code>, independently, and the task needs <code>n</code> steps to all go right. Then the probability of finishing is:</p>
+<p style="text-align:center"><code>P(task succeeds) = p<sup>n</sup></code></p>
+<p>This looks harmless until you plug in numbers. A 99%-reliable step sounds excellent. But over 50 steps, <code>0.99<sup>50</sup> ≈ 0.61</code>, and over 100 steps it is about 0.37. At 95% per step, a 20-step task succeeds only about 36% of the time, and a 100-step task essentially never.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Chart of p to the power n: at 99 percent per-step reliability success falls to about 0.37 by 100 steps; at 95 percent it is near zero by 60 steps; at 90 percent by 30 steps.">
+<line class="ln" x1="80" y1="240" x2="790" y2="240"/>
+<line class="ln" x1="80" y1="240" x2="80" y2="30"/>
+<text x="70" y="244" text-anchor="end" class="sm">0</text>
+<text x="70" y="144" text-anchor="end" class="sm">0.5</text>
+<text x="70" y="44" text-anchor="end" class="sm">1.0</text>
+<line class="ln dash" x1="80" y1="140" x2="780" y2="140"/>
+<text x="80" y="258" text-anchor="middle" class="sm">0</text>
+<text x="220" y="258" text-anchor="middle" class="sm">20</text>
+<text x="360" y="258" text-anchor="middle" class="sm">40</text>
+<text x="500" y="258" text-anchor="middle" class="sm">60</text>
+<text x="640" y="258" text-anchor="middle" class="sm">80</text>
+<text x="780" y="258" text-anchor="middle" class="sm">100</text>
+<text x="430" y="280" text-anchor="middle" class="sm">number of steps that must all succeed (n)</text>
+<text x="28" y="140" text-anchor="middle" class="sm" transform="rotate(-90 28 140)">P(task succeeds)</text>
+<polyline class="ln good thick" points="80,40 115,50 150,59 185,68 220,76 255,84 290,92 325,99 360,106 395,113 430,119 465,125 500,131 535,136 570,141 605,146 640,150 675,155 710,159 745,163 780,167"/>
+<polyline class="ln warn thick" points="80,40 115,85 150,120 185,147 220,168 255,185 290,197 325,207 360,214 395,220 430,225 465,228 500,231 535,233 570,234 605,236 640,237 675,237 710,238 745,238 780,239"/>
+<polyline class="ln bad thick" points="80,40 115,122 150,170 185,199 220,216 255,226 290,232 325,235 360,237 395,238 430,239 465,239 500,240 535,240 570,240 605,240 640,240 675,240 710,240 745,240 780,240"/>
+<circle cx="430" cy="119" r="4" class="fill-good"/>
+<text x="436" y="108" class="sm">50 steps: 0.61</text>
+<circle cx="220" cy="168" r="4" class="fill-warn"/>
+<text x="228" y="162" class="sm">20 steps: 0.36</text>
+<circle cx="780" cy="167" r="4" class="fill-good"/>
+<text x="774" y="186" text-anchor="end" class="sm">100 steps: 0.37</text>
+<rect x="600" y="52" width="16" height="4" class="fill-good"/><text x="624" y="58" class="sm">p = 0.99 per step</text>
+<rect x="600" y="70" width="16" height="4" class="fill-warn"/><text x="624" y="76" class="sm">p = 0.95 per step</text>
+<rect x="600" y="88" width="16" height="4" class="fill-bad"/><text x="624" y="94" class="sm">p = 0.90 per step</text>
+</svg>
+<figcaption><b>Compounding error, computed.</b> Curves are exact values of p<sup>n</sup>. Small per-step error rates that look fine in a step-level eval become near-certain failure on long tasks. Real agents are not this simple (see below), but the direction is right.</figcaption>
+</figure>
+
+<h3>Why the simple model is both too pessimistic and too optimistic</h3>
+<p>Real agents violate the independence assumption in two opposite directions, and knowing both is what separates an expert from someone who just quotes <code>p<sup>n</sup></code>.</p>
+<div class="grid2">
+<div class="card good"><h4>Too pessimistic: recovery</h4><p>Good agents notice mistakes and fix them: a failed test is re-run, a wrong file is reverted. If a step fails with probability 0.05 but is caught and repaired 80% of the time, the <em>effective</em> unrecoverable failure rate is 0.01, and 100 steps succeed 37% of the time rather than 0.6%. <b>Error recovery is the single biggest lever on long-horizon success</b>, so evals should measure it directly.</p></div>
+<div class="card bad"><h4>Too optimistic: errors that snowball</h4><p>Some errors are not independent: a wrong assumption early ("the config lives in <code>/etc</code>") poisons every later step. The agent also sees its own mistakes in its context and may copy them. Vending-Bench (below) documents agents falling into "meltdown loops" they rarely escape. These correlated failures make long tasks harder than the formula suggests.</p></div>
+</div>
+
+<div class="callout tip"><span class="t">Key idea: step accuracy is the wrong headline</span>
+<p>A step-level eval ("did the agent pick the right tool on this turn?", Module 06) is valuable for debugging, but it hides compounding. Two agents at 97% and 99% step accuracy look similar; over 100 steps one finishes about 5% of tasks and the other about 37%. For long tasks, always report an <b>end-to-end</b> number, and treat step-level numbers as diagnostics.</p>
+</div>
+
+<h3>Worked example: what a per-step improvement is worth</h3>
+<p>Suppose your coding agent's typical task takes about 40 consequential actions, and you measure an unrecoverable-error rate of 2% per action. Predicted end-to-end success is <code>0.98<sup>40</sup> ≈ 0.45</code>. A change that halves the error rate to 1% predicts <code>0.99<sup>40</sup> ≈ 0.67</code>. A 1-point step improvement buys about 22 points end to end. That is why teams chase what look like tiny reliability gains, and why you should not be surprised when an end-to-end eval moves much more than a step-level one.</p>
+
+<div data-widget="compound"></div>
+
+<h2>METR's time horizon: measuring length directly</h2>
+<p>If long tasks are what matter, one natural question is: <em>how long a task can this agent complete?</em> METR (Model Evaluation and Threat Research, a nonprofit that evaluates frontier models) turned that question into a metric in the paper <a href="https://arxiv.org/abs/2503.14499">"Measuring AI Ability to Complete Long Tasks"</a> (Kwa, West et al., March 2025).</p>
+
+<h3>The recipe, step by step</h3>
+<ol>
+<li><b>Build a task suite spanning a huge range of lengths.</b> METR combined three suites: SWAA (very short software actions, seconds long), HCAST (a diverse set of software, ML and cyber tasks of minutes to hours), and RE-Bench (ML research-engineering tasks of about 8 hours). The paper describes these as "RE-Bench, HCAST, and 66 novel shorter tasks".</li>
+<li><b>Time human experts.</b> Skilled professionals attempt each task, and the time they take becomes that task's <b>human time</b>. This is the crucial move: task difficulty is measured in a unit everyone understands (minutes of expert labour), not in an abstract score.</li>
+<li><b>Run each model many times on each task</b> (roughly 8 runs per model per task, per Epoch AI's summary of the method) and record success or failure.</li>
+<li><b>Fit a logistic curve</b> of model success probability against the <em>logarithm</em> of human time. Success is high on short tasks and falls off on long ones.</li>
+<li><b>Read off the horizon.</b> The <b>50% time horizon</b> is the human task length at which the fitted curve crosses 50% success. METR also reports an 80% horizon, which is always shorter.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Illustrative logistic curve: model success probability falls as human task time grows on a log axis. The curve crosses 50 percent at about one hour, which is the 50 percent time horizon, and 80 percent at about 15 minutes.">
+<line class="ln" x1="80" y1="240" x2="790" y2="240"/>
+<line class="ln" x1="80" y1="240" x2="80" y2="30"/>
+<text x="70" y="244" text-anchor="end" class="sm">0%</text>
+<text x="70" y="144" text-anchor="end" class="sm">50%</text>
+<text x="70" y="84" text-anchor="end" class="sm">80%</text>
+<text x="70" y="44" text-anchor="end" class="sm">100%</text>
+<text x="138" y="258" text-anchor="middle" class="sm">1 min</text>
+<text x="255" y="258" text-anchor="middle" class="sm">4 min</text>
+<text x="366" y="258" text-anchor="middle" class="sm">15 min</text>
+<text x="483" y="258" text-anchor="middle" class="sm">1 h</text>
+<text x="600" y="258" text-anchor="middle" class="sm">4 h</text>
+<text x="716" y="258" text-anchor="middle" class="sm">16 h</text>
+<text x="435" y="282" text-anchor="middle" class="sm">time a human expert takes (log scale)</text>
+<text x="28" y="140" text-anchor="middle" class="sm" transform="rotate(-90 28 140)">model success rate</text>
+<line class="ln dash accent" x1="80" y1="140" x2="483" y2="140"/>
+<line class="ln dash accent" x1="483" y1="140" x2="483" y2="240"/>
+<line class="ln dash violet" x1="80" y1="80" x2="367" y2="80"/>
+<line class="ln dash violet" x1="367" y1="80" x2="367" y2="240"/>
+<polyline class="ln thick" points="80,42 92,42 103,42 115,42 127,43 138,43 150,44 162,44 173,45 185,45 197,46 208,47 220,48 232,49 243,51 255,52 267,54 278,56 290,58 302,60 313,63 325,66 337,69 348,73 360,77 372,82 383,86 395,92 407,97 418,103 430,109 442,116 453,122 465,129 477,136 488,143 500,150 512,157 523,164 535,170 547,176 558,182 570,188 582,193 593,198 605,202 617,207 628,210 640,214 652,217 663,219 675,222 687,224 698,226 710,228 722,229 733,231 745,232 757,233 768,234 780,234"/>
+<circle cx="138" cy="50" r="5" class="box accent"/>
+<circle cx="255" cy="64" r="5" class="box accent"/>
+<circle cx="366" cy="86" r="5" class="box accent"/>
+<circle cx="483" cy="136" r="5" class="box accent"/>
+<circle cx="600" cy="204" r="5" class="box accent"/>
+<circle cx="716" cy="226" r="5" class="box accent"/>
+<text x="492" y="126" class="b t-accent">50% horizon ≈ 1 h</text>
+<text x="376" y="72" class="b t-violet">80% horizon ≈ 15 min</text>
+<text x="620" y="60" class="sm">circles: observed success rate</text>
+<text x="620" y="76" class="sm">of tasks in each length bin</text>
+<text x="620" y="92" class="sm">line: fitted logistic curve</text>
+</svg>
+<figcaption><b>How a time horizon is read off (illustrative).</b> Synthetic numbers for one imaginary model. The fit uses every individual run, not the binned circles; the circles just help you see the data. Where the curve crosses 50% is the 50% horizon; the 80% horizon is shorter because it asks for more reliability.</figcaption>
+</figure>
+
+<p>Formally, with <code>t</code> the human time and <code>σ</code> the logistic (sigmoid) function:</p>
+<pre data-lang="text"><code>P(success | t) = σ( β0 + β1 · log2(t) )        with β1 &lt; 0
+50% horizon    = 2 ^ ( -β0 / β1 )               (where β0 + β1·log2(t) = 0)
+q% horizon     = 2 ^ ( (logit(q) - β0) / β1 )   logit(q) = ln(q / (1-q))</code></pre>
+<p>Why log time? Because task lengths span five orders of magnitude, from seconds to days, and success falls off roughly evenly per <em>doubling</em> of length, not per extra minute. The slope <code>β1</code> tells you how sharp the fall-off is: a steep slope means the model is reliable up to a length and then collapses; a shallow slope means it sometimes succeeds even on very long tasks and sometimes fails even on short ones.</p>
+
+<h3>The headline result, and what it does and does not mean</h3>
+<p>In the March 2025 paper, METR reported that Claude 3.7 Sonnet had a 50% time horizon of "around 50 minutes", and that the frontier 50% horizon "has been doubling approximately every seven months since 2019", with a faster pace in 2024 to 2025. METR has since published <a href="https://metr.org/blog/2026-1-29-time-horizon-1-1/">Time Horizon 1.1</a> (January 2026), which uses a larger task suite with the same method, and maintains a live page at <a href="https://metr.org/time-horizons/">metr.org/time-horizons</a> (which, when checked on 29 September 2026, said it was last updated 8 May 2026). Current per-model values change often; read them from that page rather than from any course.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Sketch on a log scale: the 50 percent time horizon rises as a straight line from seconds in 2019 to about 50 minutes in early 2025, which on a log axis means exponential growth with a seven-month doubling time. A dashed extension beyond is extrapolation only.">
+<line class="ln" x1="100" y1="255" x2="790" y2="255"/>
+<line class="ln" x1="100" y1="255" x2="100" y2="30"/>
+<text x="92" y="253" text-anchor="end" class="sm">1 sec</text>
+<text x="92" y="171" text-anchor="end" class="sm">1 min</text>
+<text x="92" y="117" text-anchor="end" class="sm">15 min</text>
+<text x="92" y="90" text-anchor="end" class="sm">1 h</text>
+<text x="92" y="49" text-anchor="end" class="sm">8 h</text>
+<line class="ln dash" x1="100" y1="167" x2="780" y2="167"/>
+<line class="ln dash" x1="100" y1="86" x2="780" y2="86"/>
+<text x="100" y="273" text-anchor="middle" class="sm">2019</text>
+<text x="194" y="273" text-anchor="middle" class="sm">2020</text>
+<text x="289" y="273" text-anchor="middle" class="sm">2021</text>
+<text x="383" y="273" text-anchor="middle" class="sm">2022</text>
+<text x="477" y="273" text-anchor="middle" class="sm">2023</text>
+<text x="572" y="273" text-anchor="middle" class="sm">2024</text>
+<text x="666" y="273" text-anchor="middle" class="sm">2025</text>
+<text x="760" y="273" text-anchor="middle" class="sm">2026</text>
+<text x="30" y="150" text-anchor="middle" class="sm" transform="rotate(-90 30 150)">50% time horizon (log)</text>
+<line class="ln accent thick" x1="100" y1="236" x2="685" y2="90"/>
+<line class="ln accent dash" x1="685" y1="90" x2="760" y2="71"/>
+<circle cx="685" cy="90" r="6" class="fill-accent"/>
+<text x="668" y="62" text-anchor="end" class="b">Claude 3.7 Sonnet ≈ 50 min</text>
+<text x="668" y="77" text-anchor="end" class="sm">(METR paper, Mar 2025)</text>
+<text x="250" y="162" class="sm t-accent" transform="rotate(-14 250 162)">×2 every ~7 months</text>
+<text x="700" y="112" class="sm">extrapolation</text>
+<text x="700" y="126" class="sm">only</text>
+</svg>
+<figcaption><b>The doubling trend (sketch).</b> Only the ~50-minute point and the ~7-month doubling time come from METR's March 2025 paper; the line is drawn from those two facts, not from individual model measurements. A straight line on a log axis means exponential growth. The dashed segment is extrapolation, not data; see metr.org for measured values.</figcaption>
+</figure>
+
+<div class="callout warn"><span class="t">Limitations METR itself stresses</span>
+<p>METR's notes <a href="https://metr.org/notes/2026-01-22-time-horizon-limitations/">"Clarifying limitations of time horizon"</a> and <a href="https://metr.org/notes/2026-03-20-impact-of-modelling-assumptions-on-time-horizon-results/">"Impact of modelling assumptions"</a> make points every expert should repeat:</p>
+<ul>
+<li><b>It is a statistic of a task distribution</b>, mostly software and ML tasks. "A 2-hour horizon" does not mean "the model can work unsupervised for 2 hours on anything".</li>
+<li><b>Confidence intervals are wide at the frontier</b>, because there are few very long tasks to pin the curve down.</li>
+<li><b>"Messy" and low-context tasks lower performance.</b> Benchmark tasks are cleaner than real work, so real-world horizons are probably shorter.</li>
+<li>Modelling choices (how tasks are weighted, how human time is estimated, which curve is fitted) move the numbers.</li>
+</ul>
+</div>
+
+<h3>Compute a time horizon yourself</h3>
+<p>This snippet simulates a model whose true 50% horizon is 60 minutes, then recovers it from pass/fail data with scikit-learn. It also computes a bootstrap confidence interval (Module 04) by resampling <em>tasks</em>, because the 8 runs of one task are correlated and resampling runs would make the interval too narrow.</p>
+<pre data-lang="python"><code>import numpy as np
+from sklearn.linear_model import LogisticRegression
+
+rng = np.random.default_rng(0)
+
+# 1) Synthetic task suite: 120 tasks, each with a human-expert completion time (minutes)
+human_minutes = np.exp(rng.uniform(np.log(1), np.log(960), size=120))  # 1 min .. 16 h
+
+# 2) Pretend agent whose "true" 50% horizon is 60 min (we will try to recover it)
+TRUE_H50, TRUE_SLOPE = 60.0, 0.7
+def p_success(minutes):
+    return 1 / (1 + np.exp(TRUE_SLOPE * (np.log2(minutes) - np.log2(TRUE_H50))))
+
+# 3) 8 runs per task (METR used roughly this many), each a Bernoulli draw
+RUNS = 8
+x = np.repeat(np.log2(human_minutes), RUNS).reshape(-1, 1)  # feature: log2(human time)
+y = rng.random(len(x)) &lt; p_success(2 ** x[:, 0])            # 1 = success, 0 = failure
+
+# 4) Fit success ~ sigmoid(b0 + b1 * log2(minutes)); C=np.inf means no regularisation
+clf = LogisticRegression(C=np.inf).fit(x, y)
+b0, b1 = clf.intercept_[0], clf.coef_[0, 0]
+
+# 5) Solve sigmoid(b0 + b1*t) = q  -&gt;  t = (logit(q) - b0) / b1
+def horizon(q, b0, b1):
+    return 2 ** ((np.log(q / (1 - q)) - b0) / b1)
+
+print(f"50% horizon: {horizon(0.5, b0, b1):6.1f} min   (true {TRUE_H50})")
+print(f"80% horizon: {horizon(0.8, b0, b1):6.1f} min")
+
+# 6) Bootstrap over TASKS (not runs): runs of one task are correlated
+tasks = np.arange(len(human_minutes))
+h50s = []
+for _ in range(500):
+    pick = rng.choice(tasks, size=len(tasks), replace=True)
+    idx = (pick[:, None] * RUNS + np.arange(RUNS)).ravel()
+    m = LogisticRegression(C=np.inf).fit(x[idx], y[idx])
+    h50s.append(horizon(0.5, m.intercept_[0], m.coef_[0, 0]))
+lo, hi = np.percentile(h50s, [2.5, 97.5])
+print(f"95% CI for 50% horizon: {lo:.1f} to {hi:.1f} min")
+
+# Output (numpy 2.4, scikit-learn 1.9):
+# 50% horizon:   59.3 min   (true 60.0)
+# 80% horizon:   17.8 min
+# 95% CI for 50% horizon: 50.2 to 70.6 min</code></pre>
+<p>Even with 960 runs, the 95% interval spans roughly 50 to 71 minutes. Real suites have fewer long tasks than this synthetic one, which is exactly why METR's frontier intervals are wide. Try shrinking the task count to 30, or removing all tasks above 4 hours, and watch the interval explode.</p>
+
+<details><summary>Deep dive: using a time horizon for your own agent</summary>
+<p>You do not need METR's suite to borrow the idea. If your agent handles support tickets, code migrations, or data analyses, ask a few experienced humans to time themselves on a sample of 50 to 200 real tasks. Run the agent several times on each. Fit the same logistic curve. You now have an interpretable number ("our agent reliably handles 20-minute tickets, and is coin-flip on 90-minute ones") and a slope that tells you whether failures are length-driven (steep) or driven by something else (shallow). Two cautions: human times vary a lot between people, so use the geometric mean of several timings where you can; and do not extrapolate outside the range of task lengths you actually measured.</p>
+</details>
+
+<h2>Long-task benchmarks and how they score</h2>
+<p>A family of benchmarks targets tasks that take humans hours or days. What makes them instructive is that <b>each had to invent a scoring scheme</b>, because "did it pass?" is too coarse for an 8-hour task. The details below come from each benchmark's paper.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 290" role="img" aria-label="Four scoring schemes for long tasks: RE-Bench normalises a continuous score between a starting solution and a reference; MLE-bench awards medals against a Kaggle leaderboard; PaperBench grades a weighted rubric tree of sub-tasks; GDPval asks blinded experts to compare model and expert deliverables.">
+<defs><marker id="m11a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="10" y="10" width="195" height="270" rx="8"/>
+<text x="107" y="34" text-anchor="middle" class="b">RE-Bench</text>
+<text x="107" y="52" text-anchor="middle" class="sm">7 ML research envs</text>
+<line class="ln thick" x1="30" y1="120" x2="185" y2="120"/>
+<line class="ln" x1="30" y1="110" x2="30" y2="130"/>
+<line class="ln" x1="155" y1="110" x2="155" y2="130"/>
+<text x="30" y="146" text-anchor="middle" class="sm">0</text>
+<text x="30" y="160" text-anchor="middle" class="sm">start</text>
+<text x="155" y="146" text-anchor="middle" class="sm">1</text>
+<text x="155" y="160" text-anchor="middle" class="sm">reference</text>
+<circle cx="105" cy="120" r="7" class="fill-accent"/>
+<text x="105" y="100" text-anchor="middle" class="sm t-accent">agent 0.6</text>
+<text x="107" y="200" text-anchor="middle" class="sm">continuous score, normalised</text>
+<text x="107" y="216" text-anchor="middle" class="sm">vs 61 human experts</text>
+<text x="107" y="232" text-anchor="middle" class="sm">at fixed time budgets</text>
+<text x="107" y="264" text-anchor="middle" class="b t-accent">score in [0, 1+]</text>
+
+<rect class="box plain" x="215" y="10" width="195" height="270" rx="8"/>
+<text x="312" y="34" text-anchor="middle" class="b">MLE-bench</text>
+<text x="312" y="52" text-anchor="middle" class="sm">75 offline Kaggle comps</text>
+<line class="ln" x1="260" y1="70" x2="260" y2="180"/>
+<line class="ln good" x1="252" y1="82" x2="268" y2="82"/><text x="276" y="86" class="sm">gold cut-off</text>
+<line class="ln good" x1="252" y1="110" x2="268" y2="110"/><text x="276" y="114" class="sm">silver cut-off</text>
+<line class="ln good" x1="252" y1="138" x2="268" y2="138"/><text x="276" y="142" class="sm">bronze cut-off</text>
+<circle cx="260" cy="126" r="6" class="fill-accent"/>
+<text x="312" y="200" text-anchor="middle" class="sm">submission graded on the</text>
+<text x="312" y="216" text-anchor="middle" class="sm">competition's private board,</text>
+<text x="312" y="232" text-anchor="middle" class="sm">placed among human teams</text>
+<text x="312" y="264" text-anchor="middle" class="b t-accent">% comps with a medal</text>
+
+<rect class="box plain" x="420" y="10" width="195" height="270" rx="8"/>
+<text x="517" y="34" text-anchor="middle" class="b">PaperBench</text>
+<text x="517" y="52" text-anchor="middle" class="sm">replicate 20 ICML papers</text>
+<rect class="box accent" x="492" y="66" width="50" height="22" rx="4"/><text x="517" y="81" text-anchor="middle" class="sm">paper</text>
+<line class="ln" x1="517" y1="88" x2="455" y2="110"/><line class="ln" x1="517" y1="88" x2="517" y2="110"/><line class="ln" x1="517" y1="88" x2="580" y2="110"/>
+<rect class="box plain" x="436" y="110" width="38" height="20" rx="4"/><text x="455" y="124" text-anchor="middle" class="sm">code</text>
+<rect class="box plain" x="498" y="110" width="38" height="20" rx="4"/><text x="517" y="124" text-anchor="middle" class="sm">run</text>
+<rect class="box plain" x="561" y="110" width="38" height="20" rx="4"/><text x="580" y="124" text-anchor="middle" class="sm">result</text>
+<line class="ln" x1="455" y1="130" x2="443" y2="150"/><line class="ln" x1="455" y1="130" x2="467" y2="150"/>
+<line class="ln" x1="517" y1="130" x2="505" y2="150"/><line class="ln" x1="517" y1="130" x2="529" y2="150"/>
+<line class="ln" x1="580" y1="130" x2="568" y2="150"/><line class="ln" x1="580" y1="130" x2="592" y2="150"/>
+<circle cx="443" cy="156" r="6" class="fill-good"/><circle cx="467" cy="156" r="6" class="fill-good"/>
+<circle cx="505" cy="156" r="6" class="fill-good"/><circle cx="529" cy="156" r="6" class="fill-bad"/>
+<circle cx="568" cy="156" r="6" class="fill-bad"/><circle cx="592" cy="156" r="6" class="fill-bad"/>
+<text x="517" y="200" text-anchor="middle" class="sm">8,316 weighted leaf criteria,</text>
+<text x="517" y="216" text-anchor="middle" class="sm">written with paper authors,</text>
+<text x="517" y="232" text-anchor="middle" class="sm">graded by an LLM judge</text>
+<text x="517" y="264" text-anchor="middle" class="b t-accent">replication score %</text>
+
+<rect class="box plain" x="625" y="10" width="205" height="270" rx="8"/>
+<text x="727" y="34" text-anchor="middle" class="b">GDPval</text>
+<text x="727" y="52" text-anchor="middle" class="sm">44 occupations, real deliverables</text>
+<rect class="box accent" x="645" y="68" width="70" height="36" rx="4"/><text x="680" y="90" text-anchor="middle" class="sm">model doc</text>
+<rect class="box plain" x="740" y="68" width="70" height="36" rx="4"/><text x="775" y="90" text-anchor="middle" class="sm">expert doc</text>
+<line class="ln" x1="680" y1="104" x2="718" y2="128" marker-end="url(#m11a)"/>
+<line class="ln" x1="775" y1="104" x2="737" y2="128" marker-end="url(#m11a)"/>
+<rect class="box warn" x="672" y="130" width="110" height="32" rx="4"/><text x="727" y="150" text-anchor="middle" class="sm">blinded expert</text>
+<text x="727" y="182" text-anchor="middle" class="sm">better / as good / worse</text>
+<text x="727" y="216" text-anchor="middle" class="sm">tasks written by professionals</text>
+<text x="727" y="232" text-anchor="middle" class="sm">with 14+ years' experience</text>
+<text x="727" y="264" text-anchor="middle" class="b t-accent">win-or-tie rate</text>
+</svg>
+<figcaption><b>Four ways to grade a long task.</b> Each benchmark trades off objectivity against realism: a normalised score (RE-Bench) and a leaderboard rank (MLE-bench) are objective; a rubric tree (PaperBench) gives partial credit; expert pairwise comparison (GDPval) handles open-ended deliverables that no script can check.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>Task</th><th>Scoring</th><th>Numbers worth knowing (source, date)</th></tr>
+<tr><td><b>RE-Bench</b><br><span class="sm">METR, Nov 2024</span></td><td>7 open-ended ML research-engineering environments, e.g. optimise a GPU kernel, fine-tune GPT-2 for question answering.</td><td>Continuous score normalised so the provided starting solution is 0 and a reference solution is 1.</td><td>Compared against 71 eight-hour attempts by 61 human experts. Agents beat humans at a 2-hour budget; humans pulled ahead at 8 to 32 hours (<a href="https://arxiv.org/abs/2411.15114">Wijk et al., 2024</a>).</td></tr>
+<tr><td><b>MLE-bench</b><br><span class="sm">OpenAI, Oct 2024</span></td><td>75 Kaggle competitions run offline: train models, submit predictions.</td><td>Graded against each competition's private leaderboard. Headline: % of competitions earning any medal.</td><td>At release, o1-preview with the AIDE scaffold earned medals in 16.9% of competitions at pass@1. Runs take about 24 hours on a GPU (<a href="https://arxiv.org/abs/2410.07095">Chan et al., 2024</a>).</td></tr>
+<tr><td><b>PaperBench</b><br><span class="sm">OpenAI, Apr 2025</span></td><td>Replicate 20 ICML 2024 Spotlight/Oral papers from scratch.</td><td>Hierarchical rubrics with 8,316 gradable leaf criteria, co-written with the papers' authors; an LLM judge grades, validated on a JudgeEval set.</td><td>Best at release: Claude 3.5 Sonnet (New) at 21.0%; ML PhDs scored 41.4% on a subset (<a href="https://arxiv.org/abs/2504.01848">Starace et al., 2025</a>).</td></tr>
+<tr><td><b>GDPval</b><br><span class="sm">OpenAI, Sep 2025</span></td><td>1,320 tasks across 44 occupations in 9 industries (220-task open "gold" set): legal briefs, care plans, slide decks, spreadsheets.</td><td>Blinded expert pairwise comparison against a human professional's deliverable. Metric: win-or-tie rate.</td><td>At launch, Claude Opus 4.1 was rated best overall (strong on aesthetics and formatting), GPT-5 best on accuracy. Tasks are one-shot, with no iteration (<a href="https://openai.com/index/gdpval/">OpenAI, 2025</a>).</td></tr>
+<tr><td><b>Vending-Bench</b><br><span class="sm">Andon Labs, Feb 2025</span></td><td>Run a simulated vending-machine business: order stock, set prices, pay daily fees.</td><td>Net worth at the end (starting from $500), plus units sold and days until sales stop.</td><td>Runs exceed 20 million tokens. All models had runs that "derail" (forgotten orders, "meltdown" loops), with no clear link to when the context window filled (<a href="https://arxiv.org/abs/2502.15840">Backlund and Petersson, 2025</a>). Superseded by Vending-Bench 2 (Nov 2025).</td></tr>
+</table></div>
+
+<h3>What these benchmarks teach about long-horizon evals</h3>
+<ul>
+<li><b>Budgets are part of the task.</b> RE-Bench's human-versus-agent result flips depending on whether you allow 2 hours or 32. A long-horizon score without its time, token and compute budget is not interpretable.</li>
+<li><b>Variance is enormous.</b> Vending-Bench's most striking finding is not the average: it is that the same model can run a profitable business in one run and melt down in the next. Report distributions (or pass^k, Module 04), not just means.</li>
+<li><b>Graders get harder as tasks get longer.</b> Short tasks have unit tests. Long, open-ended tasks push you toward rubrics and LLM judges (PaperBench) or expensive human experts (GDPval), each of which must itself be validated (Module 13).</li>
+<li><b>Realism costs reproducibility.</b> GDPval's deliverables are realistic but need expert graders; MLE-bench is reproducible but Kaggle solutions are public, raising contamination questions (Module 18).</li>
+</ul>
+
+<h2>Milestones and partial credit</h2>
+<p>A binary "did it finish?" score has a serious problem on long tasks: <b>it throws away almost all the information</b>. An agent that got 90% of the way through a 6-hour migration and an agent that never compiled the code both score 0. With few long tasks (and each run costing real money), you cannot afford to waste signal. The fix is to define <b>milestones</b>: checkable intermediate states on the path to success, each worth some share of the credit.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Five gated milestones for a migration task with weights 0.10, 0.20, 0.30, 0.30 and 0.10. The run passes the first three, fails integration tests, so the last milestone is gated out. Partial credit is 0.60 while binary success is 0.">
+<defs><marker id="m11b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box good" x="20" y="40" width="130" height="64" rx="8"/>
+<text x="85" y="64" text-anchor="middle" class="b">1 Repo builds</text><text x="85" y="84" text-anchor="middle" class="sm">weight 0.10 ✓</text>
+<rect class="box good" x="180" y="40" width="130" height="64" rx="8"/>
+<text x="245" y="64" text-anchor="middle" class="b">2 Client swapped</text><text x="245" y="84" text-anchor="middle" class="sm">weight 0.20 ✓</text>
+<rect class="box good" x="340" y="40" width="130" height="64" rx="8"/>
+<text x="405" y="64" text-anchor="middle" class="b">3 Unit tests pass</text><text x="405" y="84" text-anchor="middle" class="sm">weight 0.30 ✓</text>
+<rect class="box bad" x="500" y="40" width="130" height="64" rx="8"/>
+<text x="565" y="64" text-anchor="middle" class="b">4 Integration</text><text x="565" y="84" text-anchor="middle" class="sm">weight 0.30 ✗</text>
+<rect class="box dashed" x="660" y="40" width="140" height="64" rx="8"/>
+<text x="730" y="64" text-anchor="middle" class="b t-muted">5 Old client gone</text><text x="730" y="84" text-anchor="middle" class="sm">0.10, gated out</text>
+<line class="ln" x1="150" y1="72" x2="176" y2="72" marker-end="url(#m11b)"/>
+<line class="ln" x1="310" y1="72" x2="336" y2="72" marker-end="url(#m11b)"/>
+<line class="ln" x1="470" y1="72" x2="496" y2="72" marker-end="url(#m11b)"/>
+<line class="ln dash" x1="630" y1="72" x2="656" y2="72" marker-end="url(#m11b)"/>
+<text x="410" y="24" text-anchor="middle" class="sm">each arrow = "requires": a milestone only counts if the ones before it passed</text>
+<rect x="20" y="140" width="77" height="26" class="fill-good"/>
+<rect x="97" y="140" width="154" height="26" class="fill-good"/>
+<rect x="251" y="140" width="231" height="26" class="fill-good"/>
+<rect x="482" y="140" width="231" height="26" class="fill-line"/>
+<rect x="713" y="140" width="77" height="26" class="fill-line"/>
+<line class="ln" x1="97" y1="140" x2="97" y2="166"/><line class="ln" x1="251" y1="140" x2="251" y2="166"/><line class="ln" x1="482" y1="140" x2="482" y2="166"/><line class="ln" x1="713" y1="140" x2="713" y2="166"/>
+<text x="20" y="186" class="sm">0</text><text x="482" y="186" text-anchor="middle" class="sm">0.60</text><text x="790" y="186" text-anchor="end" class="sm">1.0</text>
+<text x="20" y="218" class="b t-good">partial credit = 0.60</text>
+<text x="260" y="218" class="b t-bad">binary success = 0</text>
+<text x="470" y="218" class="b">furthest milestone = 3 of 5</text>
+<text x="20" y="238" class="sm">Report all three: they answer different questions (how much value, did it ship, where does it stall).</text>
+</svg>
+<figcaption><b>A milestone rubric for "migrate the billing service to the new payments API".</b> Weights reflect how much of the real value each step delivers. Gating stops an agent from collecting credit for a late milestone it reached by accident or by cheating (for example, deleting the old client without the new one working).</figcaption>
+</figure>
+
+<h3>Designing good milestones</h3>
+<ul>
+<li><b>Make each milestone checkable by code where possible</b>: "the build passes", "file X contains a call to Y", "the database has row Z". Fall back to a rubric-based LLM judge (Module 13) for fuzzy ones such as "the report explains the method".</li>
+<li><b>Order and gate them.</b> Gating is what stops reward hacking: without it, an agent can score the "old client removed" milestone by simply deleting code.</li>
+<li><b>Weight by value, not by effort.</b> Integration tests passing may take less agent time than setting up the build, but it is worth more.</li>
+<li><b>Keep the binary metric too.</b> Partial credit answers "how much progress?"; binary success answers "could we ship this?". A change that raises partial credit while lowering full success means the agent got better at starting and worse at finishing: very important to know.</li>
+<li><b>Record "furthest milestone" histograms.</b> If 60% of failures stall at milestone 4, you know exactly where to look (Module 12's error analysis, applied to long tasks).</li>
+</ul>
+<p>PaperBench is a large-scale example of the same idea: its rubric trees decompose "replicate this paper" into thousands of weighted leaves, and the score is a weighted average up the tree. RE-Bench's normalised score is a continuous cousin: it gives credit for any improvement over the starting solution.</p>
+
+<pre data-lang="python"><code>from dataclasses import dataclass, field
+from typing import Callable
+
+@dataclass
+class Milestone:
+    id: str
+    weight: float                      # share of total credit
+    check: Callable[[dict], bool]      # programmatic check on the final state / trace
+    requires: list[str] = field(default_factory=list)  # gating: only counts if these passed
+
+def score(milestones: list[Milestone], state: dict) -&gt; dict:
+    passed: dict[str, bool] = {}
+    for m in milestones:               # listed in dependency order
+        ok = m.check(state) and all(passed.get(r, False) for r in m.requires)
+        passed[m.id] = ok
+    total = sum(m.weight for m in milestones)
+    earned = sum(m.weight for m in milestones if passed[m.id])
+    return {
+        "partial_credit": round(earned / total, 3),
+        "full_success": all(passed.values()),          # the strict binary metric
+        "furthest": max((i for i, m in enumerate(milestones) if passed[m.id]), default=-1),
+        "detail": passed,
+    }
+
+# Task: "migrate the billing service to the new payments API"
+M = [
+    Milestone("repo_builds",      0.10, lambda s: s["build_ok"]),
+    Milestone("client_swapped",   0.20, lambda s: "new_payments" in s["imports"], ["repo_builds"]),
+    Milestone("unit_tests_pass",  0.30, lambda s: s["unit_pass_rate"] == 1.0,     ["client_swapped"]),
+    Milestone("integration_pass", 0.30, lambda s: s["integration_ok"],            ["unit_tests_pass"]),
+    Milestone("old_client_gone",  0.10, lambda s: "legacy_pay" not in s["imports"], ["integration_pass"]),
+]
+
+final_state = {"build_ok": True, "imports": {"new_payments", "legacy_pay"},
+               "unit_pass_rate": 1.0, "integration_ok": False}
+print(score(M, final_state))
+# {'partial_credit': 0.6, 'full_success': False, 'furthest': 2,
+#  'detail': {'repo_builds': True, 'client_swapped': True, 'unit_tests_pass': True,
+#             'integration_pass': False, 'old_client_gone': False}}</code></pre>
+
+<div class="callout expert"><span class="t">Expert nuance: checkpoints you can resume from</span>
+<p>Milestones can also be <b>starting points</b>. If agents rarely get past milestone 2, you learn nothing about milestones 3 to 5. Snapshot the environment at a known-good milestone-2 state (a Docker image, a saved repository) and start some runs from there. This "checkpointed" evaluation measures late-stage skill separately from early-stage skill, and it saves money. The catch: agents started mid-task lack the context they would have built up themselves, so late-stage scores from checkpoints are a lower bound on, not the same as, late-stage skill in a full run.</p>
+</div>
+
+<h2>Context, memory and state tracking</h2>
+<p>A long task produces more text than fits in a model's <b>context window</b> (the maximum number of tokens the model can read at once). Agent harnesses therefore manage context: they <b>compact</b> (summarise older turns), <b>truncate</b> tool outputs, or let the agent write notes to an external <b>memory</b> (a file, a database) and read them back later. Anthropic's research system, for example, saves its plan to external memory when approaching token limits. Each of these is a place where information can silently disappear, so each deserves its own eval.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Sawtooth chart of context usage over a 300-turn run: context fills toward the limit, compaction drops it back, twice. Memory writes happen along the way. State probes before compaction pass; one probe just after compaction fails because a detail was lost.">
+<defs><marker id="m11c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="80" y1="230" x2="790" y2="230"/>
+<line class="ln" x1="80" y1="230" x2="80" y2="30"/>
+<line class="ln dash bad" x1="80" y1="50" x2="790" y2="50"/>
+<text x="786" y="44" text-anchor="end" class="sm t-bad">context limit</text>
+<text x="28" y="140" text-anchor="middle" class="sm" transform="rotate(-90 28 140)">tokens in context</text>
+<polyline class="ln accent thick" points="80,221 313,68 313,194 500,68 500,194 780,95"/>
+<text x="313" y="40" text-anchor="middle" class="sm t-accent">compact</text>
+<text x="500" y="40" text-anchor="middle" class="sm t-accent">compact</text>
+<text x="80" y="246" text-anchor="middle" class="sm">0</text>
+<text x="313" y="246" text-anchor="middle" class="sm">turn 100</text>
+<text x="500" y="246" text-anchor="middle" class="sm">turn 180</text>
+<text x="780" y="246" text-anchor="middle" class="sm">turn 300</text>
+<text x="80" y="276" class="sm">memory file</text>
+<rect x="160" y="266" width="12" height="12" class="fill-violet"/>
+<rect x="250" y="266" width="12" height="12" class="fill-violet"/>
+<rect x="420" y="266" width="12" height="12" class="fill-violet"/>
+<rect x="620" y="266" width="12" height="12" class="fill-violet"/>
+<path class="ln violet dash" d="M424,264 C410,236 340,236 320,200" marker-end="url(#m11c)"/>
+<text x="440" y="276" class="sm t-violet">reload notes</text>
+<polygon points="220,300 227,290 234,300" class="fill-good"/><text x="240" y="300" class="sm t-good">probe ✓</text>
+<polygon points="340,300 347,290 354,300" class="fill-bad"/><text x="360" y="300" class="sm t-bad">probe ✗ detail lost</text>
+<polygon points="600,300 607,290 614,300" class="fill-good"/><text x="620" y="300" class="sm t-good">probe ✓</text>
+<text x="80" y="316" class="sm">probe = a question about task state ("which orders are still pending?") checked against the simulator's ground truth</text>
+</svg>
+<figcaption><b>Where long runs lose information (illustrative).</b> Context fills, the harness compacts, and the agent relies on its notes. Probing the agent's knowledge of task state right after compaction events is a cheap way to catch memory failures before they show up as a failed task hours later.</figcaption>
+</figure>
+
+<h3>Three layers of memory evaluation</h3>
+<div class="tablewrap"><table>
+<tr><th>Layer</th><th>Question</th><th>How to evaluate</th></tr>
+<tr><td><b>Long-context retrieval</b></td><td>Can the model find and use a fact buried in a long input?</td><td>"Needle in a haystack" tests plant a fact at varying depths in a long document. They are now considered too easy; richer suites like RULER (<a href="https://arxiv.org/abs/2404.06654">Hsieh et al., 2024</a>) add multi-hop tracing and aggregation, and "Lost in the Middle" (<a href="https://arxiv.org/abs/2307.03172">Liu et al., 2023</a>) showed accuracy can dip for facts in the middle of long contexts.</td></tr>
+<tr><td><b>State tracking</b></td><td>Does the agent's belief about the world match the world?</td><td>At random or scheduled points, pause the run and ask a probe question whose answer the environment knows (inventory, open tickets, files changed). Or compare the agent's own notes to ground truth. This catches the "forgot the order" failures that Vending-Bench documents.</td></tr>
+<tr><td><b>Memory mechanisms</b></td><td>Does compaction, summarisation, or a notes file preserve what matters?</td><td>A/B the same tasks with different context strategies (no compaction vs summary vs notes). Measure end-to-end success, probe accuracy just after each compaction, and whether the agent re-does work it already did (a tell-tale sign of lost state).</td></tr>
+</table></div>
+
+<div class="callout warn"><span class="t">Context size is not the whole story</span>
+<p>It is tempting to blame every long-run failure on a full context window. Vending-Bench's authors explicitly found "no clear correlation" between failures and the point at which the context window filled. Coherence over long runs is a skill in its own right. Do not assume a bigger window fixes it: measure.</p>
+</div>
+
+<h2>Cost and wall-clock budgets</h2>
+<p>Long tasks are expensive: MLE-bench runs take about a day of GPU time each, and Vending-Bench runs exceed 20 million tokens. That has two consequences for evals.</p>
+<ol>
+<li><b>The budget is a variable you must fix and report.</b> Agents can often trade money for success: more attempts, more thinking tokens, more subagents. An agent at 60% for $2 per task and one at 65% for $40 per task are not ranked by success alone. Report success at a stated budget, or plot success against cost and look for the <b>Pareto frontier</b> (the set of systems not beaten on both axes at once).</li>
+<li><b>You will run fewer samples</b>, so statistics matter more (Module 04). Prefer paired comparisons on the same tasks, report confidence intervals, and use partial credit to squeeze more signal from each run.</li>
+</ol>
+<p>Measure at least: tokens in and out (and cached), dollar cost, number of tool calls, wall-clock time, and for multi-agent systems, peak parallelism. Put hard caps in the harness (maximum steps, tokens, minutes) and record <b>why</b> a run ended: finished, gave up, hit the cap, or crashed. "Hit the step cap" is a very different failure from "confidently submitted a wrong answer".</p>
+
+<h2>Part B · Multi-agent systems: the architectures</h2>
+<p>A <b>multi-agent system</b> is any setup where two or more model-driven agents, each with its own instructions and usually its own context window, cooperate on a task by passing messages or artefacts. The four common shapes each suggest where to grade.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 250" role="img" aria-label="Four multi-agent topologies: orchestrator-worker, where a lead delegates to parallel workers; pipeline, where agents pass work in sequence; debate, where agents argue and a judge decides; swarm, where peers hand off to one another.">
+<defs><marker id="m11d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="107" y="22" text-anchor="middle" class="b">Orchestrator-worker</text>
+<circle cx="107" cy="68" r="20" class="box accent"/><text x="107" y="73" text-anchor="middle" class="sm">lead</text>
+<circle cx="47" cy="160" r="16" class="box plain"/><text x="47" y="164" text-anchor="middle" class="sm">W1</text>
+<circle cx="107" cy="160" r="16" class="box plain"/><text x="107" y="164" text-anchor="middle" class="sm">W2</text>
+<circle cx="167" cy="160" r="16" class="box plain"/><text x="167" y="164" text-anchor="middle" class="sm">W3</text>
+<line class="ln" x1="95" y1="85" x2="57" y2="143" marker-end="url(#m11d)"/>
+<line class="ln" x1="107" y1="88" x2="107" y2="141" marker-end="url(#m11d)"/>
+<line class="ln" x1="119" y1="85" x2="157" y2="143" marker-end="url(#m11d)"/>
+<text x="107" y="200" text-anchor="middle" class="sm">delegate, then merge</text>
+<text x="107" y="232" text-anchor="middle" class="sm t-accent">grade plan + synthesis</text>
+
+<line class="ln dash" x1="212" y1="10" x2="212" y2="240"/>
+<text x="317" y="22" text-anchor="middle" class="b">Pipeline</text>
+<rect class="box plain" x="222" y="95" width="56" height="36" rx="6"/><text x="250" y="117" text-anchor="middle" class="sm">plan</text>
+<rect class="box plain" x="290" y="95" width="56" height="36" rx="6"/><text x="318" y="117" text-anchor="middle" class="sm">write</text>
+<rect class="box plain" x="358" y="95" width="56" height="36" rx="6"/><text x="386" y="117" text-anchor="middle" class="sm">review</text>
+<line class="ln" x1="278" y1="113" x2="288" y2="113" marker-end="url(#m11d)"/>
+<line class="ln" x1="346" y1="113" x2="356" y2="113" marker-end="url(#m11d)"/>
+<text x="317" y="200" text-anchor="middle" class="sm">fixed hand-offs in order</text>
+<text x="317" y="232" text-anchor="middle" class="sm t-accent">grade each stage's output</text>
+
+<line class="ln dash" x1="422" y1="10" x2="422" y2="240"/>
+<text x="525" y="22" text-anchor="middle" class="b">Debate</text>
+<circle cx="475" cy="75" r="18" class="box plain"/><text x="475" y="79" text-anchor="middle" class="sm">A</text>
+<circle cx="575" cy="75" r="18" class="box plain"/><text x="575" y="79" text-anchor="middle" class="sm">B</text>
+<line class="ln" x1="495" y1="70" x2="555" y2="70" marker-end="url(#m11d)" marker-start="url(#m11d)"/>
+<text x="525" y="60" text-anchor="middle" class="sm">rounds</text>
+<circle cx="525" cy="155" r="18" class="box warn"/><text x="525" y="159" text-anchor="middle" class="sm">judge</text>
+<line class="ln" x1="485" y1="91" x2="512" y2="140" marker-end="url(#m11d)"/>
+<line class="ln" x1="565" y1="91" x2="538" y2="140" marker-end="url(#m11d)"/>
+<text x="525" y="200" text-anchor="middle" class="sm">argue, then decide</text>
+<text x="525" y="232" text-anchor="middle" class="sm t-accent">grade verdict + convergence</text>
+
+<line class="ln dash" x1="630" y1="10" x2="630" y2="240"/>
+<text x="733" y="22" text-anchor="middle" class="b">Swarm / hand-off</text>
+<circle cx="733" cy="62" r="15" class="box plain"/>
+<circle cx="790" cy="100" r="15" class="box plain"/>
+<circle cx="770" cy="162" r="15" class="box plain"/>
+<circle cx="696" cy="162" r="15" class="box plain"/>
+<circle cx="676" cy="100" r="15" class="box plain"/>
+<line class="ln" x1="746" y1="70" x2="777" y2="91" marker-end="url(#m11d)"/>
+<line class="ln" x1="786" y1="115" x2="775" y2="146" marker-end="url(#m11d)"/>
+<line class="ln" x1="754" y1="162" x2="713" y2="162" marker-end="url(#m11d)"/>
+<line class="ln" x1="690" y1="146" x2="680" y2="116" marker-end="url(#m11d)"/>
+<line class="ln dash" x1="690" y1="100" x2="774" y2="100"/>
+<line class="ln dash" x1="733" y1="77" x2="698" y2="148"/>
+<text x="733" y="200" text-anchor="middle" class="sm">peers pass control</text>
+<text x="733" y="232" text-anchor="middle" class="sm t-accent">grade hand-offs + end state</text>
+</svg>
+<figcaption><b>Four topologies, four grading focal points.</b> Every topology gets an end-to-end outcome grade; what differs is where the intermediate graders go. Orchestrators are judged on delegation and synthesis, pipelines per stage, debates on the final verdict and whether rounds actually change minds, swarms on each hand-off.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Pattern</th><th>How it works</th><th>Typical use</th><th>Signature failure</th></tr>
+<tr><td><b>Orchestrator-worker</b></td><td>A lead agent plans, spawns workers with sub-tasks, and synthesises their results.</td><td>Broad research, parallel search, large code changes.</td><td>Vague delegation: workers duplicate effort or misunderstand the sub-task.</td></tr>
+<tr><td><b>Pipeline</b> (sequential)</td><td>Fixed stages, each agent specialised (planner, coder, reviewer).</td><td>Content workflows, code generation with review.</td><td>An early stage's error flows downstream unchallenged.</td></tr>
+<tr><td><b>Debate</b></td><td>Agents propose answers, critique each other over rounds, and a judge or vote decides. Du et al. (<a href="https://arxiv.org/abs/2305.14325">2023</a>) found multi-round debate improved reasoning and reduced hallucination compared with a single model.</td><td>Reasoning, fact-checking, scalable-oversight research.</td><td>Conformity: agents converge on the confident wrong answer.</td></tr>
+<tr><td><b>Swarm / hand-off</b></td><td>Peers pass control to whichever agent fits the next step (for example, triage to billing to refunds).</td><td>Customer service routing.</td><td>Ping-pong loops and lost context at each hand-off.</td></tr>
+</table></div>
+
+<div class="callout tip"><span class="t">Always evaluate against a single-agent baseline</span>
+<p>Multi-agent systems cost more and fail in new ways. The first eval question is not "how good is my multi-agent system?" but "is it better than one agent given the same total budget?". Without that baseline you cannot tell whether the extra agents help or whether you are just spending more tokens.</p>
+</div>
+
+<h2>A case study: how Anthropic evaluated its multi-agent research system</h2>
+<p>In June 2025 Anthropic published an engineering post, <a href="https://www.anthropic.com/engineering/multi-agent-research-system">"How we built our multi-agent research system"</a>, describing the architecture behind Claude's Research feature and, unusually, how they evaluated it. It is the best public case study of multi-agent evals in production, so it is worth knowing in detail.</p>
+<p><b>Architecture.</b> An orchestrator-worker design: a lead agent analyses the query, plans, and spawns subagents that search in parallel, each with its own context window; a separate CitationAgent attributes claims to sources at the end.</p>
+<p><b>Headline results</b> (as stated in the post):</p>
+<ul>
+<li>A multi-agent system with Claude Opus 4 as lead and Claude Sonnet 4 subagents outperformed single-agent Claude Opus 4 by 90.2% on Anthropic's internal research eval.</li>
+<li>On BrowseComp, token usage alone explained 80% of the performance variance; token usage, number of tool calls and model choice together explained 95%.</li>
+<li>Agents use about 4× more tokens than chat interactions, and multi-agent systems about 15× more.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 270" role="img" aria-label="Bar chart of token use relative to a chat interaction: chat 1 times, single agent about 4 times, multi-agent system about 15 times, as reported by Anthropic in June 2025.">
+<line class="ln" x1="100" y1="220" x2="700" y2="220"/>
+<line class="ln" x1="100" y1="220" x2="100" y2="30"/>
+<text x="92" y="224" text-anchor="end" class="sm">0×</text>
+<text x="92" y="168" text-anchor="end" class="sm">5×</text>
+<text x="92" y="111" text-anchor="end" class="sm">10×</text>
+<text x="92" y="55" text-anchor="end" class="sm">15×</text>
+<line class="ln dash" x1="100" y1="164" x2="700" y2="164"/>
+<line class="ln dash" x1="100" y1="107" x2="700" y2="107"/>
+<line class="ln dash" x1="100" y1="51" x2="700" y2="51"/>
+<rect x="150" y="209" width="110" height="11" class="fill-muted"/>
+<rect x="340" y="175" width="110" height="45" class="fill-accent"/>
+<rect x="530" y="51" width="110" height="169" class="fill-violet"/>
+<text x="205" y="200" text-anchor="middle" class="b">1×</text>
+<text x="395" y="156" text-anchor="middle" class="b">≈ 4×</text>
+<text x="585" y="42" text-anchor="middle" class="b">≈ 15×</text>
+<text x="205" y="240" text-anchor="middle" class="sm">chat</text>
+<text x="395" y="240" text-anchor="middle" class="sm">single agent</text>
+<text x="585" y="240" text-anchor="middle" class="sm">multi-agent</text>
+<text x="30" y="125" text-anchor="middle" class="sm" transform="rotate(-90 30 125)">tokens vs a chat turn</text>
+<text x="715" y="120" class="sm">worth it only if</text>
+<text x="715" y="136" class="sm">the task's value</text>
+<text x="715" y="152" class="sm">covers the cost</text>
+</svg>
+<figcaption><b>The token cost multiplier.</b> Approximate ratios as reported by Anthropic (June 2025) for its research system; your own multiplier depends on the task and design. Measure it: the multiplier belongs in every multi-agent eval report next to the quality gain.</figcaption>
+</figure>
+
+<h3>How they evaluated it</h3>
+<div class="grid2">
+<div class="card accent"><h4>1. Start small, immediately</h4><p>They began with about 20 queries representing real usage. Early changes had huge effect sizes (the post mentions jumps like 30% to 80% success), and with effects that large a small set is enough to see them. Their advice: do not wait until you can build a big eval.</p></div>
+<div class="card accent"><h4>2. LLM judge with a rubric</h4><p>Outputs were scored against a rubric: <b>factual accuracy, citation accuracy, completeness, source quality, tool efficiency</b>. A single judge call producing 0.0 to 1.0 scores (plus pass/fail) was more consistent than several specialised judges.</p></div>
+<div class="card accent"><h4>3. Grade the end state</h4><p>Multi-agent runs take different valid paths each time, so they judged whether the agent reached the right final state rather than whether it followed a prescribed sequence of steps. For long, state-changing runs, check discrete checkpoints rather than every step.</p></div>
+<div class="card accent"><h4>4. Humans still find what judges miss</h4><p>Manual testing caught edge cases the automated evals did not; for example, agents consistently chose SEO-optimised content farms over authoritative but lower-ranked sources such as academic PDFs. The fix was source-quality heuristics in the prompts.</p></div>
+</div>
+<p>The post also lists failure modes the team saw in early versions: spawning 50 subagents for simple queries, searching endlessly for sources that do not exist, subagents distracting each other with excessive updates, and subagents duplicating each other's work. They note that "small changes to the lead agent can unpredictably change how subagents behave", and that because agents are stateful over many tool calls, minor failures can cascade. Full production tracing (of decision patterns and interaction structure, not conversation contents) was how they diagnosed these.</p>
+
+<div class="callout expert"><span class="t">What to copy from this case study</span>
+<p>(1) An end-to-end rubric that includes <em>process quality</em> (tool efficiency, source quality) alongside correctness. (2) End-state grading that tolerates path diversity. (3) Scaling rules as an eval target: they embedded explicit effort rules in prompts (roughly one agent for simple fact-finding, a few for comparisons, ten or more for complex research), which you can check automatically from traces: "did the number of subagents fit the query's complexity?"</p>
+</div>
+
+<h2>What to measure in a multi-agent system</h2>
+<p>Think in three levels: the whole system, each agent, and the connections between them.</p>
+<div class="tablewrap"><table>
+<tr><th>Level</th><th>Metric</th><th>How</th></tr>
+<tr><td rowspan="3"><b>System</b></td><td>End-to-end outcome</td><td>The same graders you would use for a single agent: task success, rubric score, milestones. This is the headline number.</td></tr>
+<tr><td>Token cost multiplier</td><td>Total tokens (all agents) ÷ tokens of a single-agent baseline on the same task.</td></tr>
+<tr><td>Wall-clock and parallelism</td><td>Parallel agents can finish faster despite using more tokens; report both.</td></tr>
+<tr><td rowspan="3"><b>Agent</b></td><td>Per-agent success</td><td>Grade each worker's output against its assigned sub-task (did the search agent find relevant sources?).</td></tr>
+<tr><td>Per-agent contribution</td><td>Did this agent's output make it into the final result? Ablate it (rerun without it, or with its output replaced) and see what changes.</td></tr>
+<tr><td>Per-agent cost and errors</td><td>Tokens, tool calls and tool errors, attributed from the trace tree (code below).</td></tr>
+<tr><td rowspan="3"><b>Interaction</b></td><td>Communication overhead</td><td>Tokens spent on messages between agents vs on the task itself; number of rounds.</td></tr>
+<tr><td>Delegation quality</td><td>Judge the orchestrator's sub-task descriptions: clear objective, output format, boundaries, no overlap with siblings.</td></tr>
+<tr><td>Coordination failures</td><td>Label failed traces with a taxonomy such as MAST (next section): duplicated work, ignored input, premature termination.</td></tr>
+</table></div>
+
+<h3>Credit assignment: who deserves the blame?</h3>
+<p><b>Credit assignment</b> is the problem of deciding which agent (or which step) caused the outcome. It is hard because agents interact: a worker's wrong fact only matters if the lead failed to cross-check it. Three practical approaches, from cheap to rigorous:</p>
+<ol>
+<li><b>Trace inspection with a judge.</b> Give an LLM judge the full trace and ask "which agent's action first made the task unrecoverable?". Cheap and useful for error analysis, but the judge can be wrong, so spot-check it.</li>
+<li><b>Counterfactual replay (ablation).</b> Replay the run with one agent's output swapped for a known-good one (from a stronger model or a human). If success jumps, that agent was the bottleneck. This is the most convincing method and also the most expensive.</li>
+<li><b>Shapley-style attribution.</b> For a small number of agents, measure the outcome for every subset of "upgraded" agents and average each agent's marginal contribution (the Shapley value from game theory). The cost grows as 2<sup>n</sup>, so it is only practical for a handful of agents.</li>
+</ol>
+
+<h2>Tracing across agents: span trees</h2>
+<p>A single-agent transcript is a flat list. A multi-agent run is a <b>tree</b>: the lead's work contains each subagent's work, which contains each tool call. Tracing tools record this as nested <b>spans</b> (a span is a timed unit of work with a parent, attributes and a status). The OpenTelemetry GenAI semantic conventions (still marked "Development", i.e. not yet stable) define span names like <code>invoke_agent {gen_ai.agent.name}</code> and <code>execute_tool</code>, with attributes such as <code>gen_ai.agent.name</code> and token usage counts. Many eval and observability tools (Module 14) ingest these traces, which means you can attach graders to <em>any node</em> of the tree.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 400" role="img" aria-label="Trace tree of an orchestrator-worker run: a lead agent span with four child agent spans, each with tool-call spans. Grader types attach at each level: outcome grader at the root, contribution and hand-off graders at agent spans, tool graders at tool spans, and trace-level budget checks over the whole tree.">
+<defs><marker id="m11e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="10" y="20" width="185" height="64" rx="8"/>
+<text x="20" y="40" class="b t-violet">Outcome grader</text>
+<text x="20" y="57" class="sm">rubric judge on final report,</text>
+<text x="20" y="72" class="sm">milestones, end state</text>
+<rect class="box violet" x="10" y="120" width="185" height="64" rx="8"/>
+<text x="20" y="140" class="b t-violet">Agent graders</text>
+<text x="20" y="157" class="sm">sub-task done? output used?</text>
+<text x="20" y="172" class="sm">delegation brief clear?</text>
+<rect class="box violet" x="10" y="220" width="185" height="64" rx="8"/>
+<text x="20" y="240" class="b t-violet">Tool graders</text>
+<text x="20" y="257" class="sm">valid args? errors? retries?</text>
+<text x="20" y="272" class="sm">redundant calls?</text>
+<line class="ln dash violet" x1="195" y1="52" x2="436" y2="52" marker-end="url(#m11e)"/>
+<line class="ln dash violet" x1="195" y1="152" x2="226" y2="152" marker-end="url(#m11e)"/>
+<line class="ln dash violet" x1="195" y1="252" x2="226" y2="252" marker-end="url(#m11e)"/>
+
+<rect class="box accent" x="440" y="30" width="180" height="44" rx="8"/>
+<text x="530" y="50" text-anchor="middle" class="b">invoke_agent lead</text>
+<text x="530" y="66" text-anchor="middle" class="sm">11.5k tok · plan + synthesis</text>
+
+<rect class="box plain" x="230" y="130" width="130" height="44" rx="8"/>
+<text x="295" y="150" text-anchor="middle" class="b">search_1</text><text x="295" y="166" text-anchor="middle" class="sm">33k tok</text>
+<rect class="box plain" x="380" y="130" width="130" height="44" rx="8"/>
+<text x="445" y="150" text-anchor="middle" class="b">search_2</text><text x="445" y="166" text-anchor="middle" class="sm">46k tok</text>
+<rect class="box warn" x="530" y="130" width="130" height="44" rx="8"/>
+<text x="595" y="150" text-anchor="middle" class="b">search_3</text><text x="595" y="166" text-anchor="middle" class="sm">output unused</text>
+<rect class="box plain" x="680" y="130" width="130" height="44" rx="8"/>
+<text x="745" y="150" text-anchor="middle" class="b">citations</text><text x="745" y="166" text-anchor="middle" class="sm">19k tok</text>
+<line class="ln" x1="500" y1="74" x2="295" y2="128" marker-end="url(#m11e)"/>
+<line class="ln" x1="515" y1="74" x2="445" y2="128" marker-end="url(#m11e)"/>
+<line class="ln" x1="545" y1="74" x2="595" y2="128" marker-end="url(#m11e)"/>
+<line class="ln" x1="560" y1="74" x2="745" y2="128" marker-end="url(#m11e)"/>
+<text x="700" y="98" class="sm">delegate</text>
+
+<rect class="box plain" x="230" y="230" width="60" height="36" rx="6"/><text x="260" y="252" text-anchor="middle" class="sm">search</text>
+<rect class="box bad" x="300" y="230" width="60" height="36" rx="6"/><text x="330" y="252" text-anchor="middle" class="sm">fetch ✗</text>
+<rect class="box plain" x="380" y="230" width="60" height="36" rx="6"/><text x="410" y="252" text-anchor="middle" class="sm">search</text>
+<rect class="box plain" x="450" y="230" width="60" height="36" rx="6"/><text x="480" y="252" text-anchor="middle" class="sm">fetch</text>
+<rect class="box warn" x="530" y="230" width="60" height="36" rx="6"/><text x="560" y="252" text-anchor="middle" class="sm">search</text>
+<rect class="box warn" x="600" y="230" width="60" height="36" rx="6"/><text x="630" y="252" text-anchor="middle" class="sm">search</text>
+<line class="ln" x1="280" y1="174" x2="262" y2="228" marker-end="url(#m11e)"/>
+<line class="ln" x1="310" y1="174" x2="328" y2="228" marker-end="url(#m11e)"/>
+<line class="ln" x1="430" y1="174" x2="412" y2="228" marker-end="url(#m11e)"/>
+<line class="ln" x1="460" y1="174" x2="478" y2="228" marker-end="url(#m11e)"/>
+<line class="ln" x1="580" y1="174" x2="562" y2="228" marker-end="url(#m11e)"/>
+<line class="ln" x1="610" y1="174" x2="628" y2="228" marker-end="url(#m11e)"/>
+<text x="295" y="288" text-anchor="middle" class="sm t-bad">timeout: did it recover?</text>
+<text x="595" y="288" text-anchor="middle" class="sm t-warn">same queries as search_2</text>
+<text x="595" y="302" text-anchor="middle" class="sm t-warn">(duplicated work)</text>
+
+<rect class="box violet" x="10" y="330" width="820" height="56" rx="8"/>
+<text x="20" y="352" class="b t-violet">Trace-level checks (whole tree)</text>
+<text x="20" y="372" class="sm">total tokens and multiplier vs single agent · wall-clock · subagent count vs query complexity · loops and ping-pong · max depth</text>
+</svg>
+<figcaption><b>Where graders attach in an orchestrator-worker trace.</b> The root carries the outcome grade that matters most; lower levels carry diagnostic grades that explain it. Here the tree reveals a tool timeout under search_1 and a worker (search_3) whose duplicated effort never reached the final report: a coordination failure invisible from the final answer alone.</figcaption>
+</figure>
+
+<p>The walker below computes per-agent tokens, tool calls and errors from such a tree, reports the ancestor path of every error (so you know which delegation led there), and computes the token multiplier against a single-agent baseline.</p>
+<pre data-lang="python"><code>from collections import defaultdict
+
+# A multi-agent trace as a tree of spans (the shape OpenTelemetry-style tracers export)
+trace = {
+  "name": "invoke_agent lead", "agent": "lead", "in_tok": 9_000, "out_tok": 2_500, "error": None,
+  "children": [
+    {"name": "invoke_agent search_1", "agent": "search_1", "in_tok": 30_000, "out_tok": 3_000, "error": None,
+     "children": [
+        {"name": "execute_tool web_search", "agent": "search_1", "in_tok": 0, "out_tok": 0, "error": None, "children": []},
+        {"name": "execute_tool web_fetch",  "agent": "search_1", "in_tok": 0, "out_tok": 0, "error": "timeout", "children": []}]},
+    {"name": "invoke_agent search_2", "agent": "search_2", "in_tok": 42_000, "out_tok": 4_100, "error": None,
+     "children": [
+        {"name": "execute_tool web_search", "agent": "search_2", "in_tok": 0, "out_tok": 0, "error": None, "children": []}]},
+    {"name": "invoke_agent citations", "agent": "citations", "in_tok": 18_000, "out_tok": 1_200, "error": None, "children": []},
+  ],
+}
+
+def walk(span, depth=0, path=()):
+    """Depth-first: yield every span with its depth and ancestor path."""
+    yield span, depth, path
+    for child in span["children"]:
+        yield from walk(child, depth + 1, path + (span["agent"],))
+
+per_agent = defaultdict(lambda: {"tokens": 0, "spans": 0, "errors": 0, "tool_calls": 0})
+for span, depth, path in walk(trace):
+    a = per_agent[span["agent"]]
+    a["tokens"] += span["in_tok"] + span["out_tok"]
+    a["spans"] += 1
+    a["tool_calls"] += span["name"].startswith("execute_tool")
+    if span["error"]:
+        a["errors"] += 1
+        print(f"error at depth {depth}: {span['name']} ({span['error']}) via {' &gt; '.join(path)}")
+
+total = sum(a["tokens"] for a in per_agent.values())
+for name, a in sorted(per_agent.items(), key=lambda kv: -kv[1]["tokens"]):
+    print(f"{name:10s} {a['tokens']:&gt;7,} tok ({a['tokens']/total:5.1%})  "
+          f"tools={a['tool_calls']}  errors={a['errors']}")
+
+SINGLE_AGENT_BASELINE = 20_000     # tokens the single-agent version used on this task
+print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
+
+# Output:
+# error at depth 2: execute_tool web_fetch (timeout) via lead &gt; search_1
+# search_2    46,100 tok (42.0%)  tools=1  errors=0
+# search_1    33,000 tok (30.1%)  tools=2  errors=1
+# citations   19,200 tok (17.5%)  tools=0  errors=0
+# lead        11,500 tok (10.5%)  tools=0  errors=0
+# token multiplier vs single agent: 5.5x</code></pre>
+<p>In a real system you would read spans from your tracing backend (exported OpenTelemetry JSON, or a platform's SDK) rather than a hand-written dict, and you would attach graders' scores back onto spans so that dashboards can slice by agent. The logic stays the same: <b>walk the tree, attribute, aggregate</b>.</p>
+
+<h2>Why multi-agent systems fail: the MAST taxonomy</h2>
+<p>When you label failed traces (Module 12), it helps to start from an established taxonomy rather than inventing categories. The most cited one is <b>MAST</b> (Multi-Agent System failure Taxonomy) from <a href="https://arxiv.org/abs/2503.13657">"Why Do Multi-Agent LLM Systems Fail?"</a> (Cemri, Pan, Yang et al., UC Berkeley, March 2025). The authors annotated traces from seven open multi-agent frameworks (including ChatDev, MetaGPT, HyperAgent, AppWorld, AG2, Magentic-One and OpenManus), reached high inter-annotator agreement (Cohen's kappa 0.88), and released a dataset of more than 1,600 annotated traces along with an LLM-as-judge pipeline for labelling new ones. They found 14 failure modes in 3 categories.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 440" role="img" aria-label="Horizontal bar chart of the 14 MAST failure modes and their share of observed failures, grouped into system design issues 43.8 percent, inter-agent misalignment 32.2 percent and task verification 24.1 percent. Largest single modes are step repetition, reasoning-action mismatch and unaware of stopping conditions.">
+<text x="20" y="26" class="b t-accent">FC1 System design issues · 43.8%</text>
+<text x="300" y="52" text-anchor="end" class="sm">1.1 Disobey task specification</text><rect x="310" y="42" width="295" height="14" class="fill-accent"/><text x="611" y="53" class="sm">11.8%</text>
+<text x="300" y="74" text-anchor="end" class="sm">1.2 Disobey role specification</text><rect x="310" y="64" width="38" height="14" class="fill-accent"/><text x="354" y="75" class="sm">1.5%</text>
+<text x="300" y="96" text-anchor="end" class="sm">1.3 Step repetition</text><rect x="310" y="86" width="393" height="14" class="fill-accent"/><text x="709" y="97" class="sm">15.7%</text>
+<text x="300" y="118" text-anchor="end" class="sm">1.4 Loss of conversation history</text><rect x="310" y="108" width="70" height="14" class="fill-accent"/><text x="386" y="119" class="sm">2.8%</text>
+<text x="300" y="140" text-anchor="end" class="sm">1.5 Unaware of stopping conditions</text><rect x="310" y="130" width="310" height="14" class="fill-accent"/><text x="626" y="141" class="sm">12.4%</text>
+<text x="20" y="172" class="b t-violet">FC2 Inter-agent misalignment · 32.2%</text>
+<text x="300" y="198" text-anchor="end" class="sm">2.1 Conversation reset</text><rect x="310" y="188" width="55" height="14" class="fill-violet"/><text x="371" y="199" class="sm">2.2%</text>
+<text x="300" y="220" text-anchor="end" class="sm">2.2 Fail to ask for clarification</text><rect x="310" y="210" width="170" height="14" class="fill-violet"/><text x="486" y="221" class="sm">6.8%</text>
+<text x="300" y="242" text-anchor="end" class="sm">2.3 Task derailment</text><rect x="310" y="232" width="185" height="14" class="fill-violet"/><text x="501" y="243" class="sm">7.4%</text>
+<text x="300" y="264" text-anchor="end" class="sm">2.4 Information withholding</text><rect x="310" y="254" width="21" height="14" class="fill-violet"/><text x="337" y="265" class="sm">0.85%</text>
+<text x="300" y="286" text-anchor="end" class="sm">2.5 Ignored other agent's input</text><rect x="310" y="276" width="48" height="14" class="fill-violet"/><text x="364" y="287" class="sm">1.9%</text>
+<text x="300" y="308" text-anchor="end" class="sm">2.6 Reasoning-action mismatch</text><rect x="310" y="298" width="330" height="14" class="fill-violet"/><text x="646" y="309" class="sm">13.2%</text>
+<text x="20" y="340" class="b t-warn">FC3 Task verification · 24.1%</text>
+<text x="300" y="366" text-anchor="end" class="sm">3.1 Premature termination</text><rect x="310" y="356" width="155" height="14" class="fill-warn"/><text x="471" y="367" class="sm">6.2%</text>
+<text x="300" y="388" text-anchor="end" class="sm">3.2 No or incomplete verification</text><rect x="310" y="378" width="205" height="14" class="fill-warn"/><text x="521" y="389" class="sm">8.2%</text>
+<text x="300" y="410" text-anchor="end" class="sm">3.3 Incorrect verification</text><rect x="310" y="400" width="228" height="14" class="fill-warn"/><text x="544" y="411" class="sm">9.1%</text>
+<text x="310" y="434" class="sm">share of annotated failures (as reported in the paper's HTML version, arXiv 2503.13657)</text>
+</svg>
+<figcaption><b>The MAST taxonomy with reported frequencies.</b> Percentages are as given in the paper for its annotated traces from specific open frameworks; your system's mix will differ. The striking point is that fewer than a third of failures are about agents misunderstanding each other: most are ordinary design and verification problems.</figcaption>
+</figure>
+
+<p>Three lessons from MAST that change how you build evals:</p>
+<ul>
+<li><b>Verification is a first-class component.</b> About a quarter of failures are in task verification: the system either never checks its work, checks it badly, or stops early. If your architecture has a "reviewer" or "verifier" agent, evaluate that agent on its own as a classifier (precision and recall on known good and bad outputs), exactly like validating an LLM judge (Module 13).</li>
+<li><b>Many "multi-agent" failures are single-agent failures in disguise.</b> Step repetition, disobeying the task specification and not knowing when to stop would happen with one agent too. Before blaming coordination, check whether a single agent fails the same way.</li>
+<li><b>Stopping conditions need tests.</b> "Unaware of stopping conditions" is a big category. Include tasks whose correct behaviour is to stop early (the answer is already known, the task is impossible) and measure whether the system does.</li>
+</ul>
+
+<details><summary>Deep dive: turning MAST into an automated trace classifier</summary>
+<p>A practical pipeline: (1) sample failed traces from your eval runs; (2) have an LLM judge label each with zero or more MAST modes, giving the definitions from the paper in the prompt and asking for the span id where each failure first appears; (3) hand-label 50 to 100 of the same traces yourself and measure agreement (Cohen's kappa) with the judge; (4) once agreement is acceptable, run the judge on every failed trace and track the mode distribution over time. A shift from "step repetition" to "premature termination" after a prompt change tells you the change traded one failure for another, which a single success rate would hide.</p>
+</details>
+
+<h2>Emergent behaviour and safety in multi-agent systems</h2>
+<p>When agents interact, behaviours can appear that no single agent shows on its own. That is what "emergent" means here, and it is why multi-agent systems need evals beyond their parts.</p>
+<div class="grid2">
+<div class="card bad"><h4>Cascading errors</h4><p>One agent's mistake becomes another's input and is amplified: a hallucinated fact from a worker is cited confidently by the lead, then "verified" by a reviewer that trusts the lead. Test it with <b>fault injection</b>: deliberately corrupt one worker's output (a wrong number, a fake citation) and measure how often the final answer contains the error.</p></div>
+<div class="card bad"><h4>Collusion</h4><p>Agents may coordinate in ways their designers did not intend, including against an overseer. Motwani et al. (<a href="https://arxiv.org/abs/2402.07510">"Secret Collusion among AI Agents"</a>, 2024) studied agents hiding messages from monitors using steganography, and proposed evaluations for that capability. If one agent monitors another, test whether the monitored agent can influence or evade the monitor.</p></div>
+<div class="card warn"><h4>Conformity and echo chambers</h4><p>In debate and voting setups, agents may defer to a confident peer instead of checking. Measure how often a minority-correct agent flips to a majority-wrong answer across rounds.</p></div>
+<div class="card warn"><h4>Runaway resource use</h4><p>Spawning loops, ping-pong hand-offs, and agents that keep delegating. Cap depth and count in the harness, and treat "hit the cap" as a graded failure.</p></div>
+</div>
+<p>The Cooperative AI Foundation's report <a href="https://arxiv.org/abs/2502.14143">"Multi-Agent Risks from Advanced AI"</a> (Hammond et al., February 2025) organises the risks into three failure modes (<b>miscoordination</b>, <b>conflict</b>, <b>collusion</b>) and seven risk factors (information asymmetries, network effects, selection pressures, destabilising dynamics, commitment problems, emergent agency, and multi-agent security). It is a good checklist for designing adversarial multi-agent evals, and Module 17 returns to dangerous-capability testing more broadly.</p>
+
+<div class="callout bad"><span class="t">Security: every message is an input</span>
+<p>In a multi-agent system, a compromised or prompt-injected worker (for example, one that read a malicious web page) can pass instructions upward to the lead. Your safety evals should include injected content at the <em>worker</em> level and check whether it propagates to actions taken by other agents. The trace tree makes this measurable: follow the tainted content from the span where it entered to every span that used it.</p>
+</div>
+
+<h2>Putting it together: an eval plan for a long-running multi-agent system</h2>
+<p>Suppose you are building a research assistant like the one in the case study. A minimal but expert-grade eval plan looks like this:</p>
+<ol>
+<li><b>Dataset:</b> 20 to 50 real queries to start, stratified by complexity (simple fact, comparison, deep research), each with a rubric and, where possible, known key facts and sources.</li>
+<li><b>Baseline:</b> a single-agent version with the same model and the same total token budget.</li>
+<li><b>Outcome graders:</b> a rubric LLM judge (accuracy, citation accuracy, completeness, source quality, tool efficiency), validated against human labels on a subset. Milestones for long queries (sources found, claims extracted, draft written, citations verified).</li>
+<li><b>Process graders on the trace:</b> subagent count vs complexity, duplicated queries across workers, tool error and recovery rate, MAST labels on failures.</li>
+<li><b>Budgets:</b> tokens, dollars, wall-clock, subagent count; report the multiplier vs baseline and plot quality against cost.</li>
+<li><b>Robustness:</b> 3 or more runs per query (report pass^k or spread), fault injection on one worker, prompt injection via a planted web page.</li>
+<li><b>Human review:</b> a weekly read of a sample of traces, looking for things the rubric does not capture (the content-farm lesson).</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 220" role="img" aria-label="Eval plan as layered stack: outcome at the top, then process on the trace, then budgets, then robustness, then human review; each layer feeds the decision to ship.">
+<defs><marker id="m11f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="14" width="560" height="34" rx="6"/><text x="36" y="36" class="b">Outcome</text><text x="200" y="36" class="sm">rubric judge + milestones vs single-agent baseline</text>
+<rect class="box violet" x="20" y="54" width="560" height="34" rx="6"/><text x="36" y="76" class="b">Process (trace)</text><text x="200" y="76" class="sm">delegation, duplication, tool recovery, MAST labels</text>
+<rect class="box warn" x="20" y="94" width="560" height="34" rx="6"/><text x="36" y="116" class="b">Budgets</text><text x="200" y="116" class="sm">tokens, $, wall-clock, token multiplier, caps hit</text>
+<rect class="box bad" x="20" y="134" width="560" height="34" rx="6"/><text x="36" y="156" class="b">Robustness</text><text x="200" y="156" class="sm">repeats (pass^k), fault injection, prompt injection</text>
+<rect class="box plain" x="20" y="174" width="560" height="34" rx="6"/><text x="36" y="196" class="b">Human review</text><text x="200" y="196" class="sm">weekly trace reading for what rubrics miss</text>
+<line class="ln" x1="580" y1="111" x2="656" y2="111" marker-end="url(#m11f)"/>
+<rect class="box good" x="660" y="80" width="140" height="62" rx="8"/>
+<text x="730" y="106" text-anchor="middle" class="b">Ship decision</text>
+<text x="730" y="124" text-anchor="middle" class="sm">better AND worth it?</text>
+</svg>
+<figcaption><b>Five layers of a multi-agent eval.</b> The outcome layer decides whether the system is better; the other layers explain why, check it is worth the cost, and check it stays safe when something goes wrong.</figcaption>
+</figure>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. An agent has 98% per-step reliability with no error recovery. Roughly what is its success rate on a task needing 50 correct steps?</p>
+<button class="opt">About 98%</button>
+<button class="opt">About 36%</button>
+<button class="opt">About 2%</button>
+<div class="why">0.98<sup>50</sup> ≈ 0.364. Compounding turns a small per-step error into a large end-to-end one, which is why long-horizon evals report end-to-end success and why error recovery matters so much.</div></div>
+<div class="q" data-answer="2"><p>2. METR reports a model's 50% time horizon as 1 hour. Which statement is correct?</p>
+<button class="opt">The model can work autonomously for 1 hour on any task</button>
+<button class="opt">The model succeeds on 50% of tasks it attempts for 1 hour of compute</button>
+<button class="opt">On METR's task suite, the fitted curve predicts 50% success on tasks that take human experts about 1 hour</button>
+<div class="why">The horizon is defined by human expert completion time on a specific (mostly software and ML) task distribution. METR explicitly warns against reading it as "can work for N hours on anything".</div></div>
+<div class="q" data-answer="0"><p>3. Why does a milestone rubric use gating ("only counts if earlier milestones passed")?</p>
+<button class="opt">To stop agents earning credit for late milestones reached by accident or by shortcuts, such as deleting code to satisfy "old client removed"</button>
+<button class="opt">To make scores higher</button>
+<button class="opt">Because LLM judges cannot grade milestones independently</button>
+<div class="why">Gating ties credit to genuine progress along the intended path and closes an obvious reward-hacking route.</div></div>
+<div class="q" data-answer="1"><p>4. Your multi-agent system scores 12 points higher than your single-agent system. What is the most important missing piece before concluding it is better?</p>
+<button class="opt">A larger model for the orchestrator</button>
+<button class="opt">The token and dollar cost of each, ideally comparing at an equal budget</button>
+<button class="opt">A debate round between the two systems</button>
+<div class="why">Anthropic reported token usage alone explained 80% of BrowseComp variance. A gain that simply reflects spending more tokens may not be worth it, and a single agent given the same budget might close the gap.</div></div>
+<div class="q" data-answer="2"><p>5. In the MAST taxonomy, which category covered roughly a quarter of annotated failures and suggests evaluating reviewer agents as classifiers?</p>
+<button class="opt">System design issues</button>
+<button class="opt">Inter-agent misalignment</button>
+<button class="opt">Task verification</button>
+<div class="why">Task verification (premature termination, no or incomplete verification, incorrect verification) was about 24% of failures in the paper's annotated traces.</div></div>
+</div>
+
+<details><summary>Interview questions (with model answers)</summary>
+<p><b>Q: How would you compute a time horizon for an internal agent, and what would you report with it?</b><br>Time experts on a sample of real tasks (geometric mean of several timings), run the agent several times per task, fit logistic regression of success on log2(human time), solve for 50% (and 80%). Report the slope, a task-level bootstrap confidence interval, the task distribution and the budget. Do not extrapolate beyond measured lengths.</p>
+<p><b>Q: Your long-horizon eval has 30 tasks, each costing $50 per run. How do you get a useful signal?</b><br>Use milestone partial credit and furthest-milestone histograms to extract more information per run; use paired comparisons of old vs new on the same tasks; checkpoint environments to test late stages cheaply; and report intervals honestly rather than over-reading small differences.</p>
+<p><b>Q: How do you assign blame in a failed multi-agent run?</b><br>Walk the trace tree to find the first error and its ancestor path; use an LLM judge to propose the responsible agent; confirm with counterfactual replay (swap in a known-good output for that agent and rerun). Aggregate across many failures with a taxonomy like MAST.</p>
+<p><b>Q: What is special about safety testing for multi-agent systems?</b><br>Errors and injected instructions can propagate between agents, monitors can be evaded or influenced, and agents can converge on wrong answers. Use fault injection and prompt injection at the worker level, trace propagation, test monitors against the agents they watch, and cap resource use.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Kwa, West et al. (METR), <a href="https://arxiv.org/abs/2503.14499">Measuring AI Ability to Complete Long Tasks</a> (March 2025).</li>
+<li>METR, <a href="https://metr.org/time-horizons/">Time horizons (live page)</a>, <a href="https://metr.org/blog/2026-1-29-time-horizon-1-1/">Time Horizon 1.1</a> (January 2026), <a href="https://metr.org/notes/2026-01-22-time-horizon-limitations/">Clarifying limitations of time horizon</a>, <a href="https://metr.org/notes/2026-03-20-impact-of-modelling-assumptions-on-time-horizon-results/">Impact of modelling assumptions</a>.</li>
+<li>Epoch AI, <a href="https://epoch.ai/benchmarks/metr-time-horizons">METR time horizons mirror</a>.</li>
+<li>Wijk et al. (METR), <a href="https://arxiv.org/abs/2411.15114">RE-Bench</a> (November 2024).</li>
+<li>Chan et al. (OpenAI), <a href="https://arxiv.org/abs/2410.07095">MLE-bench</a> (October 2024).</li>
+<li>Starace et al. (OpenAI), <a href="https://arxiv.org/abs/2504.01848">PaperBench</a> (April 2025).</li>
+<li>OpenAI, <a href="https://openai.com/index/gdpval/">GDPval</a> (September 2025).</li>
+<li>Backlund and Petersson (Andon Labs), <a href="https://arxiv.org/abs/2502.15840">Vending-Bench</a> (February 2025); <a href="https://andonlabs.com/evals/vending-bench">Andon Labs Vending-Bench page</a>.</li>
+<li>Hsieh et al., <a href="https://arxiv.org/abs/2404.06654">RULER: What's the Real Context Size of Your Long-Context Language Models?</a> (2024); Liu et al., <a href="https://arxiv.org/abs/2307.03172">Lost in the Middle</a> (2023).</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/multi-agent-research-system">How we built our multi-agent research system</a> (June 2025).</li>
+<li>Cemri, Pan, Yang et al., <a href="https://arxiv.org/abs/2503.13657">Why Do Multi-Agent LLM Systems Fail?</a> (MAST, March 2025).</li>
+<li>Du et al., <a href="https://arxiv.org/abs/2305.14325">Improving Factuality and Reasoning in Language Models through Multiagent Debate</a> (2023).</li>
+<li>Motwani et al., <a href="https://arxiv.org/abs/2402.07510">Secret Collusion among AI Agents: Multi-Agent Deception via Steganography</a> (2024).</li>
+<li>Hammond et al. (Cooperative AI Foundation), <a href="https://arxiv.org/abs/2502.14143">Multi-Agent Risks from Advanced AI</a> (February 2025).</li>
+<li>OpenTelemetry, <a href="https://github.com/open-telemetry/semantic-conventions-genai">GenAI semantic conventions</a> (agent and tool spans; status: Development).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

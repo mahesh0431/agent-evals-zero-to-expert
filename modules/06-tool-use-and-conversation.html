@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · Tool use, RAG and conversation · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 06 · Part II: Agent evals, every modality</div>
+<h1>Tool use, RAG and conversational agents</h1>
+<p class="lede">Most agents in production are text agents that call functions, look things up, and talk to people. This module shows exactly where they break, and how to grade them at every level: one function call, a chain of calls, a whole task that changes a database, a retrieval pipeline, and a full conversation with a user.</p>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill">~70 min</span><span class="pill">Prerequisites: Modules 03 to 05</span><span class="pill">Python code</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Draw the function-calling loop from memory and name what can go wrong at each step.</li>
+<li>Write a code grader that compares a tool call's name and arguments with normalization, the way BFCL's AST checker does.</li>
+<li>Explain how τ-bench grades a whole task by comparing the final database with a goal database, and compute pass^k from repeated trials.</li>
+<li>Separate retrieval metrics (recall@k, precision@k, MRR, nDCG) from generation metrics (faithfulness, answer relevancy) and compute each by hand.</li>
+<li>Choose between turn-level and conversation-level grading, and build a simulated-user test for a conversational agent.</li>
+<li>Pick the right public benchmark (BFCL, τ-bench, τ²-bench, AppWorld, ToolBench, ACEBench, GAIA, BrowseComp) for a question, and know each one's weak spots.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>How function calling actually works</h2>
+<p>A language model can only produce text. It cannot check a database, send an email, or look up the weather. <b>Function calling</b> (also called <b>tool use</b>) is the trick that lets it act anyway: you describe some functions to the model, the model writes a structured request saying "please call this function with these arguments", and <em>your code</em> actually runs it and hands the result back.</p>
+<p>Three pieces make this work:</p>
+<ul>
+<li><b>A tool schema.</b> For each tool you give a name, a plain-English description, and a <b>JSON Schema</b> for its inputs. JSON Schema is a standard way to say "this argument is a string, this one is an integer between 1 and 10, this one is required". The description is not decoration: it is the only thing the model reads to decide when to use the tool.</li>
+<li><b>A tool call.</b> When the model decides it needs a tool, it stops writing prose and emits a structured block. In Anthropic's Messages API this is a <code>tool_use</code> content block with an <code>id</code>, a <code>name</code> and an <code>input</code> object; OpenAI and Google use similar shapes with different field names.</li>
+<li><b>A tool result.</b> Your code (the <b>harness</b>) validates the input, runs the real function, and appends a <code>tool_result</code> (linked by the call's id) to the conversation. If the tool failed, you still return a result, marked as an error, so the model can recover.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 400" role="img" aria-label="Sequence diagram: the harness sends messages and tool schemas to the model; the model decides to emit a tool_use call; the harness validates and executes it against the tool; the result is appended as a tool_result; the loop repeats until the model gives a final answer.">
+<defs><marker id="m6a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="40" y="12" width="140" height="46" rx="8"/>
+<text x="110" y="32" text-anchor="middle" class="b">Harness</text>
+<text x="110" y="48" text-anchor="middle" class="sm">your code, the loop</text>
+<rect class="box accent" x="340" y="12" width="140" height="46" rx="8"/>
+<text x="410" y="32" text-anchor="middle" class="b">Model</text>
+<text x="410" y="48" text-anchor="middle" class="sm">LLM via API</text>
+<rect class="box warn" x="640" y="12" width="140" height="46" rx="8"/>
+<text x="710" y="32" text-anchor="middle" class="b">Tool / API</text>
+<text x="710" y="48" text-anchor="middle" class="sm">real side effects</text>
+<line class="ln dash" x1="110" y1="58" x2="110" y2="390"/>
+<line class="ln dash" x1="410" y1="58" x2="410" y2="390"/>
+<line class="ln dash" x1="710" y1="58" x2="710" y2="300"/>
+<rect class="box dashed" x="22" y="100" width="776" height="240" rx="10"/>
+<line class="ln" x1="110" y1="88" x2="406" y2="88" marker-end="url(#m6a)"/>
+<text x="258" y="80" text-anchor="middle">① messages + tool schemas</text>
+<rect class="box accent" x="330" y="112" width="160" height="44" rx="6"/>
+<text x="410" y="131" text-anchor="middle" class="b">② decide</text>
+<text x="410" y="148" text-anchor="middle" class="sm">call a tool? which? args?</text>
+<line class="ln" x1="410" y1="185" x2="114" y2="185" marker-end="url(#m6a)"/>
+<text x="260" y="177" text-anchor="middle" class="mono">③ tool_use get_order(id="A17")</text>
+<line class="ln" x1="110" y1="230" x2="706" y2="230" marker-end="url(#m6a)"/>
+<text x="560" y="222" text-anchor="middle">④ validate args, execute</text>
+<line class="ln" x1="710" y1="275" x2="114" y2="275" marker-end="url(#m6a)"/>
+<text x="560" y="267" text-anchor="middle">⑤ result JSON (or an error)</text>
+<line class="ln" x1="110" y1="320" x2="406" y2="320" marker-end="url(#m6a)"/>
+<text x="258" y="312" text-anchor="middle">⑥ tool_result appended</text>
+<text x="790" y="358" text-anchor="end" class="sm">dashed box: repeat ② to ⑥ while the model keeps calling tools</text>
+<line class="ln" x1="410" y1="378" x2="114" y2="378" marker-end="url(#m6a)"/>
+<text x="260" y="370" text-anchor="middle">⑦ final answer to the user</text>
+</svg>
+<figcaption><b>The function-calling loop.</b> The model never runs anything itself. It only <em>requests</em> a call (③); the harness executes it (④) and feeds the result back (⑥). An agent is this loop running until the model stops asking for tools.</figcaption>
+</figure>
+
+<p>Here is the smallest possible example with the Anthropic Python SDK, so you can see the real shapes. You will grade exactly these objects later.</p>
+
+<pre data-lang="python"><code>import anthropic
+
+client = anthropic.Anthropic()
+
+tools = [{
+    "name": "get_order",
+    "description": "Look up one order by its ID. Use this before answering any "
+                   "question about an order's status, items or refund eligibility.",
+    "input_schema": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string", "description": "e.g. 'A17'"}},
+        "required": ["order_id"],
+    },
+}]
+
+resp = client.messages.create(
+    model="claude-opus-5-5",
+    max_tokens=16000,
+    tools=tools,
+    messages=[{"role": "user", "content": "Where is my order A17?"}],
+)
+
+for block in resp.content:
+    if block.type == "tool_use":            # step ③ in the diagram
+        print(block.id, block.name, block.input)   # e.g. toolu_01..., get_order, {'order_id': 'A17'}
+# resp.stop_reason == "tool_use" tells the harness it must run the tool and continue</code></pre>
+
+<div class="callout analogy"><span class="t">Analogy: the new hire with a phone list</span>
+<p>Imagine a new assistant who cannot leave their desk but has a list of phone extensions ("billing: ext 201, handles refunds"). For every customer request they must decide whether to call anyone, pick the right extension, say the right thing on the call, listen to the answer, and decide whether they are done. Every one of those decisions can go wrong on its own, and an eval has to be able to tell you <em>which one</em> went wrong.</p>
+</div>
+
+<h2>What can go wrong, step by step</h2>
+<p>The diagram above has five decision points. Each has its own family of failures. Learning these names matters, because a good eval set has test cases aimed at each one, and a good error analysis (<a href="12-error-analysis.html">Module 12</a>) sorts failures into these buckets.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Five decision steps of tool use, each with typical failures underneath and the kind of check that catches them.">
+<rect class="box accent" x="15" y="14" width="148" height="46" rx="8"/>
+<text x="89" y="34" text-anchor="middle" class="b">① Decide</text>
+<text x="89" y="50" text-anchor="middle" class="sm">call a tool or answer?</text>
+<rect class="box accent" x="177" y="14" width="148" height="46" rx="8"/>
+<text x="251" y="34" text-anchor="middle" class="b">② Select tool</text>
+<text x="251" y="50" text-anchor="middle" class="sm">which one, in what order?</text>
+<rect class="box accent" x="339" y="14" width="148" height="46" rx="8"/>
+<text x="413" y="34" text-anchor="middle" class="b">③ Fill arguments</text>
+<text x="413" y="50" text-anchor="middle" class="sm">schema + real values</text>
+<rect class="box accent" x="501" y="14" width="148" height="46" rx="8"/>
+<text x="575" y="34" text-anchor="middle" class="b">④ Use the result</text>
+<text x="575" y="50" text-anchor="middle" class="sm">read it, reason on it</text>
+<rect class="box accent" x="663" y="14" width="148" height="46" rx="8"/>
+<text x="737" y="34" text-anchor="middle" class="b">⑤ Stop or go on</text>
+<text x="737" y="50" text-anchor="middle" class="sm">done? hand off?</text>
+
+<rect class="box bad" x="15" y="72" width="148" height="176" rx="8"/>
+<text x="24" y="96" class="sm">✗ no call, but needed</text>
+<text x="24" y="120" class="sm">✗ calls, but shouldn't</text>
+<text x="24" y="144" class="sm">✗ answers from memory</text>
+<text x="36" y="160" class="sm">(stale or invented)</text>
+<text x="24" y="184" class="sm">✗ asks nothing when</text>
+<text x="36" y="200" class="sm">info is missing</text>
+
+<rect class="box bad" x="177" y="72" width="148" height="176" rx="8"/>
+<text x="186" y="96" class="sm">✗ wrong tool</text>
+<text x="186" y="120" class="sm">✗ made-up tool name</text>
+<text x="186" y="144" class="sm">✗ right tools, bad order</text>
+<text x="186" y="168" class="sm">✗ skips a needed step</text>
+<text x="198" y="184" class="sm">(e.g. verify identity)</text>
+
+<rect class="box bad" x="339" y="72" width="148" height="176" rx="8"/>
+<text x="348" y="96" class="sm">✗ missing required arg</text>
+<text x="348" y="120" class="sm">✗ wrong type ("5" vs 5)</text>
+<text x="348" y="144" class="sm">✗ invented value or ID</text>
+<text x="348" y="168" class="sm">✗ unknown extra arg</text>
+<text x="348" y="192" class="sm">✗ bad format (dates)</text>
+
+<rect class="box bad" x="501" y="72" width="148" height="176" rx="8"/>
+<text x="510" y="96" class="sm">✗ ignores the result</text>
+<text x="510" y="120" class="sm">✗ misreads the result</text>
+<text x="510" y="144" class="sm">✗ ignores error text</text>
+<text x="510" y="168" class="sm">✗ contradicts the data</text>
+<text x="510" y="192" class="sm">✗ trusts injected text</text>
+<text x="522" y="208" class="sm">inside the result</text>
+
+<rect class="box bad" x="663" y="72" width="148" height="176" rx="8"/>
+<text x="672" y="96" class="sm">✗ repeats same call</text>
+<text x="672" y="120" class="sm">✗ stops too early</text>
+<text x="672" y="144" class="sm">✗ false "done!"</text>
+<text x="672" y="168" class="sm">✗ no hand-off to</text>
+<text x="684" y="184" class="sm">a human when due</text>
+
+<text x="89" y="272" text-anchor="middle" class="sm t-good">relevance tests</text>
+<text x="251" y="272" text-anchor="middle" class="sm t-good">name + order checks</text>
+<text x="413" y="272" text-anchor="middle" class="sm t-good">AST / schema checks</text>
+<text x="575" y="272" text-anchor="middle" class="sm t-good">end-state + judge</text>
+<text x="737" y="272" text-anchor="middle" class="sm t-good">step caps, pass^k</text>
+<text x="410" y="294" text-anchor="middle" class="sm">green: the kind of check that usually catches each column</text>
+</svg>
+<figcaption><b>A failure map for tool use.</b> Each step fails in its own ways, and each family needs a different kind of check. An eval that only looks at the final answer lumps all of these together and can't tell you what to fix.</figcaption>
+</figure>
+
+<p>A few of these deserve a closer look, because beginners tend to forget them:</p>
+<ul>
+<li><b>Calling when not needed</b> is as real a failure as not calling. If a user asks "what's 2 + 2?" and the agent calls a web search, that costs money and latency. If a user asks something no tool can answer and the agent calls the closest-looking tool anyway, that is a <b>hallucinated action</b>. Benchmarks call the test for this <b>irrelevance detection</b>: give the model tools that do not fit the request and check that it declines to call any.</li>
+<li><b>Hallucinated tool names and arguments</b>: the model calls <code>cancel_booking</code> when only <code>cancel_reservation</code> exists, or passes <code>priority="urgent"</code> to a function that has no <code>priority</code> parameter. Strict schema validation in the harness catches some of this at runtime (Anthropic's API offers <code>strict: true</code> on tool definitions to guarantee schema-valid inputs), but your eval should still count how often the model <em>tries</em>.</li>
+<li><b>Invented values</b> are the most dangerous argument error because they pass type checks. <code>order_id="A18"</code> is a perfectly valid string; it is just the wrong order. Only a check against the reference value, or against the end state, catches it.</li>
+<li><b>Ignoring the result</b>: the tool says "order not found" and the agent cheerfully reports the delivery date anyway. This is a grounding failure, the same family as RAG faithfulness failures later in this module.</li>
+<li><b>Looping</b>: the agent calls the same search with the same query eight times. Always cap steps in your harness and record "hit the step cap" as its own failure category.</li>
+</ul>
+
+<h2>Four levels of tool-use evaluation</h2>
+<p>You can grade tool use at four levels of zoom. Lower levels are cheap, precise and easy to automate, but less realistic. Higher levels measure what users actually experience, but they are expensive, noisy and harder to grade. Strong teams run all four: many cheap low-level tests in CI, and fewer expensive end-to-end runs before a release.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Staircase of four evaluation levels: single call, multi-step chain, stateful task, and open-ended assistant, rising in realism and cost.">
+<defs><marker id="m6c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln accent thick" x1="30" y1="44" x2="790" y2="44" marker-end="url(#m6c)"/>
+<text x="410" y="32" text-anchor="middle" class="sm">more realistic ▸ more expensive ▸ noisier to grade ▸ closer to what users feel</text>
+<rect class="box plain" x="20" y="220" width="188" height="80" rx="8"/>
+<text x="114" y="240" text-anchor="middle" class="b">1 · Single call</text>
+<text x="114" y="257" text-anchor="middle" class="sm">one request, one call</text>
+<text x="114" y="273" text-anchor="middle" class="sm">grade: name + args (AST)</text>
+<text x="114" y="289" text-anchor="middle" class="sm t-accent">BFCL, ACEBench Normal</text>
+<rect class="box accent" x="218" y="170" width="188" height="130" rx="8"/>
+<text x="312" y="190" text-anchor="middle" class="b">2 · Multi-step chain</text>
+<text x="312" y="207" text-anchor="middle" class="sm">output of call A feeds B</text>
+<text x="312" y="223" text-anchor="middle" class="sm">grade: sequence / subset</text>
+<text x="312" y="239" text-anchor="middle" class="sm t-accent">BFCL multi-turn</text>
+<rect class="box warn" x="416" y="120" width="188" height="180" rx="8"/>
+<text x="510" y="140" text-anchor="middle" class="b">3 · Stateful task</text>
+<text x="510" y="157" text-anchor="middle" class="sm">many calls, side effects</text>
+<text x="510" y="173" text-anchor="middle" class="sm">grade: end-state DB diff</text>
+<text x="510" y="189" text-anchor="middle" class="sm t-accent">τ-bench, AppWorld</text>
+<rect class="box good" x="614" y="70" width="188" height="230" rx="8"/>
+<text x="708" y="90" text-anchor="middle" class="b">4 · Open-ended assistant</text>
+<text x="708" y="107" text-anchor="middle" class="sm">talks to users, open web</text>
+<text x="708" y="123" text-anchor="middle" class="sm">grade: goal + policy + answer</text>
+<text x="708" y="139" text-anchor="middle" class="sm t-accent">τ²-bench, GAIA, BrowseComp</text>
+</svg>
+<figcaption><b>Zoom levels.</b> Each step up the stairs tests more of the real system, at higher cost per test case. Most bugs are found cheaply on the lower steps; most surprises are found on the higher ones.</figcaption>
+</figure>
+
+<h2>Level 1: grading a single call (BFCL and AST matching)</h2>
+<p>The <b>Berkeley Function Calling Leaderboard (BFCL)</b>, from the UC Berkeley Gorilla team, is the standard public benchmark for this level. Its core idea is simple and worth copying for your own evals: <b>don't compare the model's call as a string, compare its structure</b>.</p>
+
+<h3>AST matching, explained</h3>
+<p>An <b>AST</b> (abstract syntax tree) is what a programming language's parser turns code into: instead of the characters <code>get_weather(city="NYC")</code>, you get a tree with a function-name node and one argument node per parameter. Comparing trees instead of strings means that argument order, spacing and quoting style no longer matter. BFCL then checks each node against a list of <b>possible answers</b>, because many values are equally correct ("NYC", "New York, NY").</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="AST matching: the raw model output is parsed into a tree with the function name and arguments, then each node is compared against a list of acceptable values; five checks must pass. Executable evaluation instead runs the call.">
+<defs><marker id="m6d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="15" y="30" width="240" height="110" rx="8"/>
+<text x="30" y="52" class="b">Model output (raw)</text>
+<text x="30" y="78" class="mono">get_weather(</text>
+<text x="46" y="96" class="mono">unit="F",</text>
+<text x="46" y="114" class="mono">city="new york, ny")</text>
+<line class="ln" x1="255" y1="85" x2="292" y2="85" marker-end="url(#m6d)"/>
+<text x="274" y="76" text-anchor="middle" class="sm">parse</text>
+<rect class="box accent" x="376" y="30" width="96" height="30" rx="6"/>
+<text x="424" y="50" text-anchor="middle" class="b">Call</text>
+<line class="ln" x1="424" y1="60" x2="341" y2="96"/>
+<line class="ln" x1="424" y1="60" x2="431" y2="96"/>
+<line class="ln" x1="424" y1="60" x2="521" y2="96"/>
+<rect class="box plain" x="294" y="96" width="94" height="30" rx="6"/>
+<text x="341" y="115" text-anchor="middle" class="mono">get_weather</text>
+<rect class="box plain" x="390" y="96" width="82" height="30" rx="6"/>
+<text x="431" y="115" text-anchor="middle" class="mono">city</text>
+<rect class="box plain" x="480" y="96" width="82" height="30" rx="6"/>
+<text x="521" y="115" text-anchor="middle" class="mono">unit</text>
+<text x="341" y="142" text-anchor="middle" class="sm">name</text>
+<text x="431" y="142" text-anchor="middle" class="sm">"new york, ny"</text>
+<text x="521" y="142" text-anchor="middle" class="sm">"F"</text>
+<line class="ln" x1="566" y1="85" x2="600" y2="85" marker-end="url(#m6d)"/>
+<rect class="box warn" x="605" y="22" width="200" height="158" rx="8"/>
+<text x="618" y="42" class="b">Possible answers</text>
+<text x="618" y="66" class="mono">name: get_weather</text>
+<text x="618" y="86" class="mono">city: ["New York, NY",</text>
+<text x="666" y="102" class="mono">"NYC"]</text>
+<text x="618" y="122" class="mono">unit: ["fahrenheit",</text>
+<text x="666" y="138" class="mono">"F", ""]</text>
+<text x="618" y="164" class="sm">"" means: may be omitted</text>
+
+<rect class="box good" x="15" y="198" width="152" height="46" rx="6"/>
+<text x="91" y="217" text-anchor="middle">✓ function name</text>
+<text x="91" y="234" text-anchor="middle" class="sm">matches exactly</text>
+<rect class="box good" x="173" y="198" width="152" height="46" rx="6"/>
+<text x="249" y="217" text-anchor="middle">✓ required args</text>
+<text x="249" y="234" text-anchor="middle" class="sm">all present</text>
+<rect class="box good" x="331" y="198" width="152" height="46" rx="6"/>
+<text x="407" y="217" text-anchor="middle">✓ no unknown args</text>
+<text x="407" y="234" text-anchor="middle" class="sm">none hallucinated</text>
+<rect class="box good" x="489" y="198" width="152" height="46" rx="6"/>
+<text x="565" y="217" text-anchor="middle">✓ types match</text>
+<text x="565" y="234" text-anchor="middle" class="sm">per the schema</text>
+<rect class="box good" x="647" y="198" width="158" height="46" rx="6"/>
+<text x="726" y="217" text-anchor="middle">✓ value allowed</text>
+<text x="726" y="234" text-anchor="middle" class="sm">after normalization</text>
+<rect class="box dashed" x="15" y="262" width="790" height="44" rx="8"/>
+<text x="410" y="289" text-anchor="middle">Executable evaluation instead: actually run the call (real or mock API) and compare the response.</text>
+</svg>
+<figcaption><b>BFCL-style AST matching.</b> The raw call is parsed into a tree, and every node is checked against a set of acceptable values. Argument order doesn't matter. "new york, ny" matches "New York, NY" because strings are compared case-insensitively with spaces and some punctuation removed.</figcaption>
+</figure>
+
+<p>BFCL's published rules (from its V1 blog post) are a good template for your own grader:</p>
+<ul>
+<li><b>Function name</b> must match. (Dots in names are converted to underscores for models that can't handle them, then converted back.)</li>
+<li>All parameters marked <b>required</b> in the schema must be present, and any parameter that is <b>not in the schema</b> is flagged as hallucinated.</li>
+<li><b>Types</b> are checked strictly. Booleans must be real booleans, not the string <code>"true"</code>. For Python tests only, an int is accepted where a float is expected; a float is never accepted for an int.</li>
+<li><b>Strings</b> are compared case-insensitively, with all whitespace and a subset of punctuation (<code>,./-_*^</code>) removed, against a list of acceptable values (so several date or location formats can pass).</li>
+<li><b>Lists</b> must match in order; <b>dictionaries</b> are checked key by key, ignoring key order.</li>
+</ul>
+
+<h3>AST versus executable evaluation</h3>
+<p>BFCL has two ways to judge a single call. <b>AST evaluation</b> checks the structure without running anything, which is fast, free and deterministic, but it can reject a call that would have worked (for example, a valid city spelling the annotators didn't list). <b>Executable evaluation</b> actually runs the call against a real or mock API and compares the response, which credits any call that produces the right result but depends on the API being available and stable. The trade-off is the same one you meet everywhere in this course: <em>checking the path</em> versus <em>checking the outcome</em> (<a href="05-agents-are-different.html">Module 05</a>).</p>
+
+<h3>BFCL's categories</h3>
+<div class="tablewrap"><table>
+<tr><th>Category</th><th>What the model sees</th><th>What it tests</th></tr>
+<tr><td><b>Simple</b></td><td>One function, one request</td><td>Can it fill the arguments correctly?</td></tr>
+<tr><td><b>Multiple</b></td><td>2 to 4 functions, one request</td><td>Can it pick the right function?</td></tr>
+<tr><td><b>Parallel</b></td><td>One function, a request needing several calls ("weather in Paris and Rome")</td><td>Can it emit several calls at once?</td></tr>
+<tr><td><b>Parallel multiple</b></td><td>Several functions, several calls</td><td>Both of the above together</td></tr>
+<tr><td><b>Relevance / irrelevance</b></td><td>Functions that do or do not fit the request</td><td>Does it call only when a tool truly applies, and abstain otherwise?</td></tr>
+<tr><td><b>Non-Python</b></td><td>Java, JavaScript, REST, SQL</td><td>Language-specific typing and syntax</td></tr>
+<tr><td><b>Live (V2)</b></td><td>User-contributed real-world functions</td><td>Less "benchmark-shaped" schemas</td></tr>
+<tr><td><b>Multi-turn (V3)</b></td><td>A back-and-forth conversation over a stateful backend</td><td>See Level 2 below</td></tr>
+<tr><td><b>Agentic (V4)</b></td><td>Web search, memory, format sensitivity</td><td>Moving toward full agent evaluation</td></tr>
+</table></div>
+
+<h3>Build it yourself: a pytest tool-call grader</h3>
+<p>Here is a self-contained grader in the BFCL style. It is deliberately a little looser than BFCL on numbers (it treats <code>5</code> and <code>5.0</code> as equal) and it returns a <em>list of problems</em> rather than just pass or fail, so failures are easy to categorize later. Save it as <code>test_tool_calls.py</code> and run <code>pytest -q</code>.</p>
+
+<pre data-lang="python"><code># test_tool_calls.py  -- run with: pytest -q
+import re
+import unicodedata
+import pytest
+
+JSON_TYPES = {"string": str, "integer": int, "number": (int, float),
+              "boolean": bool, "array": list, "object": dict}
+
+def type_ok(value, json_type: str) -&gt; bool:
+    # bool is a subclass of int in Python, so reject it explicitly for numbers
+    if json_type in ("integer", "number") and isinstance(value, bool):
+        return False
+    return isinstance(value, JSON_TYPES[json_type])
+
+def norm(v):
+    """Normalize a value before comparing (similar to BFCL's string rules)."""
+    if isinstance(v, str):
+        v = unicodedata.normalize("NFKD", v).encode("ascii", "ignore").decode()
+        v = re.sub(r"[,./\-_*^]", "", v.lower())   # drop some punctuation
+        return re.sub(r"\s+", "", v)               # drop all whitespace
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return float(v)                            # looser than BFCL: 5 == 5.0
+    if isinstance(v, list):
+        return [norm(x) for x in v]                # order matters
+    if isinstance(v, dict):
+        return {k: norm(x) for k, x in v.items()}  # key order does not
+    return v
+
+def grade_call(actual, expected, schema) -&gt; list[str]:
+    """Return a list of problems. Empty list = the call matches.
+    actual:   {"name": ..., "args": {...}} or None if the model made no call
+    expected: {"name": ..., "args": {param: [acceptable values]}} or None
+              ("" in the acceptable list means the param may be omitted)"""
+    if expected is None:                       # irrelevance case: must NOT call
+        return [] if actual is None else [f"called {actual['name']} but no call was needed"]
+    if actual is None:
+        return ["no tool call, but one was needed"]
+    if actual["name"] != expected["name"]:
+        return [f"wrong tool: {actual['name']} (wanted {expected['name']})"]
+
+    problems, args = [], actual.get("args", {})
+    props, required = schema["properties"], set(schema.get("required", []))
+    for p in required - args.keys():
+        problems.append(f"missing required arg: {p}")
+    for p, v in args.items():
+        if p not in props:
+            problems.append(f"hallucinated arg: {p}")
+            continue
+        if not type_ok(v, props[p]["type"]):
+            problems.append(f"{p}: wrong type {type(v).__name__}, schema says {props[p]['type']}")
+        allowed = expected["args"].get(p)
+        if allowed is not None and norm(v) not in [norm(a) for a in allowed if a != ""]:
+            problems.append(f"{p}: value {v!r} not in {allowed!r}")
+    for p, allowed in expected["args"].items():
+        if p not in args and p not in required and "" not in allowed:
+            problems.append(f"missing arg the task needs: {p}")
+    return problems
+
+# ---------------------------------------------------------------- test data
+SCHEMA = {"type": "object",
+          "properties": {"city": {"type": "string"},
+                         "unit": {"type": "string"},
+                         "days": {"type": "integer"}},
+          "required": ["city"]}
+EXPECTED = {"name": "get_weather",
+            "args": {"city": ["New York, NY", "NYC"], "unit": ["fahrenheit", "F", ""]}}
+
+CASES = [
+    ("exact",          {"name": "get_weather", "args": {"city": "New York, NY", "unit": "fahrenheit"}}, True),
+    ("normalized",     {"name": "get_weather", "args": {"city": "new york ny"}},                         True),
+    ("wrong tool",     {"name": "get_forecast", "args": {"city": "NYC"}},                                False),
+    ("missing city",   {"name": "get_weather", "args": {"unit": "F"}},                                   False),
+    ("hallucinated",   {"name": "get_weather", "args": {"city": "NYC", "priority": "high"}},             False),
+    ("wrong type",     {"name": "get_weather", "args": {"city": "NYC", "days": "3"}},                    False),
+    ("invented value", {"name": "get_weather", "args": {"city": "Newark"}},                              False),
+]
+
+@pytest.mark.parametrize("label,actual,should_pass", CASES, ids=[c[0] for c in CASES])
+def test_grader(label, actual, should_pass):
+    problems = grade_call(actual, EXPECTED, SCHEMA)
+    assert (problems == []) == should_pass, problems
+
+def test_irrelevance():
+    # "Tell me a joke" with only get_weather available: the right move is no call
+    assert grade_call(None, None, SCHEMA) == []
+    assert grade_call({"name": "get_weather", "args": {"city": "NYC"}}, None, SCHEMA) != []</code></pre>
+
+<div class="callout tip"><span class="t">In your own evals</span>
+<p>The test cases above test the <em>grader</em>. In practice you also build a dataset of (user request, expected call) pairs, run your agent on each, extract the first <code>tool_use</code> block into <code>{"name", "args"}</code>, and call <code>grade_call</code>. Report the pass rate <em>and</em> a count per problem type ("missing required arg: 14, wrong tool: 6"). The counts tell you whether to fix tool descriptions, the schema, or the system prompt.</p>
+</div>
+
+<h2>Level 2: multi-step chains</h2>
+<p>Real tasks need several calls where the output of one becomes the input of the next: look up the user, then their orders, then the one that matches, then refund it. Grading gets harder because <b>there is usually more than one valid path</b>. The agent might list all orders then filter, or search directly; it might re-read a record to double-check. An exact-sequence match would punish all of that.</p>
+<p>BFCL V3 introduced multi-turn categories to tackle this. Per its V3 blog post there is a <b>base multi-turn</b> set (200 entries) plus augmented sets for <b>missing parameters</b> (the model should ask for the missing information rather than guess), <b>missing functions</b> (no available function can do it yet; the right move is to say so, and the function is provided in a later turn), and <b>long context</b> (lots of distracting data in results). The blog also describes a composite set combining all three. It grades with two checks:</p>
+<ul>
+<li><b>State-based</b>: after the calls, compare the backend's state (files created, a watchlist changed) with the expected state.</li>
+<li><b>Response-based, subset-matched</b>: the model's calls are correct if they <em>contain</em> the ground-truth calls as a subset, even with extra exploratory steps. This allows for exploring and recovering from errors, which a strict sequence match would reject.</li>
+</ul>
+<p>For your own chains, a useful three-tier rubric is: (1) did the end state come out right; (2) were all <em>essential</em> calls made (a subset check, possibly with ordering constraints for steps that must precede others, like verify-before-refund); (3) were there any <em>forbidden</em> calls (a delete that should never happen, a write before authentication). Tier 3 is often the most important in production and the most often forgotten.</p>
+
+<h2>Level 3: whole tasks in stateful environments (τ-bench)</h2>
+<p><b>τ-bench</b> (tau-bench, from Sierra, June 2024) is the benchmark that defined how to evaluate customer-service style agents. It combines three things that single-call benchmarks lack: a realistic <b>policy</b>, a stateful <b>database</b>, and a <b>simulated user</b> who has to be talked to.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 400" role="img" aria-label="tau-bench setup: an LLM-simulated user with a hidden instruction chats with the agent under test; the agent reads a domain policy and calls tools that read and write a database; at the end a grader compares the final database with a goal database and checks required information, giving reward 0 or 1. In tau2-bench the user also has tools that act on a shared world.">
+<defs><marker id="m6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box warn" x="270" y="12" width="260" height="44" rx="8"/>
+<text x="400" y="31" text-anchor="middle" class="b">Domain policy</text>
+<text x="400" y="47" text-anchor="middle" class="sm">e.g. "no changes to basic economy"</text>
+<line class="ln" x1="400" y1="56" x2="400" y2="96" marker-end="url(#m6e)"/>
+<text x="410" y="80" class="sm">in the system prompt</text>
+<rect class="box violet" x="15" y="100" width="190" height="90" rx="8"/>
+<text x="110" y="122" text-anchor="middle" class="b">Simulated user</text>
+<text x="110" y="142" text-anchor="middle" class="sm">LLM + hidden instruction</text>
+<text x="110" y="160" text-anchor="middle" class="sm">"change my flight, but</text>
+<text x="110" y="176" text-anchor="middle" class="sm">only if it costs under $100"</text>
+<rect class="box accent" x="300" y="100" width="200" height="90" rx="8"/>
+<text x="400" y="130" text-anchor="middle" class="b">Agent under test</text>
+<text x="400" y="150" text-anchor="middle" class="sm">model + scaffold</text>
+<text x="400" y="166" text-anchor="middle" class="sm">+ tool schemas</text>
+<rect class="box plain" x="590" y="100" width="100" height="90" rx="8"/>
+<text x="640" y="140" text-anchor="middle" class="b">Tools</text>
+<text x="640" y="158" text-anchor="middle" class="sm">Python APIs</text>
+<rect class="box plain" x="715" y="100" width="90" height="90" rx="8"/>
+<text x="760" y="140" text-anchor="middle" class="b">Database</text>
+<text x="760" y="158" text-anchor="middle" class="sm">users, orders</text>
+<line class="ln" x1="209" y1="145" x2="296" y2="145" marker-start="url(#m6e)" marker-end="url(#m6e)"/>
+<text x="252" y="137" text-anchor="middle" class="sm">chat turns</text>
+<line class="ln" x1="504" y1="145" x2="586" y2="145" marker-start="url(#m6e)" marker-end="url(#m6e)"/>
+<text x="545" y="137" text-anchor="middle" class="sm">calls, results</text>
+<line class="ln" x1="694" y1="145" x2="711" y2="145" marker-start="url(#m6e)" marker-end="url(#m6e)"/>
+<rect class="box dashed" x="15" y="210" width="190" height="46" rx="8"/>
+<text x="110" y="229" text-anchor="middle" class="b t-violet">τ²: user has tools too</text>
+<text x="110" y="246" text-anchor="middle" class="sm">e.g. toggle phone settings</text>
+<line class="ln" x1="110" y1="190" x2="110" y2="206" marker-end="url(#m6e)"/>
+<path class="ln violet dash" d="M205,233 L760,233 L760,194" marker-end="url(#m6e)"/>
+<text x="480" y="226" text-anchor="middle" class="sm t-violet">both sides act on one shared world (dual control)</text>
+
+<rect class="box good" x="15" y="276" width="790" height="110" rx="10"/>
+<text x="30" y="298" class="b">Grader (runs after the conversation ends)</text>
+<rect class="box plain" x="35" y="316" width="180" height="46" rx="6"/>
+<text x="125" y="344" text-anchor="middle">Final DB state</text>
+<text x="235" y="344" text-anchor="middle" class="lg">=</text>
+<rect class="box plain" x="255" y="316" width="200" height="46" rx="6"/>
+<text x="355" y="336" text-anchor="middle">Goal DB state</text>
+<text x="355" y="352" text-anchor="middle" class="sm">(replay the gold actions)</text>
+<text x="485" y="344" text-anchor="middle" class="b">AND</text>
+<rect class="box plain" x="515" y="316" width="170" height="46" rx="6"/>
+<text x="600" y="336" text-anchor="middle">Required info</text>
+<text x="600" y="352" text-anchor="middle" class="sm">told to the user?</text>
+<line class="ln" x1="685" y1="339" x2="711" y2="339" marker-end="url(#m6e)"/>
+<rect class="box good" x="715" y="316" width="80" height="46" rx="6"/>
+<text x="755" y="336" text-anchor="middle" class="b">reward</text>
+<text x="755" y="352" text-anchor="middle" class="sm">0 or 1</text>
+</svg>
+<figcaption><b>How τ-bench grades a task.</b> The agent is never compared with a reference transcript. It can take any path it likes; what counts is whether the database ends up exactly where the gold actions would have put it, and whether the user was told what they needed. τ²-bench's telecom domain gives the user tools too.</figcaption>
+</figure>
+
+<h3>The moving parts</h3>
+<ul>
+<li><b>Domains.</b> The original paper has <b>retail</b> (115 tasks) and <b>airline</b> (50 tasks). Each domain comes with a database (users, orders, flights), a set of Python tool functions over it, and a <b>policy document</b>, a plain-language rulebook like a real company's ("basic economy cannot be modified", "confirm with the user before any write action"). The policy goes into the agent's system prompt.</li>
+<li><b>The simulated user.</b> Each task has a hidden <b>instruction</b> given only to a user-simulator LLM: who they are, what they want, what they know, and how they behave. The agent has to discover the goal through conversation, just like with a real customer.</li>
+<li><b>End-state grading.</b> Each task is annotated with the <b>gold actions</b> (the write calls a correct agent should make). The grader replays them on a fresh copy of the database to get the <b>goal state</b>, then compares it with the database the agent actually left behind. It also checks that required outputs (say, a price the user asked for) appeared in the agent's replies. Both must pass for reward 1.</li>
+</ul>
+<p>Why is end-state grading so powerful? Because it doesn't care <em>how</em> the agent got there. Read the order twice, apologize three times, search before lookup: all fine. But refund the wrong item, or refund when policy says no, and the database differs, and the task fails. It grades the thing the business actually cares about.</p>
+
+<h3>Build it yourself: end-state comparison</h3>
+<pre data-lang="python"><code>import copy, hashlib, json, re
+
+def canonical(db: dict, ignore_keys=("updated_at", "request_id")) -&gt; str:
+    """Stable JSON for hashing: sorted keys, volatile fields removed."""
+    def strip(x):
+        if isinstance(x, dict):
+            return {k: strip(v) for k, v in x.items() if k not in ignore_keys}
+        if isinstance(x, list):
+            return [strip(v) for v in x]
+        return x
+    return json.dumps(strip(db), sort_keys=True, separators=(",", ":"))
+
+def db_hash(db: dict) -&gt; str:
+    return hashlib.sha256(canonical(db).encode()).hexdigest()
+
+def replay(initial_db: dict, gold_actions: list[dict], tools: dict) -&gt; dict:
+    """Run the annotated gold write-actions on a fresh copy to get the goal state."""
+    db = copy.deepcopy(initial_db)
+    for a in gold_actions:                     # e.g. {"name": "refund_item", "args": {...}}
+        tools[a["name"]](db, **a["args"])
+    return db
+
+def diff(a, b, path=""):
+    """Yield every path where two nested structures differ (for debugging failures)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        for k in sorted(a.keys() | b.keys()):
+            yield from diff(a.get(k), b.get(k), f"{path}.{k}")
+    elif a != b:
+        yield f"{path}: goal={a!r} agent={b!r}"
+
+def squash(s: str) -&gt; str:
+    return re.sub(r"[\s,$]", "", s.lower())
+
+def grade_episode(initial_db, gold_actions, tools, agent_final_db,
+                  agent_messages: list[str], required_outputs: list[str]) -&gt; dict:
+    goal_db = replay(initial_db, gold_actions, tools)
+    state_ok = db_hash(goal_db) == db_hash(agent_final_db)
+    said = " ".join(squash(m) for m in agent_messages)
+    outputs_ok = all(squash(o) in said for o in required_outputs)
+    return {
+        "reward": float(state_ok and outputs_ok),
+        "state_ok": state_ok,
+        "outputs_ok": outputs_ok,
+        # the diff is what you read during error analysis:
+        # it shows collateral damage (unintended writes) as well as missing ones
+        "diff": list(diff(json.loads(canonical(goal_db)),
+                          json.loads(canonical(agent_final_db))))[:20],
+    }</code></pre>
+
+<div class="callout warn"><span class="t">The two classic traps in end-state grading</span>
+<p><b>Volatile fields.</b> Timestamps, generated IDs and random confirmation codes will differ between the gold replay and the agent's run even when the agent did everything right. Strip or canonicalize them (that is what <code>ignore_keys</code> is for), or your benchmark silently fails correct agents. <b>Under-specified tasks.</b> If the user instruction allows two valid outcomes (either of two flights is fine), a single goal state will fail half of the correct agents. Several labs reported fixing τ-bench airline tasks for exactly these reasons, and the τ²-bench repository's changelog lists "75+ task fixes". Audit your ground truth before you trust your numbers (<a href="18-benchmark-pitfalls.html">Module 18</a>).</p>
+</div>
+
+<h3>pass^k: measuring reliability, not luck</h3>
+<p>τ-bench's second big contribution is a metric. You already know <b>pass@k</b> from coding benchmarks (<a href="04-metrics-and-statistics.html">Module 04</a>): run k attempts and count the task solved if <em>any</em> attempt succeeds. That is the right metric when a human or a test suite picks the best attempt. It is the wrong metric for a customer-service agent, which gets <em>one</em> shot with each of thousands of customers who ask the same kind of thing.</p>
+<p>τ-bench defines <b>pass^k</b> ("pass hat k"): the probability that <b>all k</b> independent attempts at a task succeed. With n trials per task and c successes, the unbiased estimator is:</p>
+<p style="text-align:center"><code>pass^k = mean over tasks of  C(c, k) / C(n, k)</code></p>
+<p>where C(a, b) is "a choose b", the number of ways to pick b items from a. Compare pass@k = mean of 1 − C(n−c, k) / C(n, k). At k = 1 the two are identical. As k grows, pass@k rises towards 1 and pass^k falls: the gap between them is a direct picture of <b>inconsistency</b>. The τ-bench abstract reports that even gpt-4o succeeded on fewer than 50% of tasks and that its pass^8 in retail was below 25%.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Line chart for a toy five-task example: pass@k rises from 0.675 at k=1 to 1.0 at k=7, while pass^k falls from 0.675 to 0.20 at k=8.">
+<line class="ln" x1="80" y1="260" x2="800" y2="260"/>
+<line class="ln" x1="80" y1="260" x2="80" y2="30"/>
+<line class="ln dash" x1="80" y1="205" x2="800" y2="205"/>
+<line class="ln dash" x1="80" y1="150" x2="800" y2="150"/>
+<line class="ln dash" x1="80" y1="95" x2="800" y2="95"/>
+<line class="ln dash" x1="80" y1="40" x2="800" y2="40"/>
+<text x="72" y="264" text-anchor="end" class="sm">0</text>
+<text x="72" y="209" text-anchor="end" class="sm">0.25</text>
+<text x="72" y="154" text-anchor="end" class="sm">0.5</text>
+<text x="72" y="99" text-anchor="end" class="sm">0.75</text>
+<text x="72" y="44" text-anchor="end" class="sm">1.0</text>
+<text x="90" y="278" text-anchor="middle" class="sm">1</text>
+<text x="190" y="278" text-anchor="middle" class="sm">2</text>
+<text x="290" y="278" text-anchor="middle" class="sm">3</text>
+<text x="390" y="278" text-anchor="middle" class="sm">4</text>
+<text x="490" y="278" text-anchor="middle" class="sm">5</text>
+<text x="590" y="278" text-anchor="middle" class="sm">6</text>
+<text x="690" y="278" text-anchor="middle" class="sm">7</text>
+<text x="790" y="278" text-anchor="middle" class="sm">8</text>
+<text x="440" y="300" text-anchor="middle" class="sm">k (number of attempts)</text>
+<polyline class="ln good thick" points="90,111.5 190,74.5 290,58.9 390,50.1 490,44.6 590,41.5 690,40 790,40"/>
+<polyline class="ln bad thick" points="90,111.5 190,148.5 290,169.6 390,183.9 490,194.9 590,203.5 690,210.5 790,216"/>
+<circle cx="90" cy="111.5" r="4" class="fill-accent"/>
+<line class="ln dash" x1="96" y1="113" x2="196" y2="120"/>
+<text x="200" y="124" class="sm">both 0.675 at k=1</text>
+<text x="300" y="84" class="b t-good">pass@k: at least one of k succeeds</text>
+<text x="330" y="238" class="b t-bad">pass^k: all k succeed</text>
+<text x="780" y="130" text-anchor="end" class="sm">gap = inconsistency</text>
+<text x="780" y="232" text-anchor="end" class="sm t-bad">0.20</text>
+</svg>
+<figcaption><b>pass@k versus pass^k on a toy example</b> (5 tasks, 8 trials each, with 8, 7, 6, 4 and 2 successes; computed, not real benchmark data). The same agent looks "nearly perfect" under pass@8 and "fails 80% of the time" under pass^8. Which is right depends on whether you get one attempt or many.</figcaption>
+</figure>
+
+<pre data-lang="python"><code>from math import comb
+
+def pass_hat_k(trials_per_task: list[list[bool]], k: int) -&gt; float:
+    """tau-bench pass^k: probability that k i.i.d. attempts at a task ALL succeed."""
+    vals = []
+    for trials in trials_per_task:
+        n, c = len(trials), sum(trials)
+        if n &lt; k:
+            raise ValueError(f"need at least k={k} trials per task, got {n}")
+        vals.append(comb(c, k) / comb(n, k))   # comb(c, k) is 0 when c &lt; k
+    return sum(vals) / len(vals)
+
+def pass_at_k(trials_per_task: list[list[bool]], k: int) -&gt; float:
+    """Codex pass@k: probability that at least one of k attempts succeeds."""
+    vals = []
+    for trials in trials_per_task:
+        n, c = len(trials), sum(trials)
+        vals.append(1 - comb(n - c, k) / comb(n, k))
+    return sum(vals) / len(vals)
+
+# toy example from the chart: 5 tasks x 8 trials
+successes = [8, 7, 6, 4, 2]
+results = [[True] * c + [False] * (8 - c) for c in successes]
+for k in (1, 2, 4, 8):
+    print(k, round(pass_at_k(results, k), 3), round(pass_hat_k(results, k), 3))
+# 1 0.675 0.675
+# 2 0.843 0.507
+# 4 0.954 0.346
+# 8 1.0   0.2</code></pre>
+
+<div class="callout expert"><span class="t">Expert nuance: what pass^k does and doesn't tell you</span>
+<p>pass^k assumes attempts are independent draws from the same distribution. In τ-bench, part of the variance comes from the <em>user simulator</em>, not the agent: a simulator that behaves differently each run makes the agent look less consistent than it is. Also, with small task counts (50 airline tasks), confidence intervals are wide; report them (<a href="04-metrics-and-statistics.html">Module 04</a>). Finally, pass^k at large k needs at least k trials per task, so it gets expensive fast: 8 trials of 165 tasks is 1,320 full conversations.</p>
+</div>
+
+<h3>τ²-bench: when the user has hands too</h3>
+<p><b>τ²-bench</b> (Sierra, June 2025) adds a <b>telecom</b> domain with <b>dual control</b>. In retail and airline, only the agent can change the world; the user just talks. In telecom, the user also has tools acting on their own device (turn airplane mode off, restart, check signal), and the agent has to <em>guide</em> them, like real tech support. The paper models this as a Dec-POMDP (a decentralized, partially observable decision process: two actors, each seeing only part of the state). This tests something single-control benchmarks cannot: whether the agent can coordinate and communicate, not just act.</p>
+<p>τ²-bench also ships fixed versions of the airline and retail tasks and ablation modes that help diagnose failures. Running without a user (the agent gets the full task directly) or with an oracle plan separates <em>reasoning</em> failures from <em>communication</em> failures. The repository (checked September 2026) now also lists a <code>banking_knowledge</code> domain that adds retrieval over a knowledge base, voice evaluation, and a newer iteration branded τ³-bench. Leaderboard: <a href="https://taubench.com">taubench.com</a>. The voice variant is covered in <a href="09-voice-agents.html">Module 09</a>.</p>
+
+<h3>Other stateful benchmarks</h3>
+<ul>
+<li><b>AppWorld</b> (Stony Brook and AI2, ACL 2024): a simulated world of 9 everyday apps with 457 APIs and about 100 simulated people. The agent writes code that calls the APIs to finish 750 tasks. Grading uses <b>state-based unit tests</b> that also check for <b>collateral damage</b>: the task fails if the agent made unintended changes, like deleting the wrong song. It reports <b>TGC</b> (task goal completion) and <b>SGC</b> (scenario goal completion, where all task variants in a scenario must pass, a reliability measure in the spirit of pass^k).</li>
+<li><b>ToolBench / ToolLLM</b> (Tsinghua, ICLR 2024): 16,464 real REST APIs from RapidAPI. Scored by <b>pass rate</b> and <b>win rate</b>, both judged by an LLM. Real APIs go offline and change, so results were hard to reproduce; <b>StableToolBench</b> replaced them with a cached and simulated virtual API server. It is a useful lesson: if your environment is not frozen, your eval is not repeatable.</li>
+<li><b>ACEBench</b> (Huawei Noah's Ark and USTC, January 2025): three groups: <b>Normal</b> (atomic, single and multi-turn, similar APIs, user preferences), <b>Special</b> (imperfect instructions with missing or wrong parameters, where the right move is to ask or flag), and <b>Agent</b> (a sandbox with a simulated user). It grades with AST-style checks and end-state checks and deliberately uses no LLM judge.</li>
+</ul>
+
+<div data-widget="passk"></div>
+
+<h2>Level 4: general assistants and search agents</h2>
+<p>At the top of the staircase, the agent has open-ended tools (a browser, a code interpreter, file readers) and the task is a question, not a database change. The grading trick here is to pick questions whose <b>answers are short and verifiable</b>, even though finding them is hard.</p>
+<ul>
+<li><b>GAIA</b> (Meta, Hugging Face and AutoGPT, November 2023): 466 real-world questions needing browsing, file handling, multimodality and reasoning, in three difficulty levels (300 in the held-out test set). Answers are a number, a few words or a list, graded by <b>quasi-exact match</b>. At release, humans scored 92% and GPT-4 with plugins about 15%. Caveat: the validation answers are public, so treat validation scores as possibly contaminated.</li>
+<li><b>BrowseComp</b> (OpenAI, April 2025): 1,266 questions that are "hard to find but easy to verify", built by starting from a fact and writing a question with many intertwined constraints. At launch, OpenAI's Deep Research scored 51.5%, GPT-4o with browsing 1.9%, and human trainers solved 29.2% within two hours. It is the hard end of <b>agentic search</b>. BrowseComp-Plus fixes the document corpus so that results are reproducible and retrieval can be studied separately.</li>
+</ul>
+<p>These are also where <b>agentic RAG</b> lives: instead of retrieving once and answering, a <b>search agent</b> decides what to search, reads, reformulates and searches again. Evaluating it combines everything in this module: tool-call quality (were the queries sensible?), retrieval quality (did it find the evidence?), faithfulness (does the answer stick to what it found?), and end-task accuracy. Web agents are covered further in <a href="08-web-and-computer-use.html">Module 08</a>.</p>
+
+<h2>Evaluating the tools themselves</h2>
+<p>So far we held the tools fixed and graded the agent. But for many teams the biggest lever is the tools: their names, descriptions, parameters and what they return. Anthropic's engineering post <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">"Writing effective tools for agents, with agents"</a> (September 2025) describes an eval-driven loop for this.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 280" role="img" aria-label="Tool improvement loop: generate realistic tasks, run the agent programmatically, read transcripts and metrics, have Claude improve the tools, then repeat, checking against held-out tasks.">
+<defs><marker id="m6g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="60" y="26" width="290" height="70" rx="10"/>
+<text x="205" y="54" text-anchor="middle" class="b">① Generate realistic tasks</text>
+<text x="205" y="76" text-anchor="middle" class="sm">multi-step, real data, verifiable outcome</text>
+<rect class="box warn" x="470" y="26" width="290" height="70" rx="10"/>
+<text x="615" y="54" text-anchor="middle" class="b">② Run the agent in a loop</text>
+<text x="615" y="76" text-anchor="middle" class="sm">log calls, tokens, errors, runtime</text>
+<rect class="box violet" x="470" y="176" width="290" height="70" rx="10"/>
+<text x="615" y="204" text-anchor="middle" class="b">③ Read transcripts + metrics</text>
+<text x="615" y="226" text-anchor="middle" class="sm">where did it get confused? what's missing?</text>
+<rect class="box good" x="60" y="176" width="290" height="70" rx="10"/>
+<text x="205" y="204" text-anchor="middle" class="b">④ Improve the tools</text>
+<text x="205" y="226" text-anchor="middle" class="sm">Claude rewrites names, descriptions, outputs</text>
+<line class="ln" x1="350" y1="61" x2="466" y2="61" marker-end="url(#m6g)"/>
+<line class="ln" x1="615" y1="96" x2="615" y2="172" marker-end="url(#m6g)"/>
+<line class="ln" x1="470" y1="211" x2="354" y2="211" marker-end="url(#m6g)"/>
+<line class="ln" x1="205" y1="176" x2="205" y2="100" marker-end="url(#m6g)"/>
+<text x="410" y="132" text-anchor="middle" class="b t-warn">held-out tasks</text>
+<text x="410" y="150" text-anchor="middle" class="sm">guard against overfitting</text>
+</svg>
+<figcaption><b>Evaluating tools with agents.</b> The agent is the test harness for the tools. Transcripts show where the tools confuse it; Claude proposes fixes; a held-out task set confirms the fixes generalize rather than just memorizing the training tasks.</figcaption>
+</figure>
+
+<p>The key points from the post:</p>
+<ul>
+<li><b>Tasks should be realistic and need several calls.</b> A strong example: "Schedule a meeting with Jane next week to discuss our latest Acme Corp project. Attach the notes from our last project planning meeting and reserve a conference room." A weak one: "Schedule a meeting with jane@acme.corp next week." The weak task hands the agent the exact argument and tests almost nothing.</li>
+<li><b>Collect more than accuracy</b>: runtime of each tool call and of the whole task, total number of tool calls, token consumption, and tool error frequency. Many redundant calls suggest a tool should paginate or filter; many errors suggest unclear parameters.</li>
+<li><b>Read the transcripts</b>, including the agent's reasoning. The post notes that "what agents omit in their feedback and responses can often be more important than what they include."</li>
+<li><b>Let Claude help</b>: concatenate transcripts and give them to Claude Code to refactor the tools, then re-run on held-out tasks.</li>
+</ul>
+<p>The post's design advice doubles as a checklist of things to measure: <b>namespacing</b> related tools (e.g. <code>asana_projects_search</code>) to reduce confusion between similar tools; returning <b>meaningful context</b> (names rather than opaque UUIDs); a <code>response_format</code> option so the agent can ask for concise or detailed output (the post reports concise responses using about a third of the tokens); and <b>token efficiency</b> through pagination, filtering and truncation with sensible defaults.</p>
+
+<h2>Evaluating RAG</h2>
+<p><b>RAG</b> (retrieval-augmented generation) means: before answering, fetch relevant documents and put them in the prompt. It is the most common "tool" of all, and it has its own mature evaluation vocabulary. The single most important idea: <b>a RAG system has two parts that fail differently, so measure them separately.</b> If the final answer is wrong, you need to know whether the retriever never found the right document, or the generator had it and ignored it.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="RAG pipeline from query to retriever to top-k chunks to generator to answer. Retrieval metrics attach to the retriever and chunks; generation metrics attach to the generator and answer.">
+<defs><marker id="m6h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="15" y="30" width="110" height="56" rx="8"/>
+<text x="70" y="63" text-anchor="middle" class="b">Query</text>
+<rect class="box accent" x="175" y="30" width="130" height="56" rx="8"/>
+<text x="240" y="54" text-anchor="middle" class="b">Retriever</text>
+<text x="240" y="72" text-anchor="middle" class="sm">embed + search</text>
+<rect class="box accent" x="355" y="30" width="140" height="56" rx="8"/>
+<text x="425" y="54" text-anchor="middle" class="b">Top-k chunks</text>
+<text x="425" y="72" text-anchor="middle" class="sm">ranked context</text>
+<rect class="box violet" x="545" y="30" width="130" height="56" rx="8"/>
+<text x="610" y="54" text-anchor="middle" class="b">Generator</text>
+<text x="610" y="72" text-anchor="middle" class="sm">LLM + prompt</text>
+<rect class="box plain" x="720" y="30" width="90" height="56" rx="8"/>
+<text x="765" y="63" text-anchor="middle" class="b">Answer</text>
+<line class="ln" x1="125" y1="58" x2="171" y2="58" marker-end="url(#m6h)"/>
+<line class="ln" x1="305" y1="58" x2="351" y2="58" marker-end="url(#m6h)"/>
+<line class="ln" x1="495" y1="58" x2="541" y2="58" marker-end="url(#m6h)"/>
+<line class="ln" x1="675" y1="58" x2="716" y2="58" marker-end="url(#m6h)"/>
+<line class="ln accent dash" x1="330" y1="86" x2="330" y2="136"/>
+<line class="ln violet dash" x1="660" y1="86" x2="660" y2="136"/>
+<rect class="box accent" x="15" y="136" width="490" height="160" rx="10"/>
+<text x="30" y="158" class="b">Retrieval metrics</text>
+<text x="30" y="178" class="sm">needs: which chunks are relevant for each query (labels)</text>
+<text x="30" y="204" class="mono">recall@k   precision@k   MRR   nDCG@k</text>
+<text x="30" y="226" class="sm">"did the right evidence make it into the top k, and how high?"</text>
+<text x="30" y="252">Ragas context precision: relevant chunks ranked high?</text>
+<text x="30" y="274">Ragas context recall: reference claims covered by context?</text>
+<rect class="box violet" x="525" y="136" width="280" height="160" rx="10"/>
+<text x="540" y="158" class="b">Generation metrics</text>
+<text x="540" y="178" class="sm">needs: query, contexts, maybe a reference</text>
+<text x="540" y="204">faithfulness: backed by context?</text>
+<text x="540" y="226">answer relevancy: on the question?</text>
+<text x="540" y="248">correctness: matches reference?</text>
+<text x="540" y="270">citations: support what they cite?</text>
+<text x="410" y="320" text-anchor="middle" class="sm t-warn">end-to-end accuracy alone says the answer is wrong, not WHERE it broke</text>
+</svg>
+<figcaption><b>Where each RAG metric attaches.</b> Retrieval metrics judge the ranked list of chunks; generation metrics judge what the LLM did with them. Measure both so a wrong answer can be traced to the stage that caused it.</figcaption>
+</figure>
+
+<h3>Retrieval metrics, by hand</h3>
+<p>These are classic information-retrieval metrics. They need <b>relevance labels</b>: for each test query, which documents or chunks are relevant. Let k be how many results you keep (the "top k").</p>
+<ul>
+<li><b>Recall@k</b>: of all relevant chunks, what fraction appear in the top k? "Did we find the evidence?" This is usually the most important retrieval metric for RAG, because the generator can't use what it never sees.</li>
+<li><b>Precision@k</b>: of the top k, what fraction are relevant? "How much noise did we add?" Irrelevant chunks cost tokens and can distract the generator.</li>
+<li><b>MRR</b> (mean reciprocal rank): for each query take 1 / (rank of the first relevant result), then average over queries. It rewards getting <em>one</em> good result near the top.</li>
+<li><b>nDCG@k</b> (normalized discounted cumulative gain): each relevant result earns credit discounted by position (1 / log2(rank + 1)), summed (DCG), then divided by the best possible DCG (IDCG), giving 0 to 1. It rewards putting relevant results high and supports graded relevance (2 = perfect, 1 = partial).</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Worked example: five retrieved chunks with relevant ones at ranks 2 and 4, out of three relevant chunks in total, and the resulting recall, precision, reciprocal rank, nDCG and context precision values.">
+<text x="30" y="26" class="b">Query: "Can I get a refund?"  (3 relevant chunks exist)</text>
+<rect class="box plain" x="30" y="40" width="320" height="34" rx="6"/>
+<text x="42" y="62">#1  gift card terms</text><text x="338" y="62" text-anchor="end" class="t-muted">not relevant</text>
+<rect class="box good" x="30" y="82" width="320" height="34" rx="6"/>
+<text x="42" y="104">#2  refund window is 30 days</text><text x="338" y="104" text-anchor="end" class="b t-good">✓</text>
+<rect class="box plain" x="30" y="124" width="320" height="34" rx="6"/>
+<text x="42" y="146">#3  shipping times</text><text x="338" y="146" text-anchor="end" class="t-muted">not relevant</text>
+<rect class="box good" x="30" y="166" width="320" height="34" rx="6"/>
+<text x="42" y="188">#4  refunds need a receipt</text><text x="338" y="188" text-anchor="end" class="b t-good">✓</text>
+<rect class="box plain" x="30" y="208" width="320" height="34" rx="6"/>
+<text x="42" y="230">#5  store opening hours</text><text x="338" y="230" text-anchor="end" class="t-muted">not relevant</text>
+<text x="30" y="266" class="sm t-bad">missed: "refunds go to the original card" (never retrieved)</text>
+<rect class="box accent" x="390" y="40" width="415" height="236" rx="10"/>
+<text x="406" y="68" class="mono" xml:space="preserve">recall@5     = 2/3                 = 0.67</text>
+<text x="406" y="94" class="mono" xml:space="preserve">precision@5  = 2/5                 = 0.40</text>
+<text x="406" y="120" class="mono" xml:space="preserve">RR           = 1/2 (first hit #2)  = 0.50</text>
+<text x="406" y="146" class="mono" xml:space="preserve">DCG@5  = 1/log2(3) + 1/log2(5)     = 1.06</text>
+<text x="406" y="172" class="mono" xml:space="preserve">IDCG@5 = 1 + 1/log2(3) + 1/log2(4) = 2.13</text>
+<text x="406" y="198" class="mono" xml:space="preserve">nDCG@5 = 1.06 / 2.13               = 0.50</text>
+<text x="406" y="232" class="mono" xml:space="preserve">context precision@5</text>
+<text x="406" y="252" class="mono" xml:space="preserve">  = (P@2 + P@4) / 2 = (0.5+0.5)/2  = 0.50</text>
+</svg>
+<figcaption><b>One query, five metrics.</b> The same ranked list scores 0.67 on recall but 0.40 on precision. Moving the two relevant chunks to ranks 1 and 2 would raise nDCG and reciprocal rank without changing recall or precision at all.</figcaption>
+</figure>
+
+<pre data-lang="python"><code>import math
+
+def recall_at_k(ranked_ids, relevant, k):     return len(set(ranked_ids[:k]) &amp; relevant) / len(relevant)
+def precision_at_k(ranked_ids, relevant, k):  return len(set(ranked_ids[:k]) &amp; relevant) / k
+
+def reciprocal_rank(ranked_ids, relevant):
+    for i, doc in enumerate(ranked_ids, start=1):
+        if doc in relevant:
+            return 1 / i
+    return 0.0
+
+def ndcg_at_k(ranked_ids, gains: dict, k):
+    """gains: doc_id -&gt; graded relevance (e.g. 0, 1, 2). Missing = 0."""
+    dcg = sum(gains.get(d, 0) / math.log2(i + 1) for i, d in enumerate(ranked_ids[:k], start=1))
+    ideal = sorted(gains.values(), reverse=True)[:k]
+    idcg = sum(g / math.log2(i + 1) for i, g in enumerate(ideal, start=1))
+    return dcg / idcg if idcg else 0.0
+
+ranked = ["gift", "window30", "shipping", "receipt", "hours"]
+relevant = {"window30", "receipt", "original_card"}
+print(recall_at_k(ranked, relevant, 5), precision_at_k(ranked, relevant, 5),
+      reciprocal_rank(ranked, relevant), round(ndcg_at_k(ranked, {d: 1 for d in relevant}, 5), 2))
+# 0.666... 0.4 0.5 0.5      MRR = mean of reciprocal_rank over all test queries</code></pre>
+
+<h3>Generation metrics: faithfulness and friends</h3>
+<p>Once the chunks are in the prompt, the generator can still fail in two main ways: it can say things the chunks don't support (a <b>hallucination</b> relative to the context), or it can answer a different question from the one asked.</p>
+<ul>
+<li><b>Faithfulness</b> (also called <b>groundedness</b>): is every claim in the answer supported by the retrieved context? Ragas defines it as <em>number of claims supported by the context / total claims in the response</em>. Note that this is about the <em>context</em>, not about the world: an answer can be faithful and still wrong if the retrieved document was wrong.</li>
+<li><b>Answer relevancy</b>: does the answer address the question? Ragas computes it by having an LLM generate several questions (3 by default) that the answer would be a good answer to, then taking the mean cosine similarity between their embeddings and the original question's embedding.</li>
+<li><b>Context precision</b> (Ragas): are the relevant chunks ranked near the top? The mean of precision@k at each relevant position, as in the worked example above. Relevance is judged by an LLM against a reference answer, so you don't need hand labels per chunk.</li>
+<li><b>Context recall</b> (Ragas): <em>number of claims in the reference answer supported by the retrieved context / total claims in the reference</em>. A label-free cousin of recall@k: it needs a reference answer instead of chunk labels.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Faithfulness worked example: the answer is split into three claims, two supported by the retrieved context and one contradicted, giving faithfulness 2 of 3.">
+<defs><marker id="m6j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="15" y="16" width="380" height="104" rx="8"/>
+<text x="30" y="38" class="b">Retrieved context</text>
+<text x="30" y="62">"Refunds are accepted within 30 days</text>
+<text x="30" y="80">of delivery with a receipt. Gift cards</text>
+<text x="30" y="98">are non-refundable."</text>
+<rect class="box accent" x="425" y="16" width="380" height="104" rx="8"/>
+<text x="440" y="38" class="b">Agent answer</text>
+<text x="440" y="62">"You can get a refund within 30 days if</text>
+<text x="440" y="80">you have a receipt, and gift cards can</text>
+<text x="440" y="98">be refunded within 14 days."</text>
+<line class="ln" x1="615" y1="120" x2="615" y2="144"/>
+<line class="ln" x1="140" y1="144" x2="680" y2="144"/>
+<line class="ln" x1="140" y1="144" x2="140" y2="164" marker-end="url(#m6j)"/>
+<line class="ln" x1="410" y1="144" x2="410" y2="164" marker-end="url(#m6j)"/>
+<line class="ln" x1="680" y1="144" x2="680" y2="164" marker-end="url(#m6j)"/>
+<text x="625" y="136" class="sm">split into atomic claims</text>
+<rect class="box good" x="15" y="168" width="250" height="50" rx="8"/>
+<text x="140" y="189" text-anchor="middle">C1: refund within 30 days</text>
+<text x="140" y="208" text-anchor="middle" class="b t-good">supported ✓</text>
+<rect class="box good" x="285" y="168" width="250" height="50" rx="8"/>
+<text x="410" y="189" text-anchor="middle">C2: receipt required</text>
+<text x="410" y="208" text-anchor="middle" class="b t-good">supported ✓</text>
+<rect class="box bad" x="555" y="168" width="250" height="50" rx="8"/>
+<text x="680" y="189" text-anchor="middle">C3: gift cards refundable, 14 days</text>
+<text x="680" y="208" text-anchor="middle" class="b t-bad">contradicted ✗</text>
+<text x="410" y="244" text-anchor="middle" class="sm">each claim is checked against the context only, not against world knowledge</text>
+<text x="410" y="272" text-anchor="middle" class="lg">faithfulness = 2 supported / 3 claims = 0.67</text>
+</svg>
+<figcaption><b>Faithfulness, step by step.</b> A judge model breaks the answer into atomic claims, then checks each against the retrieved context. The score is the fraction supported. The failing claim (C3) points straight at the problem.</figcaption>
+</figure>
+
+<h3>With Ragas (current API)</h3>
+<p><a href="https://docs.ragas.io">Ragas</a> is the most widely used open-source library for these metrics. Its current docs use a "collections" API in <code>ragas.metrics.collections</code>; the older <code>SingleTurnSample</code> style is marked for deprecation. Each metric takes an LLM (and, for answer relevancy, an embedding model) and exposes async <code>ascore()</code> and sync <code>score()</code>. The docs' examples use an OpenAI client; check the Ragas docs for other providers.</p>
+
+<pre data-lang="python"><code>import asyncio
+from openai import AsyncOpenAI
+from ragas.llms import llm_factory
+from ragas.embeddings.base import embedding_factory
+from ragas.metrics.collections import (
+    Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall,
+)
+
+client = AsyncOpenAI()
+llm = llm_factory("gpt-4o-mini", client=client)
+emb = embedding_factory("openai", model="text-embedding-3-small", client=client)
+
+sample = dict(
+    user_input="Can I get a refund on a gift card?",
+    response="Yes, gift cards can be refunded within 14 days.",
+    retrieved_contexts=["Refunds are accepted within 30 days of delivery with a receipt. "
+                        "Gift cards are non-refundable."],
+    reference="No. Gift cards are non-refundable.",
+)
+
+async def main():
+    faith = await Faithfulness(llm=llm).ascore(
+        user_input=sample["user_input"], response=sample["response"],
+        retrieved_contexts=sample["retrieved_contexts"])
+    relev = await AnswerRelevancy(llm=llm, embeddings=emb).ascore(
+        user_input=sample["user_input"], response=sample["response"])
+    cprec = await ContextPrecision(llm=llm).ascore(
+        user_input=sample["user_input"], reference=sample["reference"],
+        retrieved_contexts=sample["retrieved_contexts"])
+    crec = await ContextRecall(llm=llm).ascore(
+        user_input=sample["user_input"], reference=sample["reference"],
+        retrieved_contexts=sample["retrieved_contexts"])
+    print(f"faithfulness={faith.value:.2f} relevancy={relev.value:.2f} "
+          f"ctx_precision={cprec.value:.2f} ctx_recall={crec.value:.2f}")
+    # Expect: faithfulness low (the answer contradicts the context), context recall high
+    # (the context DID contain the reference fact). Diagnosis: a generator problem, not retrieval.
+
+asyncio.run(main())</code></pre>
+
+<h3>From scratch: a faithfulness judge you fully control</h3>
+<p>Libraries are convenient, but every metric is "just" a prompt plus arithmetic, and writing your own makes the judge's behavior visible and tunable. This version uses the Anthropic SDK with structured output so the verdicts always parse. Validate any judge like this against human labels before trusting it (<a href="13-llm-as-judge.html">Module 13</a>).</p>
+
+<pre data-lang="python"><code>import json
+import anthropic
+
+client = anthropic.Anthropic()
+JUDGE_MODEL = "claude-sonnet-5-5"     # a cheaper model is common for judges; validate it first
+
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "claims": {"type": "array", "items": {
+            "type": "object",
+            "properties": {
+                "claim":    {"type": "string"},
+                "verdict":  {"type": "string", "enum": ["supported", "contradicted", "not_found"]},
+                "evidence": {"type": "string"},   # quote from the context, or ""
+            },
+            "required": ["claim", "verdict", "evidence"],
+            "additionalProperties": False,
+        }},
+    },
+    "required": ["claims"],
+    "additionalProperties": False,
+}
+
+PROMPT = """You are checking whether an answer is supported by retrieved context.
+1. Split the ANSWER into atomic factual claims (one fact each). Skip greetings and hedges.
+2. For each claim, decide using ONLY the CONTEXT, not your own knowledge:
+   supported    = the context states or directly implies it (quote the evidence)
+   contradicted = the context says otherwise (quote the evidence)
+   not_found    = the context does not address it
+<context>
+{context}
+</context>
+<answer>
+{answer}
+</answer>"""
+
+def faithfulness(answer: str, contexts: list[str]) -&gt; dict:
+    resp = client.messages.create(
+        model=JUDGE_MODEL,
+        max_tokens=4000,
+        messages=[{"role": "user", "content": PROMPT.format(
+            context="\n---\n".join(contexts), answer=answer)}],
+        output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
+    )
+    claims = json.loads(next(b.text for b in resp.content if b.type == "text"))["claims"]
+    supported = sum(c["verdict"] == "supported" for c in claims)
+    return {
+        "score": supported / len(claims) if claims else 1.0,   # no claims: nothing to be unfaithful about
+        "unsupported": [c for c in claims if c["verdict"] != "supported"],  # read these!
+    }
+
+print(faithfulness("You can get a refund within 30 days if you have a receipt, "
+                   "and gift cards can be refunded within 14 days.",
+                   ["Refunds are accepted within 30 days of delivery with a receipt. "
+                    "Gift cards are non-refundable."]))
+# e.g. {'score': 0.67, 'unsupported': [{'claim': 'Gift cards can be refunded within 14 days', ...}]}</code></pre>
+
+<div class="callout expert"><span class="t">Expert nuance: RAG metrics are judges, with judge problems</span>
+<p>Faithfulness, context precision and context recall in Ragas are LLM-judged, so they inherit judge variance and bias. Claim splitting is itself a source of noise: one judge splits an answer into 3 claims, another into 5, and the ratio changes. Keep the judge model and prompt fixed between runs you compare, and spot-check the claims list. For high-stakes use, a dedicated hallucination classifier (Ragas offers <code>FaithfulnesswithHHEM</code>, which uses Vectara's HHEM-2.1-Open model) or a validated custom judge can be more stable. And remember: high faithfulness plus low correctness means your <em>retriever or corpus</em> is feeding the model wrong facts.</p>
+</div>
+
+<h2>Evaluating conversational agents</h2>
+<p>A conversational agent is judged not by one reply but by a whole dialogue. That brings failure modes that no single-turn test can see.</p>
+<div class="grid2">
+<div class="card accent"><h4>Multi-turn coherence</h4><p>Remembers what was said. Doesn't ask for the order number twice, doesn't contradict its own earlier statement, tracks corrections ("sorry, I meant the blue one").</p></div>
+<div class="card accent"><h4>Instruction retention</h4><p>Constraints set early still hold late: "reply in Spanish", "no phone calls", "keep it short". Models often drift after several turns.</p></div>
+<div class="card warn"><h4>Persona and policy adherence</h4><p>Stays in the brand voice and, more importantly, follows the policy throughout, including when the user pushes back, pleads or tries to talk it out of the rules.</p></div>
+<div class="card warn"><h4>Escalation and hand-off</h4><p>Hands off to a human exactly when it should (the policy says so, the user is distressed, the task is out of scope) and <em>not</em> when it can handle the request. Both directions are errors.</p></div>
+</div>
+
+<h3>Turn-level versus conversation-level grading</h3>
+<p><b>Turn-level grading</b> scores each agent reply on its own (was this reply helpful, correct, polite?). It is fine-grained and points to the exact turn that went wrong, but it misses anything that depends on earlier turns. <b>Conversation-level grading</b> looks at the whole transcript and asks whole-conversation questions: was the goal achieved, was the policy followed throughout, were early constraints respected, was the hand-off right? Most teams need both.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Six-turn conversation. A turn-level judge scores each agent turn as good, including the last one, but a conversation-level judge sees that the last turn violates a constraint the user set in turn one, and fails the conversation.">
+<text x="410" y="22" text-anchor="middle" class="sm">one conversation, six turns</text>
+<text x="77" y="46" text-anchor="middle" class="sm">T1 user</text>
+<rect class="box violet" x="15" y="54" width="124" height="70" rx="8"/>
+<text x="77" y="76" text-anchor="middle" class="sm">Refund order 17.</text>
+<text x="77" y="94" text-anchor="middle" class="sm">Email me only,</text>
+<text x="77" y="112" text-anchor="middle" class="b sm">no phone calls.</text>
+<text x="211" y="46" text-anchor="middle" class="sm">T2 agent</text>
+<rect class="box accent" x="149" y="54" width="124" height="70" rx="8"/>
+<text x="211" y="82" text-anchor="middle" class="sm">Found order 17.</text>
+<text x="211" y="100" text-anchor="middle" class="sm">What went wrong?</text>
+<text x="345" y="46" text-anchor="middle" class="sm">T3 user</text>
+<rect class="box violet" x="283" y="54" width="124" height="70" rx="8"/>
+<text x="345" y="92" text-anchor="middle" class="sm">It arrived broken.</text>
+<text x="479" y="46" text-anchor="middle" class="sm">T4 agent</text>
+<rect class="box accent" x="417" y="54" width="124" height="70" rx="8"/>
+<text x="479" y="82" text-anchor="middle" class="sm">Eligible for $40.</text>
+<text x="479" y="100" text-anchor="middle" class="sm">Confirm refund?</text>
+<text x="613" y="46" text-anchor="middle" class="sm">T5 user</text>
+<rect class="box violet" x="551" y="54" width="124" height="70" rx="8"/>
+<text x="613" y="92" text-anchor="middle" class="sm">Yes, go ahead.</text>
+<text x="747" y="46" text-anchor="middle" class="sm">T6 agent</text>
+<rect class="box bad" x="685" y="54" width="124" height="70" rx="8"/>
+<text x="747" y="82" text-anchor="middle" class="sm">Done! I'll call you</text>
+<text x="747" y="100" text-anchor="middle" class="sm">to confirm.</text>
+<text x="77" y="160" text-anchor="middle" class="b">turn-level judge</text>
+<text x="211" y="160" text-anchor="middle" class="b t-good">✓ 5/5</text>
+<text x="479" y="160" text-anchor="middle" class="b t-good">✓ 5/5</text>
+<text x="747" y="160" text-anchor="middle" class="b t-good">✓ 5/5 fluent</text>
+<rect class="box bad" x="15" y="190" width="794" height="80" rx="10"/>
+<text x="30" y="214" class="b">Conversation-level judge (reads all turns)</text>
+<text x="30" y="240" class="t-good">✓ goal met: refund issued</text>
+<text x="240" y="240" class="t-good">✓ policy: $40 within limits</text>
+<text x="460" y="240" class="t-bad">✗ broke the T1 constraint "no calls"</text>
+<text x="30" y="260" class="b t-bad">→ conversation FAILS</text>
+</svg>
+<figcaption><b>Why turn-level grading is not enough.</b> Judged in isolation, the last reply is polite and helpful. Only a grader that sees turn 1 notices the broken constraint. Conversation-level checks catch forgotten instructions, contradictions and policy drift.</figcaption>
+</figure>
+
+<p>Practical tips for each:</p>
+<ul>
+<li>For <b>turn-level</b> grading, always give the judge the <em>preceding</em> conversation as context, and ask it to grade only the final turn. This fixes most of the blindness shown above while keeping per-turn precision.</li>
+<li>For <b>conversation-level</b> grading, use a checklist of binary questions ("Did the agent verify identity before any account change? yes/no") rather than one holistic 1 to 10 score. Binary checks are easier to validate against humans and easier to act on (<a href="03-graders.html">Module 03</a>).</li>
+<li>Combine with <b>state checks</b> wherever the conversation has side effects, exactly as τ-bench does. The database doesn't lie about whether the refund happened.</li>
+<li>For <b>escalation</b>, build a labeled set of conversations where hand-off is required and ones where it is not, and report both the missed-escalation rate and the unnecessary-escalation rate. They trade off, and the business cost of each is different.</li>
+</ul>
+
+<h3>Simulated-user testing</h3>
+<p>You cannot hire humans to chat with every agent version. The standard answer, used by τ-bench, τ²-bench, ACEBench's Agent category and many product teams, is a <b>user simulator</b>: a second LLM that plays a customer from a hidden scenario. You then run many conversations automatically and grade them.</p>
+
+<pre data-lang="python"><code>import anthropic
+
+client = anthropic.Anthropic()
+SIM_MODEL = "claude-sonnet-5-5"
+
+USER_SIM_SYSTEM = """You are role-playing a CUSTOMER talking to a support agent.
+Hidden scenario (never reveal it all at once, answer only what is asked):
+{scenario}
+Rules: write one short message per turn, like a real person. Do not invent facts
+outside the scenario. When your goal is fully handled, or clearly cannot be,
+reply with exactly ###STOP###."""
+
+def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict]:
+    """agent_reply_fn(transcript) -&gt; str runs YOUR agent (with its tools) for one turn."""
+    transcript = []                                   # [{"role": "user"|"agent", "text": ...}]
+    sim_msgs = [{"role": "user", "content": "(The agent says: Hi, how can I help?)"}]
+    for _ in range(max_turns):
+        sim = client.messages.create(model=SIM_MODEL, max_tokens=1000,
+                                     system=USER_SIM_SYSTEM.format(scenario=scenario),
+                                     messages=sim_msgs)
+        user_text = next(b.text for b in sim.content if b.type == "text")
+        if "###STOP###" in user_text:
+            break
+        transcript.append({"role": "user", "text": user_text})
+        agent_text = agent_reply_fn(transcript)
+        transcript.append({"role": "agent", "text": agent_text})
+        # from the simulator's point of view, roles are flipped
+        sim_msgs += [{"role": "assistant", "content": user_text},
+                     {"role": "user", "content": agent_text}]
+    return transcript     # then: state check + conversation-level judge + pass^k over repeats</code></pre>
+
+<div class="callout warn"><span class="t">The simulator is part of your measuring instrument</span>
+<p>User simulators have their own failure modes: they reveal the whole hidden goal in the first message, forget details, invent facts, give up early, or become unrealistically cooperative. The τ-bench authors and later work flagged simulator errors as a real source of noise. Mitigations: (1) read a sample of simulated conversations and label simulator mistakes separately from agent mistakes; (2) use a strong model for the simulator and keep it fixed between compared runs; (3) run several trials and report pass^k with intervals; (4) include some <b>adversarial personas</b> (the user who pushes for an out-of-policy refund, the one who changes their mind), because cooperative simulators flatter your agent.</p>
+</div>
+
+<h2>The benchmark map</h2>
+<p>A summary of the public benchmarks in this module. Sizes and dates are from the original papers or official pages; for current leaderboard numbers, go to the leaderboard itself, since they move monthly.</p>
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>What it measures</th><th>How it's graded / metric</th><th>Watch out for</th></tr>
+<tr><td><b><a href="https://gorilla.cs.berkeley.edu/leaderboard.html">BFCL</a></b> (UC Berkeley, 2024 onward)</td><td>Single, parallel and multi-turn function calls; relevance detection; V4 adds web search and memory</td><td>AST matching against possible answers, executable checks, state and subset checks for multi-turn; weighted overall accuracy</td><td>AST can reject valid alternatives; rankings shift between versions; native vs prompt-based calling differ</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2406.12045">τ-bench</a></b> (Sierra, 2024)</td><td>Customer-service agents in retail (115 tasks) and airline (50) with policy, tools and a simulated user</td><td>Final DB equals goal DB, plus required outputs; pass^k</td><td>Simulator noise; some faulty ground truth (since fixed); few tasks, wide CIs</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2506.07982">τ²-bench</a></b> (Sierra, 2025)</td><td>Adds dual-control telecom (user acts on their device too), fixed airline/retail tasks</td><td>End-state checks; pass^k; no-user and oracle-plan ablations</td><td>Same simulator caveats; evolving task set (τ³ branding), so compare like with like</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2407.18901">AppWorld</a></b> (Stony Brook, AI2, 2024)</td><td>750 day-to-day tasks across 9 simulated apps, 457 APIs; agent writes code</td><td>State-based unit tests incl. collateral damage; TGC and SGC</td><td>Code-writing agents only; test-challenge split is much harder</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2307.16789">ToolBench</a></b> (Tsinghua, 2023)</td><td>Use of 16,464 real RapidAPI APIs</td><td>Pass rate and win rate, LLM-judged</td><td>Live APIs break reproducibility; use <a href="https://arxiv.org/abs/2403.07714">StableToolBench</a></td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2501.12851">ACEBench</a></b> (Huawei, USTC, 2025)</td><td>Normal, Special (imperfect instructions) and Agent (simulated user) tool use, English and Chinese</td><td>AST-style and end-state checks, no LLM judge</td><td>Newer, less widely reported</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2311.12983">GAIA</a></b> (Meta, HF, 2023)</td><td>General assistants: browsing, files, multimodal reasoning, 3 levels</td><td>Quasi-exact match on short answers</td><td>Public validation answers; some stale questions</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2504.12516">BrowseComp</a></b> (OpenAI, 2025)</td><td>Persistent, creative web search for hard-to-find facts (1,266 questions)</td><td>Model-graded accuracy vs short reference; calibration</td><td>Live web drifts; BrowseComp-Plus fixes the corpus</td></tr>
+</table></div>
+
+<div class="callout tip"><span class="t">Public benchmarks versus your eval</span>
+<p>Use these benchmarks to shortlist models and to borrow <em>methods</em> (AST matching, end-state grading, pass^k, simulated users). Then build your own version with your tools, your policy and your users' real requests. A model that tops τ-bench retail has shown it can follow <em>that</em> policy with <em>those</em> tools; it has not shown it can follow yours.</p>
+</div>
+
+<h2>Putting it together: an eval plan for a support agent</h2>
+<p>Suppose you are shipping a support agent with 12 tools, a 6-page refund policy, and a knowledge base. A sensible, layered plan:</p>
+<ol>
+<li><b>Tool-call unit tests (Level 1)</b>: 150 to 300 single-turn requests with expected calls, including 20% or more where the right answer is <em>no call</em> or <em>ask a clarifying question</em>. Graded by the pytest grader above. Runs on every commit, takes minutes.</li>
+<li><b>Retrieval tests</b>: 100 or more questions with labeled relevant chunks. Track recall@5 and nDCG@5 whenever you change chunking, embeddings or the index.</li>
+<li><b>Faithfulness monitor</b>: the faithfulness judge on RAG answers, both offline and on a sample of production traffic (<a href="15-production-evals.html">Module 15</a>).</li>
+<li><b>Stateful scenarios (Level 3)</b>: 50 to 100 τ-bench-style tasks with a sandbox database, hidden-scenario user simulator, end-state grading, and a conversation-level checklist (policy, constraints, escalation). Run 4 to 8 trials each and report pass^1 and pass^k with confidence intervals before every release.</li>
+<li><b>Error analysis loop</b>: read failing transcripts weekly, tag them with the failure map from the start of this module, and turn each new failure type into new test cases (<a href="12-error-analysis.html">Module 12</a>).</li>
+</ol>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. Your agent calls <code>get_weather(city="Newark")</code> when the user asked about New York. The schema says <code>city</code> is a string. Which check catches this?</p>
+<button class="opt">A JSON Schema type check</button>
+<button class="opt">A value check against the reference's acceptable values (or an end-state/outcome check)</button>
+<button class="opt">A required-parameter check</button>
+<div class="why">"Newark" is a valid string and the parameter is present, so schema and required checks both pass. Only comparing the value with the acceptable answers (as in AST matching) or checking the outcome catches an invented or wrong value.</div></div>
+<div class="q" data-answer="2"><p>2. An agent solves 6 of 8 trials on every task in your suite. What are pass@1 and pass^2 (to 2 decimals)?</p>
+<button class="opt">pass@1 = 0.75, pass^2 = 0.75</button>
+<button class="opt">pass@1 = 0.75, pass^2 = 0.96</button>
+<button class="opt">pass@1 = 0.75, pass^2 = 0.54</button>
+<div class="why">pass^2 = C(6,2)/C(8,2) = 15/28 ≈ 0.54. The chance that two independent attempts both succeed is lower than the chance one does. (0.96 is pass@2: 1 − C(2,2)/C(8,2) = 1 − 1/28.)</div></div>
+<div class="q" data-answer="0"><p>3. Why does τ-bench compare the final database state instead of the agent's sequence of tool calls?</p>
+<button class="opt">Because many different call sequences are valid, and what matters is whether the world ends up in the right state</button>
+<button class="opt">Because tool calls are not logged</button>
+<button class="opt">Because database comparison needs no ground truth</button>
+<div class="why">Outcome grading credits any valid path (extra reads, different order) while still failing wrong or out-of-policy writes. It does need ground truth: the goal state from replaying the gold actions.</div></div>
+<div class="q" data-answer="2"><p>4. Your RAG answer is wrong. Context recall is 1.0 and faithfulness is 0.3. Where is the bug most likely?</p>
+<button class="opt">The retriever: it didn't find the evidence</button>
+<button class="opt">The embedding model</button>
+<button class="opt">The generator: it had the evidence and didn't stick to it</button>
+<div class="why">Context recall 1.0 says the retrieved context contained everything needed for the reference answer. Low faithfulness says the answer made claims the context doesn't support. Fix the prompt or generator, not retrieval.</div></div>
+<div class="q" data-answer="1"><p>5. Every turn of a conversation gets 5/5 from your turn-level judge, yet customers complain the agent "forgets what I said". What should you add?</p>
+<button class="opt">A stricter turn-level rubric</button>
+<button class="opt">Conversation-level checks (or give the turn judge the full prior context) that test whether earlier constraints are still respected</button>
+<button class="opt">More single-call AST tests</button>
+<div class="why">Turn-level judges that see one reply in isolation cannot detect forgotten instructions or contradictions with earlier turns. That needs the whole transcript.</div></div>
+<div class="q" data-answer="0"><p>6. In BFCL, what does the "irrelevance" category test?</p>
+<button class="opt">That the model does not call any function when none of the provided functions fit the request</button>
+<button class="opt">That the model ignores irrelevant parts of a tool result</button>
+<button class="opt">That the model can call functions in any order</button>
+<div class="why">Relevance detection checks that the model abstains from calling when the tools don't apply, instead of forcing the closest-looking tool, which would be a hallucinated action.</div></div>
+</div>
+
+<details><summary>Interview questions (with model answers)</summary>
+<p><b>Q: How would you evaluate a new tool you just added to an agent?</b> Build realistic multi-step tasks that should need it and some that shouldn't; run the agent several times per task; measure task success, whether it chose the tool when appropriate (and only then), argument error rate, number of calls, tokens and tool errors; read transcripts; iterate on the tool's name, description and output format; confirm on held-out tasks. This is the loop from Anthropic's tool-writing post.</p>
+<p><b>Q: pass@k or pass^k for a customer-support agent?</b> pass^k (and pass^1). Each customer gets one attempt, and the business experiences the agent's consistency across thousands of similar requests. pass@k fits settings where a verifier or human picks from several attempts, like code with tests.</p>
+<p><b>Q: What are the weaknesses of end-state grading?</b> It needs correct, complete ground truth; under-specified tasks with several valid outcomes break it unless you accept a set of goal states; volatile fields must be canonicalized; it ignores <em>how</em> the agent got there, so you still need checks for forbidden intermediate actions, policy violations in speech, and communication quality.</p>
+<p><b>Q: How do you know your user simulator isn't the problem?</b> Sample and label simulated conversations for simulator errors; measure how often the simulator leaks the goal, invents facts or stops early; compare agent rankings under two different simulator models; keep the simulator fixed within a comparison; and occasionally validate against real human testers.</p>
+<p><b>Q: RAG answers look fluent but users report wrong facts. What do you measure first?</b> Split the pipeline: recall@k or context recall on a labeled set (did we retrieve the evidence?) and faithfulness (did the answer stick to it?). Then check correctness against references. The combination tells you whether to fix retrieval, the corpus, or the generator.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Gorilla team, UC Berkeley, <a href="https://gorilla.cs.berkeley.edu/blogs/8_berkeley_function_calling_leaderboard.html">Berkeley Function Calling Leaderboard (V1 blog: AST rules, categories)</a>, <a href="https://gorilla.cs.berkeley.edu/blogs/13_bfcl_v3_multi_turn.html">BFCL V3: multi-turn and multi-step</a>, and the <a href="https://gorilla.cs.berkeley.edu/leaderboard.html">live leaderboard</a>.</li>
+<li>Yao, Shinn, Razavi, Narasimhan (Sierra), <a href="https://arxiv.org/abs/2406.12045">τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains</a> (2024).</li>
+<li>Barres, Dong, Ray, Si, Narasimhan (Sierra), <a href="https://arxiv.org/abs/2506.07982">τ²-Bench: Evaluating Conversational Agents in a Dual-Control Environment</a> (2025); <a href="https://github.com/sierra-research/tau2-bench">tau2-bench repository</a>; <a href="https://taubench.com">taubench.com leaderboard</a>.</li>
+<li>Trivedi et al., <a href="https://arxiv.org/abs/2407.18901">AppWorld: A Controllable World of Apps and People for Benchmarking Interactive Coding Agents</a> (ACL 2024).</li>
+<li>Qin et al., <a href="https://arxiv.org/abs/2307.16789">ToolLLM: Facilitating LLMs to Master 16000+ Real-world APIs</a> (ICLR 2024); Guo et al., <a href="https://arxiv.org/abs/2403.07714">StableToolBench</a> (2024).</li>
+<li>Chen et al., <a href="https://arxiv.org/abs/2501.12851">ACEBench: Who Wins the Match Point in Tool Usage?</a> (2025).</li>
+<li>Mialon et al., <a href="https://arxiv.org/abs/2311.12983">GAIA: a benchmark for General AI Assistants</a> (2023).</li>
+<li>Wei et al. (OpenAI), <a href="https://arxiv.org/abs/2504.12516">BrowseComp: A Simple Yet Challenging Benchmark for Browsing Agents</a> (2025).</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents, with agents</a> (September 2025).</li>
+<li>Anthropic docs, <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview">Tool use with Claude</a>.</li>
+<li>Ragas docs: <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/">Faithfulness</a>, <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/answer_relevance/">Answer relevancy</a>, <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_precision/">Context precision</a>, <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_recall/">Context recall</a>.</li>
+<li>Chen et al. (OpenAI), <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> (the pass@k estimator).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

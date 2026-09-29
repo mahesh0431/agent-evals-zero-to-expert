@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>15 · Evals in production and CI · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 15 · Practice</div>
+<h1>Evals in production and CI</h1>
+<p class="lede">An offline eval suite tells you whether a change is safe to ship. Production tells you whether you were right. This module wires the two together: tracing, online judges, user signals, CI gates, staged rollouts and dashboards, arranged as one loop that makes your agent a little better every lap.</p>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~70 min</span><span class="pill">Prereqs: Modules 04, 12, 13</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Draw the eval flywheel for a real product and explain what flows between each stage.</li>
+<li>Instrument an agent with traces, spans and sessions using the OpenTelemetry GenAI conventions or a platform SDK such as Langfuse, and say exactly what to log.</li>
+<li>Design an online evaluation system: sampling strategy, LLM judges on live traffic under a budget, implicit feedback signals, guardrails vs async scoring.</li>
+<li>Turn evals into a CI gate that is statistically sound (paired bootstrap), not flaky, cached and cost-bounded, with tiered suites.</li>
+<li>Run a model or provider migration, detect drift, build a useful dashboard, and handle agent-specific failures such as runaway loops and cost explosions.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>The big picture: the eval flywheel</h2>
+<p>So far in this course, an eval has mostly been something you run on your laptop: a fixed dataset, a system, a grader, a number. In a real product, that offline suite is only one station on a loop. The loop looks like this:</p>
+<ol>
+<li><b>Offline suite.</b> A curated dataset of tasks, built by error analysis (<a href="12-error-analysis.html">Module 12</a>), graded by code and calibrated judges (<a href="03-graders.html">Module 03</a>, <a href="13-llm-as-judge.html">Module 13</a>).</li>
+<li><b>CI gate.</b> Every change to prompts, tools, model or scaffold runs (part of) the suite automatically. Regressions block the merge.</li>
+<li><b>Staged rollout.</b> The change reaches real users gradually: shadow traffic, then a canary, then an A/B test, then everyone.</li>
+<li><b>Trace everything.</b> Every production run is recorded as a structured trace: model calls, tool calls, tokens, latency, cost, errors, feedback.</li>
+<li><b>Online evals and monitors.</b> Cheap checks run on all traffic; LLM judges score a sample; implicit user signals are aggregated; alerts fire on drops.</li>
+<li><b>Review queue.</b> Humans look at the most informative traces: low scores, judge/human disagreements, a random slice.</li>
+<li><b>Error analysis.</b> Reviewers cluster failures into a taxonomy and count them.</li>
+<li><b>Grow the dataset.</b> Each new failure mode becomes new test cases. The offline suite now covers something it did not cover last week. Back to step 1.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 440" role="img" aria-label="The eval flywheel: offline suite, CI gate, staged rollout, tracing, online evals, review queue, error analysis, and growing the dataset, arranged as a loop that returns to the offline suite.">
+<defs><marker id="m15a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="330" y="20" width="160" height="52" rx="8"/>
+<text x="410" y="42" text-anchor="middle" class="b">Offline eval suite</text>
+<text x="410" y="60" text-anchor="middle" class="sm">golden + regression cases</text>
+<rect class="box accent" x="560" y="76" width="160" height="52" rx="8"/>
+<text x="640" y="98" text-anchor="middle" class="b">CI gate</text>
+<text x="640" y="116" text-anchor="middle" class="sm">block regressions per PR</text>
+<rect class="box warn" x="640" y="194" width="160" height="52" rx="8"/>
+<text x="720" y="216" text-anchor="middle" class="b">Staged rollout</text>
+<text x="720" y="234" text-anchor="middle" class="sm">shadow, canary, A/B</text>
+<rect class="box good" x="560" y="312" width="160" height="52" rx="8"/>
+<text x="640" y="334" text-anchor="middle" class="b">Trace everything</text>
+<text x="640" y="352" text-anchor="middle" class="sm">spans, tokens, cost, errors</text>
+<rect class="box good" x="330" y="368" width="160" height="52" rx="8"/>
+<text x="410" y="390" text-anchor="middle" class="b">Online evals</text>
+<text x="410" y="408" text-anchor="middle" class="sm">sampled judges + signals</text>
+<rect class="box violet" x="100" y="312" width="160" height="52" rx="8"/>
+<text x="180" y="334" text-anchor="middle" class="b">Review queue</text>
+<text x="180" y="352" text-anchor="middle" class="sm">humans label hard cases</text>
+<rect class="box violet" x="20" y="194" width="160" height="52" rx="8"/>
+<text x="100" y="216" text-anchor="middle" class="b">Error analysis</text>
+<text x="100" y="234" text-anchor="middle" class="sm">cluster failure modes</text>
+<rect class="box violet" x="100" y="76" width="160" height="52" rx="8"/>
+<text x="180" y="98" text-anchor="middle" class="b">Grow the dataset</text>
+<text x="180" y="116" text-anchor="middle" class="sm">failures become tests</text>
+<line class="ln thick" x1="492" y1="50" x2="570" y2="74" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="676" y1="130" x2="706" y2="190" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="706" y1="248" x2="676" y2="308" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="570" y1="364" x2="494" y2="386" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="326" y1="386" x2="250" y2="366" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="144" y1="310" x2="114" y2="250" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="114" y1="190" x2="144" y2="132" marker-end="url(#m15a)"/>
+<line class="ln thick" x1="250" y1="74" x2="326" y2="50" marker-end="url(#m15a)"/>
+<text x="410" y="196" text-anchor="middle" class="lg">The eval flywheel</text>
+<text x="410" y="222" text-anchor="middle" class="sm">before shipping: prevent known failures</text>
+<text x="410" y="242" text-anchor="middle" class="sm">after shipping: discover unknown ones</text>
+<text x="410" y="262" text-anchor="middle" class="sm t-muted">each lap adds cases and sharpens judges</text>
+<text x="555" y="160" text-anchor="middle" class="sm t-accent">prevent</text>
+<text x="265" y="290" text-anchor="middle" class="sm t-violet">discover</text>
+</svg>
+<figcaption><b>The eval flywheel.</b> The right half (blue, amber) prevents known failures from shipping; the bottom and left (green, violet) discover failures you did not know about and feed them back as new test cases. A team that only runs the right half stops learning; a team that only runs the left half keeps shipping regressions.</figcaption>
+</figure>
+
+<div class="callout analogy"><span class="t">Analogy: aviation safety</span>
+<p>Before a plane flies, it passes a checklist and inspections (offline evals, CI gate). During flight, the black box records everything (traces) and the instruments watch key readings (monitors). After an incident, investigators read the recording (error analysis) and the finding becomes a new checklist item for every future flight (grow the dataset). Aviation got safe not because the first checklist was perfect, but because every failure made the checklist longer.</p>
+</div>
+
+<p>Two properties make the flywheel work. First, <b>the offline suite and the online monitors share graders</b>. If your production judge for "did the agent resolve the refund correctly?" is the same prompt and model as your CI judge, a failure seen in production can be turned into a CI case and graded identically. Second, <b>traces are replayable</b>: a production trace contains enough information (inputs, tool results, configuration) to rebuild the case offline. We will design for both.</p>
+
+<div class="callout tip"><span class="t">Key idea: offline and online answer different questions</span>
+<p><b>Offline</b> evals answer "is this version better than that version, on cases we chose?". They are controlled and repeatable but only cover what you thought of. <b>Online</b> evals answer "what is actually happening to real users right now?". They cover the real distribution, including things you never imagined, but they are noisy, delayed and cannot compare versions unless you run an experiment. You need both. Anthropic's agent-eval guidance makes the same point: start with 20 to 50 tasks drawn from real failures, and keep the suite growing from production.</p>
+</div>
+
+<h2>Tracing: the raw material</h2>
+<p>You cannot evaluate what you did not record. <b>Tracing</b> is structured logging for multi-step programs. It comes from distributed-systems observability, where one web request might touch ten services, and it fits agents perfectly because an agent run is also a tree of nested operations.</p>
+
+<h3>Spans, traces and sessions</h3>
+<ul>
+<li>A <b>span</b> is one timed operation with a name, a start and end time, a status (ok or error), and a bag of key-value <b>attributes</b>. Examples: one model call, one tool execution, one retrieval.</li>
+<li>A <b>trace</b> is a tree of spans that share a trace ID. For an agent, one trace is usually one user turn or one task: the top-level "invoke agent" span, with model calls and tool calls nested inside it.</li>
+<li>A <b>session</b> (also called a conversation or thread) groups the traces of one multi-turn interaction. Many failures only show up at session level: the agent forgot something from turn 2 by turn 6, or the user gave up after three tries.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 450" role="img" aria-label="A session contains several traces; one trace is expanded as a waterfall of nested spans: invoke_agent, then chat and execute_tool spans, one of which fails and is retried. Span attributes record model, tokens and error type.">
+<defs><marker id="m15b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="20" y="14" width="780" height="62" rx="8"/>
+<text x="34" y="34" class="b">Session</text>
+<text x="34" y="52" class="sm mono">gen_ai.conversation.id = c_81f</text>
+<rect class="box plain" x="300" y="28" width="140" height="36" rx="6"/>
+<text x="370" y="51" text-anchor="middle" class="sm">trace 1: "where's my order?"</text>
+<rect class="box accent" x="460" y="28" width="150" height="36" rx="6"/>
+<text x="535" y="51" text-anchor="middle" class="sm b">trace 2: "refund it"</text>
+<rect class="box plain" x="630" y="28" width="150" height="36" rx="6"/>
+<text x="705" y="51" text-anchor="middle" class="sm">trace 3: "thanks"</text>
+<line class="ln dash" x1="535" y1="66" x2="535" y2="98" marker-end="url(#m15b)"/>
+<text x="545" y="90" class="sm t-muted">expanded below</text>
+
+<text x="20" y="126" class="sm mono b">invoke_agent support_bot</text>
+<rect class="fill-accent" x="250" y="114" width="540" height="16" rx="3"/>
+<text x="36" y="154" class="sm mono">chat (plan)</text>
+<rect class="fill-violet" x="255" y="142" width="105" height="16" rx="3"/>
+<text x="36" y="182" class="sm mono">execute_tool lookup_order</text>
+<rect class="fill-good" x="365" y="170" width="65" height="16" rx="3"/>
+<text x="36" y="210" class="sm mono">chat (decide)</text>
+<rect class="fill-violet" x="435" y="198" width="85" height="16" rx="3"/>
+<text x="36" y="238" class="sm mono">execute_tool issue_refund</text>
+<rect class="fill-bad" x="525" y="226" width="175" height="16" rx="3"/>
+<text x="612" y="238" text-anchor="middle" class="sm">timeout</text>
+<text x="36" y="266" class="sm mono">execute_tool issue_refund</text>
+<rect class="fill-good" x="705" y="254" width="42" height="16" rx="3"/>
+<text x="36" y="294" class="sm mono">chat (final answer)</text>
+<rect class="fill-violet" x="750" y="282" width="38" height="16" rx="3"/>
+
+<line class="ln" x1="250" y1="318" x2="790" y2="318"/>
+<line class="ln" x1="250" y1="314" x2="250" y2="322"/><text x="250" y="336" text-anchor="middle" class="sm">0 s</text>
+<line class="ln" x1="385" y1="314" x2="385" y2="322"/><text x="385" y="336" text-anchor="middle" class="sm">3 s</text>
+<line class="ln" x1="520" y1="314" x2="520" y2="322"/><text x="520" y="336" text-anchor="middle" class="sm">6 s</text>
+<line class="ln" x1="655" y1="314" x2="655" y2="322"/><text x="655" y="336" text-anchor="middle" class="sm">9 s</text>
+<line class="ln" x1="790" y1="314" x2="790" y2="322"/><text x="790" y="336" text-anchor="middle" class="sm">12 s</text>
+
+<rect class="box plain" x="20" y="354" width="380" height="86" rx="8"/>
+<text x="34" y="374" class="sm b">attributes on a "chat" span</text>
+<text x="34" y="394" class="sm mono">gen_ai.operation.name = chat</text>
+<text x="34" y="411" class="sm mono">gen_ai.request.model = &lt;model id&gt;</text>
+<text x="34" y="428" class="sm mono">gen_ai.usage.input_tokens = 1840</text>
+<rect class="box bad" x="420" y="354" width="380" height="86" rx="8"/>
+<text x="434" y="374" class="sm b">attributes on the failed tool span</text>
+<text x="434" y="394" class="sm mono">gen_ai.operation.name = execute_tool</text>
+<text x="434" y="411" class="sm mono">gen_ai.tool.name = issue_refund</text>
+<text x="434" y="428" class="sm mono">error.type = TimeoutError</text>
+</svg>
+<figcaption><b>Session, trace, span.</b> A session groups turns; each turn is a trace; each trace is a waterfall of spans. Reading this waterfall you can see where the 12 seconds went (a 4-second tool timeout), that the agent retried correctly, and how many tokens each model call used. Timings are illustrative.</figcaption>
+</figure>
+
+<h3>The OpenTelemetry GenAI semantic conventions</h3>
+<p><b>OpenTelemetry</b> (OTel) is the vendor-neutral open standard for traces, metrics and logs. Its <b>semantic conventions</b> are agreed attribute names, so that a span produced by one library can be understood by any backend. The <b>GenAI semantic conventions</b> define names for model calls, agent invocations and tool executions. As of mid-2026 they live in their own repository (<code>open-telemetry/semantic-conventions-genai</code>), and every <code>gen_ai.*</code> attribute is still at <b>Development</b> stability, meaning names can change between releases. Pin the version of the instrumentation library you use, not just "the spec".</p>
+
+<div class="tablewrap"><table>
+<tr><th>Concept</th><th>Convention</th><th>Notes</th></tr>
+<tr><td>Span names</td><td><code>chat {model}</code>, <code>execute_tool {tool name}</code>, <code>invoke_agent {agent name}</code></td><td>Format is <code>{operation} {target}</code>.</td></tr>
+<tr><td>Operation</td><td><code>gen_ai.operation.name</code></td><td>Required. Values include <code>chat</code>, <code>execute_tool</code>, <code>invoke_agent</code>.</td></tr>
+<tr><td>Provider and model</td><td><code>gen_ai.provider.name</code>, <code>gen_ai.request.model</code>, <code>gen_ai.response.model</code></td><td>Log the <em>response</em> model too: aliases can silently resolve to a new snapshot.</td></tr>
+<tr><td>Tokens</td><td><code>gen_ai.usage.input_tokens</code>, <code>gen_ai.usage.output_tokens</code></td><td>The raw material for cost.</td></tr>
+<tr><td>Stop reason</td><td><code>gen_ai.response.finish_reasons</code></td><td>Spikes in "length" or "max_tokens" are a classic silent failure.</td></tr>
+<tr><td>Session</td><td><code>gen_ai.conversation.id</code></td><td>Lets you group traces into sessions.</td></tr>
+<tr><td>Tools</td><td><code>gen_ai.tool.name</code>, <code>gen_ai.tool.call.id</code>, <code>gen_ai.tool.type</code></td><td>One <code>execute_tool</code> span per call.</td></tr>
+<tr><td>Agent</td><td><code>gen_ai.agent.name</code>, <code>gen_ai.agent.id</code>, <code>gen_ai.agent.version</code></td><td>Version is what lets you slice metrics by release.</td></tr>
+<tr><td>Errors</td><td><code>error.type</code></td><td>Inherited from core OTel and stable.</td></tr>
+<tr><td>Metrics</td><td><code>gen_ai.client.operation.duration</code>, <code>gen_ai.client.token.usage</code></td><td>Histograms, cheap to keep at 100%.</td></tr>
+</table></div>
+
+<p>Message <em>content</em> (prompts, outputs, tool arguments) is deliberately <b>not captured by default</b> because it routinely contains personal data. Instrumentations expose an opt-in, commonly the environment variable <code>OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</code>, though implementations vary. This is a real tension: you need content to evaluate quality, and content is where the privacy risk lives. We return to it in the privacy section.</p>
+
+<h3>What to log for an agent</h3>
+<p>Anthropic's guidance on writing tools for agents recommends tracking runtime, number of tool calls, token consumption and tool errors alongside accuracy. In production add configuration and feedback, because you will want to slice every metric by them. A practical checklist:</p>
+<div class="grid2">
+<div class="card accent"><h4>Per trace</h4><p>Trace and session IDs; hashed user ID; agent version, prompt version, model (requested and returned); environment (prod, canary, shadow); experiment arm; total steps, tokens, cost, wall time; final status (completed, gave up, step cap hit, error); user-facing outcome if known.</p></div>
+<div class="card violet"><h4>Per model call</h4><p>Model, parameters (temperature, max tokens), input and output token counts (including cached tokens), latency and time to first token, finish reason, and content if policy allows.</p></div>
+<div class="card good"><h4>Per tool call</h4><p>Tool name, arguments, result (or a truncated or hashed version), latency, error type, retries, and whether it had side effects (read vs write). Write actions deserve extra detail: they are what you audit after an incident.</p></div>
+<div class="card warn"><h4>Feedback and outcomes</h4><p>Explicit feedback (thumbs, ratings, comments) and implicit signals (rephrase, edit, escalation, abandonment), attached to the trace by ID, often arriving minutes or days later. Online judge scores attach the same way.</p></div>
+</div>
+
+<h3>Code: tracing an agent with Langfuse</h3>
+<p>Platforms such as Langfuse, LangSmith, Braintrust, Arize Phoenix, MLflow and Weave all give you a tracing SDK plus a UI; most speak OpenTelemetry underneath (<a href="14-tools-landscape.html">Module 14</a>). Here is a tool-using agent loop instrumented with the Langfuse Python SDK. The pattern is identical elsewhere: a root span per turn, a generation span per model call with token usage, a tool span per tool call, and session and user attributes propagated to everything inside.</p>
+
+<pre data-lang="python"><code>import anthropic
+from langfuse import get_client, observe, propagate_attributes
+
+langfuse = get_client()          # reads LANGFUSE_PUBLIC_KEY / SECRET_KEY / HOST from env
+claude = anthropic.Anthropic()
+MODEL = "claude-sonnet-4-5"
+AGENT_VERSION = "support-bot@2026-09-28"
+MAX_STEPS = 20
+
+@observe(name="lookup_order", as_type="tool")      # one tool span per call, args + result captured
+def lookup_order(order_id: str) -&gt; dict:
+    return orders_api.get(order_id)
+
+@observe(name="issue_refund", as_type="tool")
+def issue_refund(order_id: str, amount: float) -&gt; dict:
+    return payments_api.refund(order_id, amount)   # a WRITE action: audit these carefully
+
+TOOLS = {"lookup_order": lookup_order, "issue_refund": issue_refund}
+
+def call_model(messages, tool_schemas):
+    with langfuse.start_as_current_observation(as_type="generation", name="chat", model=MODEL) as gen:
+        resp = claude.messages.create(model=MODEL, max_tokens=1024,
+                                      messages=messages, tools=tool_schemas)
+        gen.update(output=resp.content,
+                   usage_details={"input_tokens": resp.usage.input_tokens,
+                                  "output_tokens": resp.usage.output_tokens},
+                   metadata={"stop_reason": resp.stop_reason})
+        return resp
+
+def handle_turn(user_hash: str, conversation_id: str, messages: list, tool_schemas: list):
+    with langfuse.start_as_current_observation(as_type="span", name="support-agent") as root:
+        # everything nested below inherits user, session and tags, so you can slice later
+        with propagate_attributes(user_id=user_hash, session_id=conversation_id,
+                                  tags=["prod", AGENT_VERSION]):
+            for step in range(MAX_STEPS):
+                resp = call_model(messages, tool_schemas)
+                messages.append({"role": "assistant", "content": resp.content})
+                if resp.stop_reason != "tool_use":
+                    root.update(output=resp.content, metadata={"steps": step + 1, "status": "done"})
+                    return resp
+                results = []
+                for block in resp.content:
+                    if block.type == "tool_use":
+                        try:
+                            out = TOOLS[block.name](**block.input)
+                            results.append({"type": "tool_result", "tool_use_id": block.id,
+                                            "content": str(out)})
+                        except Exception as e:          # tool errors are data, not crashes
+                            results.append({"type": "tool_result", "tool_use_id": block.id,
+                                            "content": f"error: {type(e).__name__}", "is_error": True})
+                messages.append({"role": "user", "content": results})
+            root.update(metadata={"steps": MAX_STEPS, "status": "step_cap_hit"})   # alert on this!
+            return None</code></pre>
+
+<p>The same structure written directly against OpenTelemetry, using the GenAI attribute names, looks like this. In practice you would usually install an auto-instrumentation package for your model SDK instead of setting attributes by hand; the snippet shows what those packages produce.</p>
+
+<pre data-lang="python"><code>from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+
+tracer = trace.get_tracer("support-agent")
+
+def run_agent(conversation_id, messages):
+    with tracer.start_as_current_span("invoke_agent support_bot") as agent_span:
+        agent_span.set_attribute("gen_ai.operation.name", "invoke_agent")
+        agent_span.set_attribute("gen_ai.agent.name", "support_bot")
+        agent_span.set_attribute("gen_ai.agent.version", AGENT_VERSION)
+        agent_span.set_attribute("gen_ai.conversation.id", conversation_id)
+
+        with tracer.start_as_current_span(f"chat {MODEL}") as span:
+            span.set_attribute("gen_ai.operation.name", "chat")
+            span.set_attribute("gen_ai.provider.name", "anthropic")
+            span.set_attribute("gen_ai.request.model", MODEL)
+            resp = claude.messages.create(model=MODEL, max_tokens=1024, messages=messages, tools=SCHEMAS)
+            span.set_attribute("gen_ai.response.model", resp.model)
+            span.set_attribute("gen_ai.usage.input_tokens", resp.usage.input_tokens)
+            span.set_attribute("gen_ai.usage.output_tokens", resp.usage.output_tokens)
+            span.set_attribute("gen_ai.response.finish_reasons", [resp.stop_reason])
+
+        for block in (b for b in resp.content if b.type == "tool_use"):
+            with tracer.start_as_current_span(f"execute_tool {block.name}") as tool_span:
+                tool_span.set_attribute("gen_ai.operation.name", "execute_tool")
+                tool_span.set_attribute("gen_ai.tool.name", block.name)
+                tool_span.set_attribute("gen_ai.tool.call.id", block.id)
+                try:
+                    TOOLS[block.name](**block.input)
+                except Exception as e:
+                    tool_span.record_exception(e)
+                    tool_span.set_attribute("error.type", type(e).__name__)
+                    tool_span.set_status(Status(StatusCode.ERROR))</code></pre>
+
+<div class="callout warn"><span class="t">Common mistake: logging only the final answer</span>
+<p>If you log only "user asked X, agent said Y", you can judge the answer but not the <em>trajectory</em>. You will not know that the agent called <code>issue_refund</code> twice, or that it looked up the wrong order and got lucky. For agents, the tool spans are often more informative than the final message (<a href="05-agents-are-different.html">Module 05</a>).</p>
+</div>
+
+<h2>Online evaluation</h2>
+<p><b>Online evaluation</b> means scoring live production traffic, as opposed to a fixed offline dataset. It has three ingredients: <b>deterministic checks</b> on everything, <b>model-based judges</b> on a sample, and <b>user signals</b> wherever users give them. Before the details, one distinction that confuses many teams.</p>
+
+<h3>Guardrails vs evals</h3>
+<p>A <b>guardrail</b> is a check that runs <em>inline</em>, before the user sees the output or before a tool executes, and can <b>block</b> or change what happens. An <b>online eval</b> runs <em>asynchronously</em>, after the fact, and only <b>measures</b>. They can use similar checks (a PII detector can be either), but their engineering constraints are opposite.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Top lane: a guardrail sits inline between the agent and the user and can block a response or a tool call, so it must be fast. Bottom lane: an online eval reads a copy of the trace after the response is sent, samples it and scores it with a judge, without affecting the user.">
+<defs><marker id="m15c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="26" class="b t-bad">Guardrail: inline, can block</text>
+<text x="800" y="26" text-anchor="end" class="sm">budget: milliseconds, high recall, every request</text>
+<rect class="box plain" x="20" y="50" width="100" height="50" rx="8"/><text x="70" y="80" text-anchor="middle" class="b">User</text>
+<rect class="box accent" x="160" y="50" width="120" height="50" rx="8"/><text x="220" y="80" text-anchor="middle" class="b">Agent</text>
+<rect class="box warn" x="320" y="50" width="150" height="50" rx="8"/><text x="395" y="72" text-anchor="middle" class="b">Guardrail check</text><text x="395" y="90" text-anchor="middle" class="sm">PII, policy, tool allowlist</text>
+<rect class="box good" x="530" y="40" width="130" height="36" rx="8"/><text x="595" y="63" text-anchor="middle" class="sm">response delivered</text>
+<rect class="box bad" x="530" y="84" width="130" height="36" rx="8"/><text x="595" y="107" text-anchor="middle" class="sm">blocked / fallback</text>
+<line class="ln" x1="120" y1="75" x2="156" y2="75" marker-end="url(#m15c)"/>
+<line class="ln" x1="280" y1="75" x2="316" y2="75" marker-end="url(#m15c)"/>
+<line class="ln good" x1="470" y1="68" x2="526" y2="58" marker-end="url(#m15c)"/>
+<line class="ln bad" x1="470" y1="84" x2="526" y2="100" marker-end="url(#m15c)"/>
+<text x="498" y="52" text-anchor="middle" class="sm t-good">pass</text>
+<text x="498" y="112" text-anchor="middle" class="sm t-bad">fail</text>
+<text x="690" y="68" class="sm">user waits for</text>
+<text x="690" y="84" class="sm">this check</text>
+
+<line class="ln dash" x1="20" y1="150" x2="800" y2="150"/>
+
+<text x="20" y="182" class="b t-good">Online eval: async, only measures</text>
+<text x="800" y="182" text-anchor="end" class="sm">budget: minutes, nuanced, sampled</text>
+<rect class="box good" x="20" y="206" width="120" height="50" rx="8"/><text x="80" y="228" text-anchor="middle" class="b">Response</text><text x="80" y="246" text-anchor="middle" class="sm">already sent</text>
+<rect class="box plain" x="180" y="206" width="120" height="50" rx="8"/><text x="240" y="236" text-anchor="middle" class="b">Trace store</text>
+<rect class="box plain" x="340" y="206" width="110" height="50" rx="8"/><text x="395" y="236" text-anchor="middle" class="b">Sampler</text>
+<rect class="box violet" x="490" y="206" width="120" height="50" rx="8"/><text x="550" y="228" text-anchor="middle" class="b">LLM judge</text><text x="550" y="246" text-anchor="middle" class="sm">rubric, reasoning</text>
+<rect class="box accent" x="650" y="206" width="150" height="50" rx="8"/><text x="725" y="228" text-anchor="middle" class="b">Scores</text><text x="725" y="246" text-anchor="middle" class="sm">dashboards, alerts</text>
+<line class="ln" x1="140" y1="231" x2="176" y2="231" marker-end="url(#m15c)"/>
+<line class="ln" x1="300" y1="231" x2="336" y2="231" marker-end="url(#m15c)"/>
+<line class="ln" x1="450" y1="231" x2="486" y2="231" marker-end="url(#m15c)"/>
+<line class="ln" x1="610" y1="231" x2="646" y2="231" marker-end="url(#m15c)"/>
+<text x="160" y="280" text-anchor="middle" class="sm">copy of trace</text>
+<text x="395" y="280" text-anchor="middle" class="sm">e.g. 2% + flagged</text>
+<text x="725" y="280" text-anchor="middle" class="sm">user never waits</text>
+</svg>
+<figcaption><b>Guardrail vs online eval.</b> A guardrail is part of the product: it adds latency to every request and its false positives annoy users, so it must be fast, cheap and tuned for recall on severe harms. An online eval is part of your measurement system: it can be slow and expensive per call, because it runs on a sample, after the fact.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th></th><th>Guardrail</th><th>Online eval</th></tr>
+<tr><td>When</td><td>Before output reaches the user, or before a tool executes</td><td>After the fact, seconds to days later</td></tr>
+<tr><td>Coverage</td><td>100% of the traffic it protects</td><td>Usually a sample</td></tr>
+<tr><td>Latency budget</td><td>Tens to hundreds of milliseconds</td><td>Effectively unlimited</td></tr>
+<tr><td>Typical implementation</td><td>Regex, classifiers, small fine-tuned models, allowlists, schema validation, policy rules on tool arguments</td><td>Large LLM judges with rubrics, trajectory analysis, human review</td></tr>
+<tr><td>Cost of a false positive</td><td>A blocked legitimate user</td><td>A wasted review minute</td></tr>
+<tr><td>Output</td><td>An action (allow, block, rewrite, escalate)</td><td>A score attached to a trace</td></tr>
+</table></div>
+
+<p>Guardrails still need evaluating: measure their precision and recall offline on labelled examples, just like any grader, and monitor their trigger rate online. A guardrail whose trigger rate doubles overnight is telling you something changed, either in the traffic or in the model upstream of it. Eugene Yan notes that fine-tuned small evaluators are a good fit for low-latency guardrails, while bigger judges suit async scoring.</p>
+
+<h3>Sampling: what to judge</h3>
+<p>Running an LLM judge on every production trace is usually wasteful. A good sampling design mixes <b>three streams</b> with different purposes:</p>
+<ol>
+<li><b>Deterministic checks on 100%.</b> Free or nearly free: did any tool error? Did the run hit the step cap? Is the output valid JSON? Did the cost exceed a threshold? Did a PII regex fire? These catch the loud failures.</li>
+<li><b>A uniform random sample</b> (say 1 to 5%). This is your <em>unbiased</em> estimate of quality over the true traffic distribution. It is the only stream whose average you can put on a dashboard as "the pass rate".</li>
+<li><b>Targeted (flagged) samples.</b> Always judge traces with a thumbs-down, an escalation, an error, an unusually long trajectory, a new feature flag, or a slice you are worried about. This stream is where you find failures fastest, but it is <em>biased</em> by design: never average it together with the random stream.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="Sampling funnel: all traces get deterministic checks; two streams feed the LLM judge, a biased flagged stream and an unbiased uniform random sample; a small subset reaches human review.">
+<defs><marker id="m15d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="40" y="20" width="740" height="56" rx="8"/>
+<text x="410" y="43" text-anchor="middle" class="b">All production traces (100%): deterministic checks</text>
+<text x="410" y="63" text-anchor="middle" class="sm">tool errors, step cap hit, cost &gt; limit, invalid output schema, PII regex, finish_reason = length</text>
+<rect class="box bad" x="90" y="112" width="300" height="60" rx="8"/>
+<text x="240" y="136" text-anchor="middle" class="b">Flagged stream (biased)</text>
+<text x="240" y="156" text-anchor="middle" class="sm">thumbs-down, escalation, errors, long runs</text>
+<rect class="box good" x="430" y="112" width="300" height="60" rx="8"/>
+<text x="580" y="136" text-anchor="middle" class="b">Uniform random (unbiased)</text>
+<text x="580" y="156" text-anchor="middle" class="sm">hash(trace_id) &lt; 2%: the dashboard number</text>
+<rect class="box violet" x="230" y="208" width="360" height="56" rx="8"/>
+<text x="410" y="231" text-anchor="middle" class="b">LLM judge, rate-limited and budget-capped</text>
+<text x="410" y="251" text-anchor="middle" class="sm">same rubric as the CI judge; score written back to the trace</text>
+<rect class="box warn" x="300" y="290" width="220" height="50" rx="8"/>
+<text x="410" y="312" text-anchor="middle" class="b">Human review queue</text>
+<text x="410" y="330" text-anchor="middle" class="sm">~50 to 200 traces / week</text>
+<line class="ln" x1="240" y1="78" x2="240" y2="108" marker-end="url(#m15d)"/>
+<line class="ln" x1="580" y1="78" x2="580" y2="108" marker-end="url(#m15d)"/>
+<line class="ln" x1="240" y1="174" x2="330" y2="204" marker-end="url(#m15d)"/>
+<line class="ln" x1="580" y1="174" x2="490" y2="204" marker-end="url(#m15d)"/>
+<line class="ln" x1="410" y1="266" x2="410" y2="286" marker-end="url(#m15d)"/>
+<text x="250" y="97" class="sm t-muted">~3 to 8%</text>
+<text x="590" y="97" class="sm t-muted">~1 to 5%</text>
+<text x="600" y="306" class="sm">low scores, judge unsure,</text>
+<text x="600" y="322" class="sm">plus a small random slice</text>
+<line class="ln dash" x1="596" y1="312" x2="524" y2="314"/>
+</svg>
+<figcaption><b>A sampling funnel.</b> Cheap checks see everything; judges see two streams kept strictly apart (flagged for discovery, random for measurement); humans see the most informative handful. Percentages are illustrative starting points, not standards.</figcaption>
+</figure>
+
+<h4>Sizing the random stream (worked example)</h4>
+<p>How big does the random sample need to be? Use the standard error of a proportion from <a href="04-metrics-and-statistics.html">Module 04</a>. Suppose your agent's true pass rate is about 80% and you judge 4,000 random traces a day:</p>
+<p style="text-align:center"><code>SE = sqrt(0.8 × 0.2 / 4000) ≈ 0.0063</code> &nbsp;so the 95% interval is about <code>± 1.96 × 0.63 ≈ ± 1.2</code> points.</p>
+<p>That is precise enough to see a 3-point daily drop. If you only care about weekly trends, 600 a day (4,200 a week) gives the same precision per week. If you need per-slice numbers (say 10 customer segments), each slice needs its own few hundred to thousand samples, which is where <b>stratified sampling</b> helps: sample small slices at a higher rate, then reweight each slice by its true traffic share when computing the overall number.</p>
+
+<h4>Judge cost (worked example)</h4>
+<p>Say you have 200,000 traces a day, and a judge call reads about 4,000 input tokens (the transcript plus rubric) and writes 300 output tokens. At an illustrative price of $1 per million input tokens and $5 per million output tokens (check your provider's current price sheet):</p>
+<div class="tablewrap"><table>
+<tr><th>Strategy</th><th>Judge calls / day</th><th>Input cost</th><th>Output cost</th><th>Total / day</th></tr>
+<tr><td>Judge everything</td><td>200,000</td><td>800M tok = $800</td><td>60M tok = $300</td><td><b>$1,100</b></td></tr>
+<tr><td>2% random + 3% flagged</td><td>10,000</td><td>40M tok = $40</td><td>3M tok = $15</td><td><b>$55</b></td></tr>
+</table></div>
+<p>A twenty-fold saving for almost the same information. Other levers: truncate or summarise long transcripts before judging (but check the judge still agrees with humans on the shortened input), use a cheaper model for a first-pass triage and a stronger one only on uncertain cases, and use provider-side prompt caching for the fixed rubric part of the judge prompt.</p>
+
+<h3>Code: a budget-capped online judge sampler</h3>
+<p>This worker pulls finished traces, decides whether to judge each one, enforces a rate limit and a daily dollar budget, calls a judge, and writes the score back to the trace in Langfuse. Note the <b>deterministic hash sampling</b>: the same trace ID always gets the same decision, so reruns and backfills are reproducible, and the <b>stream label</b> is stored with every score so the dashboard never mixes biased and unbiased samples.</p>
+
+<pre data-lang="python"><code>import hashlib, json, time, datetime as dt
+import anthropic
+from langfuse import get_client
+
+JUDGE_MODEL = "claude-haiku-4-5"       # pick a cheap judge you have CALIBRATED against humans (Module 13)
+PRICE_IN, PRICE_OUT = 1.00, 5.00       # USD per million tokens; set from your provider's price sheet
+RANDOM_RATE = 0.02                     # 2% uniform sample: the unbiased stream
+DAILY_BUDGET_USD = 60.0
+MAX_CALLS_PER_MIN = 60
+
+claude = anthropic.Anthropic()
+langfuse = get_client()
+
+RUBRIC = """You are grading a customer-support agent transcript.
+PASS only if the agent (1) resolved the user's actual request, (2) took no
+unauthorised write action, and (3) stated nothing contradicted by tool results.
+Think step by step, then answer with JSON: {"pass": true|false, "reason": "..."}"""
+
+class TokenBucket:
+    """Allow at most `rate` calls per minute, smoothing bursts."""
+    def __init__(self, rate_per_min):
+        self.capacity = rate_per_min
+        self.tokens = rate_per_min
+        self.refill = rate_per_min / 60.0
+        self.last = time.monotonic()
+    def acquire(self):
+        while True:
+            now = time.monotonic()
+            self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.refill)
+            self.last = now
+            if self.tokens &gt;= 1:
+                self.tokens -= 1
+                return
+            time.sleep((1 - self.tokens) / self.refill)
+
+class DailyBudget:
+    def __init__(self, usd):
+        self.usd, self.spent, self.day = usd, 0.0, dt.date.today()
+    def can_spend(self, estimate):
+        if dt.date.today() != self.day:            # reset at midnight
+            self.spent, self.day = 0.0, dt.date.today()
+        return self.spent + estimate &lt;= self.usd
+    def charge(self, usage):
+        self.spent += usage.input_tokens / 1e6 * PRICE_IN + usage.output_tokens / 1e6 * PRICE_OUT
+
+def in_random_sample(trace_id: str, rate: float) -&gt; bool:
+    # deterministic: the same trace always gets the same decision
+    h = int(hashlib.sha256(trace_id.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+    return h &lt; rate
+
+def choose_stream(t: dict):
+    """Return 'random', 'flagged' or None. Random wins so the unbiased stream stays unbiased."""
+    if in_random_sample(t["id"], RANDOM_RATE):
+        return "random"
+    if t["error"] or t["feedback"] == "down" or t["escalated"] or t["steps"] &gt; 15:
+        return "flagged"
+    return None
+
+bucket, budget = TokenBucket(MAX_CALLS_PER_MIN), DailyBudget(DAILY_BUDGET_USD)
+
+def judge_trace(t: dict):
+    stream = choose_stream(t)
+    if stream is None:
+        return
+    transcript = t["transcript"][-24_000:]                  # cap the input: cost and context control
+    est = (len(transcript) / 4 + 600) / 1e6 * PRICE_IN + 400 / 1e6 * PRICE_OUT
+    if not budget.can_spend(est):
+        if stream == "flagged":
+            enqueue_for_human_review(t["id"], reason="judge budget exhausted")
+        return                                              # degrade gracefully, never crash
+    bucket.acquire()
+    resp = claude.messages.create(
+        model=JUDGE_MODEL, max_tokens=400, temperature=0,
+        system=RUBRIC,
+        messages=[{"role": "user", "content": f"&lt;transcript&gt;\n{transcript}\n&lt;/transcript&gt;"}],
+    )
+    budget.charge(resp.usage)
+    text = resp.content[0].text
+    try:
+        verdict = json.loads(text[text.index("{"): text.rindex("}") + 1])
+    except ValueError:
+        verdict = {"pass": None, "reason": "unparseable judge output"}   # count these; alert if they rise
+    if verdict["pass"] is not None:
+        langfuse.create_score(
+            name=f"judge_resolved_{stream}",           # keep streams separate on dashboards
+            value=1.0 if verdict["pass"] else 0.0,
+            trace_id=t["id"], data_type="NUMERIC",
+            comment=f"{JUDGE_MODEL}: {verdict['reason'][:500]}",
+        )
+    if verdict["pass"] is not True:
+        enqueue_for_human_review(t["id"], reason=f"judge fail ({stream})")</code></pre>
+
+<div class="callout expert"><span class="t">Expert nuance: the judge drifts too</span>
+<p>An online judge is a measuring instrument that lives for months. If the judge model is an alias that the provider updates, your "quality dropped 4 points" alert might be the judge changing, not your agent. Pin a dated judge model snapshot, log the judge version on every score, and keep a small <b>anchor set</b> of human-labelled traces that you re-judge weekly: if the judge's agreement with humans on the anchor set moves, recalibrate before trusting the trend (<a href="13-llm-as-judge.html">Module 13</a>).</p>
+</div>
+
+<h3>Implicit feedback signals</h3>
+<p>Explicit feedback (thumbs up or down, star ratings) is precious but rare: typically only a small fraction of users ever click, and those who do are not representative (angry users click more). <b>Implicit signals</b> are behaviours users show anyway, which correlate with success or failure. They are free, available on 100% of traffic, and noisy.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 370" role="img" aria-label="An annotated conversation: the agent books the wrong day, the user rephrases, the agent adds a fee, the user clicks thumbs down, asks for a human, and leaves. Each event is labelled with the implicit or explicit signal it produces.">
+<defs><marker id="m15e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="40" y="24" class="b">Session transcript</text>
+<text x="560" y="24" class="b">Signal it produces</text>
+<rect class="box plain" x="40" y="40" width="300" height="36" rx="8"/><text x="54" y="63" class="sm">User: Move my flight to Friday.</text>
+<rect class="box accent" x="120" y="88" width="340" height="36" rx="8"/><text x="134" y="111" class="sm">Agent: Done, rebooked you on Thursday 09:00.</text>
+<rect class="box plain" x="40" y="136" width="300" height="36" rx="8"/><text x="54" y="159" class="sm">User (12 s later): No. FRIDAY.</text>
+<rect class="box accent" x="120" y="184" width="340" height="36" rx="8"/><text x="134" y="207" class="sm">Agent: Sorry! Friday 09:00 booked, $75 fee.</text>
+<rect class="box plain" x="40" y="232" width="300" height="36" rx="8"/><text x="54" y="255" class="sm">User clicks thumbs-down</text>
+<rect class="box plain" x="40" y="280" width="300" height="36" rx="8"/><text x="54" y="303" class="sm">User: Why a fee?? Get me a human.</text>
+<rect class="box dashed" x="40" y="328" width="300" height="32" rx="8"/><text x="54" y="349" class="sm t-muted">(tab closed, no confirmation)</text>
+
+<rect class="box violet" x="560" y="88" width="240" height="36" rx="8"/><text x="574" y="111" class="sm">judge: date mismatch (hidden error)</text>
+<rect class="box warn" x="560" y="136" width="240" height="36" rx="8"/><text x="574" y="159" class="sm">quick rephrase = correction</text>
+<rect class="box warn" x="560" y="184" width="240" height="36" rx="8"/><text x="574" y="207" class="sm">judge: unannounced fee</text>
+<rect class="box bad" x="560" y="232" width="240" height="36" rx="8"/><text x="574" y="255" class="sm">explicit negative feedback</text>
+<rect class="box bad" x="560" y="280" width="240" height="36" rx="8"/><text x="574" y="303" class="sm">escalation request</text>
+<rect class="box bad" x="560" y="326" width="240" height="36" rx="8"/><text x="574" y="349" class="sm">abandonment</text>
+<line class="ln dash" x1="462" y1="106" x2="556" y2="106" marker-end="url(#m15e)"/>
+<line class="ln dash" x1="342" y1="154" x2="556" y2="154" marker-end="url(#m15e)"/>
+<line class="ln dash" x1="462" y1="202" x2="556" y2="202" marker-end="url(#m15e)"/>
+<line class="ln dash" x1="342" y1="250" x2="556" y2="250" marker-end="url(#m15e)"/>
+<line class="ln dash" x1="342" y1="298" x2="556" y2="298" marker-end="url(#m15e)"/>
+<line class="ln dash" x1="342" y1="344" x2="556" y2="344" marker-end="url(#m15e)"/>
+</svg>
+<figcaption><b>One bad session, six signals.</b> The first failure (wrong day) produced no user signal at all; only a judge or a correction a turn later reveals it. Implicit signals are cheap and plentiful, but they arrive late, are ambiguous one by one, and must be validated against judged or human labels before you trust them.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Signal</th><th>How to detect</th><th>Usually means</th><th>Watch out for</th></tr>
+<tr><td>Retry / regenerate</td><td>Regenerate button, or same question rephrased within N seconds</td><td>The answer missed</td><td>Some users regenerate for variety (creative tasks)</td></tr>
+<tr><td>Correction</td><td>"No", "I said", "that's wrong" in the next turn (a cheap classifier)</td><td>Misunderstanding or wrong action</td><td>Users also say "no" to answer the agent's own question</td></tr>
+<tr><td>Edit distance on drafts</td><td>For agents that draft emails, code or documents: how much the user changed before using it</td><td>Large edits = low quality</td><td>Users personalise good drafts too; track trends, not single values</td></tr>
+<tr><td>Acceptance</td><td>Suggested code kept, PR merged, action confirmed, draft sent</td><td>Success</td><td>Accepted-then-reverted later is a delayed failure</td></tr>
+<tr><td>Escalation</td><td>"Talk to a human", handoff tool called, support ticket opened</td><td>Agent could not resolve</td><td>Some escalations are correct policy (the agent <em>should</em> hand off)</td></tr>
+<tr><td>Abandonment</td><td>Session ends mid-task, no confirmation, no return</td><td>Gave up</td><td>Also happens when the user simply got what they needed</td></tr>
+<tr><td>Explicit thumbs / ratings</td><td>UI buttons</td><td>Direct judgement</td><td>Low and biased response rate; rating the tone, not the correctness</td></tr>
+<tr><td>Return rate</td><td>User comes back with the same issue within days</td><td>The "resolution" did not stick</td><td>Needs joining across sessions</td></tr>
+</table></div>
+
+<div class="callout warn"><span class="t">Goodhart's law applies to user signals</span>
+<p>If you optimise directly for fewer thumbs-downs, an agent can learn to be agreeable and flattering (sycophancy) rather than correct. If you optimise for fewer escalations, it can learn to refuse to hand off when it should. Use implicit signals as <b>alarms and samplers</b> (which traces to look at), and use calibrated judges and human labels as the <b>target</b>.</p>
+</div>
+
+<h2>Shipping safely: shadow, canary, A/B, interleaving</h2>
+<p>Offline evals cannot see everything, so you release changes in stages, each exposing more users and measuring more directly.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="A staircase of rollout stages with increasing user exposure: offline suite, shadow, canary at 1 percent, canary at 10 percent, A/B test at 50 percent, full rollout at 100 percent, with an automatic rollback path.">
+<defs><marker id="m15f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="226" width="120" height="44" rx="6"/>
+<text x="80" y="245" text-anchor="middle" class="sm b">Offline + CI</text><text x="80" y="261" text-anchor="middle" class="sm">fixed dataset</text>
+<rect class="box plain" x="150" y="196" width="120" height="74" rx="6"/>
+<text x="210" y="216" text-anchor="middle" class="sm b">Shadow</text><text x="210" y="232" text-anchor="middle" class="sm">mirrored traffic,</text><text x="210" y="248" text-anchor="middle" class="sm">output discarded</text>
+<rect class="box warn" x="280" y="166" width="120" height="104" rx="6"/>
+<text x="340" y="186" text-anchor="middle" class="sm b">Canary 1%</text><text x="340" y="202" text-anchor="middle" class="sm">errors, cost,</text><text x="340" y="218" text-anchor="middle" class="sm">latency, safety</text>
+<rect class="box warn" x="410" y="136" width="120" height="134" rx="6"/>
+<text x="470" y="156" text-anchor="middle" class="sm b">Canary 10%</text><text x="470" y="172" text-anchor="middle" class="sm">+ judge scores</text>
+<rect class="box good" x="540" y="106" width="120" height="164" rx="6"/>
+<text x="600" y="126" text-anchor="middle" class="sm b">A/B 50/50</text><text x="600" y="142" text-anchor="middle" class="sm">outcome metrics</text><text x="600" y="158" text-anchor="middle" class="sm">with CIs</text>
+<rect class="box good" x="670" y="76" width="130" height="194" rx="6"/>
+<text x="735" y="96" text-anchor="middle" class="sm b">Full rollout</text><text x="735" y="112" text-anchor="middle" class="sm">monitors stay on</text>
+<line class="ln" x1="20" y1="270" x2="800" y2="270"/>
+<text x="80" y="292" text-anchor="middle" class="sm">0% of users</text>
+<text x="210" y="292" text-anchor="middle" class="sm">0% (mirror)</text>
+<text x="340" y="292" text-anchor="middle" class="sm">1%</text>
+<text x="470" y="292" text-anchor="middle" class="sm">10%</text>
+<text x="600" y="292" text-anchor="middle" class="sm">50%</text>
+<text x="735" y="292" text-anchor="middle" class="sm">100%</text>
+<text x="410" y="318" text-anchor="middle" class="sm t-muted">user exposure and measurement realism increase left to right</text>
+<path class="ln bad dash" d="M600,100 C560,40 380,40 340,160" marker-end="url(#m15f)"/>
+<text x="470" y="42" text-anchor="middle" class="sm t-bad">automatic rollback if a guardrail metric breaches</text>
+</svg>
+<figcaption><b>The rollout staircase.</b> Each step trades a little more risk for more realistic measurement. Early steps watch cheap "guardrail metrics" (errors, cost, latency, safety flags); later steps can measure slow outcome metrics such as resolution rate. Percentages are typical examples, not rules.</figcaption>
+</figure>
+
+<h3>Shadow deployments</h3>
+<p>In a <b>shadow</b> (or "dark launch") deployment, the new version receives a copy of real production requests, but its output is thrown away; users only see the old version. You then compare the two on the same inputs, which is a <b>paired</b> comparison with real traffic, the best of both worlds. The catch for agents: agents <em>act</em>. A shadow agent must not send the email or issue the refund. You have to stub every write tool (return a plausible fake success) and point read tools at real or replayed data. That also means shadow runs diverge from reality after the first write: if the real agent refunded and the shadow did not, turn 2 is no longer comparable. Shadow mode is most informative for single-turn behaviour and early trajectory steps.</p>
+
+<h3>Canaries</h3>
+<p>A <b>canary</b> release sends a small fraction of real users (often 1% then 5 to 10%) to the new version, with automated checks that roll back if error rate, cost per trace, p95 latency, step-cap hits or safety-guardrail triggers exceed limits relative to the control. Canaries are for catching <b>breakage</b> quickly, not for measuring small quality differences: 1% of traffic rarely gives enough samples for a precise quality comparison in hours.</p>
+
+<h3>A/B tests for agents</h3>
+<p>An <b>A/B test</b> randomly assigns users to control (A) or treatment (B) and compares outcome metrics. It is the only way to measure causal impact on what the business actually cares about (resolution, retention, revenue). Agent-specific design choices:</p>
+<ul>
+<li><b>Randomise by user, not by request.</b> Agents have memory and multi-turn sessions; switching versions mid-conversation contaminates both arms. Hash the user ID into an arm and keep it sticky.</li>
+<li><b>Pick one primary metric</b> (for example "session judged resolved" or "no human escalation within 7 days") and several <b>guardrail metrics</b> that must not degrade (cost per session, p95 latency, safety flags).</li>
+<li><b>Size it up front.</b> Agents often change behaviour by small amounts, and small effects need many users.</li>
+</ul>
+<h4>Worked example: how many users?</h4>
+<p>Your baseline resolution rate is 60%. You want 80% power to detect a 2-point absolute improvement at a two-sided 5% significance level. The usual approximation for two proportions:</p>
+<p style="text-align:center"><code>n per arm ≈ (z<sub>α/2</sub> + z<sub>β</sub>)² × 2p(1−p) / d² = (1.96 + 0.84)² × 2 × 0.6 × 0.4 / 0.02² ≈ 9,400</code></p>
+<p>So about 9,400 users per arm, around 19,000 in total, and more if users have several sessions (sessions from the same user are correlated, so cluster your standard errors by user, as in <a href="04-metrics-and-statistics.html">Module 04</a>). If you only have 2,000 users a week, a 2-point A/B test takes ten weeks. That is why most day-to-day decisions are made offline, with A/B tests reserved for big changes.</p>
+
+<h3>Interleaving and side-by-side</h3>
+<p><b>Interleaving</b> is a trick from search and recommendation: instead of showing user group A ranker A and group B ranker B, you show <em>every</em> user a merged list with results from both rankers and see which ranker's items get clicked. Because each user compares both, it needs far fewer users than an A/B test. For agents that produce one answer, pure interleaving rarely applies, but two related ideas do:</p>
+<ul>
+<li><b>Interleave components.</b> If your agent has a retrieval step or a tool that ranks options, you can interleave those rankings.</li>
+<li><b>Side-by-side preference.</b> Occasionally show two responses and ask the user which is better. This is a pairwise human preference signal (the same statistics as LMArena, <a href="04-metrics-and-statistics.html">Module 04</a>), but it costs user attention, so use it sparingly and only where both responses are safe to show.</li>
+</ul>
+
+<h2>Evals in CI: the gate</h2>
+<p><b>Continuous integration</b> (CI) runs automated checks on every code change, typically when a pull request (PR) is opened. Adding evals to CI turns "please remember to run the eval" into "the merge button is disabled until the eval passes". It is where the flywheel's ratchet effect (<a href="01-what-are-evals.html">Module 01</a>) is enforced.</p>
+
+<h3>Tiered suites</h3>
+<p>Agent evals are slow and cost money, so you cannot run everything on every PR. Split into tiers, each with a different trigger, size and job:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="A week-long timeline with three lanes: many small smoke-suite runs on every pull request, one full-suite run every night, and one large capability run on the weekend.">
+<text x="190" y="36" text-anchor="middle" class="sm b">Mon</text>
+<text x="280" y="36" text-anchor="middle" class="sm b">Tue</text>
+<text x="370" y="36" text-anchor="middle" class="sm b">Wed</text>
+<text x="460" y="36" text-anchor="middle" class="sm b">Thu</text>
+<text x="550" y="36" text-anchor="middle" class="sm b">Fri</text>
+<text x="640" y="36" text-anchor="middle" class="sm b">Sat</text>
+<text x="730" y="36" text-anchor="middle" class="sm b">Sun</text>
+<line class="ln dash" x1="235" y1="44" x2="235" y2="286"/><line class="ln dash" x1="325" y1="44" x2="325" y2="286"/><line class="ln dash" x1="415" y1="44" x2="415" y2="286"/><line class="ln dash" x1="505" y1="44" x2="505" y2="286"/><line class="ln dash" x1="595" y1="44" x2="595" y2="286"/><line class="ln dash" x1="685" y1="44" x2="685" y2="286"/>
+<rect class="box accent" x="10" y="50" width="130" height="70" rx="8"/>
+<text x="20" y="70" class="b">Smoke</text><text x="20" y="88" class="sm">every PR, ~50 cases</text><text x="20" y="106" class="sm">&lt; 10 min, blocks merge</text>
+<rect class="box warn" x="10" y="132" width="130" height="70" rx="8"/>
+<text x="20" y="152" class="b">Full</text><text x="20" y="170" class="sm">nightly on main, 500+</text><text x="20" y="188" class="sm">~1 h, alerts on drop</text>
+<rect class="box violet" x="10" y="214" width="130" height="70" rx="8"/>
+<text x="20" y="234" class="b">Capability</text><text x="20" y="252" class="sm">weekly / pre-release</text><text x="20" y="270" class="sm">hard tasks, trend</text>
+<rect class="fill-accent" x="160" y="65" width="6" height="40"/><rect class="fill-accent" x="200" y="65" width="6" height="40"/><rect class="fill-accent" x="214" y="65" width="6" height="40"/>
+<rect class="fill-accent" x="258" y="65" width="6" height="40"/><rect class="fill-accent" x="300" y="65" width="6" height="40"/>
+<rect class="fill-accent" x="345" y="65" width="6" height="40"/><rect class="fill-accent" x="362" y="65" width="6" height="40"/><rect class="fill-accent" x="390" y="65" width="6" height="40"/><rect class="fill-accent" x="400" y="65" width="6" height="40"/>
+<rect class="fill-accent" x="440" y="65" width="6" height="40"/><rect class="fill-accent" x="478" y="65" width="6" height="40"/>
+<rect class="fill-accent" x="520" y="65" width="6" height="40"/><rect class="fill-accent" x="545" y="65" width="6" height="40"/><rect class="fill-accent" x="570" y="65" width="6" height="40"/>
+<rect class="fill-bad" x="370" y="65" width="6" height="40"/>
+<text x="373" y="124" text-anchor="middle" class="sm t-bad">blocked</text>
+<rect class="fill-warn" x="210" y="147" width="22" height="40"/><rect class="fill-warn" x="300" y="147" width="22" height="40"/><rect class="fill-warn" x="390" y="147" width="22" height="40"/><rect class="fill-warn" x="480" y="147" width="22" height="40"/><rect class="fill-warn" x="570" y="147" width="22" height="40"/><rect class="fill-warn" x="660" y="147" width="22" height="40"/><rect class="fill-warn" x="750" y="147" width="22" height="40"/>
+<rect class="fill-violet" x="610" y="229" width="150" height="40"/>
+<text x="685" y="254" text-anchor="middle" class="sm b">capability run</text>
+</svg>
+<figcaption><b>Three tiers, three cadences.</b> Smoke runs on every PR and blocks merges (one PR is blocked here). The full suite runs nightly on the main branch and refreshes the baseline. The capability suite is big, slow and hard, and is read as a trend rather than a gate. Sizes and times are typical examples.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Tier</th><th>Trigger</th><th>Contents</th><th>Decision rule</th></tr>
+<tr><td><b>Smoke</b></td><td>Every PR touching prompts, tools, agent code, model config</td><td>~30 to 100 fast cases: critical flows, past incidents, safety must-pass cases; mostly code graders</td><td>Hard gate: must-pass cases at 100%; aggregate compared with baseline</td></tr>
+<tr><td><b>Full regression</b></td><td>Nightly on main; also before a release</td><td>Hundreds to thousands of cases across every slice, several epochs, judges included</td><td>Paired statistical comparison with the previous night; page a human on a credible drop</td></tr>
+<tr><td><b>Capability</b></td><td>Weekly, or on model upgrades</td><td>Hard, long-horizon tasks, often in sandboxes; pass rate well below 100%</td><td>No gate: tracked as a trend to decide what to work on and whether a new model unlocks new features</td></tr>
+</table></div>
+
+<p>This mirrors the capability vs regression distinction from Anthropic's agent-eval guidance: regression evals should stay near 100% and a drop is a signal; capability evals start low and are about headroom. When a capability task becomes reliably solved, "graduate" it into the regression suite.</p>
+
+<h3>Thresholds vs statistical regression tests</h3>
+<p>The simplest gate is an <b>absolute threshold</b>: "pass rate must be at least 90%". It is easy to explain and good for must-pass cases (safety, critical flows), where a single failure really is a blocker. For aggregate quality it has two problems. It ignores noise: with 100 cases, a system with a true pass rate of 91% will score below 90% fairly often just by chance, so the gate flaps. And it ignores <em>change</em>: a drop from 97% to 91% passes the gate even though something clearly broke.</p>
+<p>The better gate for aggregates is a <b>statistical regression test</b>: compare the candidate with the baseline <em>on the same cases</em> and ask whether the candidate is credibly worse by more than a tolerance. Because both versions run on the same cases, use a <b>paired</b> method (<a href="04-metrics-and-statistics.html">Module 04</a>): per-case differences cancel out the "some cases are just hard" variance and make the test far more sensitive than comparing two independent averages.</p>
+<p>The rule used here: compute the 95% confidence interval of the mean per-case difference (candidate minus baseline) with a <b>paired bootstrap</b>, and fail the build if the <b>lower bound is below −1 point</b>. This is a non-inferiority test: it passes when we are confident the candidate is not more than 1 point worse.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Confidence intervals for four pull requests on an axis of candidate minus baseline in points. A gate line sits at minus one. PR A and PR C have lower bounds above minus one and pass; PR B has a wide interval crossing minus one and fails as inconclusive; PR D is clearly worse and fails.">
+<line class="ln" x1="120" y1="250" x2="660" y2="250"/>
+<line class="ln" x1="120" y1="246" x2="120" y2="254"/><text x="120" y="270" text-anchor="middle" class="sm">−6</text>
+<line class="ln" x1="210" y1="246" x2="210" y2="254"/><text x="210" y="270" text-anchor="middle" class="sm">−4</text>
+<line class="ln" x1="300" y1="246" x2="300" y2="254"/><text x="300" y="270" text-anchor="middle" class="sm">−2</text>
+<line class="ln" x1="390" y1="246" x2="390" y2="254"/><text x="390" y="270" text-anchor="middle" class="sm">0</text>
+<line class="ln" x1="480" y1="246" x2="480" y2="254"/><text x="480" y="270" text-anchor="middle" class="sm">+2</text>
+<line class="ln" x1="570" y1="246" x2="570" y2="254"/><text x="570" y="270" text-anchor="middle" class="sm">+4</text>
+<line class="ln" x1="660" y1="246" x2="660" y2="254"/><text x="660" y="270" text-anchor="middle" class="sm">+6</text>
+<text x="390" y="292" text-anchor="middle" class="sm">candidate − baseline (points), 95% paired-bootstrap CI</text>
+<line class="ln dash" x1="390" y1="40" x2="390" y2="246"/>
+<line class="ln bad thick" x1="345" y1="30" x2="345" y2="246"/>
+<text x="340" y="24" text-anchor="end" class="sm t-bad">gate: lower bound ≥ −1</text>
+<text x="20" y="74" class="sm b">PR A</text>
+<line class="ln good thick" x1="408" y1="70" x2="561" y2="70"/><circle class="fill-good" cx="484" cy="70" r="5"/>
+<text x="680" y="74" class="sm t-good b">PASS: better</text>
+<text x="20" y="124" class="sm b">PR B</text>
+<line class="ln warn thick" x1="260" y1="120" x2="592" y2="120"/><circle class="fill-warn" cx="426" cy="120" r="5"/>
+<text x="680" y="116" class="sm t-warn b">FAIL: too noisy</text>
+<text x="680" y="132" class="sm">add cases / epochs</text>
+<text x="20" y="174" class="sm b">PR C</text>
+<line class="ln good thick" x1="350" y1="170" x2="404" y2="170"/><circle class="fill-good" cx="377" cy="170" r="5"/>
+<text x="680" y="166" class="sm t-good b">PASS: no real</text>
+<text x="680" y="182" class="sm">regression</text>
+<text x="20" y="224" class="sm b">PR D</text>
+<line class="ln bad thick" x1="201" y1="220" x2="354" y2="220"/><circle class="fill-bad" cx="278" cy="220" r="5"/>
+<text x="680" y="224" class="sm t-bad b">FAIL: worse</text>
+</svg>
+<figcaption><b>Reading a non-inferiority gate.</b> PR C has a slightly negative average but a tight interval that stays above −1, so it passes (a naive "score must not drop" rule would have blocked it). PR B's average is positive but the interval is so wide that a 3-point regression cannot be ruled out, so it fails until more evidence is gathered. Numbers are illustrative.</figcaption>
+</figure>
+
+<div class="callout tip"><span class="t">Choosing the tolerance</span>
+<p>The −1 point tolerance is a product decision, not a statistical one: how much regression would you accept in exchange for, say, a 30% cost cut? Make the tolerance explicit, write it in the repo next to the eval, and use a stricter gate (0 tolerance, or must-pass at 100%) for safety-critical slices. Also check the gate is <b>powered</b>: if the smoke suite is so small that its CI is always ±5 points, every PR will fail as "too noisy". Size the suite (cases × epochs) so the typical interval half-width is comfortably below your tolerance.</p>
+</div>
+
+<h3>Code: a paired-bootstrap gate over Inspect logs</h3>
+<p>This script reads an Inspect eval log for the baseline and one for the candidate, averages each case over its epochs, aligns cases by ID, bootstraps the mean difference, prints a summary to the GitHub job page, and exits non-zero if the lower bound is below the tolerance. It also reports per-slice differences using a <code>slice</code> field in each sample's metadata.</p>
+
+<pre data-lang="python"><code>#!/usr/bin/env python3
+"""evals/compare.py: fail CI if the candidate is credibly worse than the baseline."""
+import argparse, os, sys, glob
+from collections import defaultdict
+import numpy as np
+from inspect_ai.log import read_eval_log
+
+def to_float(v):
+    # Inspect scorers return numbers or letters: C = correct, I = incorrect, P = partial
+    return {"C": 1.0, "I": 0.0, "P": 0.5}.get(v, v) if isinstance(v, str) else float(v)
+
+def load(path, scorer):
+    if os.path.isdir(path):                                   # newest log in a directory
+        path = max(glob.glob(os.path.join(path, "*.json")), key=os.path.getmtime)
+    log = read_eval_log(path)
+    assert log.status == "success", f"{path}: eval status {log.status}"
+    per_case, slices = defaultdict(list), {}
+    for s in log.samples:
+        if s.error:                                           # infra errors are not model failures
+            continue
+        per_case[s.id].append(to_float(s.scores[scorer].value))
+        slices[s.id] = (s.metadata or {}).get("slice", "all")
+    return {k: float(np.mean(v)) for k, v in per_case.items()}, slices
+
+def paired_bootstrap(diffs, n_boot=10_000, seed=0):
+    rng = np.random.default_rng(seed)                         # fixed seed: reproducible CI
+    idx = rng.integers(0, len(diffs), size=(n_boot, len(diffs)))
+    boots = diffs[idx].mean(axis=1)                           # resample CASES, keep pairs intact
+    return diffs.mean(), *np.percentile(boots, [2.5, 97.5])
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--baseline", required=True)
+    ap.add_argument("--candidate", required=True)
+    ap.add_argument("--scorer", default="includes")
+    ap.add_argument("--max-drop", type=float, default=0.01)   # 1 point on a 0-1 scale
+    ap.add_argument("--min-coverage", type=float, default=0.95)
+    a = ap.parse_args()
+
+    base, _ = load(a.baseline, a.scorer)
+    cand, slices = load(a.candidate, a.scorer)
+    ids = sorted(set(base) &amp; set(cand))
+    coverage = len(ids) / max(len(base), 1)
+    if coverage &lt; a.min_coverage:                             # silently missing cases = a broken eval
+        sys.exit(f"Only {coverage:.0%} of baseline cases present in candidate run")
+
+    d = np.array([cand[i] - base[i] for i in ids])
+    mean, lo, hi = paired_bootstrap(d)
+    lines = [f"### Eval gate: {len(ids)} paired cases",
+             f"Baseline {np.mean([base[i] for i in ids]):.1%} | Candidate {np.mean([cand[i] for i in ids]):.1%}",
+             f"Mean diff **{mean*100:+.1f} pts**, 95% CI [{lo*100:+.1f}, {hi*100:+.1f}]",
+             "", "| slice | n | diff (pts) |", "|---|---|---|"]
+    by_slice = defaultdict(list)
+    for i, x in zip(ids, d):
+        by_slice[slices[i]].append(x)
+    for s, xs in sorted(by_slice.items()):
+        lines.append(f"| {s} | {len(xs)} | {np.mean(xs)*100:+.1f} |")
+    passed = lo &gt;= -a.max_drop
+    lines.append("\n**PASS**" if passed else
+                 f"\n**FAIL**: lower bound {lo*100:+.1f} &lt; {-a.max_drop*100:.1f} pts")
+    report = "\n".join(lines)
+    print(report)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(report + "\n")
+    sys.exit(0 if passed else 1)
+
+if __name__ == "__main__":
+    main()</code></pre>
+
+<p>Why bootstrap cases rather than individual epochs? Epochs of the same case are correlated (a hard case is hard every time), so treating them as independent would make the interval too narrow. Averaging within a case first and resampling cases is the simple, correct version of the "cluster your standard errors" advice from Evan Miller's error-bars paper.</p>
+
+<h3>Code: the GitHub Actions workflow</h3>
+<p>The workflow below runs three tiers from one file. On a PR it runs the Inspect smoke suite, compares against the committed baseline with the script above, and also runs a promptfoo prompt-regression matrix with a pass-rate threshold. Nightly it runs the full suite. Weekly it runs the capability suite. <code>PROMPTFOO_PASS_RATE_THRESHOLD</code> sets the minimum pass rate as a percentage (it defaults to 100%); when the rate falls below it, <code>promptfoo eval</code> exits with code 100, which fails the job.</p>
+
+<pre data-lang="yaml"><code>name: agent-evals
+
+on:
+  pull_request:
+    paths: ["agent/**", "prompts/**", "tools/**", "evals/**"]
+  schedule:
+    - cron: "0 3 * * *"        # nightly full regression suite
+    - cron: "0 4 * * 6"        # weekly capability suite (Saturday)
+  workflow_dispatch:
+
+concurrency:                    # a new push cancels the old run: saves money
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20         # hard wall-clock cap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r evals/requirements.txt
+      - name: Run smoke suite on the candidate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          inspect eval evals/smoke.py --model anthropic/claude-sonnet-4-5 \
+            --epochs 3 --max-connections 8 --message-limit 40 \
+            --log-format json --log-dir logs/candidate
+      - name: Paired-bootstrap gate vs baseline (fail if lower CI bound &lt; -1 pt)
+        run: |
+          python evals/compare.py --baseline evals/baselines/smoke.json \
+            --candidate logs/candidate --scorer includes --max-drop 0.01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: smoke-logs, path: logs/ }
+
+  prompt-regressions:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/promptfoo
+          key: ${{ runner.os }}-promptfoo-v1
+      - name: promptfoo matrix, 95% pass-rate gate
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PROMPTFOO_PASS_RATE_THRESHOLD: "95"
+        run: npx promptfoo@latest eval -c evals/promptfooconfig.yaml -o results.json
+
+  nightly-full:
+    if: github.event_name == 'schedule' &amp;&amp; github.event.schedule == '0 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r evals/requirements.txt
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          inspect eval evals/full.py --model anthropic/claude-sonnet-4-5 \
+            --epochs 5 --log-format json --log-dir logs/nightly
+          python evals/compare.py --baseline evals/baselines/full.json \
+            --candidate logs/nightly --max-drop 0.01   # non-zero exit = alert on-call
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: nightly-logs, path: logs/ }
+
+  weekly-capability:
+    if: github.event_name == 'schedule' &amp;&amp; github.event.schedule == '0 4 * * 6'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r evals/requirements.txt
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: inspect eval evals/capability.py --model anthropic/claude-sonnet-4-5 --log-dir logs/cap
+      # no gate: results are uploaded and charted as a trend</code></pre>
+
+<p>A few design notes. The <b>baseline</b> is a committed log that the team refreshes deliberately (for example by a bot PR after a green nightly run on main). That keeps the baseline reviewable, but it means the baseline was produced at a different time from the candidate; if the provider changed the model in between, the difference includes that drift. The more rigorous option is to run baseline and candidate <em>in the same job</em>, which doubles cost but controls for time-varying factors. Many teams do the cheap version per PR and the rigorous version nightly. <code>--message-limit</code> caps each sample's conversation length so a looping agent cannot burn the CI budget (Inspect also supports token and time limits per sample).</p>
+
+<h3>Flaky evals</h3>
+<p>A <b>flaky</b> eval is one that passes and fails on identical code. In ordinary software, a flaky test is a bug. In agent evals, some flakiness is inherent (sampling), so the goal is to <em>measure and contain</em> it rather than eliminate it. Sources and fixes:</p>
+<div class="tablewrap"><table>
+<tr><th>Source</th><th>Fix</th></tr>
+<tr><td>Model sampling variance</td><td>Several epochs per case; statistical gate instead of exact thresholds; report pass^k for reliability-critical cases (<a href="04-metrics-and-statistics.html">Module 04</a>)</td></tr>
+<tr><td>Judge variance</td><td>Pinned judge snapshot, temperature 0, binary rubrics, majority vote of 3 for borderline cases</td></tr>
+<tr><td>External tools and APIs (rate limits, live web, changing data)</td><td>Record and replay tool responses ("cassettes"), local fakes, frozen snapshots of data; mark live-web tasks as a separate, non-gating suite</td></tr>
+<tr><td>Infrastructure errors (timeouts, sandbox failures)</td><td>Count errors separately from failures; retry infra errors, never retry model failures until they pass</td></tr>
+<tr><td>Time-dependent tasks ("what's today's date?")</td><td>Inject a fixed clock in the environment</td></tr>
+<tr><td>Genuinely ambiguous cases</td><td>Measure each case's <b>flip rate</b> across runs of the same version; send high-flip cases to review; fix the spec or move them to a quarantine list that is reported but not gated</td></tr>
+</table></div>
+
+<div class="callout bad"><span class="t">Anti-pattern: re-run until green</span>
+<p>If the team's habit is to click "re-run" on a failing eval job until it passes, the gate is decorative and you are selecting for lucky samples. With five re-runs, a version that truly fails a gate 60% of the time will pass at least once about 92% of the time (1 − 0.6⁵). Make the gate statistically sound instead, and log every run so re-runs are visible.</p>
+</div>
+
+<h3>Caching and cost budgets</h3>
+<ul>
+<li><b>Response caching.</b> Cache model responses keyed on (model, full prompt, parameters). promptfoo caches by default (the <code>~/.cache/promptfoo</code> directory in the workflow). Caching is safe for components that did not change, such as the judge scoring an unchanged output. It is dangerous for the system under test: a cached response hides sampling variance, and if the cache key misses something (a tool schema, a system prompt file) you evaluate a stale answer. Rule of thumb: cache judges and fixed fixtures, never cache the candidate agent's own calls in the gating run.</li>
+<li><b>Provider prompt caching.</b> Agent evals re-send long, identical prefixes (system prompt, tool definitions). Provider-side prompt caching can cut input cost substantially on these runs.</li>
+<li><b>Budgets at three levels.</b> Per sample (message, token and time limits so one looping case cannot eat the run), per run (a job timeout and a maximum case count), and per month (track spend by suite; a smoke suite that costs $40 per PR will quietly become the largest line item once there are twenty PRs a day).</li>
+<li><b>Skip what did not change.</b> Use path filters so a README edit does not trigger evals, and consider running only the slices whose tools or prompts were touched, with the full suite nightly as the safety net.</li>
+</ul>
+
+<h2>Model and provider migrations</h2>
+<p>Few changes are as tempting or as risky as swapping the model: a new release is cheaper, faster or smarter on public benchmarks. Public benchmarks do not measure <em>your</em> task (<a href="01-what-are-evals.html">Module 01</a>), and agents are sensitive to behavioural details that benchmarks ignore: how verbose the model is, how eagerly it calls tools, how it formats arguments, when it asks clarifying questions. A migration playbook:</p>
+<ol>
+<li><b>Freeze everything else.</b> Same prompts, tools, dataset and graders. Change one variable.</li>
+<li><b>Run the full suite with epochs on both models</b>, in the same job, and compare with the paired method. Also run the capability suite: a new model may unlock tasks you had given up on.</li>
+<li><b>Compare per slice, not just overall.</b> A flat average can hide a big gain on easy slices and a big loss on a critical one.</li>
+<li><b>Compare behaviour, not just scores.</b> Tool calls per task, tokens per task, cost per success, latency, refusal rate, clarifying-question rate, finish reasons, output length. These "shape" metrics catch shifts that the pass/fail grader misses and often explain score changes.</li>
+<li><b>Read transcripts</b> where the two models disagree. This is where you find out that the new model now asks for confirmation before every refund, which your grader counts as success but your users will hate.</li>
+<li><b>Re-tune, then re-evaluate.</b> Prompts are often overfitted to the old model. Allow a round of prompt adjustment, but evaluate the tuned version on a held-out split so you are not overfitting to the eval.</li>
+<li><b>Re-validate judges.</b> If the new model is also your judge, or the judge is from the same family, check judge-human agreement again: self-preference bias changes with the pairing (<a href="13-llm-as-judge.html">Module 13</a>).</li>
+<li><b>Roll out in stages</b> with the new model as the treatment arm, and keep the old one available as a fallback until online metrics confirm.</li>
+</ol>
+
+<h4>Worked example: a migration report</h4>
+<div class="tablewrap"><table>
+<tr><th>Slice (n cases)</th><th>Old model</th><th>New model</th><th>Paired diff, 95% CI</th><th>Read</th></tr>
+<tr><td>Order lookup (180)</td><td>94%</td><td>96%</td><td>+2.0 [−0.4, +4.3]</td><td>Fine</td></tr>
+<tr><td>Refunds (120)</td><td>88%</td><td>81%</td><td>−7.0 [−11.5, −2.6]</td><td class="t-bad"><b>Regression: block</b></td></tr>
+<tr><td>Policy questions (150)</td><td>79%</td><td>87%</td><td>+8.0 [+3.9, +12.1]</td><td>Clear gain</td></tr>
+<tr><td>Overall (450)</td><td>87.3%</td><td>88.4%</td><td>+1.1 [−1.2, +3.4]</td><td>Looks neutral, hides both</td></tr>
+<tr><td>Tool calls / task</td><td>3.1</td><td>4.6</td><td></td><td>New model double-checks: more cost, more latency</td></tr>
+</table></div>
+<p>The overall number says "ship it". The slices say "the new model is better at explaining policy but worse at refunds". Transcript reading shows it calls <code>lookup_order</code> again before refunding and sometimes hits a rate limit. That is fixable (cache lookups within a session), and fixing it is a better outcome than either blindly shipping or rejecting the model. Illustrative numbers.</p>
+
+<h2>Drift: when nothing changed but everything changed</h2>
+<p><b>Drift</b> means the world your agent operates in changes after you evaluated it. Your code did not change, but your quality did. Three sources matter for agents:</p>
+<div class="tablewrap"><table>
+<tr><th>Drift source</th><th>Example</th><th>How you detect it</th><th>Response</th></tr>
+<tr><td><b>Data / input drift</b></td><td>New product launched, users ask about it; a marketing campaign brings a new user segment; seasonality</td><td>Topic or intent classifier distribution over time; embedding-cluster shifts; rising "unknown intent" rate; new slices with low judge scores</td><td>Error analysis on the new cluster; add cases; the offline suite's slice mix should track production's mix</td></tr>
+<tr><td><b>Model / provider drift</b></td><td>An alias such as "latest" points to a new snapshot; provider changes safety filters, tokenization or defaults; a region fails over to another deployment</td><td>Log <code>gen_ai.response.model</code>; alert on change; nightly suite on a fixed dataset shows step changes; shape metrics (output length, tool-call count) jump</td><td>Pin dated model versions; treat any provider change as a migration</td></tr>
+<tr><td><b>Tool / API / environment drift</b></td><td>A downstream API adds a required field; a website your browser agent uses is redesigned; search results change</td><td>Tool error rate by tool; schema-validation failures; per-tool latency; sudden step-count increases (the agent is flailing)</td><td>Contract tests for tools (<a href="06-tool-use-and-conversation.html">Module 06</a>); versioned tool schemas; circuit breakers</td></tr>
+</table></div>
+
+<p>A fourth, subtler kind is <b>criteria drift</b>: what "good" means changes as you look at more outputs. Shankar and colleagues found that people need criteria to grade outputs, but grading outputs changes their criteria. That is healthy, but it means your rubrics and judges need versioning just like your prompts, and a score series should note when the rubric changed.</p>
+
+<h2>Dashboards: what to chart</h2>
+<p>A dashboard is where the flywheel becomes visible to the whole team. The most common failure is a wall of numbers nobody acts on. Chart a few things, each with a clear owner and a clear action when it moves.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 450" role="img" aria-label="A four-panel dashboard: success rate by slice over time, with the refunds slice dropping after a model update; cost per successful task rising; p50 and p95 latency with a p95 spike; weekly judge score with confidence intervals against a target.">
+<rect class="box plain" x="10" y="10" width="395" height="210" rx="8"/>
+<text x="24" y="32" class="sm b">Success rate by slice (random-sample judge)</text>
+<line class="ln" x1="50" y1="190" x2="330" y2="190"/><line class="ln" x1="50" y1="50" x2="50" y2="190"/>
+<text x="44" y="64" text-anchor="end" class="sm">100</text><text x="44" y="194" text-anchor="end" class="sm">60</text>
+<polygon class="fill-bad" opacity="0.18" points="50,92 250,92 270,138 330,142 330,166 270,160 250,112 50,112"/>
+<polyline class="ln accent thick" points="50,76 90,74 130,78 170,75 210,77 250,75 290,76 330,74"/>
+<polyline class="ln good thick" points="50,120 90,118 130,121 170,117 210,119 250,116 290,118 330,117"/>
+<polyline class="ln bad thick" points="50,102 90,100 130,103 170,101 210,103 250,102 270,149 290,152 330,154"/>
+<line class="ln dash" x1="260" y1="50" x2="260" y2="190"/>
+<text x="256" y="60" text-anchor="end" class="sm t-muted">model update</text>
+<text x="336" y="78" class="sm t-accent">billing</text>
+<text x="336" y="121" class="sm t-good">general</text>
+<text x="336" y="158" class="sm t-bad">refunds</text>
+<text x="190" y="210" text-anchor="middle" class="sm">weeks</text>
+
+<rect class="box plain" x="415" y="10" width="395" height="210" rx="8"/>
+<text x="429" y="32" class="sm b">Cost per successful task</text>
+<line class="ln" x1="455" y1="190" x2="790" y2="190"/><line class="ln" x1="455" y1="50" x2="455" y2="190"/>
+<rect class="fill-accent" x="470" y="140" width="28" height="50"/><rect class="fill-accent" x="510" y="142" width="28" height="48"/><rect class="fill-accent" x="550" y="138" width="28" height="52"/><rect class="fill-accent" x="590" y="141" width="28" height="49"/><rect class="fill-accent" x="630" y="136" width="28" height="54"/><rect class="fill-warn" x="670" y="100" width="28" height="90"/><rect class="fill-bad" x="710" y="66" width="28" height="124"/><rect class="fill-bad" x="750" y="62" width="28" height="128"/>
+<text x="744" y="56" text-anchor="middle" class="sm t-bad">loops?</text>
+<text x="622" y="210" text-anchor="middle" class="sm">weeks</text>
+
+<rect class="box plain" x="10" y="230" width="395" height="210" rx="8"/>
+<text x="24" y="252" class="sm b">Latency per session (p50 and p95)</text>
+<line class="ln" x1="50" y1="410" x2="330" y2="410"/><line class="ln" x1="50" y1="270" x2="50" y2="410"/>
+<polyline class="ln accent thick" points="50,380 90,378 130,381 170,379 210,380 250,378 290,379 330,380"/>
+<polyline class="ln warn thick" points="50,330 90,326 130,332 170,300 210,292 250,328 290,330 330,327"/>
+<text x="336" y="384" class="sm t-accent">p50</text>
+<text x="336" y="331" class="sm t-warn">p95</text>
+<text x="190" y="290" text-anchor="middle" class="sm t-muted">tool outage</text>
+<text x="190" y="430" text-anchor="middle" class="sm">days</text>
+
+<rect class="box plain" x="415" y="230" width="395" height="210" rx="8"/>
+<text x="429" y="252" class="sm b">Judge score with 95% CI vs target</text>
+<line class="ln" x1="455" y1="410" x2="790" y2="410"/><line class="ln" x1="455" y1="270" x2="455" y2="410"/>
+<line class="ln good dash" x1="455" y1="320" x2="790" y2="320"/>
+<text x="786" y="314" text-anchor="end" class="sm t-good">target</text>
+<line class="ln" x1="485" y1="300" x2="485" y2="340"/><circle class="fill-accent" cx="485" cy="320" r="4"/>
+<line class="ln" x1="525" y1="296" x2="525" y2="332"/><circle class="fill-accent" cx="525" cy="314" r="4"/>
+<line class="ln" x1="565" y1="290" x2="565" y2="326"/><circle class="fill-accent" cx="565" cy="308" r="4"/>
+<line class="ln" x1="605" y1="294" x2="605" y2="330"/><circle class="fill-accent" cx="605" cy="312" r="4"/>
+<line class="ln" x1="645" y1="288" x2="645" y2="320"/><circle class="fill-accent" cx="645" cy="304" r="4"/>
+<line class="ln" x1="685" y1="330" x2="685" y2="372"/><circle class="fill-bad" cx="685" cy="351" r="4"/>
+<line class="ln" x1="725" y1="334" x2="725" y2="378"/><circle class="fill-bad" cx="725" cy="356" r="4"/>
+<line class="ln" x1="765" y1="316" x2="765" y2="352"/><circle class="fill-accent" cx="765" cy="334" r="4"/>
+<text x="622" y="430" text-anchor="middle" class="sm">weeks</text>
+</svg>
+<figcaption><b>Four charts that earn their place.</b> Slice-level success reveals the refunds drop that the overall average hides (the shaded band is its CI); cost per success exposes a runaway-loop problem before the invoice does; p95 latency shows a tool outage that p50 does not; judge scores are drawn with intervals, so a one-week wobble is not mistaken for a trend. All data is illustrative.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Chart</th><th>Why it matters</th><th>Common mistake</th></tr>
+<tr><td>Success rate by slice over time (random stream), with CIs</td><td>The main quality signal; slices localise problems</td><td>Only the global average; mixing flagged and random samples</td></tr>
+<tr><td>Cost per <em>successful</em> task</td><td>Cost per call hides that a cheaper model needs twice the retries</td><td>Charting total spend (grows with traffic, tells you nothing)</td></tr>
+<tr><td>p50 / p95 / p99 latency per session and per tool</td><td>Agents have long tails; users feel p95</td><td>Averages; per-call instead of per-task latency</td></tr>
+<tr><td>Steps per task distribution; step-cap hit rate</td><td>Early warning of loops and flailing</td><td>Not logging it at all</td></tr>
+<tr><td>Tool error rate by tool</td><td>Localises environment drift</td><td>Lumping tool errors into "agent failures"</td></tr>
+<tr><td>Implicit signal rates (escalation, correction, abandonment)</td><td>100% coverage, cheap</td><td>Treating them as ground truth</td></tr>
+<tr><td>Judge health: human agreement on anchor set, unparseable rate</td><td>Tells you whether the other charts can be trusted</td><td>Assuming the judge is constant</td></tr>
+<tr><td>Offline suite results per commit on main</td><td>Links releases to quality changes</td><td>No annotation of releases on charts</td></tr>
+</table></div>
+
+<h2>Humans in the loop: review queues and annotation</h2>
+<p>Every stream above eventually ends in a person reading traces. A <b>review queue</b> (tools such as LangSmith and Langfuse call them annotation queues) is a to-do list of traces with a labelling interface. Done well, it is the highest-value hour of the team's week; done badly, it is a backlog nobody opens. Hamel Husain's advice applies directly: remove all friction from looking at data.</p>
+<ul>
+<li><b>What goes in:</b> judge failures, cases where the judge was uncertain or unparseable, disagreements between judge and user signal (thumbs-up but judge fail, or the reverse), a small uniform random slice (to find failures no filter catches), and traces from new features.</li>
+<li><b>What reviewers produce:</b> a binary pass/fail with a short written critique (not a 1-to-5 score), a failure-mode tag from the taxonomy, and a flag "add to dataset". This is exactly the open-coding and axial-coding workflow from <a href="12-error-analysis.html">Module 12</a>.</li>
+<li><b>Where labels go:</b> three places. (1) New dataset cases, with the trace converted into a replayable input and the reviewer's critique turned into the expected behaviour. (2) Judge calibration data: every human label is also a test of the judge (TPR and TNR, <a href="13-llm-as-judge.html">Module 13</a>). (3) Product bugs, when the failure is not the model's fault at all (a broken tool, missing data).</li>
+<li><b>Quality control:</b> have two reviewers label an overlapping 10% and track agreement (Cohen's kappa). Low agreement means the rubric is ambiguous, not that reviewers are careless.</li>
+</ul>
+
+<details>
+<summary>Worked example: turning a production trace into a regression case</summary>
+<p>The flight-change session from the implicit-signals figure lands in the queue (escalation plus a judge fail). The reviewer writes: "FAIL. Agent booked Thursday when the user said Friday; later added a $75 fee without warning. First failure: date parsing." Tags: <code>wrong_entity</code>, <code>unannounced_cost</code>.</p>
+<p>The engineer converts it into a test case: input = the first user message plus the booking tool's recorded responses (so it replays deterministically); graders = a code check that the <code>rebook</code> tool was called with a Friday date, and a judge check "if the action has a fee, the agent states the fee and asks for confirmation before acting". The case goes into the smoke suite as a must-pass case because it touches money. The failure mode also gets a synthetic variant set ("move it to next Tuesday", "the 14th", "two days later") so the fix generalises rather than memorising one phrasing.</p>
+</details>
+
+<h2>Privacy and PII in traces</h2>
+<p>Traces are the most sensitive data many AI teams hold: full conversations, tool results containing customer records, sometimes credentials pasted by users. The same traces are what you want to put in datasets, send to third-party judge models and show to reviewers. Treat this as a design problem from day one:</p>
+<div class="grid2">
+<div class="card accent"><h4>Minimise at capture</h4><p>Content capture is opt-in in the OTel GenAI conventions for good reason. Capture content only where you will use it; redact known PII patterns (emails, phone numbers, card numbers, government IDs) before export, for example in an OpenTelemetry Collector processor or an SDK hook; hash user IDs.</p></div>
+<div class="card warn"><h4>Control access and retention</h4><p>Role-based access to trace content; short default retention for raw content with longer retention for metrics and scores; audit logs of who viewed what; region and self-hosting choices (for example self-hosted Langfuse) where data residency rules apply.</p></div>
+<div class="card violet"><h4>Mind the judge</h4><p>Sending a transcript to an external judge model sends it to a processor. Check your data-processing agreements, prefer judges covered by the same terms as your production model, and redact before judging when the rubric does not need the PII.</p></div>
+<div class="card bad"><h4>Datasets are forever</h4><p>A production trace copied into an eval dataset escapes normal retention and deletion. Record provenance (which trace, which user) so deletion requests can reach datasets too; anonymise or synthesise variants for long-lived regression cases; get consent where required.</p></div>
+</div>
+<div class="callout warn"><span class="t">Redaction can break evals</span>
+<p>If you replace every number with <code>[REDACTED]</code>, you can no longer check that the agent refunded the right amount. Prefer consistent pseudonymisation (the same real value always maps to the same fake value within a trace) so that relationships survive, and test your redactor's precision and recall like any other classifier.</p>
+</div>
+
+<h2>Agent-specific operations: loops, caps and cost explosions</h2>
+<p>A chatbot that misbehaves writes one bad paragraph. An agent that misbehaves can call a tool 400 times, spend $80 of tokens on one request, or repeat a write action. Production agents need hard limits that are enforced in code (not requested in the prompt) and monitored like any other SLO.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Left: the agent loop with a guard check between deciding and executing each action; if any limit is exceeded the run stops with a graceful handoff. Right: a chart of cumulative cost against steps, where a normal run plateaus and a runaway run grows faster and faster until it hits the cost cap.">
+<defs><marker id="m15j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="30" width="190" height="50" rx="8"/>
+<text x="115" y="52" text-anchor="middle" class="b">Model picks</text><text x="115" y="70" text-anchor="middle" class="sm">next action</text>
+<rect class="box warn" x="250" y="95" width="160" height="56" rx="8"/>
+<text x="330" y="118" text-anchor="middle" class="b">Guard check</text><text x="330" y="137" text-anchor="middle" class="sm">limits + loop detector</text>
+<rect class="box good" x="20" y="165" width="190" height="50" rx="8"/>
+<text x="115" y="187" text-anchor="middle" class="b">Execute tool</text><text x="115" y="205" text-anchor="middle" class="sm">observe result</text>
+<rect class="box bad" x="250" y="210" width="160" height="56" rx="8"/>
+<text x="330" y="233" text-anchor="middle" class="b">Stop gracefully</text><text x="330" y="252" text-anchor="middle" class="sm">handoff + alert</text>
+<path class="ln" d="M210,55 C250,55 300,60 318,91" marker-end="url(#m15j)"/>
+<path class="ln good" d="M270,152 C240,175 230,185 214,190" marker-end="url(#m15j)"/>
+<line class="ln bad" x1="330" y1="152" x2="330" y2="206" marker-end="url(#m15j)"/>
+<line class="ln" x1="115" y1="165" x2="115" y2="84" marker-end="url(#m15j)"/>
+<text x="232" y="190" text-anchor="end" class="sm t-good">ok</text>
+<text x="338" y="186" class="sm t-bad">limit hit</text>
+<text x="20" y="245" class="sm mono">steps ≤ 30</text>
+<text x="20" y="262" class="sm mono">tokens ≤ 300k</text>
+<text x="20" y="279" class="sm mono">cost ≤ $2.00</text>
+<text x="20" y="296" class="sm mono">wall time ≤ 5 min</text>
+<text x="130" y="245" class="sm mono">same call ×3</text>
+<text x="130" y="262" class="sm mono">write needs OK</text>
+<text x="130" y="279" class="sm mono">tool errs ×5</text>
+
+<line class="ln" x1="480" y1="280" x2="800" y2="280"/><line class="ln" x1="480" y1="280" x2="480" y2="30"/>
+<text x="640" y="304" text-anchor="middle" class="sm">steps</text>
+<text x="466" y="155" text-anchor="middle" class="sm" transform="rotate(-90 466 155)">cumulative cost</text>
+<line class="ln bad dash" x1="480" y1="70" x2="800" y2="70"/>
+<text x="796" y="62" text-anchor="end" class="sm t-bad">cost cap</text>
+<polyline class="ln good thick" points="480,280 510,262 540,246 570,234 600,226 630,222 650,221"/>
+<text x="656" y="226" class="sm t-good">normal: done</text>
+<polyline class="ln bad thick" points="480,280 510,264 540,246 570,226 600,202 630,172 660,136 690,96 710,70"/>
+<circle class="fill-bad" cx="710" cy="70" r="6"/>
+<text x="700" y="100" text-anchor="end" class="sm t-bad">runaway: killed</text>
+<text x="640" y="44" text-anchor="middle" class="sm t-muted">each step re-sends a growing context</text>
+</svg>
+<figcaption><b>Guard every step.</b> Limits sit between the model's decision and the tool's execution, so a runaway loop is stopped by code, with a graceful message to the user and an alert to you. Runaway runs grow super-linearly in cost because every step re-sends an ever-longer context. Limits shown are examples; set yours from the p99 of healthy runs.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Failure</th><th>What it looks like in traces</th><th>Control</th><th>Metric to alert on</th></tr>
+<tr><td><b>Runaway loop</b></td><td>The same tool called with the same arguments again and again; alternating between two actions</td><td>Step cap; repeated-call detector (hash of tool name + arguments); "you have tried this 3 times" injected message, then stop</td><td>Step-cap hit rate; steps per task p99</td></tr>
+<tr><td><b>Cost explosion</b></td><td>Huge input token counts late in a trajectory; giant tool outputs pasted into context</td><td>Per-task token and dollar budget; truncate or summarise tool outputs; context compaction</td><td>Cost per task p99; daily spend vs forecast</td></tr>
+<tr><td><b>Tool errors</b></td><td>Error spans; the agent retrying with guessed arguments; hallucinated success after an error</td><td>Structured error messages the model can act on; retries with backoff in code; circuit breaker that disables a failing tool and tells the agent</td><td>Error rate per tool; "claimed success after error" judge check</td></tr>
+<tr><td><b>Duplicate side effects</b></td><td>Two <code>issue_refund</code> spans for one request after a timeout</td><td>Idempotency keys on write tools; confirmation step for irreversible actions</td><td>Write actions per task; duplicates detected by a code check</td></tr>
+<tr><td><b>Silent truncation</b></td><td>finish_reason = length; half-written JSON</td><td>Schema validation; raise max tokens or split the task</td><td>Truncation rate</td></tr>
+<tr><td><b>Stuck sessions</b></td><td>Long wall-clock with no progress, waiting on an external system</td><td>Timeouts per tool and per task</td><td>Wall time p95</td></tr>
+</table></div>
+
+<p>These controls are themselves things to evaluate. Put a "loop bait" task in the smoke suite (a tool that always returns a retryable error) and assert that the agent stops within the cap and explains itself; put a "large tool output" task in and assert cost stays within budget. Anthropic's tool-writing guidance recommends exactly this kind of tracking of tool calls, tokens and errors alongside accuracy, and notes that what agents omit in transcripts can matter as much as what they include.</p>
+
+<h2>Putting it together: a minimum viable production eval stack</h2>
+<p>If you are starting from nothing, do these in order. Each step is useful on its own.</p>
+<ol>
+<li><b>Week 1:</b> tracing with sessions, tool spans, tokens, cost and agent version. Hard step and cost caps in code. Read 50 traces yourself.</li>
+<li><b>Week 2:</b> error analysis on those traces; a first offline suite of 30 to 50 cases from real failures; a smoke job in CI with must-pass cases.</li>
+<li><b>Week 3:</b> deterministic checks on 100% of traffic; implicit-signal capture; a dashboard with slice success, cost per success, p95 latency, step-cap rate.</li>
+<li><b>Week 4:</b> a calibrated LLM judge on a 2% random sample plus flagged traces, with a budget; a weekly review queue that feeds the dataset.</li>
+<li><b>Later:</b> paired statistical gate, nightly full suite, canary automation, A/B tests for big changes, anchor-set monitoring of the judge, a capability suite.</li>
+</ol>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. You judge a 2% uniform random sample and also every thumbs-down trace. The dashboard shows "pass rate" as the average over all judged traces. What is wrong?</p>
+<button class="opt">Nothing; more samples always give a better estimate</button>
+<button class="opt">The flagged stream is biased toward failures, so mixing it in drags the average down and makes it move with feedback volume rather than quality</button>
+<button class="opt">The random sample is too small to be useful</button>
+<div class="why">Flagged traces are chosen <em>because</em> they look bad. Report the random stream as the quality estimate and use the flagged stream for discovery; or, if you must combine, reweight by inverse sampling probability.</div></div>
+<div class="q" data-answer="2"><p>2. A PII detector that blocks responses containing card numbers before they reach users is best described as…</p>
+<button class="opt">An online eval</button>
+<button class="opt">An offline eval</button>
+<button class="opt">A guardrail: inline and blocking, so it must be fast and high-recall, and it should itself be evaluated offline</button>
+<div class="why">Guardrails act; evals measure. The same detector could run asynchronously as an eval, but here it blocks, so latency and false positives are product concerns.</div></div>
+<div class="q" data-answer="0"><p>3. A PR's paired-bootstrap result is mean diff −0.4 points, 95% CI [−0.8, +0.0]. The gate fails if the lower bound is below −1 point. Result?</p>
+<button class="opt">Pass: we are confident the regression, if any, is smaller than 1 point</button>
+<button class="opt">Fail: the average went down</button>
+<button class="opt">Fail: the interval includes zero</button>
+<div class="why">This is a non-inferiority gate. The lower bound (−0.8) is above the −1 tolerance. A "must not drop" rule would block harmless changes and train the team to ignore the gate.</div></div>
+<div class="q" data-answer="1"><p>4. Why randomise an agent A/B test by user rather than by request?</p>
+<button class="opt">It needs fewer users</button>
+<button class="opt">Agents keep multi-turn state and memory; switching versions mid-session contaminates both arms and breaks the user experience</button>
+<button class="opt">Requests cannot be hashed</button>
+<div class="why">Per-user randomisation is actually less statistically efficient, but it is the only design that keeps each session coherent. Cluster standard errors by user when users have several sessions.</div></div>
+<div class="q" data-answer="2"><p>5. Your nightly suite drops 5 points overnight with no code change. The traces show <code>gen_ai.response.model</code> changed. What is the best next step?</p>
+<button class="opt">Revert yesterday's commits</button>
+<button class="opt">Retrain the judge</button>
+<button class="opt">Treat it as a provider migration: pin a dated model version, compare old vs new per slice with the paired method, and read the transcripts where they disagree</button>
+<div class="why">This is model/provider drift. Pinning versions prevents surprises; the migration playbook tells you whether to adopt, adapt or reject the new version.</div></div>
+<div class="q" data-answer="0"><p>6. Which chart best reveals a runaway-loop problem before the invoice arrives?</p>
+<button class="opt">Cost per successful task and step-cap hit rate over time</button>
+<button class="opt">Total monthly spend</button>
+<button class="opt">Average latency</button>
+<div class="why">Total spend moves with traffic; averages hide tails. Cost per success and the rate of hitting the step cap move directly when agents start looping.</div></div>
+</div>
+
+<details>
+<summary>Expert corner: questions you should be able to answer</summary>
+<ul>
+<li><b>How do you check that offline scores predict online outcomes?</b> Track, per release, the offline suite delta and the online delta (random-stream judge score, resolution rate). If they disagree repeatedly, your dataset's slice mix or graders do not match production; reweight the suite to production's mix and mine new cases from the disagreement.</li>
+<li><b>How do you combine flagged and random streams correctly?</b> With inverse-probability weighting: each judged trace gets weight 1 / P(sampled). A random-only trace sampled at 2% has weight 50; a flagged trace sampled with probability 1 has weight 1. Deterministic hash sampling makes these probabilities known exactly.</li>
+<li><b>Why not use the thumbs-up rate as the CI gate?</b> It does not exist in CI (no users), it is biased and sparse, and optimising it invites sycophancy. Use it to find and weight cases, not as the target.</li>
+<li><b>What breaks a shadow deployment for agents?</b> Side effects (must be stubbed), divergence after the first write (later turns stop being comparable), and cost (you pay for two agents). It is best for early-step and single-turn comparisons.</li>
+<li><b>Sequential testing.</b> If you peek at an A/B test every day and stop as soon as p &lt; 0.05, your false-positive rate is much higher than 5%. Use a fixed horizon, or sequential methods designed for peeking (for example always-valid confidence sequences).</li>
+<li><b>What makes an eval gate trustworthy to engineers?</b> It is fast, it rarely fails for reasons unrelated to their change (low flake rate), it explains itself (per-slice diffs and links to failing transcripts in the job summary), and its tolerance is written down and agreed. A gate that fails randomly gets bypassed within a month.</li>
+</ul>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>OpenTelemetry, <a href="https://opentelemetry.io/blog/2026/genai-observability/">Inside the LLM Call: GenAI Observability with OpenTelemetry</a> (May 2026) and the <a href="https://github.com/open-telemetry/semantic-conventions-genai">GenAI semantic conventions repository</a>.</li>
+<li>Dash0, <a href="https://www.dash0.com/knowledge/opentelemetry-genai-semantic-conventions-explained">OpenTelemetry GenAI semantic conventions explained</a> (stability status, span names, content capture).</li>
+<li>Langfuse docs, <a href="https://langfuse.com/docs/observability/sdk/instrumentation">Python SDK instrumentation</a> and <a href="https://langfuse.com/docs/evaluation/evaluation-methods/scores-via-sdk">scores via SDK</a>.</li>
+<li>promptfoo, <a href="https://www.promptfoo.dev/docs/integrations/github-action/">GitHub Action</a>, <a href="https://www.promptfoo.dev/docs/usage/command-line/">command line</a> (PROMPTFOO_PASS_RATE_THRESHOLD, exit code 100) and <a href="https://www.promptfoo.dev/docs/integrations/ci-cd/">CI/CD integration</a>.</li>
+<li>UK AISI / Meridian Labs, <a href="https://inspect.aisi.org.uk/eval-logs.html">Inspect: eval logs</a> (<code>read_eval_log</code>, log formats).</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (Jan 2026) and <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a> (Sept 2025).</li>
+<li>Evan Miller, <a href="https://arxiv.org/abs/2411.00640">Adding Error Bars to Evals</a> (paired differences, clustered errors, power analysis).</li>
+<li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices">Evaluation best practices</a> (continuous evaluation, anti-patterns).</li>
+<li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a> and <a href="https://hamel.dev/blog/posts/evals-faq/">Evals FAQ</a>.</li>
+<li>Eugene Yan, <a href="https://eugeneyan.com/writing/llm-evaluators/">Evaluating the Effectiveness of LLM-Evaluators</a> (small evaluators for guardrails).</li>
+<li>Shankar et al., <a href="https://arxiv.org/abs/2404.12272">Who Validates the Validators?</a> (criteria drift).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

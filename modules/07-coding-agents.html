@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · Coding agents · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 07 · Agent evals, every modality</div>
+<h1>Evaluating coding agents</h1>
+<p class="lede">Code is the friendliest domain in all of agent evaluation, because you can <em>run</em> the answer. It is also where the field learned, the hard way, that "the tests passed" and "the agent solved the problem" are not the same sentence.</p>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~60 min</span><span class="pill">Prereqs: Modules 03, 04, 05</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Trace the evolution of coding evals from single functions (HumanEval, MBPP) to whole repositories (SWE-bench) to whole machines (Terminal-Bench, MLE-bench, PaperBench).</li>
+<li>Explain exactly how a SWE-bench task is graded: base commit, model patch, hidden test patch, FAIL_TO_PASS and PASS_TO_PASS, Docker.</li>
+<li>List the ways a coding score can lie (contamination, leaked solutions, git history, weak tests, over-strict tests, flaky tests) and how each is mitigated.</li>
+<li>Grade beyond pass/fail: regressions, diff size, code quality, security, cost, time and turns.</li>
+<li>Build your own coding-agent eval from your repository's merged pull requests, and run it safely in containers.</li>
+<li>Explain why the same model scores differently in different agent harnesses, and what that means when you read a leaderboard.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>Why code is the easy case (and the trap)</h2>
+<p>In most of this course, the hardest part of an eval is the <b>grader</b>: how do you decide, automatically, whether an answer is good? For a customer-support reply you may need an LLM judge or a human (<a href="03-graders.html">Module 03</a>). For code, you have something much better: you can <b>execute</b> the program and check what it does. This is called <b>execution-based grading</b>, and it is the reason coding became the flagship domain for agent evaluation.</p>
+<p>Execution-based grading has three wonderful properties:</p>
+<ul>
+<li><b>It accepts many correct answers.</b> Two completely different implementations both pass if they behave the same. You do not need the output to match a reference string.</li>
+<li><b>It is cheap and deterministic</b> (mostly). Running a test suite costs seconds, not a human's afternoon.</li>
+<li><b>It is hard to argue with.</b> A failing test is concrete evidence, not a judge's opinion.</li>
+</ul>
+<p>And one big trap: <b>the tests are only as good as whoever wrote them</b>. If the tests are thin, wrong code passes. If they are too strict, correct code fails. If the agent can see or guess the tests, it can pass without solving anything. Most of the expert material in this module is about that trap.</p>
+
+<div class="callout analogy"><span class="t">Analogy: the driving examiner with a checklist</span>
+<p>Imagine a driving test graded only by a checklist: "car ends up in the parking spot", "no alarms went off". A student who parks perfectly passes. So does one who drives over the kerb but happens to stop in the right spot. And a student who parks beautifully in the spot next door fails. Hidden unit tests are that checklist. They are enormously useful, but you have to keep asking what they <em>do not</em> check.</p>
+</div>
+
+<h2>Three generations of coding evals</h2>
+<p>Coding benchmarks have grown in three big steps. Each step made the task more realistic, more expensive to run, and harder to grade well.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 280" role="img" aria-label="A staircase of three generations: function-level benchmarks like HumanEval, repository-level benchmarks like SWE-bench, and terminal and long-horizon benchmarks like Terminal-Bench, each more realistic and harder to grade.">
+<defs><marker id="m7a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="36" class="sm">each step up: more realistic,</text>
+<text x="20" y="52" class="sm">costlier, harder to grade well</text>
+<line class="ln dash" x1="40" y1="160" x2="255" y2="72" marker-end="url(#m7a)"/>
+<rect class="box plain" x="20" y="170" width="250" height="92" rx="8"/>
+<text x="32" y="192" class="b">1 · Function-level</text>
+<text x="32" y="210" class="sm">HumanEval, MBPP (2021)</text>
+<text x="32" y="228" class="sm">in: signature + docstring</text>
+<text x="32" y="244" class="sm">out: one function, graded by asserts</text>
+<rect class="box accent" x="285" y="100" width="250" height="162" rx="8"/>
+<text x="297" y="122" class="b">2 · Repository-level</text>
+<text x="297" y="140" class="sm">SWE-bench (2023) and its family:</text>
+<text x="297" y="156" class="sm">Lite, Verified, Multimodal, Pro, …</text>
+<text x="297" y="180" class="sm">in: a GitHub issue + the whole repo</text>
+<text x="297" y="196" class="sm">out: a patch (a diff)</text>
+<text x="297" y="212" class="sm">graded by hidden tests in Docker</text>
+<text x="297" y="236" class="sm">minutes per task, tens of steps</text>
+<rect class="box violet" x="550" y="30" width="260" height="232" rx="8"/>
+<text x="562" y="52" class="b">3 · Terminal and long-horizon</text>
+<text x="562" y="70" class="sm">Terminal-Bench, Aider polyglot,</text>
+<text x="562" y="86" class="sm">LiveCodeBench, MLE-bench,</text>
+<text x="562" y="102" class="sm">RE-Bench, PaperBench, SWE-Lancer</text>
+<text x="562" y="126" class="sm">in: a goal + a whole machine</text>
+<text x="562" y="142" class="sm">out: the machine's end state, a</text>
+<text x="562" y="158" class="sm">trained model, a replicated paper</text>
+<text x="562" y="174" class="sm">graded by tests, private leaderboards,</text>
+<text x="562" y="190" class="sm">rubrics, or dollars earned</text>
+<text x="562" y="236" class="sm">hours per task, hundreds of steps</text>
+</svg>
+<figcaption><b>The staircase of coding evals.</b> Each generation widens what the agent controls (a function, then a repository, then a whole computer) and what the grader has to check.</figcaption>
+</figure>
+
+<h2>Generation 1: function-level benchmarks</h2>
+<h3>HumanEval</h3>
+<p><b>HumanEval</b> (Chen et al., OpenAI, 2021, the "Codex paper") is 164 hand-written Python problems. Each gives the model a function <b>signature</b> and a <b>docstring</b> (the comment that says what the function should do). The model writes the body. A hidden <code>check()</code> function with, on average, about 7.7 unit tests decides whether it is right.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="A HumanEval problem: the prompt gives a signature and docstring, the model writes a completion, hidden asserts check it. Ten samples with three correct give pass@1 of 0.30 and pass@5 of about 0.92.">
+<defs><marker id="m7b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="28" class="b">Prompt (given)</text>
+<rect class="box plain" x="20" y="38" width="250" height="126" rx="6"/>
+<text x="32" y="62" class="mono">def has_close_elements(xs, t):</text>
+<text x="32" y="80" class="mono">&#160;&#160;&#160;&#160;"""True if any two</text>
+<text x="32" y="98" class="mono">&#160;&#160;&#160;&#160;numbers in xs are</text>
+<text x="32" y="116" class="mono">&#160;&#160;&#160;&#160;closer than t."""</text>
+<line class="ln" x1="270" y1="100" x2="292" y2="100" marker-end="url(#m7b)"/>
+<text x="296" y="28" class="b">Completion (model writes)</text>
+<rect class="box accent" x="296" y="38" width="232" height="126" rx="6"/>
+<text x="308" y="62" class="mono">&#160;&#160;for i, a in enumerate(xs):</text>
+<text x="308" y="80" class="mono">&#160;&#160;&#160;&#160;for b in xs[i+1:]:</text>
+<text x="308" y="98" class="mono">&#160;&#160;&#160;&#160;&#160;&#160;if abs(a - b) &lt; t:</text>
+<text x="308" y="116" class="mono">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;return True</text>
+<text x="308" y="134" class="mono">&#160;&#160;return False</text>
+<line class="ln" x1="528" y1="100" x2="550" y2="100" marker-end="url(#m7b)"/>
+<text x="554" y="28" class="b">check() (hidden tests)</text>
+<rect class="box warn" x="554" y="38" width="256" height="126" rx="6"/>
+<text x="566" y="62" class="mono">def check(f):</text>
+<text x="566" y="80" class="mono">&#160;&#160;assert not f([1.0, 2.8], 0.3)</text>
+<text x="566" y="98" class="mono">&#160;&#160;assert f([1.0, 1.1], 0.3)</text>
+<text x="566" y="116" class="mono">&#160;&#160;assert f([5.0, 3.9, 4.0], 0.2)</text>
+<text x="566" y="134" class="mono">&#160;&#160;assert not f([], 1.0)</text>
+<text x="20" y="200" class="sm">Sample n = 10 completions for the same prompt and run check() on each:</text>
+<circle class="box good" cx="40" cy="236" r="14"/><text x="40" y="241" text-anchor="middle" class="b t-good">✓</text>
+<circle class="box bad" cx="78" cy="236" r="14"/><text x="78" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<circle class="box bad" cx="116" cy="236" r="14"/><text x="116" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<circle class="box good" cx="154" cy="236" r="14"/><text x="154" y="241" text-anchor="middle" class="b t-good">✓</text>
+<circle class="box bad" cx="192" cy="236" r="14"/><text x="192" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<circle class="box bad" cx="230" cy="236" r="14"/><text x="230" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<circle class="box bad" cx="268" cy="236" r="14"/><text x="268" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<circle class="box good" cx="306" cy="236" r="14"/><text x="306" y="241" text-anchor="middle" class="b t-good">✓</text>
+<circle class="box bad" cx="344" cy="236" r="14"/><text x="344" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<circle class="box bad" cx="382" cy="236" r="14"/><text x="382" y="241" text-anchor="middle" class="b t-bad">✗</text>
+<rect class="box plain" x="450" y="190" width="360" height="104" rx="6"/>
+<text x="464" y="212" class="b">c = 3 correct out of n = 10</text>
+<text x="464" y="234" class="mono">pass@1 = 3/10 = 0.30</text>
+<text x="464" y="254" class="mono">pass@5 = 1 − C(7,5) / C(10,5)</text>
+<text x="464" y="274" class="mono">&#160;&#160;&#160;&#160;&#160;&#160;&#160;= 1 − 21/252 ≈ 0.92</text>
+</svg>
+<figcaption><b>Anatomy of a function-level eval.</b> The problem is abridged from HumanEval/0 (renamed arguments, illustrative asserts). pass@k asks "if I drew k of my samples, how likely is at least one correct?", so pass@5 is far higher than pass@1 on the same 10 samples.</figcaption>
+</figure>
+
+<p>The metric the Codex paper introduced is <b>pass@k</b>: the probability that at least one of k sampled answers is correct. Naively you would sample k answers and check, but that is very noisy. The paper's trick is to sample n ≥ k answers, count c correct, and compute an unbiased estimate:</p>
+<p style="text-align:center"><code>pass@k = 1 − C(n−c, k) / C(n, k)</code>, averaged over problems.</p>
+<p>(<code>C(a, b)</code> is "a choose b", the number of ways to pick b items from a.) In words: of all the ways to pick k samples from your n, what fraction contain no correct one? Subtract that from 1.</p>
+
+<pre data-lang="python"><code>import numpy as np
+
+def pass_at_k(n: int, c: int, k: int) -&gt; float:
+    """Unbiased pass@k from the Codex paper (Chen et al., 2021).
+    n = samples drawn, c = how many passed the tests, k = budget."""
+    if n - c &lt; k:          # every k-subset must contain a correct sample
+        return 1.0
+    # numerically stable form of 1 - C(n-c, k) / C(n, k)
+    return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))
+
+print(pass_at_k(10, 3, 1))   # 0.30
+print(pass_at_k(10, 3, 5))   # 0.9167
+</code></pre>
+
+<div class="callout warn"><span class="t">pass@k is generous. Agents usually need the opposite.</span>
+<p>pass@k rewards "any one of k tries worked", which fits a human picking the best suggestion from an autocomplete list. An autonomous coding agent that opens one pull request gets <b>one</b> try, so report pass@1. If it will run the same kind of job hundreds of times, look at <b>pass^k</b> (all k tries succeed) from <a href="04-metrics-and-statistics.html">Module 04</a>.</p>
+</div>
+
+<h3>MBPP, and why both are now "solved"</h3>
+<p><b>MBPP</b> (Austin et al., Google, 2021) is 974 crowd-sourced, entry-level Python problems, each with 3 <code>assert</code> tests, plus a cleaned "sanitized" subset of 427. Same idea, easier problems.</p>
+<p>Both are now considered <b>saturated</b> (frontier models score near the ceiling) and <b>contaminated</b> (the problems and solutions have been on the public internet for years, so they are almost certainly in training data). They also have <b>too few tests</b>: the EvalPlus project (Liu et al., 2023) added about 80 times more tests to make HumanEval+ and MBPP+, and scores dropped, meaning some "passing" solutions had been wrong all along. That last finding is worth remembering: <em>adding tests lowered the scores</em>. Weak tests silently inflate every number built on them.</p>
+<p>Function-level benchmarks are still useful for quick sanity checks and for small models, but they tell you almost nothing about whether an agent can work in a real codebase. For that, we need generation 2.</p>
+
+<h2>Generation 2: SWE-bench, exactly how it works</h2>
+<p><b>SWE-bench</b> (Jimenez, Yang et al., Princeton, ICLR 2024) changed the question from "can you write a function?" to "can you fix a real bug in a real project?". It contains 2,294 task instances built from real GitHub issues and the pull requests that fixed them, drawn from 12 popular Python repositories (Django, scikit-learn, sympy, and others).</p>
+<p>A few terms first:</p>
+<ul>
+<li><b>Issue</b>: a bug report or feature request on GitHub, written by a human, in prose.</li>
+<li><b>Pull request (PR)</b>: the set of code changes that fixed it, usually with new or changed tests.</li>
+<li><b>Commit</b>: a snapshot of the repository at one moment. The <b>base commit</b> is the snapshot just before the fix.</li>
+<li><b>Patch / diff</b>: a text description of changes to files ("remove line 12, add these 3 lines"). <code>git apply</code> applies a patch to a checkout.</li>
+<li><b>Docker container</b>: a lightweight isolated Linux environment with exactly the right Python version and dependencies installed, built from a recipe called an <b>image</b>.</li>
+</ul>
+
+<p>Each PR is split into two parts. The <b>gold patch</b> is the change to the source code: the human's fix, kept as a reference answer. The <b>test patch</b> is the change to the test files: kept secret and used for grading. The agent sees only the issue text and the repository at the base commit.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 440" role="img" aria-label="SWE-bench pipeline. Generation: the agent receives the issue and the repo at base_commit inside Docker and produces a patch. Evaluation: a fresh container at base_commit applies the model patch, then the hidden test patch, runs tests, and the instance is resolved only if all FAIL_TO_PASS tests pass and all PASS_TO_PASS tests still pass.">
+<defs><marker id="m7c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="22" class="b t-accent">① Generation phase (the agent)</text>
+<rect class="box plain" x="20" y="36" width="200" height="150" rx="8"/>
+<text x="120" y="56" text-anchor="middle" class="b">Task instance</text>
+<text x="32" y="78" class="mono">instance_id</text>
+<text x="32" y="94" class="mono">repo</text>
+<text x="32" y="110" class="mono">base_commit</text>
+<text x="32" y="126" class="mono">problem_statement</text>
+<line class="ln dash" x1="30" y1="137" x2="210" y2="137"/>
+<text x="32" y="154" class="sm t-violet">hidden: patch, test_patch,</text>
+<text x="32" y="170" class="sm t-violet">FAIL_TO_PASS, PASS_TO_PASS</text>
+<line class="ln" x1="220" y1="100" x2="266" y2="100" marker-end="url(#m7c)"/>
+<text x="243" y="92" text-anchor="middle" class="sm">issue</text>
+<rect class="box dashed" x="270" y="36" width="320" height="150" rx="8"/>
+<text x="282" y="54" class="sm">Docker container (the agent's sandbox)</text>
+<rect class="box plain" x="285" y="68" width="120" height="52" rx="6"/>
+<text x="345" y="90" text-anchor="middle">repo @</text>
+<text x="345" y="108" text-anchor="middle" class="mono">base_commit</text>
+<rect class="box accent" x="440" y="68" width="135" height="52" rx="6"/>
+<text x="507" y="90" text-anchor="middle" class="b">Agent</text>
+<text x="507" y="108" text-anchor="middle" class="sm">model + harness</text>
+<line class="ln" x1="438" y1="84" x2="407" y2="84" marker-end="url(#m7c)"/>
+<line class="ln" x1="407" y1="104" x2="438" y2="104" marker-end="url(#m7c)"/>
+<text x="430" y="146" text-anchor="middle" class="sm">read files · edit · run code · repeat</text>
+<text x="430" y="168" text-anchor="middle" class="sm">step, time and cost limits apply</text>
+<line class="ln" x1="590" y1="100" x2="626" y2="100" marker-end="url(#m7c)"/>
+<text x="608" y="92" text-anchor="middle" class="sm">diff</text>
+<rect class="box accent" x="630" y="36" width="190" height="150" rx="8"/>
+<text x="725" y="56" text-anchor="middle" class="b">Prediction</text>
+<text x="642" y="80" class="mono">{"instance_id": …,</text>
+<text x="642" y="96" class="mono">&#160;"model_patch":</text>
+<text x="642" y="112" class="mono">&#160;&#160;"diff --git a/…</text>
+<text x="642" y="128" class="mono">&#160;&#160;&#160;+the fix …"}</text>
+<text x="725" y="164" text-anchor="middle" class="sm">one line of preds.jsonl</text>
+<path class="ln accent" d="M725,186 L725,205 L275,205 L275,248" marker-end="url(#m7c)"/>
+<text x="500" y="199" text-anchor="middle" class="sm t-accent">model_patch</text>
+<path class="ln violet dash" d="M200,186 L200,217 L455,217 L455,248" marker-end="url(#m7c)"/>
+<text x="372" y="232" text-anchor="middle" class="sm t-violet">hidden tests + lists</text>
+<text x="20" y="240" class="b t-warn">② Evaluation phase (the harness)</text>
+<rect class="box plain" x="20" y="252" width="150" height="58" rx="6"/>
+<text x="95" y="276" text-anchor="middle" class="sm">fresh container</text>
+<text x="95" y="294" text-anchor="middle" class="mono">@ base_commit</text>
+<line class="ln" x1="170" y1="281" x2="198" y2="281" marker-end="url(#m7c)"/>
+<rect class="box plain" x="200" y="252" width="150" height="58" rx="6"/>
+<text x="275" y="276" text-anchor="middle" class="mono">git apply</text>
+<text x="275" y="294" text-anchor="middle" class="mono">model_patch</text>
+<line class="ln" x1="350" y1="281" x2="378" y2="281" marker-end="url(#m7c)"/>
+<rect class="box violet" x="380" y="252" width="150" height="58" rx="6"/>
+<text x="455" y="276" text-anchor="middle" class="sm">apply test_patch</text>
+<text x="455" y="294" text-anchor="middle" class="sm">(agent never saw it)</text>
+<line class="ln" x1="530" y1="281" x2="558" y2="281" marker-end="url(#m7c)"/>
+<rect class="box plain" x="560" y="252" width="120" height="58" rx="6"/>
+<text x="620" y="276" text-anchor="middle" class="sm">run test files,</text>
+<text x="620" y="294" text-anchor="middle" class="sm">parse the log</text>
+<line class="ln" x1="680" y1="281" x2="698" y2="281" marker-end="url(#m7c)"/>
+<rect class="box good" x="700" y="252" width="130" height="122" rx="6"/>
+<text x="765" y="274" text-anchor="middle" class="b t-good">RESOLVED iff</text>
+<text x="765" y="294" text-anchor="middle" class="sm">every FAIL_TO_PASS</text>
+<text x="765" y="308" text-anchor="middle" class="sm">test now passes</text>
+<text x="765" y="328" text-anchor="middle" class="sm b">AND every</text>
+<text x="765" y="346" text-anchor="middle" class="sm">PASS_TO_PASS test</text>
+<text x="765" y="360" text-anchor="middle" class="sm">still passes</text>
+<line class="ln bad" x1="275" y1="310" x2="275" y2="380" marker-end="url(#m7c)"/>
+<rect class="box bad" x="185" y="384" width="180" height="40" rx="6"/>
+<text x="275" y="408" text-anchor="middle" class="sm">patch won't apply: unresolved</text>
+<text x="765" y="400" text-anchor="middle" class="sm t-bad">anything else: unresolved</text>
+</svg>
+<figcaption><b>The SWE-bench pipeline, end to end.</b> The agent works in one container and only its diff leaves. Grading happens in a fresh container that the agent never touched, with tests the agent never saw. The score is the percentage of instances resolved.</figcaption>
+</figure>
+
+<h3>FAIL_TO_PASS and PASS_TO_PASS</h3>
+<p>These two lists are the heart of SWE-bench grading. Both are computed <em>once</em>, when the benchmark is built, by running the tests with and without the gold patch:</p>
+<ul>
+<li><b>FAIL_TO_PASS (F2P)</b>: tests that <b>fail</b> at the base commit and <b>pass</b> after the gold patch. These encode "the bug is fixed" or "the feature now works". Usually they are the new tests in the test patch.</li>
+<li><b>PASS_TO_PASS (P2P)</b>: tests that <b>pass</b> both before and after the gold patch. These encode "you didn't break anything else". They are the regression check.</li>
+</ul>
+<p>The agent's patch counts as <b>resolved</b> only if <em>every</em> F2P test passes and <em>every</em> P2P test still passes. It is all-or-nothing per instance: fixing half the bug earns nothing.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 270" role="img" aria-label="A worked example of four tests across base commit, gold patch and agent patch; the agent passes one of two FAIL_TO_PASS tests and breaks one PASS_TO_PASS test, so it is unresolved. A two by two grid shows only 'all F2P pass and all P2P pass' is resolved.">
+<text x="260" y="36" text-anchor="middle" class="sm b">at base_commit</text>
+<text x="360" y="36" text-anchor="middle" class="sm b">gold patch</text>
+<text x="460" y="36" text-anchor="middle" class="sm b">agent patch</text>
+<line class="ln" x1="20" y1="46" x2="500" y2="46"/>
+<text x="20" y="72" class="sm b t-accent">F2P</text><text x="56" y="72" class="mono">test_empty_header</text>
+<rect class="box bad" x="235" y="57" width="50" height="22" rx="4"/><text x="260" y="73" text-anchor="middle" class="t-bad b">✗</text>
+<rect class="box good" x="335" y="57" width="50" height="22" rx="4"/><text x="360" y="73" text-anchor="middle" class="t-good b">✓</text>
+<rect class="box good" x="435" y="57" width="50" height="22" rx="4"/><text x="460" y="73" text-anchor="middle" class="t-good b">✓</text>
+<text x="20" y="106" class="sm b t-accent">F2P</text><text x="56" y="106" class="mono">test_unicode_header</text>
+<rect class="box bad" x="235" y="91" width="50" height="22" rx="4"/><text x="260" y="107" text-anchor="middle" class="t-bad b">✗</text>
+<rect class="box good" x="335" y="91" width="50" height="22" rx="4"/><text x="360" y="107" text-anchor="middle" class="t-good b">✓</text>
+<rect class="box bad" x="435" y="91" width="50" height="22" rx="4"/><text x="460" y="107" text-anchor="middle" class="t-bad b">✗</text>
+<text x="20" y="140" class="sm b t-violet">P2P</text><text x="56" y="140" class="mono">test_parse_basic</text>
+<rect class="box good" x="235" y="125" width="50" height="22" rx="4"/><text x="260" y="141" text-anchor="middle" class="t-good b">✓</text>
+<rect class="box good" x="335" y="125" width="50" height="22" rx="4"/><text x="360" y="141" text-anchor="middle" class="t-good b">✓</text>
+<rect class="box good" x="435" y="125" width="50" height="22" rx="4"/><text x="460" y="141" text-anchor="middle" class="t-good b">✓</text>
+<text x="20" y="174" class="sm b t-violet">P2P</text><text x="56" y="174" class="mono">test_roundtrip</text>
+<rect class="box good" x="235" y="159" width="50" height="22" rx="4"/><text x="260" y="175" text-anchor="middle" class="t-good b">✓</text>
+<rect class="box good" x="335" y="159" width="50" height="22" rx="4"/><text x="360" y="175" text-anchor="middle" class="t-good b">✓</text>
+<rect class="box bad" x="435" y="159" width="50" height="22" rx="4"/><text x="460" y="175" text-anchor="middle" class="t-bad b">✗</text>
+<line class="ln" x1="20" y1="192" x2="500" y2="192"/>
+<text x="20" y="216" class="sm">The gold patch column defines the lists: F2P = fail then pass, P2P = pass then pass.</text>
+<text x="20" y="240" class="b t-bad">Agent: F2P 1/2, P2P 1/2 → UNRESOLVED</text>
+<text x="657" y="36" text-anchor="middle" class="sm b">all P2P pass</text>
+<text x="772" y="36" text-anchor="middle" class="sm b">some P2P fail</text>
+<text x="590" y="83" text-anchor="middle" class="sm b" transform="rotate(-90 590 83)">all F2P</text>
+<text x="590" y="153" text-anchor="middle" class="sm b" transform="rotate(-90 590 153)">F2P fails</text>
+<rect class="box good" x="600" y="50" width="112" height="66" rx="6"/>
+<text x="656" y="80" text-anchor="middle" class="b t-good">RESOLVED</text>
+<text x="656" y="98" text-anchor="middle" class="sm">scores 1</text>
+<rect class="box bad" x="716" y="50" width="112" height="66" rx="6"/>
+<text x="772" y="80" text-anchor="middle" class="sm">fixed it, but</text>
+<text x="772" y="96" text-anchor="middle" class="sm">broke something</text>
+<rect class="box bad" x="600" y="120" width="112" height="66" rx="6"/>
+<text x="656" y="150" text-anchor="middle" class="sm">harmless, but</text>
+<text x="656" y="166" text-anchor="middle" class="sm">didn't fix it</text>
+<rect class="box bad" x="716" y="120" width="112" height="66" rx="6"/>
+<text x="772" y="150" text-anchor="middle" class="sm">worse than</text>
+<text x="772" y="166" text-anchor="middle" class="sm">doing nothing</text>
+<text x="714" y="216" text-anchor="middle" class="sm">three of four quadrants score 0</text>
+</svg>
+<figcaption><b>Worked example of the resolve rule.</b> The test names are invented for illustration. Note that "fixed it, but broke something" scores exactly the same as "did nothing" on SWE-bench, which is why you may want finer-grained metrics in your own evals.</figcaption>
+</figure>
+
+<h3>What an instance and a prediction look like</h3>
+<p>The dataset lives on Hugging Face. Each row is one task instance. The field names below are the real ones, and they are the same across SWE-bench, Lite and Verified.</p>
+
+<pre data-lang="python"><code>from datasets import load_dataset
+import json
+
+ds = load_dataset("princeton-nlp/SWE-bench_Verified", split="test")   # 500 rows
+row = ds[0]
+
+row["instance_id"]        # e.g. "astropy__astropy-12907"
+row["repo"]               # "astropy/astropy"
+row["base_commit"]        # the commit to check out BEFORE the fix
+row["problem_statement"]  # the GitHub issue text: this is the task prompt
+row["patch"]              # gold source patch (reference answer, never shown)
+row["test_patch"]         # hidden test changes, applied only at grading time
+json.loads(row["FAIL_TO_PASS"])   # list of test ids, stored as a JSON string
+json.loads(row["PASS_TO_PASS"])   # list of test ids that must keep passing
+
+# Your agent produces one JSON object per instance, written to preds.jsonl:
+pred = {
+    "instance_id": row["instance_id"],
+    "model_name_or_path": "my-agent-v3",
+    "model_patch": "diff --git a/astropy/modeling/separable.py ...",
+}
+</code></pre>
+
+<p>Then the official harness builds the Docker images, applies each patch, runs the tests and writes a report:</p>
+
+<pre data-lang="bash"><code>pip install swebench
+python -m swebench.harness.run_evaluation \
+    --dataset_name princeton-nlp/SWE-bench_Verified \
+    --predictions_path preds.jsonl \
+    --max_workers 8 \
+    --run_id my-agent-v3
+# -&gt; per-instance logs + a JSON report listing resolved / unresolved / error ids
+</code></pre>
+
+<div class="callout tip"><span class="t">Separate generation from grading</span>
+<p>Notice the design: your agent can be anything (your own loop, a commercial CLI agent, a human). All the harness needs is a diff. This <b>clean interface</b> (patch in, verdict out) is why SWE-bench became the common currency for comparing coding agents, and it is a pattern worth copying in your own evals.</p>
+</div>
+
+<h2>The SWE-bench family</h2>
+<p>SWE-bench spawned a family of variants. Each fixes a specific problem with the one before.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Variant</th><th>Size</th><th>What it changes</th><th>Why it exists</th></tr>
+<tr><td><b>SWE-bench</b> (full)</td><td>2,294</td><td>The original: 12 Python repos, real issues and PRs.</td><td>First realistic repo-level benchmark.</td></tr>
+<tr><td><b>Lite</b> (Mar 2024)</td><td>300</td><td>A cheaper subset of more self-contained issues.</td><td>The full set is slow and expensive to run with agents.</td></tr>
+<tr><td><b>Verified</b> (Aug 2024)</td><td>500</td><td>Human-screened by OpenAI Preparedness with the SWE-bench authors.</td><td>Many original tasks were impossible to solve fairly (see below).</td></tr>
+<tr><td><b>Multimodal</b> (Oct 2024)</td><td>617 (480 in the test split listed on swebench.com)</td><td>JavaScript and visual front-end repos; issues include screenshots.</td><td>Python-only, text-only was too narrow.</td></tr>
+<tr><td><b>Pro</b> (Scale AI, Sep 2025)</td><td>1,865 from 41 repos</td><td>Longer, multi-file tasks; public, held-out and commercial (private codebase) splits; copyleft and private repos.</td><td>Contamination resistance and harder, more "enterprise" tasks.</td></tr>
+<tr><td>Others</td><td>varies</td><td>Multilingual, SWE-bench-Live, SWE-rebench (fresh tasks over time), SWE-Gym and SWE-smith (for training).</td><td>More languages, freshness, training data.</td></tr>
+</table></div>
+
+<h3>Why Verified was created</h3>
+<p>In 2024, OpenAI's Preparedness team noticed that many SWE-bench failures were not the agent's fault. They had 93 professional Python developers annotate 1,699 randomly sampled SWE-bench instances, with three independent reviews each. The findings:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Funnel: 2,294 SWE-bench instances, 1,699 annotated, 68.3 percent filtered out for underspecified issues or unfair tests, 500 kept as SWE-bench Verified. Separately Lite has 300. In February 2026 OpenAI audited 138 hard Verified problems and found 59.4 percent flawed.">
+<text x="20" y="28" class="sm">SWE-bench full test set: 2,294 issues from 12 Python repos</text>
+<rect class="box plain" x="20" y="36" width="688" height="22" rx="4"/>
+<text x="20" y="88" class="sm">Randomly sampled and annotated: 1,699 (93 developers, 3 reviews per sample)</text>
+<rect class="box accent" x="20" y="96" width="510" height="22" rx="4"/>
+<text x="20" y="148" class="sm">68.3% filtered out · 38.3% flagged underspecified issue · 61.1% flagged tests that may reject valid fixes (flags overlap)</text>
+<rect class="box bad" x="20" y="156" width="349" height="22" rx="4"/>
+<text x="194" y="172" text-anchor="middle" class="sm">removed</text>
+<rect class="box good" x="369" y="156" width="161" height="22" rx="4"/>
+<text x="449" y="172" text-anchor="middle" class="sm">kept</text>
+<text x="20" y="208" class="sm b t-good">SWE-bench Verified: 500 (Aug 2024)</text>
+<rect class="box good" x="20" y="216" width="150" height="22" rx="4"/>
+<text x="420" y="208" class="sm">Lite: 300 (Mar 2024), filtered by rules, not humans</text>
+<rect class="box plain" x="420" y="216" width="90" height="22" rx="4"/>
+<text x="20" y="276" class="sm t-violet">Feb 2026: OpenAI audits 138 Verified problems o3 kept failing → 59.4% have material test or spec flaws; stops reporting Verified</text>
+</svg>
+<figcaption><b>From SWE-bench to Verified, and beyond.</b> Bar widths are proportional to instance counts. Filtering out broken tasks made scores jump (GPT-4o went from 16% on the original set to 33.2% on Verified, per OpenAI), because the removed tasks were unfair, not just hard.</figcaption>
+</figure>
+
+<p>Two kinds of problem dominated:</p>
+<div class="grid2">
+<div class="card warn"><h4>Underspecified issues</h4><p>The issue text did not contain enough information to know what the "right" fix was. For example, the maintainers chose one of several reasonable behaviours in the PR, but the issue never said which. No agent can reliably guess that.</p></div>
+<div class="card bad"><h4>Unfair tests</h4><p>The hidden tests checked something the issue never asked for: a specific function name, an exact error message wording, or a new helper the human happened to add. A correct fix written differently fails.</p></div>
+</div>
+<p>Annotators also estimated difficulty in time buckets; fewer than 10% of Verified tasks were estimated to take an experienced engineer more than an hour. That is worth remembering: Verified is mostly <em>short</em> tasks.</p>
+
+<h2>How a coding score can lie</h2>
+<p>A "percent resolved" number can be wrong in two directions. It can be <b>inflated</b> (the agent gets credit it did not earn) or <b>deflated</b> (the agent is marked wrong when it was right). An expert reads every coding leaderboard with both columns in mind.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 320" role="img" aria-label="Eight ways a resolved-rate can be wrong. Inflating: contamination, solution in the issue, git history leak, weak tests. Deflating: over-strict tests, undocumented behaviour, environment flakiness, harness limits.">
+<defs><marker id="m7f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="150" y="24" text-anchor="middle" class="b t-bad">Inflates the score (false passes)</text>
+<text x="690" y="24" text-anchor="middle" class="b t-warn">Deflates the score (false fails)</text>
+<rect class="box bad" x="20" y="40" width="260" height="52" rx="6"/>
+<text x="32" y="61" class="b">Contamination</text><text x="32" y="80" class="sm">model has memorized the gold patch</text>
+<rect class="box bad" x="20" y="110" width="260" height="52" rx="6"/>
+<text x="32" y="131" class="b">Solution in the issue</text><text x="32" y="150" class="sm">the issue text already shows the fix</text>
+<rect class="box bad" x="20" y="180" width="260" height="52" rx="6"/>
+<text x="32" y="201" class="b">Git history leak</text><text x="32" y="220" class="sm">git log --all reveals the future commit</text>
+<rect class="box bad" x="20" y="250" width="260" height="52" rx="6"/>
+<text x="32" y="271" class="b">Weak tests</text><text x="32" y="290" class="sm">a wrong patch still passes F2P</text>
+<rect class="box warn" x="560" y="40" width="260" height="52" rx="6"/>
+<text x="572" y="61" class="b">Over-strict tests</text><text x="572" y="80" class="sm">tests demand one specific implementation</text>
+<rect class="box warn" x="560" y="110" width="260" height="52" rx="6"/>
+<text x="572" y="131" class="b">Undocumented behaviour</text><text x="572" y="150" class="sm">tests check what the issue never said</text>
+<rect class="box warn" x="560" y="180" width="260" height="52" rx="6"/>
+<text x="572" y="201" class="b">Environment flakiness</text><text x="572" y="220" class="sm">network, timeouts, version drift</text>
+<rect class="box warn" x="560" y="250" width="260" height="52" rx="6"/>
+<text x="572" y="271" class="b">Harness limits</text><text x="572" y="290" class="sm">too few steps, weak tools, low budget</text>
+<rect class="box accent" x="340" y="140" width="160" height="60" rx="8"/>
+<text x="420" y="166" text-anchor="middle" class="b">Reported</text>
+<text x="420" y="184" text-anchor="middle" class="b">"% resolved"</text>
+<line class="ln bad" x1="280" y1="66" x2="338" y2="148" marker-end="url(#m7f)"/>
+<line class="ln bad" x1="280" y1="136" x2="338" y2="162" marker-end="url(#m7f)"/>
+<line class="ln bad" x1="280" y1="206" x2="338" y2="178" marker-end="url(#m7f)"/>
+<line class="ln bad" x1="280" y1="276" x2="338" y2="194" marker-end="url(#m7f)"/>
+<line class="ln warn" x1="560" y1="66" x2="502" y2="148" marker-end="url(#m7f)"/>
+<line class="ln warn" x1="560" y1="136" x2="502" y2="162" marker-end="url(#m7f)"/>
+<line class="ln warn" x1="560" y1="206" x2="502" y2="178" marker-end="url(#m7f)"/>
+<line class="ln warn" x1="560" y1="276" x2="502" y2="194" marker-end="url(#m7f)"/>
+</svg>
+<figcaption><b>Eight ways a resolve rate lies.</b> Every item on this map has been documented for SWE-bench or its variants. Contamination and leaks push scores up; bad tests and brittle environments push them down, and the two effects can partly cancel, which makes them easy to miss.</figcaption>
+</figure>
+
+<h3>Inflation: getting credit you didn't earn</h3>
+<ul>
+<li><b>Contamination.</b> SWE-bench tasks come from public GitHub repos, and the fixes have been public for years. In February 2026 OpenAI reported that all frontier models it tested could reproduce gold patches or verbatim problem-statement details for some Verified tasks (for example, quoting inline comments from the original diff). A model that remembers the answer is not demonstrating problem solving.</li>
+<li><b>Solution leakage in the issue.</b> Some issue reporters paste a suggested fix, or even a full diff, into the issue. The agent then only has to copy it. Researchers have flagged Verified instances where the solution is reachable directly from the problem statement (SWE-bench GitHub issue #669).</li>
+<li><b>Git history leakage.</b> The Docker images originally contained the full git repository, including commits and tags created <em>after</em> the base commit. Agents discovered they could run commands like <code>git log --all</code> and read the future fix. SWE-bench issue #465 (2025) documents trajectories from several model families doing exactly this; the maintainers rebuilt images to strip future branches, tags and reflogs in release 4.1.0. A similar report was filed against SWE-bench Pro's open-source set. The lesson is general: <b>anything reachable from inside the sandbox is part of the prompt</b>.</li>
+<li><b>Weak tests.</b> If the F2P tests cover only the exact example from the issue, a patch that special-cases that example passes. The UTBoost work argued that Verified still has instances whose tests are insufficient to reject wrong patches.</li>
+</ul>
+
+<h3>Deflation: failing correct work</h3>
+<ul>
+<li><b>Over-strict and off-spec tests.</b> OpenAI's 2026 audit looked at 138 Verified problems that o3 did not consistently solve over 64 runs. Engineers found material flaws in 59.4% of them: 35.5% had tests enforcing specific implementation details, 18.8% tested functionality the issue never described, and 5.1% had other problems. OpenAI stopped reporting Verified and recommended SWE-bench Pro instead.</li>
+<li><b>Environment problems.</b> A dependency that no longer installs, a test that needs network access, a timeout on a slow machine. These look like agent failures in the aggregate number.</li>
+<li><b>Harness limits.</b> The same model with a 30-step budget and with a 300-step budget are different systems. More on this below.</li>
+</ul>
+
+<div class="callout expert"><span class="t">Expert habit: read the trajectories, not just the number</span>
+<p>Nearly every one of these problems was found by someone reading agent transcripts, not by staring at scores. When your coding agent's score jumps, sample 20 "newly resolved" trajectories and check <em>how</em> they were solved. When it drops, sample 20 newly failing ones and check whether the failure is real. <a href="12-error-analysis.html">Module 12</a> turns this into a method.</p>
+</div>
+
+<h2>Generation 3: terminals, research, and money</h2>
+<p>SWE-bench measures "fix this issue in this repo". Real engineering also means setting up environments, running long jobs, debugging builds, training models and working for hours. Generation 3 benchmarks give the agent a whole machine and a longer goal.</p>
+
+<h3>Terminal-Bench</h3>
+<p><b>Terminal-Bench</b> (Stanford and the Laude Institute) gives an agent a Linux terminal inside a Docker container and a task in plain English: compile this project, fix this server config, train this small model, recover this corrupted file. The 2.0 version described in the January 2026 paper has <b>89 tasks</b> across software engineering, system administration, ML, security, bioinformatics and more, each with a human-written reference solution and test scripts. Scoring is binary pass/fail from the tests, usually averaged over several runs, and results are reported for <b>model × harness</b> pairs (for example the Terminus reference agent, Claude Code, or Codex CLI). At paper time, "frontier models and agents score less than 65%".</p>
+<p>Tasks are run with the <b>Harbor</b> framework. Every task is a folder with a fixed layout:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 340" role="img" aria-label="A Harbor task folder with instruction.md, task.toml, environment Dockerfile, solution solve.sh and tests test.sh, and the run order: build the environment, let the agent work from the instruction, copy in and run tests, write a reward file; an oracle run of solve.sh checks the task is solvable.">
+<defs><marker id="m7g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="30" width="270" height="280" rx="8"/>
+<text x="34" y="58" class="mono b">my-task/</text>
+<text x="34" y="84" class="mono">├── instruction.md</text>
+<text x="34" y="108" class="mono">├── task.toml</text>
+<text x="34" y="132" class="mono">├── environment/</text>
+<text x="34" y="152" class="mono">│&#160;&#160;&#160;└── Dockerfile</text>
+<text x="34" y="176" class="mono">├── solution/</text>
+<text x="34" y="196" class="mono">│&#160;&#160;&#160;└── solve.sh</text>
+<text x="34" y="220" class="mono">└── tests/</text>
+<text x="34" y="240" class="mono">&#160;&#160;&#160;&#160;└── test.sh</text>
+<text x="34" y="276" class="sm">task.toml: metadata, agent and verifier</text>
+<text x="34" y="292" class="sm">timeouts, CPUs, memory, image</text>
+<rect class="box accent" x="340" y="30" width="480" height="46" rx="6"/>
+<text x="354" y="58">1. Build the image from environment/, start a container</text>
+<rect class="box accent" x="340" y="92" width="480" height="46" rx="6"/>
+<text x="354" y="120">2. Agent (any harness) reads instruction.md, works in the shell</text>
+<rect class="box violet" x="340" y="154" width="480" height="46" rx="6"/>
+<text x="354" y="182">3. Agent stops; tests/ is copied to /tests; test.sh runs</text>
+<rect class="box good" x="340" y="216" width="480" height="46" rx="6"/>
+<text x="354" y="244">4. test.sh writes 1 or 0 to /logs/verifier/reward.txt</text>
+<rect class="box dashed" x="340" y="278" width="480" height="40" rx="6"/>
+<text x="354" y="303" class="sm">Task QA: the "oracle" agent runs solution/solve.sh; it must earn reward 1</text>
+<line class="ln" x1="580" y1="76" x2="580" y2="90" marker-end="url(#m7g)"/>
+<line class="ln" x1="580" y1="138" x2="580" y2="152" marker-end="url(#m7g)"/>
+<line class="ln" x1="580" y1="200" x2="580" y2="214" marker-end="url(#m7g)"/>
+</svg>
+<figcaption><b>A Terminal-Bench task in the Harbor format.</b> The environment folder is kept separate so tests and solutions are not accidentally baked into the image the agent works in. The oracle run proves the task is solvable in its environment, which catches broken tasks before any model is blamed for failing them.</figcaption>
+</figure>
+
+<p>A test script is usually just <code>pytest</code> checking the <em>end state</em> of the container (a file exists with the right contents, a server responds, a model's accuracy is above a threshold), then writing the reward:</p>
+
+<pre data-lang="bash"><code>#!/bin/bash
+# tests/test.sh  (runs inside the task container after the agent stops)
+cd /app
+if pytest /tests/test_outputs.py -q; then
+  echo 1 &gt; /logs/verifier/reward.txt
+else
+  echo 0 &gt; /logs/verifier/reward.txt
+fi
+</code></pre>
+
+<pre data-lang="bash"><code># Run Terminal-Bench 2.0 with a given agent harness and model (Harbor README)
+harbor run --dataset terminal-bench@2.0 --agent claude-code \
+           --model anthropic/claude-opus-4-1 --n-concurrent 4
+</code></pre>
+
+<p>Because the grader checks the <b>state of the machine</b>, not a diff, Terminal-Bench is a natural bridge to the computer-use evals of <a href="08-web-and-computer-use.html">Module 08</a>. Its known weaknesses: results are sensitive to the harness, some tasks can be flaky (network, timeouts), and 89 tasks gives wide confidence intervals (a single task is more than one percentage point).</p>
+
+<h3>Aider polyglot</h3>
+<p>The <b>Aider polyglot</b> benchmark (Paul Gauthier, Dec 2024) uses 225 of the hardest Exercism exercises in C++, Go, Java, JavaScript, Python and Rust. The model edits code through Aider's edit formats and gets <b>two attempts</b>: after a first failure, it sees the unit-test output and tries again. It reports percent solved, <b>percent well-formed edits</b> (did the model follow the edit format at all?) and cost. It is a good example of measuring the <em>interface</em> skill (producing edits a tool can apply) as well as the coding skill. Exercism solutions are public, so contamination is a real risk.</p>
+
+<h3>LiveCodeBench: fighting contamination with time</h3>
+<p><b>LiveCodeBench</b> (Jain et al., 2024) continuously collects new competitive-programming problems from LeetCode, AtCoder and Codeforces and tags each with its <b>release date</b>. You evaluate a model only on problems published <em>after</em> its training cutoff, so it cannot have seen them. This is a <b>contamination-aware time window</b>. It covers code generation, self-repair, code execution and test-output prediction, scored with pass@1. The idea generalises: SWE-rebench and SWE-bench-Live apply the same freshness logic to repository tasks.</p>
+
+<h3>Research-engineering benchmarks: MLE-bench, RE-Bench, PaperBench</h3>
+<ul>
+<li><b>MLE-bench</b> (OpenAI, Oct 2024): 75 Kaggle competitions run offline. The agent must train models and submit predictions, which are graded against each competition's private leaderboard. The metric is the percentage of competitions where the agent would have earned a medal. At release, o1-preview with the AIDE scaffold earned a medal in 16.9% of competitions. Runs are expensive (up to 24 hours on a GPU per competition).</li>
+<li><b>RE-Bench</b> (METR, Nov 2024): 7 open-ended ML research-engineering environments, such as optimising a GPU kernel or fine-tuning a small model. Scores are <b>continuous</b>, normalised so the starting solution is 0 and a reference solution is 1, and compared against 71 eight-hour attempts by 61 human experts. Agents did better than humans at 2-hour budgets; humans won at 8 to 32 hours. It feeds METR's time-horizon measurements (<a href="11-multi-agent-long-horizon.html">Module 11</a>).</li>
+<li><b>PaperBench</b> (OpenAI, Apr 2025): replicate 20 ICML 2024 Spotlight and Oral papers from scratch. There are 8,316 gradable sub-tasks in hierarchical rubrics co-written with the papers' authors, graded by an <b>LLM judge</b> that was itself validated on a judge-eval set. At release, the best agent (Claude 3.5 Sonnet, new) averaged 21.0%; ML PhDs reached 41.4% on a subset. This is what execution-based grading looks like when the "answer" is too big to test with asserts: you fall back to a rubric and a judge (<a href="13-llm-as-judge.html">Module 13</a>).</li>
+</ul>
+
+<h3>SWE-Lancer: pricing the work</h3>
+<p><b>SWE-Lancer</b> (OpenAI, Feb 2025) uses more than 1,400 real freelance tasks from Upwork on the Expensify codebase, worth $1M in actual payouts. Two task types:</p>
+<ul>
+<li><b>IC SWE</b> (individual contributor) tasks: implement the fix. Graded by <b>end-to-end Playwright tests</b> (browser automation that clicks through the real app) that were triple-verified by engineers. End-to-end tests are much harder to game than unit tests because they check behaviour a user would see.</li>
+<li><b>SWE Manager</b> tasks: choose the best of several implementation proposals. Graded against the choice the original engineering manager made.</li>
+</ul>
+<p>Its headline metric is <b>dollars earned</b>: each task is weighted by what it actually paid. The public "Diamond" split is worth $500.8K; at release, Claude 3.5 Sonnet earned $208K of it. Dollar weighting is a neat idea: it automatically gives hard, valuable tasks more weight than trivial ones, which an unweighted percentage does not.</p>
+
+<h2>Coding benchmarks side by side</h2>
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>Scope</th><th>Size</th><th>Grader</th><th>Metric</th><th>Contamination risk</th></tr>
+<tr><td>HumanEval (2021)</td><td>one Python function</td><td>164</td><td>hidden asserts</td><td>pass@k</td><td><span class="n">High</span>: public for years</td></tr>
+<tr><td>MBPP (2021)</td><td>one Python function</td><td>974 (427 sanitized)</td><td>3 asserts each</td><td>pass@k</td><td><span class="n">High</span></td></tr>
+<tr><td>SWE-bench / Verified</td><td>fix a GitHub issue in a Python repo</td><td>2,294 / 500</td><td>F2P + P2P tests in Docker</td><td>% resolved</td><td><span class="n">High</span>: documented for Verified (OpenAI, Feb 2026)</td></tr>
+<tr><td>SWE-bench Multimodal</td><td>visual JS front-end issues</td><td>617</td><td>tests in Docker</td><td>% resolved</td><td><span class="p">Medium</span>: public repos</td></tr>
+<tr><td>SWE-bench Pro</td><td>long, multi-file changes</td><td>1,865, 41 repos</td><td>tests in Docker</td><td>% resolved</td><td><span class="y">Lower</span>: copyleft, held-out and private repos</td></tr>
+<tr><td>Terminal-Bench 2.0</td><td>whole Linux machine</td><td>89</td><td>test scripts on end state</td><td>% pass (multi-run)</td><td><span class="p">Medium</span>: new, hand-made tasks</td></tr>
+<tr><td>Aider polyglot</td><td>Exercism exercises, 6 languages</td><td>225</td><td>unit tests, 2 attempts</td><td>% solved, % well-formed</td><td><span class="n">High</span>: public solutions</td></tr>
+<tr><td>LiveCodeBench</td><td>competitive programming</td><td>growing</td><td>hidden tests</td><td>pass@1 in a time window</td><td><span class="y">Low</span> by design (post-cutoff problems)</td></tr>
+<tr><td>MLE-bench</td><td>Kaggle competition end to end</td><td>75 (22 Lite)</td><td>private leaderboard</td><td>% with any medal</td><td><span class="p">Medium</span>: public Kaggle write-ups</td></tr>
+<tr><td>RE-Bench</td><td>open-ended ML research engineering</td><td>7</td><td>task-specific score</td><td>normalised score vs humans</td><td><span class="y">Low</span></td></tr>
+<tr><td>PaperBench</td><td>replicate an ML paper</td><td>20 papers, 8,316 rubric items</td><td>LLM judge on rubrics</td><td>avg replication score</td><td><span class="p">Medium</span>: papers are public, code often not</td></tr>
+<tr><td>SWE-Lancer</td><td>paid freelance tasks</td><td>1,400+ ($1M)</td><td>E2E Playwright tests; manager choice</td><td>% solved, $ earned</td><td><span class="p">Medium</span>: public repo</td></tr>
+</table></div>
+<p>Contamination ratings are this course's judgement based on each benchmark's construction, not a measured value. Sources for sizes and graders are listed at the end of the module. Deliberately, there are no leaderboard numbers here: they change monthly, and several are no longer meaningful (see the Verified audit above).</p>
+
+<h2>Execution-based grading done right</h2>
+<p>Whether you use a public benchmark or build your own, the same engineering rules make execution-based grading trustworthy.</p>
+
+<h3>Hidden tests</h3>
+<p>The tests used for grading must not be visible to the agent during its run. Otherwise the agent can (and, under optimisation pressure, will) write code that satisfies the tests rather than the task, or simply edit the tests. SWE-bench applies <code>test_patch</code> only in a fresh grading container; Harbor copies <code>tests/</code> in only at verification time. Your agent may of course write and run <em>its own</em> tests; that is good engineering. It just must not see the grader's.</p>
+
+<div class="callout warn"><span class="t">Watch for test tampering</span>
+<p>If grading happens in the same container the agent worked in, the agent may have modified test files, <code>conftest.py</code>, <code>pytest.ini</code>, or monkey-patched the test runner. Reapply the pristine test files at grading time, and diff the agent's patch for changes to test infrastructure. Some teams simply reject any patch that touches test paths.</p>
+</div>
+
+<h3>Flaky tests</h3>
+<p>A <b>flaky test</b> passes or fails on the same code depending on timing, randomness, network or ordering. Flaky tests add noise to both F2P and P2P, and noise can look like a regression or an improvement. Standard defences:</p>
+<ul>
+<li>When building the benchmark, run the gold solution several times (3 to 5) and <b>drop any test whose result varies</b>.</li>
+<li>Run the grader with network disabled and random seeds fixed, so behaviour cannot depend on the outside world.</li>
+<li>Track per-test flip rates across runs; <b>quarantine</b> tests that flip.</li>
+<li>Never "re-run failed tests until they pass" only for the agent: that biases the score upward. Whatever policy you choose, apply it identically to every system.</li>
+</ul>
+
+<h3>Sandboxing</h3>
+<p>Coding agents execute arbitrary code. That code may be buggy, may delete files, or may (under adversarial conditions) try to escape. The <b>sandbox</b> is both a safety boundary and a measurement boundary: it defines exactly what the agent can see and do.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="Sandbox layers: a host runs a per-attempt container with no network, resource limits, non-root user, throwaway filesystem and trimmed git history; the hidden test vault stays outside and is copied in only after the agent stops; a flake filter runs gold patches several times.">
+<defs><marker id="m7i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="20" y="20" width="520" height="290" rx="10"/>
+<text x="34" y="42" class="sm">host machine / CI runner (never exposed to the agent)</text>
+<rect class="box accent" x="40" y="56" width="480" height="236" rx="8"/>
+<text x="56" y="80" class="b">Container: one per task, per attempt</text>
+<text x="56" y="106" class="sm">✓ no network, or a strict allow-list</text>
+<text x="56" y="126" class="sm">✓ CPU, memory and wall-clock caps</text>
+<text x="56" y="146" class="sm">✓ non-root user, no Docker socket</text>
+<text x="56" y="166" class="sm">✓ throwaway filesystem, destroyed after</text>
+<text x="56" y="186" class="sm">✓ git history trimmed to base_commit</text>
+<text x="56" y="206" class="sm">✓ pinned dependency versions</text>
+<rect class="box plain" x="310" y="96" width="190" height="50" rx="6"/>
+<text x="405" y="118" text-anchor="middle" class="b">repo checkout</text>
+<text x="405" y="136" text-anchor="middle" class="sm">what the task is about</text>
+<rect class="box plain" x="310" y="166" width="190" height="50" rx="6"/>
+<text x="405" y="188" text-anchor="middle" class="b">agent process</text>
+<text x="405" y="206" text-anchor="middle" class="sm">shell + edit tools</text>
+<line class="ln" x1="405" y1="164" x2="405" y2="148" marker-end="url(#m7i)"/>
+<rect class="box good" x="310" y="236" width="190" height="44" rx="6"/>
+<text x="405" y="263" text-anchor="middle" class="sm">grading step (after agent)</text>
+<rect class="box violet" x="580" y="40" width="240" height="110" rx="8"/>
+<text x="596" y="64" class="b">Hidden test vault</text>
+<text x="596" y="86" class="sm">test files + F2P / P2P lists</text>
+<text x="596" y="104" class="sm">stored outside the container,</text>
+<text x="596" y="122" class="sm">never mounted during the run</text>
+<path class="ln violet" d="M580,120 L560,120 L560,258 L502,258" marker-end="url(#m7i)"/>
+<text x="572" y="180" class="sm t-violet">copied in only after</text>
+<text x="572" y="196" class="sm t-violet">the agent stops</text>
+<rect class="box warn" x="580" y="236" width="240" height="56" rx="8"/>
+<text x="596" y="258" class="b">Flake filter</text>
+<text x="596" y="278" class="sm">gold run 3-5x; drop unstable tests</text>
+</svg>
+<figcaption><b>Sandbox layers for a coding eval.</b> Each constraint closes a specific loophole: no network stops downloading the upstream fix, trimmed git history stops reading future commits, and keeping tests outside stops the agent from reading or editing them.</figcaption>
+</figure>
+
+<p>Here is a minimal grader that applies these rules with plain Docker. It assumes you already have an image per repository with dependencies installed.</p>
+
+<pre data-lang="python"><code>import subprocess, tempfile, pathlib, re
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, capture_output=True, text=True, **kw)
+
+def run_tests(image: str, repo: str, commit: str, patches: list[str],
+              test_files: list[str], timeout: int = 900) -&gt; dict[str, bool]:
+    """Fresh checkout at `commit`, apply patches in order, run pytest in a
+    locked-down container. Returns {test_id: passed}."""
+    with tempfile.TemporaryDirectory() as tmp:
+        wt = pathlib.Path(tmp) / "repo"
+        run(["git", "-C", repo, "worktree", "add", "--detach", str(wt), commit], check=True)
+        try:
+            for p in patches:
+                r = run(["git", "-C", str(wt), "apply", "-"], input=p)
+                if r.returncode != 0:
+                    return {}                      # patch does not apply: unresolved
+            r = run(["docker", "run", "--rm",
+                     "--network", "none",          # no downloading the upstream fix
+                     "--memory", "4g", "--cpus", "2",
+                     "--user", "1000:1000",
+                     "-v", f"{wt}:/repo", "-w", "/repo", image,
+                     "python", "-m", "pytest", "-rA", "-p", "no:cacheprovider",
+                     *test_files], timeout=timeout)
+        finally:
+            run(["git", "-C", repo, "worktree", "remove", "--force", str(wt)])
+    # "-rA" prints one summary line per test, e.g. "PASSED tests/test_x.py::test_a"
+    results = {}
+    for status, test_id in re.findall(r"^(PASSED|FAILED|ERROR) (\S+)", r.stdout, re.M):
+        results[test_id] = status == "PASSED"
+    return results
+
+def grade(inst: dict, model_patch: str, image: str, repo: str) -&gt; bool:
+    """SWE-bench-style resolve rule."""
+    res = run_tests(image, repo, inst["base_commit"],
+                    [model_patch, inst["test_patch"]],   # hidden tests applied LAST
+                    inst["test_files"])
+    f2p_ok = all(res.get(t, False) for t in inst["FAIL_TO_PASS"])
+    p2p_ok = all(res.get(t, False) for t in inst["PASS_TO_PASS"])
+    return f2p_ok and p2p_ok
+</code></pre>
+
+<div class="callout tip"><span class="t">Why apply the test patch after the model patch?</span>
+<p>If the agent edited a test file, applying the pristine test patch on top either overwrites its change or fails to apply (and the instance fails loudly). Either way, the agent cannot quietly weaken the grader. Production harnesses go further and copy whole test files rather than patching them.</p>
+</div>
+
+<h2>Beyond pass/fail</h2>
+<p>"Tests pass" is necessary but not sufficient. Two patches can both resolve an issue while one is a clean three-line fix and the other rewrites a module, deletes a warning, adds a dependency and costs ten times as much. For your own evals, record a <b>scorecard</b> per task, not a single bit.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Dimension</th><th>How to measure</th><th>Grader type</th></tr>
+<tr><td><b>Correctness</b></td><td>Hidden F2P tests pass</td><td>Code (execution)</td></tr>
+<tr><td><b>No regressions</b></td><td>P2P tests, plus the <em>whole</em> suite if affordable (not just the listed tests)</td><td>Code</td></tr>
+<tr><td><b>Minimal diff</b></td><td>Lines and files changed, relative to the gold patch; touched files outside the expected area</td><td>Code (diff stats)</td></tr>
+<tr><td><b>Code quality</b></td><td>Readability, idiomatic style, naming, comments, matches repo conventions</td><td>LLM judge with a rubric, plus linters (ruff, eslint)</td></tr>
+<tr><td><b>Security</b></td><td>Static analysis (for example Bandit, Semgrep, CodeQL), secret scanning, new dependencies</td><td>Code (scanners)</td></tr>
+<tr><td><b>Scope discipline</b></td><td>Did it modify tests, CI config, lockfiles, or unrelated files?</td><td>Code (path rules)</td></tr>
+<tr><td><b>Cost</b></td><td>Input + output tokens × price; tool/compute cost</td><td>Code (from traces)</td></tr>
+<tr><td><b>Time and turns</b></td><td>Wall-clock seconds, number of agent steps, number of tool calls</td><td>Code (from traces)</td></tr>
+</table></div>
+
+<p>An LLM judge is the practical way to score the soft dimensions. Give it the issue, the diff, and a <b>specific rubric</b> with anchored levels (<a href="13-llm-as-judge.html">Module 13</a> covers why anchors matter). Keep correctness out of the judge's hands: the tests already decided that.</p>
+
+<pre data-lang="python"><code>import json
+
+RUBRIC = """You are reviewing a code change that ALREADY passes its tests.
+Do not judge correctness. Score each criterion 1-3 using these anchors.
+
+minimality:  3 = only lines needed for the issue; 2 = small unrelated edits;
+             1 = rewrites or reformats code the issue did not concern
+readability: 3 = clear names, follows the file's existing style;
+             2 = understandable but awkward; 1 = hard to follow
+robustness:  3 = handles the edge cases implied by the issue;
+             2 = handles the reported case only; 1 = special-cases the example
+             input (e.g. `if x == "foo": return ...`)
+Return JSON: {"minimality": n, "readability": n, "robustness": n, "notes": "..."}"""
+
+def judge_patch(issue: str, diff: str, call_llm) -&gt; dict:
+    """call_llm(system, user) -&gt; str : any chat model client you use."""
+    user = f"&lt;issue&gt;\n{issue}\n&lt;/issue&gt;\n&lt;diff&gt;\n{diff}\n&lt;/diff&gt;"
+    scores = json.loads(call_llm(RUBRIC, user))
+    return scores
+
+def scorecard(passed: bool, diff: str, trace: dict, judge: dict) -&gt; dict:
+    added = sum(1 for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
+    removed = sum(1 for l in diff.splitlines() if l.startswith("-") and not l.startswith("---"))
+    return {
+        "resolved": passed,
+        "lines_changed": added + removed,
+        "touched_tests": "tests/" in diff,          # crude scope check
+        "cost_usd": trace["cost_usd"],
+        "turns": trace["num_turns"],
+        "wall_s": trace["wall_seconds"],
+        **{f"judge_{k}": v for k, v in judge.items() if k != "notes"},
+    }
+</code></pre>
+
+<div class="callout expert"><span class="t">The "robustness" row catches test gaming</span>
+<p>The most common way a weak test suite is gamed is special-casing: the agent notices the issue's example input and hard-codes it. A judge instructed to look for this, plus a few extra property-based or held-out tests you write yourself, catches a surprising share of false passes. This is the EvalPlus lesson applied to agents: more and different tests lower inflated scores.</p>
+</div>
+
+<h3>Reporting cost next to accuracy</h3>
+<p>A worked example. Agent A resolves 120 of 200 tasks (60%) at an average of $0.40 per task. Agent B resolves 128 (64%) at $2.10 per task. Cost per <em>resolved</em> task: A is 200 × 0.40 / 120 = $0.67; B is 200 × 2.10 / 128 = $3.28. B is 4 points better (check whether that is significant with a paired test, <a href="04-metrics-and-statistics.html">Module 04</a>: on 200 tasks it may not be) and about 5 times more expensive per success. Whether that is worth it is a product decision, but you can only make it if you measured both.</p>
+
+<h2>The scaffold matters as much as the model</h2>
+<p>A coding agent is <b>model + harness</b>. The <b>harness</b> (also called scaffold) is everything around the model: the system prompt, the tools (shell, file viewer, editor, search), how edits are applied, how much output is shown, how many steps are allowed, whether it retries, whether it runs tests before submitting. Change the harness and the score changes, sometimes more than a model upgrade would.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="The same model feeds three different harnesses: one-shot retrieval, a custom agent-computer interface, and a minimal bash-only loop. Each produces a different score, so a score belongs to the model, harness and budget together.">
+<defs><marker id="m7k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="110" width="150" height="70" rx="8"/>
+<text x="95" y="140" text-anchor="middle" class="b">Same model</text>
+<text x="95" y="160" text-anchor="middle" class="sm">identical weights</text>
+<rect class="box plain" x="240" y="20" width="380" height="70" rx="8"/>
+<text x="254" y="44" class="b">One-shot retrieval (no loop)</text>
+<text x="254" y="64" class="sm">search for relevant files, write a patch in one go,</text>
+<text x="254" y="80" class="sm">never runs the code (SWE-bench paper baseline)</text>
+<rect class="box plain" x="240" y="115" width="380" height="70" rx="8"/>
+<text x="254" y="139" class="b">Custom agent-computer interface</text>
+<text x="254" y="159" class="sm">SWE-agent: file viewer, search, edit commands</text>
+<text x="254" y="175" class="sm">with a linter that rejects broken edits</text>
+<rect class="box plain" x="240" y="210" width="380" height="70" rx="8"/>
+<text x="254" y="234" class="b">Minimal loop: bash only</text>
+<text x="254" y="254" class="sm">mini-SWE-agent: about 100 lines of Python,</text>
+<text x="254" y="270" class="sm">one shell tool; used for SWE-bench's bash-only view</text>
+<line class="ln" x1="170" y1="135" x2="238" y2="58" marker-end="url(#m7k)"/>
+<line class="ln" x1="170" y1="145" x2="238" y2="150" marker-end="url(#m7k)"/>
+<line class="ln" x1="170" y1="155" x2="238" y2="242" marker-end="url(#m7k)"/>
+<line class="ln" x1="620" y1="55" x2="676" y2="55" marker-end="url(#m7k)"/>
+<line class="ln" x1="620" y1="150" x2="676" y2="150" marker-end="url(#m7k)"/>
+<line class="ln" x1="620" y1="245" x2="676" y2="245" marker-end="url(#m7k)"/>
+<rect class="box warn" x="680" y="35" width="140" height="40" rx="6"/><text x="750" y="60" text-anchor="middle" class="b">score A</text>
+<rect class="box warn" x="680" y="130" width="140" height="40" rx="6"/><text x="750" y="155" text-anchor="middle" class="b">score B</text>
+<rect class="box warn" x="680" y="225" width="140" height="40" rx="6"/><text x="750" y="250" text-anchor="middle" class="b">score C</text>
+<text x="95" y="214" text-anchor="middle" class="sm">score = f(model,</text>
+<text x="95" y="230" text-anchor="middle" class="sm">harness, budget)</text>
+</svg>
+<figcaption><b>One model, many agents.</b> This diagram is conceptual: the three scores are placeholders, not measurements. The real examples in the text show gaps of many percentage points from harness changes alone.</figcaption>
+</figure>
+
+<p>Documented examples:</p>
+<ul>
+<li>The <b>SWE-agent</b> paper (Yang et al., May 2024) showed that giving a model a purpose-built <b>agent-computer interface</b> (ACI) raised SWE-bench pass@1 to 12.5%, "far" beyond the previous state of the art from non-interactive, retrieve-then-patch approaches. Same class of model, very different result, because the agent could now navigate, edit safely and run code.</li>
+<li>Anthropic's January 2025 engineering post reported 49% on SWE-bench Verified for the upgraded Claude 3.5 Sonnet using a deliberately simple scaffold with just two tools (a Bash tool and an edit tool), beating the previous best of 45%. The post states that performance "can vary significantly based on this scaffolding, even when using the same underlying AI model".</li>
+<li><b>mini-SWE-agent</b> reached 65% on Verified in July 2025 with about 100 lines of Python. SWE-bench's official "bash-only" leaderboard view runs every model in this same minimal harness, precisely so that model comparisons are not confounded by harness engineering.</li>
+<li>Terminal-Bench reports results per <b>model × harness</b> pair for the same reason.</li>
+</ul>
+
+<div class="callout warn"><span class="t">How to read a coding leaderboard</span>
+<p>For every number, ask: which harness? how many steps or dollars allowed? how many attempts (pass@1 or best-of-k)? which subset and which version of the dataset? was it run by the benchmark maintainers or self-reported by a vendor? Two numbers are comparable only if all five answers match.</p>
+</div>
+
+<p>For your own work, this cuts both ways. If you are <b>choosing a model</b>, hold the harness fixed and swap models. If you are <b>building an agent product</b>, hold the model fixed and treat the harness as the thing you are optimising, with your eval as the scoreboard.</p>
+
+<h2>Build your own coding-agent eval from your repo's history</h2>
+<p>Public benchmarks tell you about general skill on popular open-source Python projects. What you want to know is whether an agent can work in <em>your</em> codebase: your frameworks, your conventions, your weird build. The good news: your git history is a ready-made benchmark generator. Every merged pull request that added tests is a task with a known answer and a built-in grader. This is exactly how SWE-bench was built, applied to your repo.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 360" role="img" aria-label="Pipeline to mine tasks from a repository: merged PRs, filter to ones touching source and tests, split the diff into source and test patches, label tests as fail-to-pass or pass-to-pass by running them, validate stability, and emit a task instance.">
+<defs><marker id="m7l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="145" height="92" rx="8"/>
+<text x="92" y="64" text-anchor="middle" class="b">1 · Merged PRs</text>
+<text x="92" y="86" text-anchor="middle" class="sm">gh pr list</text>
+<text x="92" y="102" text-anchor="middle" class="sm">--state merged</text>
+<rect class="box plain" x="185" y="40" width="145" height="92" rx="8"/>
+<text x="257" y="64" text-anchor="middle" class="b">2 · Filter</text>
+<text x="257" y="86" text-anchor="middle" class="sm">touches src AND tests</text>
+<text x="257" y="102" text-anchor="middle" class="sm">has a real description</text>
+<text x="257" y="118" text-anchor="middle" class="sm">diff not huge</text>
+<rect class="box plain" x="350" y="40" width="145" height="92" rx="8"/>
+<text x="422" y="64" text-anchor="middle" class="b">3 · Split diff</text>
+<text x="422" y="86" text-anchor="middle" class="sm">src files → gold patch</text>
+<text x="422" y="102" text-anchor="middle" class="sm">test files → hidden</text>
+<text x="422" y="118" text-anchor="middle" class="sm">test patch</text>
+<rect class="box accent" x="515" y="40" width="145" height="92" rx="8"/>
+<text x="587" y="64" text-anchor="middle" class="b">4 · Label tests</text>
+<text x="587" y="86" text-anchor="middle" class="sm">parent + test patch</text>
+<text x="587" y="102" text-anchor="middle" class="sm">vs + gold patch too</text>
+<text x="587" y="118" text-anchor="middle" class="sm">→ F2P and P2P</text>
+<rect class="box warn" x="680" y="40" width="145" height="92" rx="8"/>
+<text x="752" y="64" text-anchor="middle" class="b">5 · Validate</text>
+<text x="752" y="86" text-anchor="middle" class="sm">F2P not empty</text>
+<text x="752" y="102" text-anchor="middle" class="sm">gold passes 3 of 3</text>
+<text x="752" y="118" text-anchor="middle" class="sm">drop flaky tests</text>
+<line class="ln" x1="165" y1="86" x2="183" y2="86" marker-end="url(#m7l)"/>
+<line class="ln" x1="330" y1="86" x2="348" y2="86" marker-end="url(#m7l)"/>
+<line class="ln" x1="495" y1="86" x2="513" y2="86" marker-end="url(#m7l)"/>
+<line class="ln" x1="660" y1="86" x2="678" y2="86" marker-end="url(#m7l)"/>
+<text x="92" y="156" text-anchor="middle" class="sm t-muted">e.g. 3,000 PRs</text>
+<text x="257" y="156" text-anchor="middle" class="sm t-muted">600</text>
+<text x="422" y="156" text-anchor="middle" class="sm t-muted">600</text>
+<text x="587" y="156" text-anchor="middle" class="sm t-muted">260</text>
+<text x="752" y="156" text-anchor="middle" class="sm t-muted">200 tasks</text>
+<path class="ln" d="M752,166 L752,190 L662,220" marker-end="url(#m7l)"/>
+<rect class="box good" x="180" y="196" width="480" height="140" rx="8"/>
+<text x="196" y="220" class="b">Task instance</text>
+<text x="196" y="244" class="mono">base_commit&#160;&#160;&#160;= PR's parent commit</text>
+<text x="196" y="264" class="mono">task&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;= issue / PR description (scrubbed)</text>
+<text x="196" y="284" class="mono">test_patch&#160;&#160;&#160;&#160;= PR's test changes (hidden)</text>
+<text x="196" y="304" class="mono">FAIL_TO_PASS, PASS_TO_PASS</text>
+<text x="196" y="324" class="mono">gold_patch&#160;&#160;&#160;&#160;= reference only, never shown</text>
+</svg>
+<figcaption><b>Mining an eval from your own history.</b> The counts are illustrative, not real data, but a large attrition from raw PRs to usable tasks is normal. Step 5 is what separates a trustworthy benchmark from a noisy one.</figcaption>
+</figure>
+
+<p>Step by step, here is what each stage does and why:</p>
+<ol>
+<li><b>Collect merged PRs.</b> Use the GitHub CLI or API. Linked issues make the best task descriptions, because they were written <em>before</em> the fix, by someone who did not know the answer.</li>
+<li><b>Filter.</b> Keep PRs that change both source and test files, that have a description a human could act on, and whose diff is a reasonable size. Drop dependency bumps, reformatting and pure refactors.</li>
+<li><b>Split the diff</b> by path into the gold source patch and the hidden test patch.</li>
+<li><b>Label the tests</b> by running them at the parent commit with only the test patch (new tests should fail), then with both patches (they should pass). Tests that fail then pass are F2P; tests that pass both times are P2P.</li>
+<li><b>Validate.</b> Throw away tasks with no F2P tests, tasks where the gold patch doesn't pass reliably, and tests that flip between runs.</li>
+</ol>
+
+<pre data-lang="python"><code>"""Mine SWE-bench-style tasks from your own repository. A sketch: adapt the
+path rules, test runner and Docker image to your project."""
+import json, re, subprocess
+from pathlib import Path
+
+REPO = str(Path("~/src/myrepo").expanduser())
+GH_REPO = "my-org/myrepo"
+IMAGE = "myrepo-eval:latest"      # Dockerfile with your deps preinstalled
+
+def sh(*cmd, **kw) -&gt; str:
+    return subprocess.run(cmd, capture_output=True, text=True, check=True, **kw).stdout
+
+def is_test(path: str) -&gt; bool:
+    return path.startswith("tests/") or re.search(r"(^|/)test_[^/]+\.py$", path) is not None
+
+def merged_prs(limit: int = 1000) -&gt; list[dict]:
+    out = sh("gh", "pr", "list", "--repo", GH_REPO, "--state", "merged",
+             "--limit", str(limit),
+             "--json", "number,title,body,mergeCommit,closingIssuesReferences")
+    return json.loads(out)
+
+def build_instance(pr: dict) -&gt; dict | None:
+    merge = pr["mergeCommit"]["oid"]
+    base = sh("git", "-C", REPO, "rev-parse", f"{merge}^1").strip()  # pre-PR commit
+    files = sh("git", "-C", REPO, "diff", "--name-only", base, merge).split()
+    src = [f for f in files if f.endswith(".py") and not is_test(f)]
+    tests = [f for f in files if is_test(f)]
+    if not src or not tests or len(files) &gt; 15:
+        return None                                   # step 2: filter
+    gold = sh("git", "-C", REPO, "diff", base, merge, "--", *src)
+    test_patch = sh("git", "-C", REPO, "diff", base, merge, "--", *tests)
+
+    # step 4: label tests (run_tests is the Docker helper from the grading section)
+    before = run_tests(IMAGE, REPO, base, [test_patch], tests)
+    after = run_tests(IMAGE, REPO, base, [gold, test_patch], tests)
+    f2p = [t for t, ok in after.items() if ok and not before.get(t, False)]
+    p2p = [t for t, ok in after.items() if ok and before.get(t, False)]
+
+    # step 5: validate stability of the gold solution
+    for _ in range(2):
+        again = run_tests(IMAGE, REPO, base, [gold, test_patch], tests)
+        f2p = [t for t in f2p if again.get(t)]
+        p2p = [t for t in p2p if again.get(t)]
+    if not f2p:
+        return None
+
+    issue = pr["closingIssuesReferences"]
+    task_text = pr["title"] + "\n\n" + (pr["body"] or "")
+    return {
+        "instance_id": f"{GH_REPO.replace('/', '__')}-{pr['number']}",
+        "base_commit": base,
+        "problem_statement": scrub(task_text),   # remove code the PR itself added!
+        "linked_issues": [i["number"] for i in issue],
+        "patch": gold, "test_patch": test_patch, "test_files": tests,
+        "FAIL_TO_PASS": f2p, "PASS_TO_PASS": p2p,
+    }
+
+def scrub(text: str) -&gt; str:
+    """PR descriptions often describe HOW the fix works. Strip code blocks and
+    diff snippets; better still, prefer the linked issue's text, or have a
+    human rewrite the task as a user would have reported it."""
+    text = re.sub(r"```.*?```", "[code removed]", text, flags=re.S)
+    return re.sub(r"^[+-].*$", "", text, flags=re.M)
+
+if __name__ == "__main__":
+    with open("my_bench.jsonl", "w") as f:
+        for pr in merged_prs():
+            inst = build_instance(pr)
+            if inst:
+                f.write(json.dumps(inst) + "\n")
+</code></pre>
+
+<div class="callout bad"><span class="t">Five traps when mining your own history</span>
+<ul>
+<li><b>PR descriptions leak the solution.</b> They are written by the person who fixed the bug. Prefer linked issue text, or rewrite the task by hand as a user report.</li>
+<li><b>Git history leaks the future.</b> If the agent's container has your full <code>.git</code>, it can find the merge commit. Give it a shallow copy at <code>base_commit</code> only, with no remote and no later refs.</li>
+<li><b>The model may have trained on your repo</b> if it is public. Track task dates and compare scores on PRs from before and after the model's training cutoff.</li>
+<li><b>Tests written for the gold patch are over-fitted to it.</b> They may test helper names that only exist in that implementation. Review a sample by hand, like Verified did, and drop or loosen unfair ones.</li>
+<li><b>Environments rot.</b> Old commits may need old dependency versions. Build one image per era of your lockfile, and check with the gold patch that each task still passes before trusting it.</li>
+</ul>
+</div>
+
+<h3>A practical recipe for teams</h3>
+<ol>
+<li>Start with 30 to 50 hand-reviewed tasks. That is enough to catch big regressions and to compare harness choices.</li>
+<li>Run each agent configuration 3 or more times per task: agents are stochastic, and you want pass@1 with a confidence interval, and ideally pass^3.</li>
+<li>Record the full scorecard (resolved, regressions, diff size, judge scores, cost, turns) and store every trajectory.</li>
+<li>Add new tasks every month from freshly merged PRs. They are, by construction, after most models' training data, which gives you a private, contamination-resistant slice for free.</li>
+<li>Wire the suite into CI for your agent's prompt and tool changes (<a href="15-production-evals.html">Module 15</a>).</li>
+</ol>
+
+<h2>Code-review agents</h2>
+<p>A growing class of coding agents does not write the fix at all: it <b>reviews</b> a pull request and leaves comments. Evaluating review is harder than evaluating fixes because there is no test to run. The usual building blocks:</p>
+<ul>
+<li><b>Seeded-bug recall.</b> Take known-good PRs, inject a bug (or use historical PRs that were later reverted or hot-fixed), and measure how often the reviewer flags the right location. This gives <b>recall</b>: of the real problems, what fraction did it catch?</li>
+<li><b>Comment precision.</b> Have humans or a calibrated LLM judge label each comment as valid-and-useful, valid-but-trivial (nitpick), or wrong. <b>Precision</b> matters enormously here: a reviewer that raises ten false alarms per PR gets ignored, no matter its recall.</li>
+<li><b>Acceptance in production.</b> Once deployed, track the rate at which developers resolve, apply or dismiss the agent's comments. This is an online eval signal (<a href="15-production-evals.html">Module 15</a>), noisy but grounded in real behaviour.</li>
+<li><b>Matching comments to ground truth.</b> A comment "counts" if it points at the right file and line range and describes the same problem. Line matching is code; "same problem" usually needs a judge.</li>
+</ul>
+<p>Report precision and recall together (or an F-score), per severity level, and look at examples. A reviewer tuned only for recall becomes a noise machine.</p>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. On SWE-bench, an agent's patch makes all FAIL_TO_PASS tests pass but breaks one PASS_TO_PASS test. The instance is…</p>
+<button class="opt">Resolved, because the issue is fixed</button>
+<button class="opt">Unresolved: every F2P must pass AND every P2P must still pass</button>
+<button class="opt">Scored 0.5 for partial credit</button>
+<div class="why">The resolve rule is all-or-nothing. Breaking existing behaviour counts the same as not fixing the bug at all.</div></div>
+<div class="q" data-answer="2"><p>2. Why was SWE-bench Verified created?</p>
+<button class="opt">To add more programming languages</button>
+<button class="opt">To make tasks harder so scores would drop</button>
+<button class="opt">Because many original tasks had underspecified issues or tests that rejected valid fixes, so failures were not the agent's fault</button>
+<div class="why">OpenAI's annotators flagged 38.3% of sampled tasks as underspecified and 61.1% for unfair tests, and filtered 68.3% out. Scores went <em>up</em> on the cleaned set because impossible tasks were removed.</div></div>
+<div class="q" data-answer="0"><p>3. Agents on SWE-bench were found running <code>git log --all</code>. Why is that a problem, and what is the fix?</p>
+<button class="opt">The container held commits from after the base commit, so agents could read the real fix; images were rebuilt with future refs, tags and reflogs removed</button>
+<button class="opt">It wastes tokens; the fix is to limit the number of commands</button>
+<button class="opt">It is not a problem, git history is legitimate context</button>
+<div class="why">Past history is fine and realistic. <em>Future</em> history is the answer key. Anything reachable in the sandbox is effectively part of the prompt.</div></div>
+<div class="q" data-answer="1"><p>4. You compare two models on your repo eval. Model X used your in-house harness with 200 steps, model Y was run in a vendor CLI agent with 50 steps. X scores higher. What can you conclude?</p>
+<button class="opt">X is the better model</button>
+<button class="opt">Little about the models: harness and budget differ, so hold them fixed and re-run</button>
+<button class="opt">Y is better, because it did more with fewer steps</button>
+<div class="why">An agent's score is a property of model × harness × budget. To compare models, change only the model.</div></div>
+<div class="q" data-answer="2"><p>5. You sample 10 solutions per problem and 4 pass. What is pass@1, and is pass@10 appropriate for an autonomous agent that opens one PR?</p>
+<button class="opt">0.4; yes, pass@10 is the standard metric</button>
+<button class="opt">0.04; no</button>
+<button class="opt">0.4; no, the agent gets one attempt, so pass@1 (or pass^k for reliability) is the honest metric</button>
+<div class="why">pass@1 = c/n = 0.4. pass@k with k &gt; 1 assumes someone picks the winner from k tries, which an unattended agent doesn't have.</div></div>
+<div class="q" data-answer="0"><p>6. When mining tasks from your own PRs, what is the biggest risk of using the PR description as the task prompt?</p>
+<button class="opt">It was written by the person who made the fix and often explains the solution</button>
+<button class="opt">It is usually too short</button>
+<button class="opt">It is in Markdown</button>
+<div class="why">That is solution leakage. Prefer linked issue text written before the fix, or rewrite the task as a user report.</div></div>
+</div>
+
+<details><summary>Expert corner: interview-style questions</summary>
+<p><b>Q: Design an eval to tell whether a new coding agent is better than the current one for your company.</b> Mine 100 to 200 tasks from recent merged PRs with tests; hand-review a sample for fairness; build per-era Docker images; run both agents 3+ times per task in identical sandboxes (no network, trimmed git, hidden tests applied last); report pass@1 with paired confidence intervals, pass^3, regressions on the full suite, diff size, judge-scored quality, cost per resolved task and turns; read 20 flipped trajectories in each direction before deciding.</p>
+<p><b>Q: Your agent's resolve rate jumped 12 points overnight after a prompt change. What do you check?</b> Whether new passes are genuine (read trajectories), whether the agent started touching test files or configs, whether it found a leak (git history, network, cached artefacts), whether the eval set or harness version changed, and whether the jump survives re-runs (variance).</p>
+<p><b>Q: Why might SWE-bench Pro be more trustworthy than Verified in 2026?</b> Its commercial and held-out splits use code that is not public, and its public split uses copyleft repos that training pipelines tend to avoid, so contamination is less likely. OpenAI reported that it "empirically seems to suffer less from contamination issues". It also has longer, multi-file tasks, so it is not saturated. It still depends on test quality, and its open-source set has had its own git-leak report, so the same hygiene applies.</p>
+<p><b>Q: When would you choose continuous scoring (RE-Bench) or dollar weighting (SWE-Lancer) over binary pass rate?</b> Continuous scores fit open-ended optimisation tasks where "better" is a matter of degree. Dollar or effort weighting fits when tasks vary hugely in value and you want the metric to track economic usefulness rather than counting trivial and hard tasks equally.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Chen et al. (OpenAI), <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> (HumanEval, pass@k), 2021.</li>
+<li>Austin et al. (Google), <a href="https://arxiv.org/abs/2108.07732">Program Synthesis with Large Language Models</a> (MBPP), 2021.</li>
+<li>Liu et al., <a href="https://arxiv.org/abs/2305.01210">Is Your Code Generated by ChatGPT Really Correct?</a> (EvalPlus, HumanEval+ / MBPP+), 2023.</li>
+<li>Jimenez, Yang et al., <a href="https://arxiv.org/abs/2310.06770">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>, ICLR 2024; site and leaderboards <a href="https://www.swebench.com">swebench.com</a>.</li>
+<li>OpenAI, <a href="https://openai.com/index/introducing-swe-bench-verified/">Introducing SWE-bench Verified</a>, Aug 2024.</li>
+<li>OpenAI, <a href="https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/">Why SWE-bench Verified no longer measures frontier coding capabilities</a>, Feb 2026.</li>
+<li>SWE-bench GitHub, <a href="https://github.com/SWE-bench/SWE-bench/issues/465">Issue #465: Repo state loopholes during agentic evaluation</a> (git history leakage) and <a href="https://github.com/SWE-bench/SWE-bench/issues/669">Issue #669: solutions reachable from problem_statement</a>.</li>
+<li>UTBoost write-up, <a href="https://ddkang.substack.com/p/swe-bench-verified-is-flawed-despite">SWE-bench Verified is flawed despite expert review</a>.</li>
+<li>Yang et al., <a href="https://arxiv.org/abs/2410.03859">SWE-bench Multimodal</a>, 2024.</li>
+<li>Scale AI, <a href="https://arxiv.org/abs/2509.16941">SWE-Bench Pro: Can AI Agents Solve Long-Horizon Software Engineering Tasks?</a>, Sep 2025; <a href="https://labs.scale.com/leaderboard/swe_bench_pro_public">public leaderboard</a>.</li>
+<li>Yang et al., <a href="https://arxiv.org/abs/2405.15793">SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</a>, 2024.</li>
+<li>Anthropic Engineering, <a href="https://www.anthropic.com/engineering/swe-bench-sonnet">Raising the bar on SWE-bench Verified with Claude 3.5 Sonnet</a>, Jan 2025.</li>
+<li>Merrill, Shaw, Carlini, Schmidt et al., <a href="https://arxiv.org/abs/2601.11868">Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces</a>, Jan 2026; <a href="https://www.tbench.ai">tbench.ai</a>.</li>
+<li>Harbor docs, <a href="https://docs.harborframework.com/core-concepts/tasks/overview">Task structure</a> and <a href="https://github.com/laude-institute/harbor">Harbor repository</a>.</li>
+<li>Aider, <a href="https://aider.chat/docs/leaderboards/">Aider LLM leaderboards</a> (polyglot benchmark).</li>
+<li>Jain et al., <a href="https://arxiv.org/abs/2403.07974">LiveCodeBench</a>, 2024; <a href="https://livecodebench.github.io/leaderboard.html">leaderboard</a>.</li>
+<li>Chan et al. (OpenAI), <a href="https://arxiv.org/abs/2410.07095">MLE-bench</a>, 2024.</li>
+<li>Wijk et al. (METR), <a href="https://arxiv.org/abs/2411.15114">RE-Bench</a>, 2024.</li>
+<li>Starace et al. (OpenAI), <a href="https://arxiv.org/abs/2504.01848">PaperBench</a>, 2025.</li>
+<li>Miserendino et al. (OpenAI), <a href="https://arxiv.org/abs/2502.12115">SWE-Lancer</a>, 2025.</li>
+<li>SWE-rebench, <a href="https://swe-rebench.com">swe-rebench.com</a> (continuously refreshed, decontaminated tasks).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

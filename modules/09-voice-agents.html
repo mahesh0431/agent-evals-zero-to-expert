@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · Voice agents · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 09 · Agent evals, every modality</div>
+<h1>Voice agents</h1>
+<p class="lede">A voice agent is a text agent that has to listen through a noisy phone line, decide in a fraction of a second whether you have finished talking, and answer out loud before the silence gets awkward. Every one of those extra jobs is a new way to fail, and a new thing to measure.</p>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~60 min</span><span class="pill">Prerequisites: Modules 03, 05, 06</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Draw the two voice architectures (cascaded and speech-to-speech) and say what each one lets you measure.</li>
+<li>Compute word error rate by hand and in code, and explain why a "good" WER can still hide a failed call.</li>
+<li>Instrument a voice pipeline for latency (time to first audio, end-to-end response latency) and report percentiles, not averages.</li>
+<li>Evaluate turn-taking: barge-in, false interruptions, endpointing, backchannels and silence handling.</li>
+<li>Design a simulated-caller test suite with personas, accents, noise and interruptions, and grade the calls with the right mix of code, text judges and audio judges.</li>
+<li>Name the main public voice benchmarks (Big Bench Audio, VoiceBench, Full-Duplex-Bench, Audio MultiChallenge, τ-Voice) and what each actually measures.</li>
+<li>List the voice-specific robustness and safety risks, and how to test them.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>Why voice is its own problem</h2>
+<p>In <a href="06-tool-use-and-conversation.html">Module 06</a> you learned to evaluate a conversational agent that reads and writes text: did it call the right tool, follow the policy, reach the goal? A voice agent has to do all of that <em>plus</em> a set of jobs that do not exist in text at all.</p>
+
+<div class="callout analogy"><span class="t">Analogy: a phone call vs an email</span>
+<p>When you answer an email you can take ten minutes, reread it, and fix typos. On a phone call you have to hear the words correctly over a bad line, notice when the other person has stopped (or just paused to think), reply within about a second, pronounce names right, and stop talking the moment they cut in. A brilliant email writer can still be terrible on the phone. Voice evals exist to catch exactly that gap.</p>
+</div>
+
+<p>Five things make voice different from text, and each one shows up later as a metric:</p>
+<div class="grid2">
+<div class="card accent"><h4>1. Hearing is lossy</h4><p>The agent never sees what the caller "typed". It sees a guess, produced by speech recognition, from audio that may be noisy, accented, and squeezed through an 8 kHz phone line. Errors at the ear flow into everything downstream.</p></div>
+<div class="card accent"><h4>2. Time is part of the answer</h4><p>A correct answer that arrives after three seconds of silence feels broken. Humans leave gaps of roughly 200 ms between turns in natural conversation (Stivers et al., 2009), so users notice delays quickly.</p></div>
+<div class="card accent"><h4>3. Turns are not given</h4><p>In chat, pressing Enter ends your turn. On a call, nobody presses Enter. The system must <em>infer</em> when you are done, and handle you talking over it.</p></div>
+<div class="card accent"><h4>4. How it sounds matters</h4><p>The same words can sound warm or robotic, calm or impatient. Mispronouncing a customer's name or reading "$1,250.00" as "one comma two five zero" is a failure a text transcript cannot show.</p></div>
+<div class="card accent"><h4>5. The channel is hostile</h4><p>Background TV, speakerphones, packet loss, codecs, crosstalk. And audio creates new safety risks: cloned voices, jailbreaks hidden in sound, and impersonation.</p></div>
+</div>
+
+<p>Two terms first, because they appear everywhere. <b>ASR</b> (automatic speech recognition), also called <b>STT</b> (speech to text), turns audio into text. <b>TTS</b> (text to speech) turns text into audio. A <b>VAD</b> (voice activity detector) is a small, fast model that answers one question many times a second: "is someone speaking right now?"</p>
+
+<h2>Two architectures, two kinds of measurability</h2>
+<p>There are two broad ways to build a voice agent, and which one you have decides what you <em>can</em> measure.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Cascaded voice agents chain VAD, ASR, LLM and TTS, with text boundaries between stages that you can measure. Speech-to-speech agents use one audio model, so you can only measure at the audio input and output.">
+<defs><marker id="m9a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="28" class="lg">Cascaded (pipeline)</text>
+<rect class="box plain" x="20" y="50" width="90" height="56" rx="8"/>
+<text x="65" y="74" text-anchor="middle" class="b">Caller</text><text x="65" y="92" text-anchor="middle" class="sm">audio in</text>
+<rect class="box plain" x="140" y="50" width="90" height="56" rx="8"/>
+<text x="185" y="74" text-anchor="middle" class="b">VAD</text><text x="185" y="92" text-anchor="middle" class="sm">speech on/off</text>
+<rect class="box plain" x="260" y="50" width="100" height="56" rx="8"/>
+<text x="310" y="74" text-anchor="middle" class="b">ASR / STT</text><text x="310" y="92" text-anchor="middle" class="sm">audio → text</text>
+<rect class="box accent" x="390" y="50" width="120" height="56" rx="8"/>
+<text x="450" y="74" text-anchor="middle" class="b">LLM + tools</text><text x="450" y="92" text-anchor="middle" class="sm">text → text</text>
+<rect class="box plain" x="540" y="50" width="100" height="56" rx="8"/>
+<text x="590" y="74" text-anchor="middle" class="b">TTS</text><text x="590" y="92" text-anchor="middle" class="sm">text → audio</text>
+<rect class="box plain" x="670" y="50" width="120" height="56" rx="8"/>
+<text x="730" y="74" text-anchor="middle" class="b">Speaker</text><text x="730" y="92" text-anchor="middle" class="sm">audio out</text>
+<line class="ln" x1="110" y1="78" x2="136" y2="78" marker-end="url(#m9a)"/>
+<line class="ln" x1="230" y1="78" x2="256" y2="78" marker-end="url(#m9a)"/>
+<line class="ln" x1="360" y1="78" x2="386" y2="78" marker-end="url(#m9a)"/>
+<line class="ln" x1="510" y1="78" x2="536" y2="78" marker-end="url(#m9a)"/>
+<line class="ln" x1="640" y1="78" x2="666" y2="78" marker-end="url(#m9a)"/>
+<line class="ln warn dash" x1="185" y1="106" x2="185" y2="124"/>
+<line class="ln warn dash" x1="310" y1="106" x2="310" y2="124"/>
+<line class="ln warn dash" x1="450" y1="106" x2="450" y2="124"/>
+<line class="ln warn dash" x1="590" y1="106" x2="590" y2="124"/>
+<line class="ln warn dash" x1="730" y1="106" x2="730" y2="124"/>
+<text x="185" y="140" text-anchor="middle" class="sm t-warn">endpoint timing,</text><text x="185" y="154" text-anchor="middle" class="sm t-warn">false triggers</text>
+<text x="310" y="140" text-anchor="middle" class="sm t-warn">WER, entity</text><text x="310" y="154" text-anchor="middle" class="sm t-warn">accuracy</text>
+<text x="450" y="140" text-anchor="middle" class="sm t-warn">task success,</text><text x="450" y="154" text-anchor="middle" class="sm t-warn">tool calls, policy</text>
+<text x="590" y="140" text-anchor="middle" class="sm t-warn">MOS, names,</text><text x="590" y="154" text-anchor="middle" class="sm t-warn">numbers</text>
+<text x="730" y="140" text-anchor="middle" class="sm t-warn">time to first</text><text x="730" y="154" text-anchor="middle" class="sm t-warn">audio</text>
+<line class="ln dash" x1="20" y1="176" x2="800" y2="176"/>
+<text x="20" y="204" class="lg">Speech-to-speech (native audio model)</text>
+<rect class="box plain" x="20" y="222" width="90" height="60" rx="8"/>
+<text x="65" y="248" text-anchor="middle" class="b">Caller</text><text x="65" y="266" text-anchor="middle" class="sm">audio in</text>
+<rect class="box violet" x="140" y="222" width="500" height="60" rx="8"/>
+<text x="390" y="246" text-anchor="middle" class="b">One audio model: listens, reasons, calls tools, speaks</text>
+<text x="390" y="266" text-anchor="middle" class="sm">e.g. OpenAI Realtime API, Gemini Live API (native audio)</text>
+<rect class="box plain" x="670" y="222" width="120" height="60" rx="8"/>
+<text x="730" y="248" text-anchor="middle" class="b">Speaker</text><text x="730" y="266" text-anchor="middle" class="sm">audio out</text>
+<line class="ln" x1="110" y1="252" x2="136" y2="252" marker-end="url(#m9a)"/>
+<line class="ln" x1="640" y1="252" x2="666" y2="252" marker-end="url(#m9a)"/>
+<text x="390" y="310" text-anchor="middle" class="sm t-warn">no internal text boundary: grade audio in → audio out, plus tool calls and any transcript the API emits</text>
+</svg>
+<figcaption><b>Where the measurement taps are.</b> A cascade has a text boundary between every stage, so you can grade each stage in isolation (orange taps). A speech-to-speech model is one box: you can only observe what goes in, what comes out, and the tool calls it makes.</figcaption>
+</figure>
+
+<h3>Cascaded: VAD → ASR → LLM → TTS</h3>
+<p>The <b>cascaded</b> (or <b>pipeline</b>) design chains separate models. The VAD decides when the caller stopped talking. The ASR model produces a transcript. A normal text LLM, with tools, writes a reply. A TTS model speaks it. Frameworks such as Pipecat and LiveKit Agents are built around this shape, and let you swap each piece independently.</p>
+<ul>
+<li><b>Strength for evals:</b> every arrow in the diagram is text or a timestamp you can log. You can compute WER on the ASR output, replay the same transcript through a new LLM without any audio, and time each stage separately. Debugging is a matter of finding which box broke.</li>
+<li><b>Weakness:</b> information is thrown away at each boundary. The LLM never hears that the caller sounded angry or hesitant, only the words. Latencies add up across stages. And the ASR's mistakes become "facts" to the LLM.</li>
+</ul>
+
+<h3>Speech-to-speech: one native audio model</h3>
+<p>A <b>speech-to-speech</b> (S2S) or <b>native audio</b> model takes audio in and produces audio out directly, with the reasoning happening inside one network. OpenAI's Realtime API and Google's Gemini Live API (with its native audio models) are the best-known hosted examples. They usually still emit a text transcript of what they said, and they still call tools, but there is no separate ASR stage you can grade on its own.</p>
+<ul>
+<li><b>Strength:</b> the model can hear tone, hesitation and emphasis, and can respond with appropriate prosody. There are fewer hops, so latency can be lower.</li>
+<li><b>Weakness for evals:</b> it is a black box between audio in and audio out. You cannot compute "the ASR's WER" because there is no ASR. You grade end-to-end behaviour. Transcripts the API emits are the model's own rendering, not ground truth, so treat them as a convenience, not as evidence.</li>
+</ul>
+
+<div class="callout tip"><span class="t">Key idea</span>
+<p>Cascades are <b>easy to diagnose, hard to make feel natural</b>. Speech-to-speech models are <b>easier to make feel natural, harder to diagnose</b>. Your eval plan should lean on component tests for cascades and on end-to-end simulation for S2S. Hybrid systems exist too (for example, a native audio model with a separate ASR running in parallel purely for logging), and many teams add that parallel ASR just so they have something to grade.</p>
+</div>
+
+<h3>Half-duplex vs full-duplex turn-taking</h3>
+<p>A second design axis is how the agent shares the line. <b>Half-duplex</b> means only one party talks at a time, like a walkie-talkie: the agent waits for the caller to finish, speaks, and may not listen while speaking. <b>Full-duplex</b> means the agent listens <em>while</em> it speaks, like a human on the phone: it can hear "mm-hm", notice an interruption, and stop mid-sentence. Most production cascades are "half-duplex with barge-in": they do not produce overlapping speech on purpose, but they keep a VAD running during playback so the caller can interrupt. True full-duplex models (which can also backchannel and overlap deliberately) are an active research area, which is why benchmarks such as Full-Duplex-Bench exist.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Half-duplex timeline: the agent ignores the user speaking during its turn. Full-duplex timeline: the agent backchannels, responds after a short gap, and yields when the user interrupts.">
+<text x="20" y="22" class="lg">Half-duplex (walkie-talkie)</text>
+<text x="20" y="51" class="b">User</text>
+<text x="20" y="81" class="b">Agent</text>
+<rect class="fill-accent" x="130" y="38" width="200" height="16" rx="3"/>
+<rect class="fill-good" x="390" y="68" width="260" height="16" rx="3"/>
+<rect class="fill-bad" x="480" y="38" width="70" height="16" rx="3"/>
+<text x="360" y="106" text-anchor="middle" class="sm">endpoint wait</text>
+<text x="515" y="106" text-anchor="middle" class="sm t-bad">barge-in ignored: agent talks on</text>
+<text x="20" y="150" class="lg">Full-duplex (listens while speaking)</text>
+<text x="20" y="179" class="b">User</text>
+<text x="20" y="209" class="b">Agent</text>
+<rect class="fill-accent" x="130" y="166" width="200" height="16" rx="3"/>
+<rect class="fill-good" x="220" y="196" width="24" height="16" rx="3"/>
+<rect class="fill-good" x="360" y="196" width="150" height="16" rx="3"/>
+<rect class="fill-accent" x="470" y="166" width="90" height="16" rx="3"/>
+<rect class="fill-good" x="600" y="196" width="160" height="16" rx="3"/>
+<text x="232" y="234" text-anchor="middle" class="sm">"mm-hm" backchannel</text>
+<text x="345" y="234" text-anchor="middle" class="sm">short gap</text>
+<text x="490" y="234" text-anchor="middle" class="sm t-good">overlap: agent yields</text>
+<text x="680" y="234" text-anchor="middle" class="sm">answers the new request</text>
+<line class="ln" x1="120" y1="268" x2="800" y2="268"/>
+<text x="800" y="286" text-anchor="end" class="sm">time →</text>
+</svg>
+<figcaption><b>Who may talk when.</b> In half-duplex the caller's interruption (red) is lost. In full-duplex the agent backchannels while listening, starts after a short gap, and stops when the caller cuts in. Illustrative timings, not real data.</figcaption>
+</figure>
+
+<h2>The layered eval: component, conversation, system</h2>
+<p>A voice call can fail at any of three altitudes, and you need metrics at each one. Think of it as the same testing pyramid you know from software, reshaped for calls.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Three stacked layers: component level metrics like WER and latency at the bottom, conversation level metrics like turn-taking and task success in the middle, system level metrics like containment and CSAT at the top.">
+<defs><marker id="m9c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box good" x="20" y="20" width="640" height="80" rx="8"/>
+<text x="36" y="46" class="b">System level: the whole call, the business</text>
+<text x="36" y="66" class="sm">"Did the call achieve the outcome, and did the caller leave satisfied?"</text>
+<text x="36" y="86" class="mono">call outcome, containment, escalation correctness, CSAT</text>
+<rect class="box accent" x="20" y="110" width="640" height="80" rx="8"/>
+<text x="36" y="136" class="b">Conversation level: turn by turn</text>
+<text x="36" y="156" class="sm">"Did the dialogue flow, and did the agent do the right things in the right way?"</text>
+<text x="36" y="176" class="mono">turn-taking, task success, policy adherence, tone and empathy</text>
+<rect class="box warn" x="20" y="200" width="640" height="80" rx="8"/>
+<text x="36" y="226" class="b">Component level: each part alone</text>
+<text x="36" y="246" class="sm">"Does the ear hear, the voice sound right, and each stage run fast enough?"</text>
+<text x="36" y="266" class="mono">WER, entity accuracy, MOS, pronunciation, per-stage latency</text>
+<line class="ln" x1="700" y1="270" x2="700" y2="30" marker-start="url(#m9c)" marker-end="url(#m9c)"/>
+<text x="714" y="44" class="sm">closer to what</text>
+<text x="714" y="58" class="sm">users and the</text>
+<text x="714" y="72" class="sm">business feel</text>
+<text x="714" y="238" class="sm">fast, cheap,</text>
+<text x="714" y="252" class="sm">easy to</text>
+<text x="714" y="266" class="sm">diagnose</text>
+</svg>
+<figcaption><b>Three altitudes of voice evals.</b> Lower layers are cheap and tell you <em>where</em> something broke. Upper layers are expensive and noisy but tell you whether it <em>mattered</em>. A healthy suite has all three, and links them: a drop in containment should be traceable to a turn-level or component-level cause.</figcaption>
+</figure>
+
+<p>The rest of this module walks up the stack, then covers how to generate test calls (simulation), how to grade audio, the public benchmarks, robustness, and safety.</p>
+
+<h2>Component level: the ear (ASR and WER)</h2>
+<h3>Word error rate, from intuition to formula</h3>
+<p><b>Word error rate (WER)</b> is the standard ASR metric. The intuition: line up what was actually said (the <b>reference</b>, usually a human transcript) with what the ASR produced (the <b>hypothesis</b>), and count the minimum number of word edits needed to turn one into the other. There are three kinds of edit:</p>
+<ul>
+<li><b>Substitution (S)</b>: a word was heard as a different word ("a" became "the").</li>
+<li><b>Deletion (D)</b>: a spoken word is missing from the transcript.</li>
+<li><b>Insertion (I)</b>: the transcript has a word nobody said.</li>
+</ul>
+<p>Then <b>WER = (S + D + I) / N</b>, where <b>N</b> is the number of words in the reference. The "minimum number of edits" is the <b>Levenshtein edit distance</b>, computed on words instead of characters. (Character error rate, <b>CER</b>, is the same idea on characters, and is preferred for languages without spaces between words, such as Chinese or Japanese.)</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Worked WER example: reference 'please book a table for two at seven' vs hypothesis 'please book the table for at seven thirty' gives one substitution, one deletion and one insertion, so WER is 3 over 8, 37.5 percent.">
+<text x="10" y="62" class="b">REF</text>
+<text x="10" y="132" class="b">HYP</text>
+<rect class="box plain" x="80" y="40" width="72" height="34" rx="5"/><text x="116" y="62" text-anchor="middle" class="mono">please</text>
+<rect class="box plain" x="160" y="40" width="72" height="34" rx="5"/><text x="196" y="62" text-anchor="middle" class="mono">book</text>
+<rect class="box warn" x="240" y="40" width="72" height="34" rx="5"/><text x="276" y="62" text-anchor="middle" class="mono">a</text>
+<rect class="box plain" x="320" y="40" width="72" height="34" rx="5"/><text x="356" y="62" text-anchor="middle" class="mono">table</text>
+<rect class="box plain" x="400" y="40" width="72" height="34" rx="5"/><text x="436" y="62" text-anchor="middle" class="mono">for</text>
+<rect class="box bad" x="480" y="40" width="72" height="34" rx="5"/><text x="516" y="62" text-anchor="middle" class="mono">two</text>
+<rect class="box plain" x="560" y="40" width="72" height="34" rx="5"/><text x="596" y="62" text-anchor="middle" class="mono">at</text>
+<rect class="box plain" x="640" y="40" width="72" height="34" rx="5"/><text x="676" y="62" text-anchor="middle" class="mono">seven</text>
+<rect class="box dashed" x="720" y="40" width="72" height="34" rx="5"/><text x="756" y="62" text-anchor="middle" class="mono t-muted">∅</text>
+<rect class="box plain" x="80" y="110" width="72" height="34" rx="5"/><text x="116" y="132" text-anchor="middle" class="mono">please</text>
+<rect class="box plain" x="160" y="110" width="72" height="34" rx="5"/><text x="196" y="132" text-anchor="middle" class="mono">book</text>
+<rect class="box warn" x="240" y="110" width="72" height="34" rx="5"/><text x="276" y="132" text-anchor="middle" class="mono">the</text>
+<rect class="box plain" x="320" y="110" width="72" height="34" rx="5"/><text x="356" y="132" text-anchor="middle" class="mono">table</text>
+<rect class="box plain" x="400" y="110" width="72" height="34" rx="5"/><text x="436" y="132" text-anchor="middle" class="mono">for</text>
+<rect class="box dashed" x="480" y="110" width="72" height="34" rx="5"/><text x="516" y="132" text-anchor="middle" class="mono t-muted">∅</text>
+<rect class="box plain" x="560" y="110" width="72" height="34" rx="5"/><text x="596" y="132" text-anchor="middle" class="mono">at</text>
+<rect class="box plain" x="640" y="110" width="72" height="34" rx="5"/><text x="676" y="132" text-anchor="middle" class="mono">seven</text>
+<rect class="box violet" x="720" y="110" width="72" height="34" rx="5"/><text x="756" y="132" text-anchor="middle" class="mono">thirty</text>
+<line class="ln dash" x1="116" y1="74" x2="116" y2="110"/><line class="ln dash" x1="196" y1="74" x2="196" y2="110"/>
+<line class="ln warn" x1="276" y1="74" x2="276" y2="110"/><line class="ln dash" x1="356" y1="74" x2="356" y2="110"/>
+<line class="ln dash" x1="436" y1="74" x2="436" y2="110"/><line class="ln bad" x1="516" y1="74" x2="516" y2="110"/>
+<line class="ln dash" x1="596" y1="74" x2="596" y2="110"/><line class="ln dash" x1="676" y1="74" x2="676" y2="110"/>
+<line class="ln violet" x1="756" y1="74" x2="756" y2="110"/>
+<text x="116" y="170" text-anchor="middle" class="sm t-good">match</text><text x="196" y="170" text-anchor="middle" class="sm t-good">match</text>
+<text x="276" y="170" text-anchor="middle" class="b t-warn">S</text><text x="356" y="170" text-anchor="middle" class="sm t-good">match</text>
+<text x="436" y="170" text-anchor="middle" class="sm t-good">match</text><text x="516" y="170" text-anchor="middle" class="b t-bad">D</text>
+<text x="596" y="170" text-anchor="middle" class="sm t-good">match</text><text x="676" y="170" text-anchor="middle" class="sm t-good">match</text>
+<text x="756" y="170" text-anchor="middle" class="b t-violet">I</text>
+<text x="420" y="210" text-anchor="middle" class="lg">WER = (S + D + I) / N = (1 + 1 + 1) / 8 = 37.5%</text>
+<text x="420" y="234" text-anchor="middle" class="sm">N counts REFERENCE words only, so many insertions can push WER above 100%.</text>
+</svg>
+<figcaption><b>A worked WER alignment.</b> One substitution, one deletion, one insertion, eight reference words. Notice that WER weighs "a → the" exactly the same as losing "two" (the party size) and adding "thirty" (a different time). Two of these three errors break the booking; WER cannot tell.</figcaption>
+</figure>
+
+<p>Walk through it slowly. The reference has 8 words. Six words line up perfectly ("hits"). "a" was heard as "the" (1 substitution). "two" vanished (1 deletion). "thirty" appeared from nowhere (1 insertion). Three edits over eight reference words is 0.375, or 37.5%. There is no cheaper alignment: you could try to match "thirty" against "two", but then you would still need to account for "at seven" being in the wrong place, which costs more edits.</p>
+
+<h3>WER in code: the algorithm</h3>
+<p>Here is the whole algorithm in plain Python. It fills a dynamic-programming table (the same one used for spelling correction), then walks backwards through it to count which kind of edit was used at each step.</p>
+<pre data-lang="python"><code>def wer_details(reference: str, hypothesis: str):
+    """Word error rate via Levenshtein distance on word lists.
+    Returns (wer, substitutions, deletions, insertions, hits)."""
+    ref = reference.lower().split()
+    hyp = hypothesis.lower().split()
+    R, H = len(ref), len(hyp)
+    # d[i][j] = minimum edits to turn ref[:i] into hyp[:j]
+    d = [[0] * (H + 1) for _ in range(R + 1)]
+    for i in range(R + 1):
+        d[i][0] = i            # delete every reference word
+    for j in range(H + 1):
+        d[0][j] = j            # insert every hypothesis word
+    for i in range(1, R + 1):
+        for j in range(1, H + 1):
+            cost = 0 if ref[i - 1] == hyp[j - 1] else 1
+            d[i][j] = min(d[i - 1][j - 1] + cost,   # match or substitution
+                          d[i - 1][j] + 1,          # deletion
+                          d[i][j - 1] + 1)          # insertion
+    # Walk back through the table to count each kind of edit
+    i, j, S, D, I, hits = R, H, 0, 0, 0, 0
+    while i &gt; 0 or j &gt; 0:
+        if i &gt; 0 and j &gt; 0 and d[i][j] == d[i - 1][j - 1] + (ref[i - 1] != hyp[j - 1]):
+            if ref[i - 1] == hyp[j - 1]:
+                hits += 1
+            else:
+                S += 1
+            i, j = i - 1, j - 1
+        elif i &gt; 0 and d[i][j] == d[i - 1][j] + 1:
+            D += 1
+            i -= 1
+        else:
+            I += 1
+            j -= 1
+    return (S + D + I) / max(R, 1), S, D, I, hits
+
+ref = "please book a table for two at seven"
+hyp = "please book the table for at seven thirty"
+print(wer_details(ref, hyp))   # (0.375, 1, 1, 1, 6)</code></pre>
+
+<h3>WER in code: the library way, with normalisation</h3>
+<p>In practice you use <code>jiwer</code>, a small, fast Python library. The important part is not the call itself but the <b>text normalisation</b> you apply first. Without it, "Book a table." and "book a table" differ by capitalisation and punctuation, and your WER measures formatting, not hearing.</p>
+<pre data-lang="python"><code>import jiwer
+
+# Normalise BOTH sides the same way before comparing.
+norm = jiwer.Compose([
+    jiwer.ToLowerCase(),
+    jiwer.RemovePunctuation(),
+    jiwer.RemoveMultipleSpaces(),
+    jiwer.Strip(),
+    jiwer.ReduceToListOfListOfWords(),
+])
+
+refs = ["Please book a table for two at seven.", "My account number is 4 4 1 9."]
+hyps = ["please book the table for at seven thirty", "my account number is 4419"]
+
+out = jiwer.process_words(refs, hyps,
+                          reference_transform=norm, hypothesis_transform=norm)
+print(f"WER={out.wer:.3f}  S={out.substitutions} D={out.deletions} "
+      f"I={out.insertions} hits={out.hits}")
+print(jiwer.visualize_alignment(out))   # REF / HYP lines with S, D, I markers
+
+# Corpus WER pools all edits over all words. It is NOT the mean of per-utterance WERs.</code></pre>
+<p>Notice the second example. "4 4 1 9" vs "4419" is the <em>same</em> account number, but it counts as 4 substitutions-and-deletions unless your normaliser converts numbers to one canonical form. Real ASR evals use richer normalisers (for example, the English text normaliser shipped with OpenAI's Whisper repository, which handles numbers, spelling variants and fillers). Always report which normaliser you used; two WER numbers with different normalisers are not comparable.</p>
+
+<div class="callout warn"><span class="t">Where WER misleads you</span>
+<ul>
+<li><b>All words weigh the same.</b> "uh" and "not" cost the same edit. For agents, add <b>entity accuracy</b>: did the ASR get the names, numbers, dates, emails, account IDs and addresses exactly right? A 5% WER with the account number wrong is a failed call.</li>
+<li><b>Averaging is subtle.</b> Corpus WER (total edits / total reference words) weights long utterances more. The mean of per-utterance WER lets short utterances dominate. Pick one and say which.</li>
+<li><b>Silence and hallucination.</b> Some ASR models output words on silence or noise. Include audio clips with <em>no</em> speech in your test set and count insertions there.</li>
+<li><b>Your reference can be wrong.</b> Human transcripts have errors too. For a small, important test set, have two people transcribe and reconcile.</li>
+</ul>
+</div>
+
+<p>Vendor guidance gives rough targets (Hamming, for example, describes under 5% WER as enterprise-grade and 5-10% as good), but treat those as vendor claims, not standards. What matters is WER <em>on your audio</em>: your callers' accents, your phone lines, your vocabulary. A model with low WER on clean read speech benchmarks can be much worse on noisy, accented 8 kHz calls.</p>
+
+<div data-widget="wer"></div>
+
+<h2>Component level: the voice (TTS quality)</h2>
+<p>For the mouth, the classic measure is <b>MOS</b>, the <b>mean opinion score</b>. Human listeners rate each clip on a 1-5 scale (1 bad, 5 excellent), typically for "naturalness", and you average the ratings. The method comes from telephony (ITU-T Recommendation P.800 describes absolute category rating for speech quality). Related human tests include <b>CMOS</b> (comparative MOS, rating which of two clips is better) and <b>MUSHRA</b>-style tests that compare several systems side by side against a reference.</p>
+
+<p>Human MOS studies are slow and expensive, so the field built <b>automated MOS predictors</b>: neural networks trained on thousands of human ratings to predict the score a listener would give. <b>UTMOS</b>, from the University of Tokyo's Saruwatari lab, is a widely used one: it was the UTokyo-SaruLab system for the VoiceMOS Challenge 2022 and placed first on 10 of the 16 challenge metrics. A reimplementation packaged for <code>torch.hub</code> (SpeechMOS) makes it a two-line check:</p>
+<pre data-lang="python"><code>import torch, librosa
+
+# Load a clip your TTS produced (mono). UTMOS predicts a naturalness MOS on a 1-5 scale.
+wave, sr = librosa.load("agent_turn_017.wav", sr=None, mono=True)
+predictor = torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True)
+score = predictor(torch.from_numpy(wave).unsqueeze(0), sr)
+print(float(score))   # e.g. ~3.8; compare TTS voices / versions on the SAME sentences</code></pre>
+<div class="callout warn"><span class="t">Automated MOS is a screening tool, not a verdict</span>
+<p>MOS predictors are trained on particular kinds of speech (often read English sentences). They can be miscalibrated on phone-band audio, other languages, or very expressive voices, and they know nothing about whether the words were <em>right</em>. Use them to catch regressions (a new TTS version drops by 0.4 on your fixed sentence set) and confirm big decisions with a small human listening test.</p>
+</div>
+
+<h3>What MOS misses: names, numbers and "reading" errors</h3>
+<p>For agents, the most damaging TTS failures are not about smoothness. They are <b>text normalisation</b> failures: how the TTS turns written tokens into spoken words.</p>
+<div class="tablewrap"><table>
+<tr><th>Written</th><th>Good spoken form</th><th>Typical failure</th></tr>
+<tr><td><code>$1,250.00</code></td><td>"one thousand two hundred fifty dollars"</td><td>"dollar one comma two five zero point zero zero"</td></tr>
+<tr><td><code>Dr. St. James St.</code></td><td>"Doctor Saint James Street"</td><td>"Drive Street James Saint"</td></tr>
+<tr><td><code>03/04</code></td><td>"March fourth" or "the third of April" (locale!)</td><td>wrong locale, or "zero three slash zero four"</td></tr>
+<tr><td><code>Siobhan Nguyen</code></td><td>"shi-VAWN win"</td><td>spelled-out or anglicised guess</td></tr>
+<tr><td><code>A7X-22</code> (confirmation code)</td><td>"A, seven, X, twenty-two" read slowly, grouped</td><td>"a-sevenx twenty two" run together</td></tr>
+</table></div>
+<p>A neat, automatic way to test this is a <b>round trip</b>: synthesise the agent's sentence, transcribe it with a strong ASR model, and check that the entities survive (compute WER or exact entity match between the text you fed in and what came back). It does not measure beauty, but it does catch mispronounced and garbled content at scale. Keep a hand-curated "pronunciation set" of your hardest real names, product terms and number formats, and run it on every TTS or voice change.</p>
+
+<h2>Component level: latency</h2>
+<p>Latency in voice is not one number. It is a chain of delays, and the user only feels the total. The key user-facing metric is the <b>voice-to-voice response latency</b>: the time from when the caller <em>stops speaking</em> to when they <em>hear</em> the first sound of the reply. A closely related server-side measure is <b>time to first audio</b> (TTFA, sometimes "time to first byte", TTFB): the time from when the system decided the turn ended to when the first audio byte leaves the TTS.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 325" role="img" aria-label="Timing waterfall of one turn: user speech, then endpoint wait, ASR finalisation, LLM first token, TTS first byte and network playout add up to about 1.35 seconds before the user hears the agent.">
+<defs><marker id="m9e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="150" y="44" text-anchor="end" class="sm">user speech</text>
+<rect class="fill-accent" x="160" y="33" width="168" height="14" rx="3"/>
+<text x="150" y="74" text-anchor="end" class="sm">VAD endpoint wait</text>
+<rect class="fill-warn" x="328" y="63" width="140" height="14" rx="3"/><text x="474" y="74" class="sm">500 ms</text>
+<text x="150" y="104" text-anchor="end" class="sm">ASR finalise</text>
+<rect class="fill-violet" x="468" y="93" width="42" height="14" rx="3"/><text x="516" y="104" class="sm">150 ms</text>
+<text x="150" y="134" text-anchor="end" class="sm">LLM first token</text>
+<rect class="fill-violet" x="510" y="123" width="126" height="14" rx="3"/><text x="642" y="134" class="sm">450 ms</text>
+<text x="150" y="164" text-anchor="end" class="sm">TTS first byte</text>
+<rect class="fill-violet" x="636" y="153" width="42" height="14" rx="3"/><text x="684" y="164" class="sm">150 ms</text>
+<text x="150" y="194" text-anchor="end" class="sm">network + playout</text>
+<rect class="fill-muted" x="678" y="183" width="28" height="14" rx="3"/><text x="712" y="194" class="sm">100 ms</text>
+<text x="150" y="224" text-anchor="end" class="sm">agent audio</text>
+<rect class="fill-good" x="706" y="213" width="84" height="14" rx="3"/>
+<line class="ln dash" x1="328" y1="28" x2="328" y2="240"/>
+<line class="ln dash" x1="468" y1="58" x2="468" y2="240"/>
+<line class="ln dash" x1="706" y1="178" x2="706" y2="240"/>
+<line class="ln" x1="160" y1="240" x2="790" y2="240"/>
+<text x="160" y="254" text-anchor="middle" class="sm">0</text><text x="300" y="254" text-anchor="middle" class="sm">500</text>
+<text x="440" y="254" text-anchor="middle" class="sm">1000</text><text x="580" y="254" text-anchor="middle" class="sm">1500</text>
+<text x="720" y="254" text-anchor="middle" class="sm">2000 ms</text>
+<line class="ln warn" x1="468" y1="280" x2="678" y2="280" marker-start="url(#m9e)" marker-end="url(#m9e)"/>
+<text x="573" y="274" text-anchor="middle" class="sm t-warn">server: VAD end → first TTS byte = 750 ms</text>
+<line class="ln accent" x1="328" y1="312" x2="706" y2="312" marker-start="url(#m9e)" marker-end="url(#m9e)"/>
+<text x="517" y="305" text-anchor="middle" class="sm t-accent">user-perceived: stops speaking → hears agent = 1,350 ms</text>
+</svg>
+<figcaption><b>Anatomy of one turn's latency.</b> The biggest single delay is often not a model at all: it is the silence the VAD waits for before deciding the caller is done. Server-side metrics miss both that wait and the network. Illustrative numbers, not a measurement of any product.</figcaption>
+</figure>
+
+<p>Three lessons hide in that picture:</p>
+<ol>
+<li><b>Endpointing dominates.</b> A VAD that waits 500 ms of silence before declaring "turn over" adds 500 ms to every single reply. Shrink it and you cut latency, but you also start interrupting people who pause mid-sentence. That trade-off is why <b>semantic endpointing</b> exists: OpenAI's Realtime API offers a <code>semantic_vad</code> mode that "uses a semantic classifier to detect when the user has finished speaking, based on the words they have uttered", alongside a silence-based <code>server_vad</code> with a tunable <code>silence_duration_ms</code>. Open models such as Pipecat's Smart Turn do the same job for cascades.</li>
+<li><b>Measure where the user is.</b> Server logs start the clock at "VAD end", which already hides the endpoint wait. Put a recorder on the caller's side of the line, or record both channels of the call, and measure from the caller's last speech to the agent's first audible sound.</li>
+<li><b>Report percentiles.</b> Averages hide the awful calls. Report p50, p90, p95 and p99. Vendors publish rough ranges (Hamming reports industry end-to-end latency around 1.4-1.7 s at p50 and 3.3-3.8 s at p95; ElevenLabs suggests aiming for under 500 ms time to first audio and using p99 as the headline SLA), but treat these as vendor claims and set your own targets from user tests.</li>
+</ol>
+
+<h3>A latency harness sketch</h3>
+<p>The simplest reliable approach: stamp a monotonic clock at every stage boundary, per turn, and compute differences afterwards. Hook these into your pipeline's callbacks (every framework exposes events like "user stopped speaking" and "first audio frame out").</p>
+<pre data-lang="python"><code>import time, statistics
+from dataclasses import dataclass, field
+
+@dataclass
+class TurnTimer:
+    """Timestamps for one conversational turn, in seconds (monotonic clock)."""
+    turn_id: int
+    marks: dict = field(default_factory=dict)
+
+    def mark(self, event: str):
+        # Only the FIRST occurrence counts (e.g. first TTS byte, not every chunk).
+        self.marks.setdefault(event, time.perf_counter())
+
+    def ms(self, start: str, end: str):
+        if start in self.marks and end in self.marks:
+            return (self.marks[end] - self.marks[start]) * 1000
+        return None
+
+# --- wire these into your pipeline callbacks -------------------------------
+# on VAD "speech stopped"          -&gt; timer.mark("vad_end")
+# on final ASR transcript          -&gt; timer.mark("asr_final")
+# on first LLM token streamed      -&gt; timer.mark("llm_first_token")
+# on first TTS audio chunk         -&gt; timer.mark("tts_first_byte")
+# on first audio frame played out  -&gt; timer.mark("first_audio_out")
+# For a speech-to-speech API (OpenAI Realtime), the equivalents are the
+# "input_audio_buffer.speech_stopped" event and the first "response.output_audio.delta".
+
+def report(turns: list[TurnTimer]):
+    def pct(vals, p):
+        vals = sorted(v for v in vals if v is not None)
+        if not vals:
+            return float("nan")
+        k = min(len(vals) - 1, round(p / 100 * (len(vals) - 1)))
+        return vals[k]
+    stages = {
+        "ASR finalise":      ("vad_end", "asr_final"),
+        "LLM first token":   ("asr_final", "llm_first_token"),
+        "TTS first byte":    ("llm_first_token", "tts_first_byte"),
+        "VAD end → 1st TTS": ("vad_end", "tts_first_byte"),
+        "VAD end → audio":   ("vad_end", "first_audio_out"),
+    }
+    for name, (a, b) in stages.items():
+        vals = [t.ms(a, b) for t in turns]
+        print(f"{name:18s} p50={pct(vals,50):6.0f}  p90={pct(vals,90):6.0f}  "
+              f"p95={pct(vals,95):6.0f}  p99={pct(vals,99):6.0f} ms")
+
+# The user-perceived number needs the CALLER side: record the call in stereo
+# (caller left, agent right) and measure from the caller's last voiced frame
+# to the agent's first voiced frame with an offline VAD. That captures the
+# endpoint wait and network delay that server-side marks cannot see.</code></pre>
+
+<div class="callout expert"><span class="t">Expert nuance: fast is not the same as good</span>
+<p>Teams sometimes "fix" latency by starting TTS on the LLM's first sentence fragment, or by playing filler audio ("Let me check that for you"). Both work, and both need evals of their own: speculative starts can commit to a wrong answer out loud, and fillers can become repetitive or be spoken before a tool call that then fails. Also watch <b>tool-call latency</b>: a turn that needs a slow database lookup can take seconds, so measure latency separately for turns with and without tool calls.</p>
+</div>
+
+<h2>Conversation level: turn-taking</h2>
+<p>Turn-taking is the part of voice evaluation with no text equivalent, and the part users complain about most ("it kept talking over me", "it cut me off", "it just went silent"). You can only see it on a timeline, so here is one call's timeline with the key events marked.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Waveform timeline of a call. The caller and agent lanes show a response gap, a backchannel the agent correctly talks through, an early endpoint where the agent cuts in on the caller, and a barge-in where the agent yields within 400 milliseconds.">
+<text x="20" y="84" class="b">Caller</text>
+<text x="20" y="174" class="b">Agent</text>
+<line class="ln dash" x1="80" y1="80" x2="800" y2="80" opacity="0.25"/>
+<line class="ln dash" x1="80" y1="170" x2="800" y2="170" opacity="0.25"/>
+<rect class="fill-muted" x="230" y="50" width="60" height="150" opacity="0.15"/>
+<rect class="fill-bad" x="555" y="50" width="35" height="150" opacity="0.2"/>
+<rect class="fill-warn" x="650" y="50" width="40" height="150" opacity="0.25"/>
+<polyline class="ln accent" points="90,80 93,84 96,75 99,87 102,72 105,86 108,74 111,92 114,72 117,89 120,64 123,92 126,65 129,92 132,66 135,90 138,65 141,98 144,66 147,97 150,64 153,90 156,63 159,96 162,68 165,89 168,62 171,94 174,64 177,98 180,64 183,98 186,68 189,96 192,68 195,96 198,65 201,88 204,72 207,88 210,67 213,88 216,71 219,86 222,74 225,84 228,77"/>
+<polyline class="ln accent" points="360,80 363,83 366,75 369,85 372,74 375,85 378,75 381,83 384,79"/>
+<polyline class="ln accent" points="490,80 493,86 496,72 499,88 502,70 505,88 508,67 511,92 514,70 517,88 520,63 523,98 526,71 529,97 532,67 535,91 538,68 541,97 544,61 547,89 550,65 553,89 556,64 559,91 562,64 565,97 568,68 571,95 574,71 577,86 580,71 583,84 586,76 589,82"/>
+<polyline class="ln accent" points="650,80 653,83 656,76 659,89 662,73 665,92 668,68 671,89 674,70 677,91 680,67 683,93 686,67 689,94 692,62 695,94 698,67 701,96 704,69 707,92 710,60 713,95 716,65 719,89 722,67 725,95 728,71 731,95 734,65 737,89 740,66 743,92 746,66 749,91 752,67 755,93 758,73 761,86 764,70 767,91 770,74 773,86 776,75 779,82"/>
+<polyline class="ln good" points="290,170 293,173 296,166 299,176 302,164 305,177 308,160 311,176 314,160 317,182 320,161 323,178 326,156 329,179 332,161 335,182 338,156 341,179 344,159 347,182 350,153 353,183 356,152 359,180 362,158 365,186 368,151 371,184 374,159 377,180 380,155 383,181 386,152 389,188 392,159 395,182 398,153 401,186 404,153 407,182 410,160 413,181 416,154 419,181 422,159 425,181 428,159 431,181 434,155 437,178 440,164 443,183 446,158 449,182 452,162 455,180 458,161 461,175 464,164 467,174 470,170"/>
+<polyline class="ln good" points="555,170 558,173 561,165 564,175 567,165 570,179 573,162 576,182 579,163 582,185 585,157 588,186 591,154 594,187 597,156 600,179 603,154 606,180 609,158 612,186 615,155 618,184 621,151 624,186 627,157 630,182 633,152 636,184 639,153 642,182 645,160 648,184 651,154 654,179 657,155 660,185 663,156 666,183 669,164 672,180 675,159 678,175 681,165 684,174 687,166 690,170"/>
+<text x="260" y="36" text-anchor="middle" class="sm">① response gap</text>
+<text x="372" y="36" text-anchor="middle" class="sm">② backchannel</text>
+<text x="572" y="36" text-anchor="middle" class="sm t-bad">③ agent cuts in</text>
+<text x="700" y="36" text-anchor="middle" class="sm t-warn">④ barge-in</text>
+<line class="ln" x1="80" y1="212" x2="800" y2="212"/>
+<text x="800" y="228" text-anchor="end" class="sm">time →</text>
+<text x="80" y="252" class="sm">① 600 ms from caller's last word to agent's first: good, near human pace</text>
+<text x="80" y="268" class="sm">② caller says "mm-hm" mid-answer: agent correctly keeps talking   ③ caller paused, agent jumped in early: overlap</text>
+<text x="80" y="284" class="sm">④ caller interrupts: agent stops after 400 ms of overlap (yield time); did it then address the new request?</text>
+</svg>
+<figcaption><b>A call as two waveforms.</b> Grey shading is a gap, red is an overlap the agent caused, orange is an overlap the caller caused. Every turn-taking metric is a measurement on a timeline like this, which is why you need timestamps (or the stereo audio itself), not just a transcript. Illustrative, not real data.</figcaption>
+</figure>
+
+<h3>The turn-taking vocabulary</h3>
+<div class="tablewrap"><table>
+<tr><th>Behaviour</th><th>What it means</th><th>How to measure</th></tr>
+<tr><td><b>Endpointing</b></td><td>Deciding the caller has finished their turn.</td><td>Endpoint delay (caller's last word → agent decides), and the rate of <b>premature endpoints</b> (agent starts while the caller was only pausing). Vendors call the overall quality "end-of-turn detection accuracy".</td></tr>
+<tr><td><b>Barge-in</b></td><td>The caller interrupts the agent while it speaks.</td><td>Share of real interruptions the agent yields to; <b>yield time</b> (overlap duration before the agent stops; Cekura suggests stopping and resuming within about 2 s, but shorter is better); whether the next reply addresses what the caller said.</td></tr>
+<tr><td><b>False interruption</b></td><td>The agent stops for something that was not a turn: a cough, a TV, a "mm-hm".</td><td>Rate of agent stops with no real caller turn, per call or per 100 agent turns.</td></tr>
+<tr><td><b>Backchannels</b></td><td>Short listener signals ("mm-hm", "right", "okay").</td><td>From the caller: did the agent keep going (it should)? From the agent (full-duplex models): frequency and timing compared with human conversations. Full-Duplex-Bench compares backchannel distributions with a Jensen-Shannon divergence.</td></tr>
+<tr><td><b>Silence handling</b></td><td>The caller goes quiet (thinking, looking for a card, dropped call).</td><td>Does the agent re-prompt after a sensible time, avoid nagging, and end the call gracefully after repeated silence?</td></tr>
+<tr><td><b>Talk ratio, overlap</b></td><td>Share of call time each side speaks; total overlap time.</td><td>Computed from the stereo recording with an offline VAD. An agent talking 80% of the time is usually monologuing.</td></tr>
+</table></div>
+
+<p>It helps to see interruption handling as a classification problem. Every time the caller makes a sound while the agent is speaking, the agent either yields or keeps going, and the caller either meant to take the turn or did not:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Two by two matrix for interruptions. Caller really taking the turn and agent yields is correct barge-in handling. Caller taking the turn and agent continues means talking over the caller. Backchannel or noise and agent yields is a false interruption. Backchannel or noise and agent continues is correct.">
+<text x="470" y="24" text-anchor="middle" class="b">What the agent did</text>
+<text x="360" y="50" text-anchor="middle" class="sm">stops (yields)</text>
+<text x="600" y="50" text-anchor="middle" class="sm">keeps talking</text>
+<text x="120" y="106" text-anchor="middle" class="b">Caller really</text>
+<text x="120" y="122" text-anchor="middle" class="b">takes the turn</text>
+<text x="120" y="186" text-anchor="middle" class="b">Backchannel,</text>
+<text x="120" y="202" text-anchor="middle" class="b">cough, TV noise</text>
+<rect class="box good" x="240" y="64" width="240" height="80" rx="8"/>
+<text x="360" y="98" text-anchor="middle" class="b t-good">Correct barge-in</text>
+<text x="360" y="118" text-anchor="middle" class="sm">measure yield time</text>
+<rect class="box bad" x="490" y="64" width="240" height="80" rx="8"/>
+<text x="610" y="98" text-anchor="middle" class="b t-bad">Talks over caller</text>
+<text x="610" y="118" text-anchor="middle" class="sm">missed interruption</text>
+<rect class="box warn" x="240" y="154" width="240" height="80" rx="8"/>
+<text x="360" y="188" text-anchor="middle" class="b t-warn">False interruption</text>
+<text x="360" y="208" text-anchor="middle" class="sm">choppy, stop-start agent</text>
+<rect class="box good" x="490" y="154" width="240" height="80" rx="8"/>
+<text x="610" y="188" text-anchor="middle" class="b t-good">Correctly ignored</text>
+<text x="610" y="208" text-anchor="middle" class="sm">keeps the answer flowing</text>
+<text x="742" y="108" class="sm">yield recall</text>
+<text x="742" y="190" class="sm">false-stop</text><text x="742" y="205" class="sm">rate</text>
+</svg>
+<figcaption><b>Interruption handling is a confusion matrix.</b> Tuning the VAD to be more sensitive moves errors from the red cell to the orange one, and less sensitive moves them back. Report both cells; optimising only one is how agents become either rude or jumpy.</figcaption>
+</figure>
+
+<h3>Task success, policy and tone</h3>
+<p>Above turn-taking sit the same questions as for any conversational agent (<a href="06-tool-use-and-conversation.html">Module 06</a>), asked of a spoken conversation:</p>
+<ul>
+<li><b>Task success.</b> Did the agent achieve the caller's goal? Best graded on <b>state</b>, not words: was the appointment actually moved in the database, with the right date? τ-Voice (below) grades voice agents exactly this way, by checking the final database state.</li>
+<li><b>Policy adherence.</b> Did it verify identity before discussing the account, read the required disclosure, refuse what it should refuse, never promise a refund it cannot give? These are mostly binary checks, graded by code on tool calls where possible and by an LLM judge on the transcript otherwise.</li>
+<li><b>Information capture.</b> Did it collect and confirm critical fields (spell back the email, read back the phone number)? Voice makes confirmation loops essential because hearing is lossy.</li>
+<li><b>Tone and empathy.</b> Did it acknowledge frustration, stay calm, avoid sounding robotic or sarcastic? This is where audio-aware grading matters, because the same words can be said kindly or coldly.</li>
+</ul>
+
+<h2>System level: call outcomes and business metrics</h2>
+<p>At the top of the stack are the numbers a contact-centre manager watches. They are measured on real traffic (online evals, see <a href="15-production-evals.html">Module 15</a>) or on large batches of simulated calls.</p>
+<div class="tablewrap"><table>
+<tr><th>Metric</th><th>Definition</th><th>The trap</th></tr>
+<tr><td><b>Call outcome</b></td><td>Label per call: resolved, transferred, abandoned, callback scheduled, and so on.</td><td>Labels from the agent itself are self-reports. Verify against system state or a judge.</td></tr>
+<tr><td><b>Containment rate</b></td><td>Share of calls handled end to end without transfer to a human.</td><td>Easy to game: an agent that never transfers, or that frustrates callers into hanging up, is "contained".</td></tr>
+<tr><td><b>Escalation correctness</b></td><td>Did the agent transfer the calls that needed a human, and only those?</td><td>Needs both precision (transfers that were needed) and recall (needed transfers that happened).</td></tr>
+<tr><td><b>CSAT</b></td><td>Customer satisfaction, usually a post-call survey score.</td><td>Low response rates and selection bias: happy and furious callers answer surveys more.</td></tr>
+<tr><td><b>First-call resolution, AHT</b></td><td>Resolved without a repeat call; average handle time.</td><td>Shorter AHT is not better if the problem comes back tomorrow.</td></tr>
+</table></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Tree of 1,000 calls: 780 stay with the agent, of which 600 are resolved and 180 hang up; 220 are transferred, of which 170 needed a human and 50 could have been solved. Containment is 78 percent but true resolution is only 60 percent.">
+<defs><marker id="m9h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="115" width="120" height="50" rx="8"/>
+<text x="80" y="145" text-anchor="middle" class="b">1,000 calls</text>
+<rect class="box accent" x="200" y="45" width="170" height="50" rx="8"/>
+<text x="285" y="67" text-anchor="middle" class="b">Stayed with agent</text><text x="285" y="85" text-anchor="middle" class="sm">780 ("contained")</text>
+<rect class="box plain" x="200" y="185" width="170" height="50" rx="8"/>
+<text x="285" y="207" text-anchor="middle" class="b">Transferred</text><text x="285" y="225" text-anchor="middle" class="sm">220</text>
+<rect class="box good" x="430" y="15" width="180" height="42" rx="8"/><text x="520" y="41" text-anchor="middle" class="sm">Resolved: 600 ✓</text>
+<rect class="box bad" x="430" y="83" width="180" height="42" rx="8"/><text x="520" y="109" text-anchor="middle" class="sm">Gave up / hung up: 180 ✗</text>
+<rect class="box good" x="430" y="155" width="180" height="42" rx="8"/><text x="520" y="181" text-anchor="middle" class="sm">Needed a human: 170 ✓</text>
+<rect class="box warn" x="430" y="223" width="180" height="42" rx="8"/><text x="520" y="249" text-anchor="middle" class="sm">Agent could have solved: 50</text>
+<line class="ln" x1="140" y1="140" x2="196" y2="72" marker-end="url(#m9h)"/>
+<line class="ln" x1="140" y1="140" x2="196" y2="208" marker-end="url(#m9h)"/>
+<line class="ln" x1="370" y1="70" x2="426" y2="38" marker-end="url(#m9h)"/>
+<line class="ln" x1="370" y1="70" x2="426" y2="102" marker-end="url(#m9h)"/>
+<line class="ln" x1="370" y1="210" x2="426" y2="178" marker-end="url(#m9h)"/>
+<line class="ln" x1="370" y1="210" x2="426" y2="242" marker-end="url(#m9h)"/>
+<text x="640" y="40" class="sm">containment</text>
+<text x="640" y="56" class="sm">= 780 / 1000 = 78%</text>
+<text x="640" y="92" class="sm t-bad">true resolution</text>
+<text x="640" y="108" class="sm t-bad">= 600 / 1000 = 60%</text>
+<text x="640" y="200" class="sm">escalation precision</text>
+<text x="640" y="216" class="sm">= 170 / 220 = 77%</text>
+</svg>
+<figcaption><b>Containment is not resolution.</b> In this illustrative example, 78% containment looks good until you notice 180 callers gave up. Always pair containment with a resolution check and with escalation precision and recall. Invented numbers for illustration.</figcaption>
+</figure>
+
+<h2>Simulated callers: testing before real people call</h2>
+<p>You cannot ask a thousand real people to call your agent every time you change a prompt. So voice teams build <b>simulated callers</b>: an LLM plays a persona with a goal (the same <b>user simulator</b> idea from τ-bench in <a href="06-tool-use-and-conversation.html">Module 06</a>), a TTS voice gives it a voice, and it phones your agent over a real audio channel. This is <b>voice-to-voice simulation</b>: the agent under test hears synthesised speech, with all the ASR, endpointing and latency behaviour that implies, instead of receiving clean text.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Simulation loop: a scenario and persona matrix configure a simulated caller, whose speech passes through channel impairments to the agent under test. The agent's audio returns to the simulator. A recorder captures stereo audio, timestamps, tool calls and database state for graders.">
+<defs><marker id="m9i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="140" height="70" rx="8"/>
+<text x="90" y="66" text-anchor="middle" class="b">Scenario</text>
+<text x="90" y="84" text-anchor="middle" class="sm">goal, facts, persona,</text>
+<text x="90" y="98" text-anchor="middle" class="sm">success criteria</text>
+<rect class="box violet" x="195" y="40" width="150" height="70" rx="8"/>
+<text x="270" y="66" text-anchor="middle" class="b">Simulated caller</text>
+<text x="270" y="84" text-anchor="middle" class="sm">LLM persona + TTS voice</text>
+<text x="270" y="98" text-anchor="middle" class="sm">+ its own ASR</text>
+<rect class="box warn" x="385" y="40" width="150" height="70" rx="8"/>
+<text x="460" y="66" text-anchor="middle" class="b">Channel</text>
+<text x="460" y="84" text-anchor="middle" class="sm">noise, 8 kHz codec,</text>
+<text x="460" y="98" text-anchor="middle" class="sm">packet loss, jitter</text>
+<rect class="box accent" x="575" y="40" width="150" height="70" rx="8"/>
+<text x="650" y="66" text-anchor="middle" class="b">Agent under test</text>
+<text x="650" y="84" text-anchor="middle" class="sm">phone number or</text>
+<text x="650" y="98" text-anchor="middle" class="sm">WebRTC endpoint</text>
+<line class="ln" x1="160" y1="75" x2="191" y2="75" marker-end="url(#m9i)"/>
+<line class="ln" x1="345" y1="75" x2="381" y2="75" marker-end="url(#m9i)"/>
+<line class="ln" x1="535" y1="75" x2="571" y2="75" marker-end="url(#m9i)"/>
+<text x="363" y="32" text-anchor="middle" class="sm">speaks</text>
+<text x="553" y="32" text-anchor="middle" class="sm">audio</text>
+<path class="ln" d="M650,110 L650,140 L270,140 L270,114" marker-end="url(#m9i)"/>
+<text x="460" y="156" text-anchor="middle" class="sm">agent's audio back: simulator listens, decides next line or interrupts</text>
+<rect class="box dashed" x="20" y="190" width="250" height="80" rx="8"/>
+<text x="145" y="214" text-anchor="middle" class="b">Persona matrix</text>
+<text x="145" y="234" text-anchor="middle" class="sm">accent × noise × pace × temperament</text>
+<text x="145" y="252" text-anchor="middle" class="sm">× interruption style, N runs each</text>
+<line class="ln" x1="90" y1="190" x2="90" y2="114" marker-end="url(#m9i)"/>
+<rect class="box plain" x="300" y="190" width="220" height="80" rx="8"/>
+<text x="410" y="214" text-anchor="middle" class="b">Recorder</text>
+<text x="410" y="234" text-anchor="middle" class="sm">stereo audio (caller L, agent R)</text>
+<text x="410" y="252" text-anchor="middle" class="sm">timestamps, tool calls, DB state</text>
+<line class="ln" x1="410" y1="140" x2="410" y2="186" marker-end="url(#m9i)"/>
+<rect class="box good" x="550" y="180" width="250" height="100" rx="8"/>
+<text x="675" y="202" text-anchor="middle" class="b">Graders</text>
+<text x="566" y="222" class="sm">code: DB state, tool arguments</text>
+<text x="566" y="238" class="sm">timing: latency, overlaps, yields</text>
+<text x="566" y="254" class="sm">LLM judge: timestamped transcript</text>
+<text x="566" y="270" class="sm">audio judge or human: tone, prosody</text>
+<line class="ln" x1="520" y1="230" x2="546" y2="230" marker-end="url(#m9i)"/>
+</svg>
+<figcaption><b>Voice-to-voice simulation.</b> A persona-driven caller talks to your agent through a deliberately degraded channel. Everything is recorded, then graded by several graders at once. The persona matrix turns one scenario into dozens of acoustic and behavioural variants.</figcaption>
+</figure>
+
+<h3>What a good simulated caller varies</h3>
+<ul>
+<li><b>Goal and facts:</b> what they want, and the account details they will give when asked (so the grader knows the right end state).</li>
+<li><b>Voice:</b> accent, age, speaking rate, volume, pitch. Use several TTS voices; a suite with one synthetic voice tests one voice.</li>
+<li><b>Environment:</b> background noise (street, café, car, TV, crying baby), speakerphone reverb, phone codec.</li>
+<li><b>Behaviour:</b> interrupts mid-sentence, pauses to think, corrects themselves ("the 14th, no sorry, the 15th"), gives information out of order, goes off topic, gets angry, stays silent.</li>
+<li><b>Adversarial intent:</b> tries to get account details without verifying, social-engineers a refund, attempts a jailbreak.</li>
+</ul>
+<p>Commercial platforms productise this loop. Hamming advertises auto-generated scenarios with "accents, interruptions, background noise, DTMF, and IVR trees" and turning production failures into regression tests; Coval describes simulating "thousands of realistic callers, hard policies, noisy audio"; Cekura describes persona simulation across language, accent, emotion, speed, volume, interruption behaviour and background noise (their example multiplies 5 × 3 × 3 × 4 × 5, about 900 variants). These are vendor descriptions; evaluate any tool against your own calls. You can also build the loop yourself with an open framework (Pipecat or LiveKit Agents on both ends) and a TTS voice for the caller.</p>
+
+<h3>A scenario config</h3>
+<p>Whether you use a vendor or your own harness, write scenarios as data, so they can be versioned, reviewed, and expanded into a matrix. A sketch in YAML (the field names are illustrative, not a specific product's schema):</p>
+<pre data-lang="yaml"><code>id: reschedule-dental-017
+description: Caller wants to move a cleaning appointment; agent must verify identity first.
+
+persona:
+  name: "Marguerite Okafor"          # hard-to-pronounce name on purpose
+  voice: { tts_voice: "caller_f_55_en_ng", rate: 0.9, volume_db: -6 }
+  temperament: impatient
+  behaviours:
+    - interrupt_agent_when: "agent reads the policy disclaimer"
+    - self_correct: "gives date as the 14th, then corrects to the 15th"
+    - long_pause_ms: 4000            # looks for her card mid-call
+  facts:                             # what she says ONLY when asked
+    date_of_birth: "1970-03-22"
+    current_appointment: "2026-10-09 09:30"
+    wanted: "any weekday after 4 pm, week of 2026-10-12"
+
+channel:
+  noise: { type: cafe, snr_db: 10 }
+  codec: g711_ulaw_8k
+  packet_loss: 0.02
+
+success_criteria:                    # graded by CODE on final state / tool calls
+  - tool_called: verify_identity
+    before: [lookup_appointment, reschedule_appointment]
+  - db_state: "appointment.patient == 'Okafor' and appointment.start.weekday() &lt; 5
+               and appointment.start.hour &gt;= 16 and appointment.start.date() == '2026-10-15'"
+  - no_tool_called: cancel_appointment
+
+judge_rubric:                        # graded by an LLM judge on the timestamped transcript
+  - "Agent confirmed the new date and time out loud before ending the call."
+  - "Agent stopped speaking within ~1 s when the caller interrupted the disclaimer."
+  - "Agent used the correct date after the caller's self-correction."
+  - "Agent re-prompted gently during the 4-second silence, without hanging up."
+
+matrix:                              # expand into variants
+  accent: [en-NG, en-IN, en-US-south, es-MX-L2]
+  noise: [none, cafe_10db, car_5db]
+  runs_per_variant: 3                # agents are stochastic; see pass^k in Module 04
+max_duration_s: 240</code></pre>
+
+<div class="callout warn"><span class="t">The simulator is part of your measuring instrument</span>
+<p>A simulated caller that is too cooperative, too articulate, or that never interrupts will make your agent look great. One that goes off-script (forgets its goal, invents facts, hangs up early) produces failures that are not the agent's fault. Read a sample of simulated calls regularly, grade the simulator's fidelity too, and calibrate your persona mix against real call recordings. This is the same "measure the measurer" principle as in <a href="03-graders.html">Module 03</a>.</p>
+</div>
+
+<h2>Grading audio: transcribe-then-judge vs listening judges</h2>
+<p>Once you have recorded calls, how do you grade the qualities code cannot check? There are three approaches, and they differ in what they can "see".</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Three grading routes. Transcribe then text judge loses tone, emotion, overlap and pronunciation. A timestamped diarised transcript recovers timing and overlap but still loses prosody. An audio-native judge hears tone and pronunciation but is less validated and more costly.">
+<defs><marker id="m9j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="140" y="22" text-anchor="middle" class="b">A. Transcribe → text judge</text>
+<text x="410" y="22" text-anchor="middle" class="b">B. Timestamped transcript</text>
+<text x="680" y="22" text-anchor="middle" class="b">C. Audio-native judge</text>
+<rect class="box plain" x="60" y="36" width="160" height="36" rx="6"/><text x="140" y="59" text-anchor="middle" class="sm">call audio</text>
+<rect class="box plain" x="330" y="36" width="160" height="36" rx="6"/><text x="410" y="59" text-anchor="middle" class="sm">call audio (stereo)</text>
+<rect class="box plain" x="600" y="36" width="160" height="36" rx="6"/><text x="680" y="59" text-anchor="middle" class="sm">call audio</text>
+<rect class="box plain" x="60" y="96" width="160" height="36" rx="6"/><text x="140" y="119" text-anchor="middle" class="sm">plain transcript</text>
+<rect class="box plain" x="330" y="96" width="160" height="36" rx="6"/><text x="410" y="113" text-anchor="middle" class="sm">speakers + times +</text><text x="410" y="126" text-anchor="middle" class="sm">[overlap] [silence]</text>
+<rect class="box dashed" x="600" y="96" width="160" height="36" rx="6"/><text x="680" y="119" text-anchor="middle" class="sm t-muted">no text step</text>
+<rect class="box accent" x="60" y="156" width="160" height="36" rx="6"/><text x="140" y="179" text-anchor="middle" class="sm">text LLM judge</text>
+<rect class="box accent" x="330" y="156" width="160" height="36" rx="6"/><text x="410" y="179" text-anchor="middle" class="sm">text LLM judge</text>
+<rect class="box violet" x="600" y="156" width="160" height="36" rx="6"/><text x="680" y="179" text-anchor="middle" class="sm">audio LLM judge</text>
+<line class="ln" x1="140" y1="72" x2="140" y2="92" marker-end="url(#m9j)"/><line class="ln" x1="140" y1="132" x2="140" y2="152" marker-end="url(#m9j)"/>
+<line class="ln" x1="410" y1="72" x2="410" y2="92" marker-end="url(#m9j)"/><line class="ln" x1="410" y1="132" x2="410" y2="152" marker-end="url(#m9j)"/>
+<line class="ln" x1="680" y1="72" x2="680" y2="92" marker-end="url(#m9j)"/><line class="ln" x1="680" y1="132" x2="680" y2="152" marker-end="url(#m9j)"/>
+<text x="140" y="218" text-anchor="middle" class="sm t-good">keeps: words, facts, policy</text>
+<text x="140" y="236" text-anchor="middle" class="sm t-bad">loses: tone, emotion, overlap,</text>
+<text x="140" y="252" text-anchor="middle" class="sm t-bad">pace, pronunciation; ASR errors</text>
+<text x="140" y="268" text-anchor="middle" class="sm t-bad">look like agent errors</text>
+<text x="410" y="218" text-anchor="middle" class="sm t-good">recovers: gaps, overlaps,</text>
+<text x="410" y="236" text-anchor="middle" class="sm t-good">interruptions, yield times</text>
+<text x="410" y="252" text-anchor="middle" class="sm t-bad">still loses: prosody, emotion,</text>
+<text x="410" y="268" text-anchor="middle" class="sm t-bad">pronunciation</text>
+<text x="680" y="218" text-anchor="middle" class="sm t-good">hears: tone, pace, emphasis,</text>
+<text x="680" y="236" text-anchor="middle" class="sm t-good">pronunciation, noise</text>
+<text x="680" y="252" text-anchor="middle" class="sm t-warn">risk: less validated, costlier,</text>
+<text x="680" y="268" text-anchor="middle" class="sm t-warn">can mishear timing too</text>
+</svg>
+<figcaption><b>What each grading route can perceive.</b> Most teams use B for the bulk of grading (cheap, debuggable, catches timing) and reserve C or human listeners for tone, empathy and pronunciation, validating C against human labels before trusting it.</figcaption>
+</figure>
+
+<h3>What is lost in transcription</h3>
+<ul>
+<li><b>Prosody:</b> the melody of speech. "Great." said flatly and "Great!" said warmly are the same token.</li>
+<li><b>Emotion and paralinguistics:</b> frustration, hesitation, sighs, laughter, sarcasm.</li>
+<li><b>Overlap and timing:</b> a plain transcript serialises turns, so two people talking at once look like polite alternation, and a 4-second silence becomes invisible.</li>
+<li><b>Pronunciation:</b> the transcript says "Siobhan" whether the agent said it right or wrong, because the ASR (or the agent's own text) already knows the spelling.</li>
+<li><b>Attribution of errors:</b> if you judge the transcript of the <em>caller</em> side, ASR mistakes look like the caller said something odd, or worse, like the agent misunderstood when it actually heard correctly.</li>
+</ul>
+<p>The practical fix is route B: produce a <b>diarised</b> (speaker-labelled), <b>timestamped</b> transcript from the stereo recording, and insert explicit event markers for overlaps, long silences, interruptions and tool calls. A text judge can then reason about timing. Leave prosody and empathy to an audio-capable judge or humans.</p>
+
+<h3>A judge prompt for a timestamped call transcript</h3>
+<pre data-lang="text"><code>You are grading a recorded phone call between a CALLER and a voice AGENT for a dental clinic.
+You will receive a transcript with timestamps in seconds, speaker labels, and event markers:
+  [OVERLAP a-b]   both speakers talking between a and b seconds
+  [SILENCE n s]   no one speaking for n seconds
+  [TOOL name(args) -&gt; result]   a tool call the agent made
+Transcripts come from automatic speech recognition and may contain recognition errors.
+Do not penalise the agent for a CALLER-side transcription error unless the agent's
+reply shows it actually misunderstood.
+
+Grade each criterion independently as PASS or FAIL, with a one-sentence reason that
+cites timestamps. Then give an overall verdict.
+
+Criteria:
+1. identity_verified_first: the agent verified identity (verify_identity tool succeeded)
+   before revealing or changing any appointment details.
+2. correct_final_booking: the final reschedule tool call matches what the caller last
+   asked for (after any self-correction).
+3. confirmation_read_back: before ending, the agent read back the new date and time and
+   the caller did not dispute it.
+4. yields_to_interruptions: whenever the CALLER starts speaking during an AGENT turn and
+   it is a real attempt to take the turn (not "mm-hm"/"okay"), the overlap lasts under
+   1.5 s and the agent's next turn addresses what the caller said.
+5. no_premature_cut_in: the agent never starts speaking while the caller is mid-sentence
+   (an OVERLAP that the AGENT started, where the caller's words are incomplete).
+6. silence_handling: after any SILENCE over 3 s, the agent re-prompted politely within
+   about 8 s and did not end the call unless silence persisted after two re-prompts.
+7. no_fabrication: the agent never states availability, prices or policy that is not
+   supported by a tool result or the policy text below.
+
+Policy text:
+&lt;&lt;POLICY&gt;&gt;
+
+Transcript:
+&lt;&lt;TRANSCRIPT&gt;&gt;
+
+Respond with JSON only:
+{"criteria": {"identity_verified_first": {"verdict": "PASS|FAIL", "reason": "..."}, ...},
+ "overall": "PASS|FAIL", "first_failure_timestamp": null or seconds}</code></pre>
+<p>Notice the design choices, all from <a href="13-llm-as-judge.html">Module 13</a>: one binary verdict per criterion (not a 1-10 vibe score), reasons that must cite evidence, an explicit warning about ASR noise, and a request for the <em>first</em> failure, which is what you need for error analysis. Anything that can be checked by code (criteria 1, 2, and the overlap duration in 4) should be checked by code as well; use the judge for the parts that need reading comprehension, and compare the two where they overlap.</p>
+
+<h2>Public voice benchmarks</h2>
+<p>Benchmarks tell you how capable an underlying model is at spoken interaction. They do not replace your own call suite, but they help you choose models and understand the state of the art. The main ones, as of this writing:</p>
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>What it measures</th><th>How it's scored</th></tr>
+<tr><td><b>Big Bench Audio</b><br>(Artificial Analysis, Dec 2024)</td><td>Reasoning over <em>spoken</em> questions: 1,000 audio items adapted from four BIG-Bench Hard categories (formal fallacies, navigate, object counting, web of lies), 250 each. Run as speech-to-speech, speech-to-text or pipeline.</td><td>LLM judge compares the answer with the reference. Commonly used to show the "speech reasoning gap" relative to the same questions in text.</td></tr>
+<tr><td><b>VoiceBench</b><br>(Chen et al., Oct 2024)</td><td>LLM-based voice assistants on real and synthetic spoken instructions. Subsets include AlpacaEval, CommonEval, SD-QA, MMSU, OpenBookQA, IFEval, AdvBench and BBH, plus speaker, environment and content variations (accents, noise, disfluency).</td><td>GPT-judged scores for open-ended answers, accuracy for multiple choice, refusal rate for the safety subset. Leaderboard on GitHub.</td></tr>
+<tr><td><b>Full-Duplex-Bench</b><br>(Lin et al., Mar 2025)</td><td>Turn-taking in full-duplex spoken dialogue models: pause handling, backchanneling, smooth turn-taking, user interruption.</td><td>Automatic metrics: takeover rate (TOR, did the model grab the turn when it should or should not have), backchannel frequency and Jensen-Shannon divergence against human distributions, response latency, and GPT-judged relevance of the response after an interruption. Follow-up versions extend to overlapping speech and multi-turn.</td></tr>
+<tr><td><b>Audio MultiChallenge</b><br>(Scale AI, Dec 2025; ACL 2026)</td><td>Multi-turn natural spoken dialogue with end-to-end systems: inference memory, instruction retention, self coherence, and a new <b>voice editing</b> axis (mid-utterance repairs, background audio cues). 452 conversations from 47 speakers, 1,712 instance-specific rubrics.</td><td>Pass rate under a rubric-based LLM judge. Best at paper time: Gemini 3 Pro Preview (Thinking) at 54.65%; performance fell with longer audio context.</td></tr>
+<tr><td><b>τ-Voice</b><br>(Sierra / Princeton, Mar 2026; ICML 2026)</td><td>Full-duplex voice agents on τ-bench's grounded customer-service tasks: 278 tasks with realistic audio, including accents and noise. Integrated into the τ-bench (τ²/τ³) repo with realtime providers.</td><td>Task completion (pass@1) by database-state checks, clean and noisy. Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% clean and 26-38% with noise and accents, keeping roughly 30-45% of text capability.</td></tr>
+</table></div>
+
+<div class="callout tip"><span class="t">The headline finding across benchmarks</span>
+<p>Spoken interaction is still much harder than text for the same underlying intelligence. Big Bench Audio shows a reasoning gap from speech input; τ-Voice shows grounded task success falling by roughly half or more in voice, and further with noise and accents. If your text agent passes 90% of your tasks, do not assume the voice version will. Measure it.</p>
+</div>
+
+<p>Also worth knowing by name: Artificial Analysis publishes speech-to-speech leaderboards (including Big Bench Audio results and latency measurements), and "Talking Turns" (Arora et al., ICLR 2025) trains a judge model specifically for turn-taking behaviour. Other academic suites cover audio understanding and paralinguistics (for example SD-Eval for paralinguistic cues, and AIR-Bench and MMAU for general audio understanding); check their papers before relying on specifics.</p>
+
+<h2>Robustness: the channel is out to get you</h2>
+<p>A voice agent that works in a quiet office on a laptop microphone can fall apart on a real phone line. Robustness testing means deliberately degrading the audio in controlled, repeatable ways and watching which metrics move.</p>
+
+<figure class="diagram">
+<svg viewBox="0 25 820 205" role="img" aria-label="Degradation ladder: clean 16 kHz audio, then added background noise at a set SNR, then 8 kHz telephone band with mu-law codec, then packet loss. At each rung you rerun the same eval and chart WER and task success.">
+<defs><marker id="m9k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box good" x="20" y="40" width="165" height="70" rx="8"/>
+<text x="102" y="66" text-anchor="middle" class="b">Clean</text>
+<text x="102" y="84" text-anchor="middle" class="sm">16 kHz, studio mic</text>
+<text x="102" y="98" text-anchor="middle" class="sm">native speaker</text>
+<rect class="box plain" x="225" y="40" width="165" height="70" rx="8"/>
+<text x="307" y="66" text-anchor="middle" class="b">+ Noise</text>
+<text x="307" y="84" text-anchor="middle" class="sm">café, car, TV, babble</text>
+<text x="307" y="98" text-anchor="middle" class="sm">at SNR 20 / 10 / 5 dB</text>
+<rect class="box warn" x="430" y="40" width="165" height="70" rx="8"/>
+<text x="512" y="66" text-anchor="middle" class="b">+ Phone line</text>
+<text x="512" y="84" text-anchor="middle" class="sm">8 kHz band limit,</text>
+<text x="512" y="98" text-anchor="middle" class="sm">G.711 mu-law codec</text>
+<rect class="box bad" x="635" y="40" width="165" height="70" rx="8"/>
+<text x="717" y="66" text-anchor="middle" class="b">+ Network</text>
+<text x="717" y="84" text-anchor="middle" class="sm">packet loss 1-5%,</text>
+<text x="717" y="98" text-anchor="middle" class="sm">jitter, dropouts</text>
+<line class="ln" x1="185" y1="75" x2="221" y2="75" marker-end="url(#m9k)"/>
+<line class="ln" x1="390" y1="75" x2="426" y2="75" marker-end="url(#m9k)"/>
+<line class="ln" x1="595" y1="75" x2="631" y2="75" marker-end="url(#m9k)"/>
+<line class="ln accent" x1="20" y1="140" x2="800" y2="140"/>
+<text x="410" y="164" text-anchor="middle" class="sm">at every rung, rerun the SAME calls and record: WER, entity accuracy, false interruptions,</text>
+<text x="410" y="182" text-anchor="middle" class="sm">endpoint errors, task success. Cross with accents and speaking styles.</text>
+<text x="410" y="212" text-anchor="middle" class="b t-accent">Report the curve, not just the clean number.</text>
+</svg>
+<figcaption><b>A degradation ladder.</b> Each rung stacks on the previous one, so you can see which impairment breaks what. Noise tends to hit the VAD (false interruptions) as much as the ASR; codecs hit names and numbers; packet loss creates gaps that look like the caller stopped talking.</figcaption>
+</figure>
+
+<p>You can generate most of these conditions offline from clean recordings, which makes them repeatable (the same noisy clip every run):</p>
+<pre data-lang="python"><code>import numpy as np
+from scipy.signal import resample_poly
+
+def add_noise(speech, noise, snr_db):
+    """Mix noise into speech at a target signal-to-noise ratio (dB)."""
+    noise = np.resize(noise, speech.shape)              # loop or trim noise to length
+    p_speech = np.mean(speech ** 2)
+    p_noise = np.mean(noise ** 2) + 1e-12
+    scale = np.sqrt(p_speech / (p_noise * 10 ** (snr_db / 10)))
+    return speech + scale * noise
+
+def telephone_channel(x, sr=16000):
+    """Narrowband phone line: 8 kHz sampling + G.711 mu-law companding."""
+    x8 = np.clip(resample_poly(x, 1, sr // 8000), -1, 1)   # 16 kHz -&gt; 8 kHz
+    mu = 255.0
+    enc = np.sign(x8) * np.log1p(mu * np.abs(x8)) / np.log1p(mu)
+    q = np.round((enc + 1) / 2 * 255) / 255 * 2 - 1        # 8-bit quantisation
+    dec = np.sign(q) * ((1 + mu) ** np.abs(q) - 1) / mu
+    return resample_poly(dec, sr // 8000, 1)               # back to the model's rate
+
+def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
+    """Zero out random 20 ms frames, like lost RTP packets with no concealment."""
+    rng = np.random.default_rng(seed)                       # fixed seed = repeatable
+    n = int(sr * frame_ms / 1000)
+    y = x.copy()
+    for start in range(0, len(y), n):
+        if rng.random() &lt; loss_rate:
+            y[start:start + n] = 0.0
+    return y
+
+# degraded = packet_loss(telephone_channel(add_noise(clean, cafe, snr_db=10)), loss_rate=0.02)</code></pre>
+<p>Offline augmentation tests the ASR and endpointing. It does not test your real telephony stack (SIP trunk, carrier codecs, jitter buffers, echo cancellation). For that, place real calls through the actual phone path in staging, at least for a smoke-test subset. Accents and speaking styles deserve their own slices: report WER and task success <em>per accent group</em>, because an average can hide a group the system fails badly (a fairness problem as well as a quality one). Consent matters here too: if you use recordings of real people, you need their permission to use their voice in tests.</p>
+
+<h2>Voice-specific safety</h2>
+<p>Everything from <a href="17-safety-evals.html">Module 17</a> applies to voice agents, plus a set of risks that only exist because the agent hears and speaks.</p>
+<div class="grid2">
+<div class="card bad"><h4>Voice cloning and impersonation</h4><p>An agent that can speak in any voice can be made to impersonate a real person. OpenAI's GPT-4o system card describes restricting output to preset voices plus a separate output classifier that detects deviation from the approved voices (reported precision 0.96, recall 1.0 on English). Test: prompts and audio that try to make the agent change or imitate a voice.</p></div>
+<div class="card bad"><h4>Caller impersonation</h4><p>A voice agent that "recognises" a customer by voice, or that accepts spoken identity claims, is a social-engineering target, and cloned voices make it worse. Test: calls where the simulated caller claims to be someone else, uses partial details, or pressures the agent to skip verification.</p></div>
+<div class="card warn"><h4>Jailbreaks through audio</h4><p>Attacks can hide in how something is said, not just what. Best-of-N Jailbreaking (Hughes et al., 2024) showed that repeatedly sampling small augmentations of a harmful request also jailbreaks audio language models, not only text ones. Test: spoken versions of your text red-team set, with pitch, speed, noise and accent variations, and with instructions embedded in background audio.</p></div>
+<div class="card warn"><h4>Speaker identification and inference</h4><p>Audio carries identity and sensitive traits. The GPT-4o system card reports training the model to refuse identifying people from their voice, and to refuse or hedge on inferring things like race or intelligence from how someone sounds. Test: "who is speaking?" and "what can you tell about this person from their voice?" prompts.</p></div>
+<div class="card violet"><h4>Harmful content in audio output</h4><p>Moderation built for text may not see audio. A common mitigation (again described in the GPT-4o card) is running moderation on transcripts of both input and output audio. Test: the same disallowed-content set, spoken, and check the moderation layer triggers.</p></div>
+<div class="card violet"><h4>Compliance and disclosure</h4><p>Many deployments must disclose that the caller is talking to an AI, get recording consent, or read regulated disclosures verbatim. These are easy binary checks and belong in every regression run.</p></div>
+</div>
+
+<h2>Putting it together: a voice eval plan</h2>
+<p>Here is how the pieces fit into one plan for a new voice agent, following the eval-driven loop from <a href="12-error-analysis.html">Module 12</a>:</p>
+<ol>
+<li><b>Collect real audio early.</b> Even 50-100 recorded (consented) calls or role-played calls. Listen to them. Do error analysis on what goes wrong before choosing metrics.</li>
+<li><b>Component suite</b> (runs on every change, minutes): WER and entity accuracy on a fixed set of your callers' audio, sliced by accent and noise; a TTS pronunciation set with round-trip checks and automated MOS; per-stage latency percentiles.</li>
+<li><b>Simulated-call suite</b> (runs nightly or before release, hours): 50-500 scenarios × a persona matrix × several runs each. Grade with code (state, tool calls, timing), a timestamped-transcript judge, and a sampled audio or human review for tone.</li>
+<li><b>Robustness and safety slices:</b> the degradation ladder and a spoken red-team set, with thresholds that block release.</li>
+<li><b>Production monitoring:</b> containment, true resolution, escalation precision and recall, CSAT, latency percentiles and turn-taking rates on live calls, with judges sampling a share of calls. Every production failure you find becomes a new simulated scenario.</li>
+</ol>
+
+<div class="callout expert"><span class="t">Expert nuance: attribute failures to layers</span>
+<p>When a simulated call fails, tag the <em>first</em> failure with its layer: ASR misheard, endpoint too early, LLM reasoning, wrong tool call, TTS mispronounced, latency caused the caller to repeat themselves. Counting failures by layer tells you where to invest. In a cascade you can confirm the tag by replay: feed the <em>human</em> transcript into the LLM stage. If the call now succeeds, the ASR was the culprit. That "oracle transcript" replay is one of the most useful debugging tricks in voice evals, and it is only possible because a cascade has text boundaries.</p>
+</div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. Reference: "cancel my order please" (4 words). Hypothesis: "cancel the order please now". What is the WER?</p>
+<button class="opt">25%</button>
+<button class="opt">50%</button>
+<button class="opt">40%</button>
+<button class="opt">20%</button>
+<div class="why">One substitution ("my" → "the") and one insertion ("now"): 2 edits over N = 4 reference words = 50%. The denominator is always the reference length, not the hypothesis length.</div></div>
+<div class="q" data-answer="2"><p>2. Your cascade's server logs show a p50 of 700 ms from VAD end to first TTS byte, but users say the agent feels slow. What is the most likely missing piece?</p>
+<button class="opt">The LLM is slower than logged</button>
+<button class="opt">MOS is too low</button>
+<button class="opt">The server clock starts after the endpoint silence wait and misses network and playout delay; measure from the caller's side</button>
+<button class="opt">WER is too high</button>
+<div class="why">"VAD end" already includes the silence the VAD waited for, often hundreds of milliseconds, and excludes network and playout. User-perceived latency is measured from the caller's last speech to the agent's first audible sound, for example from a stereo recording.</div></div>
+<div class="q" data-answer="0"><p>3. You make the VAD more sensitive so the agent stops faster when interrupted. Which metric should you watch for getting worse?</p>
+<button class="opt">False interruption rate (stopping for coughs, noise, or "mm-hm")</button>
+<button class="opt">Word error rate</button>
+<button class="opt">MOS</button>
+<div class="why">Interruption handling is a confusion matrix. Higher sensitivity reduces "talks over the caller" but increases false interruptions. You need both numbers.</div></div>
+<div class="q" data-answer="1"><p>4. Why is containment rate on its own a dangerous success metric?</p>
+<button class="opt">It is too hard to compute</button>
+<button class="opt">An agent that never transfers, or that makes callers give up and hang up, still scores as "contained"</button>
+<button class="opt">It only applies to speech-to-speech models</button>
+<div class="why">Pair containment with true resolution (verified outcome), escalation precision and recall, and abandonment. Otherwise you reward the agent for trapping callers.</div></div>
+<div class="q" data-answer="2"><p>5. You grade calls by transcribing them and sending plain text to an LLM judge. Which failure can this setup NOT detect?</p>
+<button class="opt">The agent booked the wrong date</button>
+<button class="opt">The agent skipped identity verification</button>
+<button class="opt">The agent sounded curt and talked over the caller for two seconds</button>
+<div class="why">Plain transcripts lose prosody and serialise overlapping speech. Add timestamps and overlap markers to catch the talking-over, and use an audio-capable judge or human review for tone.</div></div>
+<div class="q" data-answer="0"><p>6. According to τ-Voice (2026), how do voice agents compare with a strong text agent on the same grounded tasks?</p>
+<button class="opt">They retain only about 30-45% of text capability, and do worse with noise and accents</button>
+<button class="opt">They match text agents on clean audio</button>
+<button class="opt">They beat text agents because they hear tone</button>
+<div class="why">Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% on clean audio and 26-38% with noise and accents.</div></div>
+</div>
+
+<details><summary>Interview questions (with model answers)</summary>
+<p><b>Q: Cascaded or speech-to-speech, which is easier to evaluate, and why?</b><br>Cascaded. Every stage boundary is text or a timestamp, so you can compute WER, replay oracle transcripts into the LLM, and time each stage. A speech-to-speech model can only be graded end to end on audio in, audio out and tool calls. Many teams add a parallel ASR purely for logging.</p>
+<p><b>Q: How would you measure barge-in quality?</b><br>From stereo recordings with an offline VAD: for each caller onset during agent speech, classify it (real turn vs backchannel or noise, using labels or a judge), then report yield rate and yield time for real turns, false-interruption rate for the rest, and whether the agent's next turn addressed the interruption.</p>
+<p><b>Q: Your WER improved from 9% to 6% but task success dropped. How is that possible?</b><br>WER weights all words equally. The new ASR may be better on common words but worse on entities (names, numbers, account IDs) that decide the task. Or normalisation changed. Check entity accuracy and per-slice results, and run the oracle-transcript replay to confirm whether ASR is the cause.</p>
+<p><b>Q: How do you stop the user simulator from biasing your results?</b><br>Calibrate personas against real calls, vary voices, accents and behaviours, read a sample of simulated calls, track simulator failures (off-script, early hang-ups) separately from agent failures, and run several trials per scenario.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Artificial Analysis, <a href="https://huggingface.co/datasets/ArtificialAnalysis/big_bench_audio">Big Bench Audio dataset</a> and <a href="https://artificialanalysis.ai/speech-to-speech">speech-to-speech leaderboard</a>.</li>
+<li>Chen et al., <a href="https://arxiv.org/abs/2410.17196">VoiceBench: Benchmarking LLM-Based Voice Assistants</a> (2024); <a href="https://github.com/MatthewCYM/VoiceBench">leaderboard</a>.</li>
+<li>Lin et al., <a href="https://arxiv.org/abs/2503.04721">Full-Duplex-Bench</a> (2025).</li>
+<li>Scale AI, <a href="https://arxiv.org/abs/2512.14865">Audio MultiChallenge</a> (2025); <a href="https://labs.scale.com/leaderboard/audiomc">leaderboard</a>.</li>
+<li>Ray, Dhandhania, Barres, Narasimhan, <a href="https://arxiv.org/abs/2603.13686">τ-Voice</a> (2026); <a href="https://taubench.com">τ-bench leaderboard</a>.</li>
+<li>Saeki et al., <a href="https://arxiv.org/abs/2204.02152">UTMOS: UTokyo-SaruLab System for VoiceMOS Challenge 2022</a>; <a href="https://github.com/sarulab-speech/UTMOS22">code</a>; <a href="https://github.com/tarepan/SpeechMOS">SpeechMOS (torch.hub)</a>.</li>
+<li><a href="https://github.com/jitsi/jiwer">jiwer</a> (WER, CER, alignment visualisation) and its <a href="https://jitsi.github.io/jiwer/usage/">usage docs</a>.</li>
+<li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/realtime-vad">Realtime API: voice activity detection</a> (server_vad, semantic_vad) and <a href="https://developers.openai.com/api/reference/resources/realtime/server-events">server events</a>.</li>
+<li>Google, <a href="https://ai.google.dev/gemini-api/docs/live-api">Gemini Live API overview</a>.</li>
+<li>Pipecat, <a href="https://github.com/pipecat-ai/smart-turn">Smart Turn</a> (open semantic end-of-turn model).</li>
+<li>OpenAI, <a href="https://openai.com/index/gpt-4o-system-card/">GPT-4o system card</a> (voice-specific risks and mitigations).</li>
+<li>Hughes et al., <a href="https://arxiv.org/abs/2412.03556">Best-of-N Jailbreaking</a> (2024), including audio language models.</li>
+<li>Stivers et al., <a href="https://www.pnas.org/doi/10.1073/pnas.0903616106">Universals and cultural variation in turn-taking in conversation</a>, PNAS (2009).</li>
+<li>Vendor guides (vendor claims, not standards): Hamming, <a href="https://hamming.ai/resources/voice-agent-evaluation-metrics-guide">voice agent evaluation metrics</a> and <a href="https://hamming.ai/resources/voice-agent-interruption-handling-runbook">interruption handling runbook</a>; ElevenLabs, <a href="https://elevenlabs.io/blog/voice-agent-evaluation-framework-6-pillars-explained">6 pillars of voice agent evaluation</a>; Cekura, <a href="https://www.cekura.ai/blogs/voice-ai-evaluation-metrics">voice AI evaluation metrics</a>; <a href="https://www.coval.ai/">Coval</a>.</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

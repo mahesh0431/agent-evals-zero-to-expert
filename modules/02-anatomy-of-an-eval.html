@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Anatomy of an eval · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 02 · Foundations</div>
+<h1>Anatomy of an eval</h1>
+<p class="lede">Every eval, from a ten-line script to SWE-bench, is built from the same parts: a dataset of samples, a system under test, a grader, a metric, and a harness that runs it all and writes logs. Learn the parts and you can read, build or criticise any eval you meet.</p>
+<div class="meta"><span class="pill level-1">Beginner</span><span class="pill">~45 min</span><span class="pill">Prerequisite: <a href="01-what-are-evals.html">Module 01</a></span><span class="pill">Some Python</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Name the four core parts of an eval (dataset, system under test, grader, metric) plus the harness and logs, and say what each one is responsible for.</li>
+<li>Write a sample for a Q&amp;A task, a tool-using agent, and a coding agent with hidden tests, in JSONL.</li>
+<li>Choose where your samples come from, how many you need, and how to check they cover what matters.</li>
+<li>Keep dev and test data apart, and explain what contamination is.</li>
+<li>Define the system under test precisely and version every piece of it.</li>
+<li>Build a working eval from scratch in about 40 lines of Python, then express the same eval in Inspect.</li>
+<li>Read eval logs and transcripts, and spot the classic anatomy mistakes before they fool you.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>The parts, at a glance</h2>
+<p>In <a href="01-what-are-evals.html">Module 01</a> we defined an eval as a fixed set of inputs, run through your AI system, scored by a grader and aggregated into metrics. This module takes that sentence apart like a mechanic takes apart an engine. There are four parts you design, and two supporting parts that make the whole thing trustworthy:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="Exploded view of an eval: the dataset feeds sample inputs to the system under test and targets to the grader; the grader scores outputs; scores become a metric compared against a baseline. The harness orchestrates every step and everything is written to logs.">
+<defs><marker id="m2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="170" y="20" width="655" height="200" rx="12"/>
+<text x="810" y="208" text-anchor="end" class="sm">harness / runner: loads, schedules, retries, times out, records</text>
+<rect class="box plain" x="20" y="80" width="120" height="90" rx="8"/>
+<text x="80" y="108" text-anchor="middle" class="b">Dataset</text>
+<text x="80" y="128" text-anchor="middle" class="sm">samples:</text>
+<text x="80" y="143" text-anchor="middle" class="sm">input + target</text>
+<text x="80" y="158" text-anchor="middle" class="sm">+ metadata</text>
+<rect class="box accent" x="195" y="80" width="160" height="90" rx="8"/>
+<text x="275" y="108" text-anchor="middle" class="b">System under test</text>
+<text x="275" y="128" text-anchor="middle" class="sm">model + params + prompt</text>
+<text x="275" y="143" text-anchor="middle" class="sm">+ tools + scaffold</text>
+<text x="275" y="158" text-anchor="middle" class="sm">(+ environment)</text>
+<rect class="box warn" x="405" y="80" width="130" height="90" rx="8"/>
+<text x="470" y="108" text-anchor="middle" class="b">Grader</text>
+<text x="470" y="128" text-anchor="middle" class="sm">code, model</text>
+<text x="470" y="143" text-anchor="middle" class="sm">or human</text>
+<rect class="box good" x="585" y="80" width="105" height="90" rx="8"/>
+<text x="637" y="108" text-anchor="middle" class="b">Metric</text>
+<text x="637" y="128" text-anchor="middle" class="sm">accuracy,</text>
+<text x="637" y="143" text-anchor="middle" class="sm">pass@k, mean</text>
+<rect class="box plain" x="725" y="80" width="90" height="90" rx="8"/>
+<text x="770" y="115" text-anchor="middle" class="b">Compare</text>
+<text x="770" y="135" text-anchor="middle" class="sm">vs baseline</text>
+<line class="ln" x1="140" y1="125" x2="191" y2="125" marker-end="url(#m2a)"/>
+<text x="166" y="117" text-anchor="middle" class="sm">input</text>
+<line class="ln" x1="355" y1="125" x2="401" y2="125" marker-end="url(#m2a)"/>
+<text x="378" y="117" text-anchor="middle" class="sm">output</text>
+<line class="ln" x1="535" y1="125" x2="581" y2="125" marker-end="url(#m2a)"/>
+<text x="558" y="117" text-anchor="middle" class="sm">score</text>
+<line class="ln" x1="690" y1="125" x2="721" y2="125" marker-end="url(#m2a)"/>
+<path class="ln warn dash" d="M80,80 C80,40 470,40 470,76" marker-end="url(#m2a)"/>
+<text x="275" y="38" text-anchor="middle" class="sm t-warn">target and rubric go straight to the grader, never to the system</text>
+<rect class="box violet" x="20" y="262" width="805" height="52" rx="8"/>
+<text x="422" y="285" text-anchor="middle" class="b t-violet">Logs</text>
+<text x="422" y="303" text-anchor="middle" class="sm">config, every message and tool call, outputs, scores, grader reasoning, tokens, cost, time, errors</text>
+<line class="ln violet dash" x1="80" y1="170" x2="80" y2="258" marker-end="url(#m2a)"/>
+<line class="ln violet dash" x1="275" y1="170" x2="275" y2="258" marker-end="url(#m2a)"/>
+<line class="ln violet dash" x1="470" y1="170" x2="470" y2="258" marker-end="url(#m2a)"/>
+<line class="ln violet dash" x1="637" y1="170" x2="637" y2="258" marker-end="url(#m2a)"/>
+</svg>
+<figcaption><b>The exploded view.</b> Four parts you design (dataset, system, grader, metric), one harness that runs them in the right order, and logs that record everything so you can check the number later. The target travels to the grader on its own path, so the system never sees the answer.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Part</th><th>Its job</th><th>Question it answers</th><th>Typical failure</th></tr>
+<tr><td><b>Dataset</b></td><td>Holds the samples: the situations you care about and what "good" looks like for each.</td><td>"What are we testing?"</td><td>Too few, too easy, unrepresentative, or with wrong answers.</td></tr>
+<tr><td><b>System under test</b> (SUT)</td><td>The exact thing being measured: model, settings, prompt, tools, agent loop, environment.</td><td>"What are we measuring?"</td><td>Not written down, so nobody knows which version got which score.</td></tr>
+<tr><td><b>Grader</b> (scorer, judge)</td><td>Turns one output or trajectory into a score.</td><td>"Was this attempt good?"</td><td>Accepts wrong answers or rejects right ones.</td></tr>
+<tr><td><b>Metric</b></td><td>Aggregates many scores into a few numbers, with uncertainty.</td><td>"How good is the system overall?"</td><td>Reported without error bars, or averaged over slices that hide a regression.</td></tr>
+<tr><td><b>Harness</b> (runner)</td><td>Loads data, builds environments, calls the system, runs graders, handles retries, time limits and parallelism.</td><td>"Did everything run the same way every time?"</td><td>Silently counts crashes as failures (or drops them).</td></tr>
+<tr><td><b>Logs</b></td><td>Keep the full record of every run.</td><td>"Why did we get this number?"</td><td>Only the final score is saved, so nobody can debug it.</td></tr>
+</table></div>
+
+<div class="callout analogy"><span class="t">Analogy: a school exam</span>
+<p>The <b>dataset</b> is the exam paper plus the answer key. The <b>system under test</b> is the student (and whatever they are allowed to bring: calculator, notes, time). The <b>grader</b> is the teacher marking each answer against the key. The <b>metric</b> is the final percentage. The <b>harness</b> is the exam hall: same room, same time limit, same rules for everyone. The <b>logs</b> are the marked scripts kept on file, so a parent who disputes a grade can see exactly what the student wrote. If the answer key has a mistake, or the student saw the key, or the teacher marks carelessly, the percentage is wrong no matter how good the student is.</p>
+</div>
+
+<p>The rest of this module goes through each part in order: first the sample (the atom of every dataset), then how to build a whole dataset, then the system under test, then how the harness runs everything, and finally code you can run.</p>
+
+<h2>What a sample looks like</h2>
+<p>A <b>sample</b> (also called a case, item, example, task instance or, in Anthropic's vocabulary, a task) is one row of the dataset. It is a self-contained test: everything the harness needs to set up one attempt and everything the grader needs to judge it. Most tools store samples as <b>JSONL</b> (JSON Lines: one JSON object per line), because it is easy to append to, diff in git, and stream.</p>
+
+<p>A sample can have up to six kinds of field. Only <code>input</code> is mandatory; the rest depend on the task.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="A sample has fields id, input, setup, target, rubric and metadata. The system under test sees only input and the environment built from setup. The grader sees the output plus target and rubric. Analysis uses id and metadata.">
+<defs><marker id="m2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="14" width="380" height="300" rx="10"/>
+<text x="36" y="36" class="b">One sample (one line of JSONL)</text>
+<rect class="box" x="36" y="50" width="348" height="34" rx="6"/>
+<text x="48" y="72" class="mono b">id</text><text x="140" y="72" class="sm">"ret-0142" (stable, unique)</text>
+<rect class="box accent" x="36" y="92" width="348" height="34" rx="6"/>
+<text x="48" y="114" class="mono b">input</text><text x="140" y="114" class="sm">"Can I return opened headphones?"</text>
+<rect class="box accent" x="36" y="134" width="348" height="34" rx="6"/>
+<text x="48" y="156" class="mono b">setup/files</text><text x="140" y="156" class="sm">orders DB fixture, repo snapshot</text>
+<rect class="box warn" x="36" y="176" width="348" height="34" rx="6"/>
+<text x="48" y="198" class="mono b">target</text><text x="140" y="198" class="sm">"30 days", or a goal DB state</text>
+<rect class="box warn" x="36" y="218" width="348" height="34" rx="6"/>
+<text x="48" y="240" class="mono b">rubric</text><text x="140" y="240" class="sm">"must mention the 30-day window"</text>
+<rect class="box violet" x="36" y="260" width="348" height="34" rx="6"/>
+<text x="48" y="282" class="mono b">metadata</text><text x="140" y="282" class="sm">returns · easy · source: prod logs</text>
+<rect class="box accent" x="500" y="40" width="320" height="86" rx="8"/>
+<text x="516" y="64" class="b">System under test sees</text>
+<text x="516" y="84" class="sm">the input, inside the environment</text>
+<text x="516" y="99" class="sm">that setup built</text>
+<text x="516" y="116" class="sm t-bad">never the target or rubric</text>
+<rect class="box warn" x="500" y="150" width="320" height="80" rx="8"/>
+<text x="516" y="174" class="b">Grader sees</text>
+<text x="516" y="194" class="sm">the output or trajectory, the final</text>
+<text x="516" y="209" class="sm">environment state, target and rubric</text>
+<rect class="box violet" x="500" y="252" width="320" height="62" rx="8"/>
+<text x="516" y="276" class="b">Analysis uses</text>
+<text x="516" y="296" class="sm">id and metadata, to slice and trace results</text>
+<line class="ln accent" x1="384" y1="109" x2="496" y2="78" marker-end="url(#m2b)"/>
+<line class="ln accent" x1="384" y1="151" x2="496" y2="98" marker-end="url(#m2b)"/>
+<line class="ln warn" x1="384" y1="193" x2="496" y2="184" marker-end="url(#m2b)"/>
+<line class="ln warn" x1="384" y1="235" x2="496" y2="204" marker-end="url(#m2b)"/>
+<line class="ln violet" x1="384" y1="277" x2="496" y2="280" marker-end="url(#m2b)"/>
+<line class="ln violet dash" x1="384" y1="67" x2="440" y2="67"/>
+<path class="ln violet dash" d="M440,67 L440,268 L496,272" marker-end="url(#m2b)"/>
+</svg>
+<figcaption><b>Who reads which field.</b> The colour of each field matches the part of the eval that reads it. The single most important rule: the target and rubric flow only to the grader. If they leak into the prompt, you are measuring copying, not ability.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Field</th><th>What it holds</th><th>Notes</th></tr>
+<tr><td><code>id</code></td><td>A stable, unique name.</td><td>Never reuse or renumber ids. You will compare the same id across runs for months (paired comparisons in <a href="04-metrics-and-statistics.html">Module 04</a> depend on it).</td></tr>
+<tr><td><code>input</code></td><td>What the system receives: a question, a chat history, a task description, an image, an audio file.</td><td>For agents it is often the first user message plus a goal. For a simulated-user eval it may be the <em>user's</em> hidden instructions instead.</td></tr>
+<tr><td><code>setup</code> / <code>files</code></td><td>How to build the starting world: files to copy, a database fixture, a git commit to check out, a shell script, a Docker image.</td><td>Agents act on an environment, so the environment is part of the sample. It must be rebuilt fresh for every attempt.</td></tr>
+<tr><td><code>target</code> (reference, ground truth)</td><td>What a correct result looks like: an exact answer, a list of acceptable answers, a goal state, or tests that must pass.</td><td>Also called the "gold" answer. Can be absent for pure rubric or preference grading.</td></tr>
+<tr><td><code>rubric</code></td><td>Written criteria for a model or human grader: what must be present, what must not.</td><td>Needed whenever many different outputs could be correct. Covered in <a href="03-graders.html">Module 03</a> and <a href="13-llm-as-judge.html">Module 13</a>.</td></tr>
+<tr><td><code>metadata</code></td><td>Tags: category, difficulty, source, language, date added, author, known quirks.</td><td>Costs nothing to add and is what makes per-slice analysis possible later. Add it from day one.</td></tr>
+</table></div>
+
+<h3>Example (a): a question-and-answer item</h3>
+<p>The simplest kind of sample: one question, one short answer, graded by comparing text. Here is a support bot's knowledge check. Notice that the target is not a single string: it lists facts that must appear and a fact that must not (the old policy), because the bot may phrase its answer many ways.</p>
+<pre data-lang="jsonl"><code>{"id": "ret-0142",
+ "input": "Hi, I bought headphones 3 weeks ago and opened them. Can I still return them?",
+ "target": {"must_include": ["30 days"], "must_not_include": ["14 days"]},
+ "rubric": "Correct if the reply says opened electronics can be returned within 30 days of delivery. Incorrect if it refuses, invents a restocking fee, or quotes the old 14-day policy.",
+ "metadata": {"category": "returns", "difficulty": "easy", "source": "prod-logs-2026-08", "policy_version": "v7"}}</code></pre>
+<p>(Real JSONL puts each object on a single line. It is wrapped here for reading.) The <code>must_include</code> list suits a cheap code grader; the <code>rubric</code> is there so a model grader can handle phrasings the code misses, such as "a month" or "thirty days". Keeping both lets you compare the two graders against each other, which is how you catch grader bugs.</p>
+
+<h3>Example (b): a tool-using agent item</h3>
+<p>An agent that works with tools is graded mainly on what it <em>did</em>, not what it said. This item is modelled on τ-bench (tau-bench, from Sierra), where an LLM plays the customer from hidden instructions, the agent calls API tools under a written policy, and grading compares the final database with an annotated goal state.</p>
+<pre data-lang="jsonl"><code>{"id": "retail-0031",
+ "input": {"user_instructions": "You are Dana Lee (user_id u_77). You want to cancel order #W4821 because you ordered the wrong size, and get the refund on your original card. You don't know the order total. Only give your zip code (94110) if asked."},
+ "setup": {"db_fixture": "retail_db_v3.json", "policy_doc": "retail_policy_v3.md",
+           "tools": ["find_user", "get_order", "cancel_pending_order", "transfer_to_human"]},
+ "target": {"final_db_diff": {"orders.W4821.status": "cancelled",
+                              "orders.W4821.refund_method": "original_payment"},
+            "must_communicate": ["refund", "5-7 business days"],
+            "forbidden_tool_calls": ["cancel_pending_order(order_id != 'W4821')"]},
+ "metadata": {"domain": "retail", "difficulty": "medium", "turns_expected": "4-8",
+              "author": "mp", "added": "2026-09-01"}}</code></pre>
+<p>Three things are new compared with Q&amp;A. First, the <code>input</code> is instructions for a <b>simulated user</b>, not a message for the agent: the agent must discover the details through conversation. Second, <code>setup</code> names a database fixture that the harness loads fresh for every attempt, so one run's cancellations cannot leak into the next. Third, the <code>target</code> is a <b>state</b> (what the database must look like afterwards) plus checks on the conversation, rather than a string. There are many valid conversations; there is exactly one correct end state. <a href="06-tool-use-and-conversation.html">Module 06</a> goes deep on this style.</p>
+
+<h3>Example (c): a coding-agent item with a hidden test</h3>
+<p>For coding agents, the gold standard is to grade by <b>running tests</b>. SWE-bench does this with real GitHub issues: the agent edits the repository, then the harness runs <b>FAIL_TO_PASS</b> tests (tests that fail before the fix and must pass after) and <b>PASS_TO_PASS</b> tests (tests that must keep passing, so the agent did not break anything). The key design trick is that the tests that check the fix are <b>hidden</b>: they are copied into the environment only after the agent has finished.</p>
+<pre data-lang="jsonl"><code>{"id": "dates-0007",
+ "input": "Issue #212: parse_date('2024-02-30') returns 2024-03-01 instead of raising ValueError. Invalid days should raise. Please fix it in the repo at /workspace.",
+ "setup": {"image": "python:3.12-slim", "repo": "acme/dateutils", "commit": "3f2a9c1",
+           "script": "pip install -e /workspace"},
+ "target": {"hidden_test_file": "tests/test_invalid_days.py",
+            "fail_to_pass": ["tests/test_invalid_days.py::test_feb_30_raises",
+                             "tests/test_invalid_days.py::test_apr_31_raises"],
+            "pass_to_pass": ["tests/test_parse.py", "tests/test_leap_years.py"]},
+ "metadata": {"language": "python", "difficulty": "easy", "files_touched_in_gold_patch": 1,
+              "gold_patch": "patches/dates-0007.diff"}}</code></pre>
+<p>Why hide the test? If the agent can read <code>test_invalid_days.py</code>, it can write code that satisfies exactly those two asserts (for example, special-casing February 30th) instead of fixing the real bug. Hiding the test means the agent has to understand the issue, the way a human developer would. The <code>pass_to_pass</code> list is just as important: without it, an agent that deletes half the parser to make the new test pass would score perfectly. <a href="07-coding-agents.html">Module 07</a> covers this in depth, including the documented problem that tests can also be <em>too</em> strict.</p>
+
+<div class="callout warn"><span class="t">The gold patch is metadata, not target</span>
+<p>Notice <code>gold_patch</code> sits in metadata. You keep a known-good solution to prove the task is solvable and the tests are correct (run the gold patch through the grader: it must pass). You do <em>not</em> grade by comparing the agent's diff to the gold patch, because there are many correct fixes.</p>
+</div>
+
+<h2>Where datasets come from</h2>
+<p>Samples have to come from somewhere. There are four main sources, and mature teams use all four, each for what it is good at.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Source</th><th>How</th><th>Strengths</th><th>Weaknesses</th><th>Best for</th></tr>
+<tr><td><b>Hand-written by experts</b></td><td>You, or a domain expert, write inputs and answers.</td><td>Precise, deliberate, can target exact behaviours and edge cases. Fast to start.</td><td>Slow to scale. Reflects what <em>you</em> imagine users do, which is often wrong. Authors unconsciously write tasks their system handles.</td><td>Day one, critical policies, edge cases, safety cases.</td></tr>
+<tr><td><b>Production logs</b></td><td>Sample real user requests (and traces) from your deployed system, then label them.</td><td>Realistic distribution: real phrasing, typos, weird requests. Failures you actually have.</td><td>Needs labelling effort. Privacy review. Biased towards what you already support. Needs a product with users.</td><td>The core of a product eval. See error analysis in <a href="12-error-analysis.html">Module 12</a>.</td></tr>
+<tr><td><b>Synthetic generation</b></td><td>An LLM generates inputs (and sometimes answers) from a template of dimensions, e.g. persona × intent × difficulty.</td><td>Cheap volume. Fills coverage gaps. Can create rare or adversarial cases on demand.</td><td>Samey phrasing, unrealistic users, and generated answers can be wrong. Easy for your model to find "easy" since a similar model wrote them.</td><td>Filling gaps in the coverage matrix, stress tests, bootstrapping before launch.</td></tr>
+<tr><td><b>Adapting public benchmarks</b></td><td>Take items from an existing benchmark and reformat them for your system.</td><td>Free, peer-reviewed, comparable with published numbers.</td><td>Not your task or your users. Often saturated or contaminated (the model saw the answers in training).</td><td>Sanity checks, model selection, general capability tracking.</td></tr>
+</table></div>
+
+<div class="callout tip"><span class="t">A practical recipe</span>
+<p>Start with 20 to 50 hand-written samples covering your most important behaviours. As soon as you have traffic, sample real conversations, read them, and turn every interesting failure into a new sample. Use synthetic generation only to fill specific cells of your coverage matrix (below), and always have a human check generated targets. This mirrors the advice of practitioners such as Hamel Husain and the Anthropic engineering post on agent evals: start small, from real failures, and grow.</p>
+</div>
+
+<h3>Synthetic data done well</h3>
+<p>Naively asking a model "write 100 customer questions" gives 100 polite, similar questions. A better method is to define <b>dimensions</b> first, then generate combinations. For a support bot: <em>intent</em> (refund, tracking, account, complaint), <em>persona</em> (new user, angry repeat customer, non-native speaker), <em>difficulty</em> (one fact, needs two tools, policy exception), <em>channel quirks</em> (typos, very long message, two questions at once). Generate a few inputs per combination, discard duplicates, and have a human write or verify the target for each. The dimensions guarantee spread; the human check guarantees correctness.</p>
+
+<h2>How many samples do you need?</h2>
+<p>This is the most common beginner question, and the honest answer is "enough that the differences you care about are bigger than the noise". Here is the intuition; <a href="04-metrics-and-statistics.html">Module 04</a> does the maths properly.</p>
+<p>Imagine the true pass rate of your agent is 70%. You run it on <i>n</i> samples. Just by luck of which samples you picked, the measured rate wobbles around 70%. The size of that wobble is the <b>standard error</b>, roughly <code>sqrt(p × (1 − p) / n)</code>, and a 95% confidence interval is about 1.96 standard errors either side. The wobble shrinks with the <em>square root</em> of <i>n</i>: to halve it, you need four times as many samples.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Bar chart: the 95 percent confidence interval half-width at a 50 percent pass rate is about 19.6 points with 25 samples, 13.9 with 50, 9.8 with 100, 6.9 with 200, 4.9 with 400 and 3.1 with 1000.">
+<line class="ln" x1="70" y1="240" x2="790" y2="240"/>
+<line class="ln" x1="70" y1="240" x2="70" y2="30"/>
+<text x="62" y="244" text-anchor="end" class="sm">0</text>
+<text x="62" y="194" text-anchor="end" class="sm">5</text>
+<text x="62" y="144" text-anchor="end" class="sm">10</text>
+<text x="62" y="94" text-anchor="end" class="sm">15</text>
+<text x="62" y="44" text-anchor="end" class="sm">20</text>
+<text x="26" y="140" text-anchor="middle" class="sm" transform="rotate(-90 26 140)">± points (95% CI half-width)</text>
+<rect class="fill-bad" x="85" y="44" width="60" height="196" rx="3"/><text x="115" y="38" text-anchor="middle" class="sm b">±19.6</text>
+<rect class="fill-bad" x="205" y="101" width="60" height="139" rx="3"/><text x="235" y="95" text-anchor="middle" class="sm b">±13.9</text>
+<rect class="fill-warn" x="325" y="142" width="60" height="98" rx="3"/><text x="355" y="136" text-anchor="middle" class="sm b">±9.8</text>
+<rect class="fill-warn" x="445" y="171" width="60" height="69" rx="3"/><text x="475" y="165" text-anchor="middle" class="sm b">±6.9</text>
+<rect class="fill-good" x="565" y="191" width="60" height="49" rx="3"/><text x="595" y="185" text-anchor="middle" class="sm b">±4.9</text>
+<rect class="fill-good" x="685" y="209" width="60" height="31" rx="3"/><text x="715" y="203" text-anchor="middle" class="sm b">±3.1</text>
+<text x="115" y="258" text-anchor="middle" class="sm">n = 25</text>
+<text x="235" y="258" text-anchor="middle" class="sm">50</text>
+<text x="355" y="258" text-anchor="middle" class="sm">100</text>
+<text x="475" y="258" text-anchor="middle" class="sm">200</text>
+<text x="595" y="258" text-anchor="middle" class="sm">400</text>
+<text x="715" y="258" text-anchor="middle" class="sm">1000</text>
+<text x="430" y="284" text-anchor="middle" class="sm">number of independent samples</text>
+<line class="ln accent dash" x1="70" y1="190" x2="790" y2="190"/>
+<text x="785" y="182" text-anchor="end" class="sm t-accent">a 5-point change</text>
+</svg>
+<figcaption><b>Error bars shrink slowly.</b> Real arithmetic, not illustrative: 1.96 × sqrt(0.5 × 0.5 / n), the worst case at a 50% pass rate. With 50 samples a single score is uncertain by about ±14 points, so a 5-point "improvement" is invisible. Comparing two systems on the same samples (a paired test, Module 04) does better than these single-score bars suggest.</figcaption>
+</figure>
+
+<p>Three practical consequences:</p>
+<ul>
+<li><b>Small sets are for finding failures, not measuring rates.</b> Twenty well-chosen samples are excellent for noticing that your agent always forgets to confirm before cancelling. They cannot tell you whether prompt B is 3 points better than prompt A.</li>
+<li><b>Run agents several times per sample.</b> Agents are stochastic: the same sample can pass once and fail the next time. Running each sample for several <b>epochs</b> (repeats) reduces the noise from sampling and lets you measure consistency (pass^k, <a href="04-metrics-and-statistics.html">Module 04</a>). Repeats do not replace more samples: they reduce noise <em>within</em> a sample, not the luck of which samples you chose.</li>
+<li><b>Grouped samples count for less.</b> If ten questions all come from the same document or the same repository, they are not ten independent pieces of evidence. Anthropic's Evan Miller showed naive standard errors can understate uncertainty by more than 3× in such cases (use clustered standard errors).</li>
+</ul>
+
+<h2>Coverage: testing what matters, not just what's easy</h2>
+<p>Two datasets of 200 samples can have very different value. One is 200 variations of "where is my order?". The other deliberately spreads samples across every kind of request, every level of difficulty, and the nasty cases. That spread is called <b>coverage</b>, and the best tool for thinking about it is a <b>coverage matrix</b>: put your main categories on one axis, difficulty on the other, and count samples in each cell.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="A coverage matrix of sample counts by category and difficulty. Easy cells are well covered, hard and adversarial cells are thin, and the account category has zero hard or adversarial samples.">
+<text x="160" y="32" text-anchor="end" class="sm b">category ↓ · difficulty →</text>
+<text x="235" y="32" text-anchor="middle" class="b">easy</text>
+<text x="365" y="32" text-anchor="middle" class="b">medium</text>
+<text x="495" y="32" text-anchor="middle" class="b">hard</text>
+<text x="625" y="32" text-anchor="middle" class="b">adversarial</text>
+<text x="740" y="32" text-anchor="middle" class="b">total</text>
+<text x="160" y="68" text-anchor="end">Billing</text>
+<rect class="box good" x="172" y="45" width="126" height="36" rx="4"/><text x="235" y="68" text-anchor="middle" class="b">42</text>
+<rect class="box good" x="302" y="45" width="126" height="36" rx="4"/><text x="365" y="68" text-anchor="middle" class="b">18</text>
+<rect class="box warn" x="432" y="45" width="126" height="36" rx="4"/><text x="495" y="68" text-anchor="middle" class="b">6</text>
+<rect class="box bad" x="562" y="45" width="126" height="36" rx="4"/><text x="625" y="68" text-anchor="middle" class="b">2</text>
+<text x="740" y="68" text-anchor="middle">68</text>
+<text x="160" y="108" text-anchor="end">Shipping</text>
+<rect class="box good" x="172" y="85" width="126" height="36" rx="4"/><text x="235" y="108" text-anchor="middle" class="b">35</text>
+<rect class="box warn" x="302" y="85" width="126" height="36" rx="4"/><text x="365" y="108" text-anchor="middle" class="b">12</text>
+<rect class="box bad" x="432" y="85" width="126" height="36" rx="4"/><text x="495" y="108" text-anchor="middle" class="b">4</text>
+<rect class="box bad" x="562" y="85" width="126" height="36" rx="4"/><text x="625" y="108" text-anchor="middle" class="b">0</text>
+<text x="740" y="108" text-anchor="middle">51</text>
+<text x="160" y="148" text-anchor="end">Returns</text>
+<rect class="box good" x="172" y="125" width="126" height="36" rx="4"/><text x="235" y="148" text-anchor="middle" class="b">20</text>
+<rect class="box warn" x="302" y="125" width="126" height="36" rx="4"/><text x="365" y="148" text-anchor="middle" class="b">9</text>
+<rect class="box bad" x="432" y="125" width="126" height="36" rx="4"/><text x="495" y="148" text-anchor="middle" class="b">3</text>
+<rect class="box bad" x="562" y="125" width="126" height="36" rx="4"/><text x="625" y="148" text-anchor="middle" class="b">1</text>
+<text x="740" y="148" text-anchor="middle">33</text>
+<text x="160" y="188" text-anchor="end">Account</text>
+<rect class="box warn" x="172" y="165" width="126" height="36" rx="4"/><text x="235" y="188" text-anchor="middle" class="b">8</text>
+<rect class="box bad" x="302" y="165" width="126" height="36" rx="4"/><text x="365" y="188" text-anchor="middle" class="b">3</text>
+<rect class="box bad" x="432" y="165" width="126" height="36" rx="4"/><text x="495" y="188" text-anchor="middle" class="b">0</text>
+<rect class="box bad" x="562" y="165" width="126" height="36" rx="4"/><text x="625" y="188" text-anchor="middle" class="b">0</text>
+<text x="740" y="188" text-anchor="middle">11</text>
+<text x="160" y="228" text-anchor="end">Out of scope</text>
+<rect class="box warn" x="172" y="205" width="126" height="36" rx="4"/><text x="235" y="228" text-anchor="middle" class="b">5</text>
+<rect class="box bad" x="302" y="205" width="126" height="36" rx="4"/><text x="365" y="228" text-anchor="middle" class="b">2</text>
+<rect class="box bad" x="432" y="205" width="126" height="36" rx="4"/><text x="495" y="228" text-anchor="middle" class="b">1</text>
+<rect class="box bad" x="562" y="205" width="126" height="36" rx="4"/><text x="625" y="228" text-anchor="middle" class="b">3</text>
+<text x="740" y="228" text-anchor="middle">11</text>
+<rect class="box good" x="172" y="268" width="16" height="14" rx="2"/><text x="194" y="280" class="sm">15 or more</text>
+<rect class="box warn" x="282" y="268" width="16" height="14" rx="2"/><text x="304" y="280" class="sm">5 to 14</text>
+<rect class="box bad" x="378" y="268" width="16" height="14" rx="2"/><text x="400" y="280" class="sm">under 5: no reliable signal</text>
+<text x="800" y="280" text-anchor="end" class="sm b t-bad">"Account · hard" is a blind spot</text>
+</svg>
+<figcaption><b>A coverage matrix exposes blind spots.</b> Illustrative counts for a support bot eval of 174 samples. The overall score is dominated by easy billing and shipping questions; hard account problems are not tested at all. Use metadata tags to build this table automatically.</figcaption>
+</figure>
+
+<p>Things to cover deliberately:</p>
+<ul>
+<li><b>Categories</b>: every major intent or task type, roughly in proportion to how often users hit it, plus extra samples for rare but costly ones (a wrong refund costs more than a clumsy greeting).</li>
+<li><b>Difficulty</b>: easy items catch regressions; hard items tell you about capability and give headroom for improvement.</li>
+<li><b>Edge cases</b>: empty input, very long input, two requests in one message, the user changes their mind halfway, a tool returns an error, the order does not exist.</li>
+<li><b>Negative cases</b>: situations where the right move is to <em>refuse</em>, <em>ask a clarifying question</em>, or <em>hand off to a human</em>. Datasets full of "do X" tasks train you to build agents that always do something.</li>
+<li><b>Adversarial cases</b>: prompt injection in a retrieved document, users pressuring the agent to break policy, jailbreak attempts. <a href="17-safety-evals.html">Module 17</a> covers these.</li>
+</ul>
+<p>Always report scores <b>per slice</b> as well as overall. A single average can hide a disaster: if billing improves by 5 points and account questions collapse by 30, the average may barely move.</p>
+
+<h2>Golden sets and capability sets</h2>
+<p>Module 01 introduced the purpose axis: regression versus capability. In dataset terms this means keeping two kinds of set, which behave very differently.</p>
+<div class="grid2">
+<div class="card good"><h4>Golden (regression) set</h4><p>A curated set of samples your system <em>already</em> handles, with carefully verified targets. It should score near 100%. Its job is to catch breakage: any drop is a bug to investigate. Often small (50 to 300), fast and cheap enough to run on every change in CI (<a href="15-production-evals.html">Module 15</a>).</p></div>
+<div class="card accent"><h4>Capability set</h4><p>Samples your system <em>cannot yet</em> reliably do. It starts low, maybe 20% to 40%, which gives <b>headroom</b>: room to show improvement. Its job is to measure progress and compare models. When items become reliably solved, they "graduate" into the golden set.</p></div>
+</div>
+<p>Mixing the two into one number muddles both signals. A regression hidden in 50 golden items gets diluted by 500 hard capability items, and progress on the hard items gets diluted by the easy ones that were always at 100%. Keep them as separate tasks with separate dashboards. A benchmark where every system scores near the top is <b>saturated</b>: it has stopped being a capability set and can only serve as a regression check.</p>
+
+<h2>Dev, test, and contamination</h2>
+<p>Here is a trap that catches almost everyone. You build an eval, look at the failures, tweak the prompt, re-run, look at the new failures, tweak again. After fifty rounds your score has gone from 60% to 90%. But you have been <b>fitting the prompt to these exact samples</b>, the same way a student who memorises last year's exam paper does well on that paper and not necessarily on the next. The 90% is optimistic.</p>
+<p>The fix comes from machine learning: split your data.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Left: all samples split into a dev set used for daily iteration and a held-out test set run only before decisions. Right: contamination loop, where a published test set is crawled from the web into the next model's training data, inflating its score.">
+<defs><marker id="m2f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="230" y="22" text-anchor="middle" class="lg">Split your own data</text>
+<rect class="box plain" x="20" y="110" width="120" height="70" rx="8"/>
+<text x="80" y="140" text-anchor="middle" class="b">All samples</text>
+<text x="80" y="158" text-anchor="middle" class="sm">shuffled once</text>
+<rect class="box accent" x="200" y="50" width="220" height="80" rx="8"/>
+<text x="310" y="74" text-anchor="middle" class="b">Dev set (~60-70%)</text>
+<text x="310" y="94" text-anchor="middle" class="sm">run daily, read every failure,</text>
+<text x="310" y="110" text-anchor="middle" class="sm">tune prompts and tools on it</text>
+<rect class="box warn" x="200" y="165" width="220" height="80" rx="8"/>
+<text x="310" y="189" text-anchor="middle" class="b">Held-out test (~30-40%)</text>
+<text x="310" y="209" text-anchor="middle" class="sm">run rarely, before decisions,</text>
+<text x="310" y="225" text-anchor="middle" class="sm">never tune on its failures</text>
+<line class="ln" x1="140" y1="135" x2="196" y2="95" marker-end="url(#m2f)"/>
+<line class="ln" x1="140" y1="155" x2="196" y2="200" marker-end="url(#m2f)"/>
+<path class="ln accent" d="M420,70 C455,70 455,112 424,112" marker-end="url(#m2f)"/>
+<text x="440" y="60" class="sm t-accent">iterate</text>
+<line class="ln dash" x1="470" y1="30" x2="470" y2="280"/>
+<text x="645" y="22" text-anchor="middle" class="lg">Contamination</text>
+<rect class="box plain" x="490" y="50" width="160" height="56" rx="8"/>
+<text x="570" y="74" text-anchor="middle" class="sm b">test set published</text>
+<text x="570" y="90" text-anchor="middle" class="sm">GitHub, paper, blog</text>
+<rect class="box plain" x="690" y="50" width="120" height="56" rx="8"/>
+<text x="750" y="82" text-anchor="middle" class="sm b">web crawl</text>
+<rect class="box plain" x="690" y="160" width="120" height="56" rx="8"/>
+<text x="750" y="184" text-anchor="middle" class="sm b">next model's</text>
+<text x="750" y="200" text-anchor="middle" class="sm b">training data</text>
+<rect class="box bad" x="490" y="160" width="160" height="56" rx="8"/>
+<text x="570" y="184" text-anchor="middle" class="sm b">inflated score:</text>
+<text x="570" y="200" text-anchor="middle" class="sm">remembered, not solved</text>
+<line class="ln" x1="650" y1="78" x2="686" y2="78" marker-end="url(#m2f)"/>
+<line class="ln" x1="750" y1="106" x2="750" y2="156" marker-end="url(#m2f)"/>
+<line class="ln bad" x1="690" y1="188" x2="654" y2="188" marker-end="url(#m2f)"/>
+<text x="645" y="250" text-anchor="middle" class="sm">defences: keep test data private, canary strings,</text>
+<text x="645" y="266" text-anchor="middle" class="sm">fresh items dated after the model's cutoff</text>
+</svg>
+<figcaption><b>Two ways to fool yourself with data.</b> Left: tuning on the same samples you report makes the score optimistic, so keep a held-out test set. Right: if test items reach a model's training data, the model can recall answers instead of working them out.</figcaption>
+</figure>
+
+<ul>
+<li><b>Dev set</b> (development set): the samples you look at, debug on, and tune against. Look as much as you like.</li>
+<li><b>Test set</b> (held-out set): samples you run only occasionally, for example before shipping or when choosing between two finalists, and whose individual failures you do not use to tweak the system. If you do start tuning on it, it quietly becomes a second dev set and you need fresh held-out data.</li>
+<li>In practice many small teams skip the split early on, because they have only 50 samples and need every one for finding failures. That is reasonable, as long as you know the score is optimistic, and you start holding samples back once you have a few hundred.</li>
+</ul>
+
+<p><b>Contamination</b> (or data leakage) is the model-level version of the same problem: the test data, or its answers, ended up in the model's training data. Public benchmarks are especially exposed. In February 2026 OpenAI stopped reporting SWE-bench Verified, partly because every frontier model it tested could reproduce some of the gold patches verbatim. Your private eval is safer, but not immune: if you paste samples into public issue trackers or share them with vendors, they can leak. Defences include keeping test sets private, embedding a <b>canary string</b> (a unique random marker that lets model builders filter the data out of training and lets you test whether a model has seen it), and regularly adding fresh samples. <a href="18-benchmark-pitfalls.html">Module 18</a> covers contamination in depth.</p>
+
+<h2>The system under test</h2>
+<p>People say "we evaluated Claude" or "we evaluated GPT", but that is almost never what happened. What was evaluated is a whole <b>system</b>, and every layer of it can change the score.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="The system under test is a stack of six layers: model and snapshot, sampling parameters, prompt, tools, scaffold, and environment. All layers together are hashed into one versioned configuration id that is stored with every score.">
+<defs><marker id="m2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="30" y="20" width="440" height="38" rx="6"/>
+<text x="46" y="44" class="b">Model</text><text x="196" y="44" class="sm">provider + exact snapshot id, not an alias</text>
+<rect class="box accent" x="30" y="64" width="440" height="38" rx="6"/>
+<text x="46" y="88" class="b">Sampling params</text><text x="196" y="88" class="sm">temperature, max tokens, reasoning effort</text>
+<rect class="box accent" x="30" y="108" width="440" height="38" rx="6"/>
+<text x="46" y="132" class="b">Prompt</text><text x="196" y="132" class="sm">system prompt, few-shot examples, templates</text>
+<rect class="box warn" x="30" y="152" width="440" height="38" rx="6"/>
+<text x="46" y="176" class="b">Tools</text><text x="196" y="176" class="sm">names, descriptions, schemas, code</text>
+<rect class="box warn" x="30" y="196" width="440" height="38" rx="6"/>
+<text x="46" y="220" class="b">Scaffold</text><text x="196" y="220" class="sm">loop, stop rules, memory, context trimming</text>
+<rect class="box good" x="30" y="240" width="440" height="38" rx="6"/>
+<text x="46" y="264" class="b">Environment</text><text x="196" y="264" class="sm">container image, fixtures, simulated user</text>
+<path class="ln" d="M478,24 L494,24 L494,274 L478,274"/>
+<line class="ln" x1="494" y1="149" x2="536" y2="149" marker-end="url(#m2g)"/>
+<text x="515" y="140" text-anchor="middle" class="sm">hash</text>
+<rect class="box plain" x="540" y="84" width="265" height="130" rx="8"/>
+<text x="556" y="108" class="b">Config fingerprint</text>
+<text x="556" y="132" class="mono">sut: support-bot@a41c9e</text>
+<text x="556" y="152" class="mono">score: 0.82 ± 0.03</text>
+<text x="556" y="172" class="mono">dataset: support-qa@v12</text>
+<text x="556" y="192" class="mono">grader: facts_present@v3</text>
+</svg>
+<figcaption><b>What you are really measuring.</b> Every layer is a lever that moves the score. Record all six, fingerprint them, and store the fingerprint with every result (together with the dataset and grader versions), or you will not know what your number describes.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Layer</th><th>What to record</th><th>Why it matters</th></tr>
+<tr><td><b>Model</b></td><td>Provider and dated snapshot id (for example a versioned model name rather than a "latest" alias).</td><td>Aliases get repointed to new versions. A score you cannot tie to a snapshot cannot be reproduced.</td></tr>
+<tr><td><b>Sampling parameters</b></td><td>Temperature, top-p, max tokens, reasoning or thinking budget, seed if supported.</td><td>Temperature changes variance; a low max-token limit can truncate answers; a bigger thinking budget can change accuracy and cost.</td></tr>
+<tr><td><b>Prompt</b></td><td>System prompt, examples, the template that wraps the input, the version in git.</td><td>Small wording changes can move scores by several points.</td></tr>
+<tr><td><b>Tools</b></td><td>The tool list, each description and JSON schema, and the code behind them.</td><td>The model chooses tools from their descriptions. A vaguer description can make it pick the wrong tool.</td></tr>
+<tr><td><b>Scaffold</b></td><td>The agent loop: maximum turns, stop conditions, retry logic, memory and context-management strategy, sub-agents.</td><td>On SWE-bench, the same model in different scaffolds gets very different scores. That is why the SWE-bench site runs every model in one shared minimal harness (mini-SWE-agent) for its "bash-only" comparison.</td></tr>
+<tr><td><b>Environment</b></td><td>Docker image digest, fixture versions, simulated-user model and prompt, time limits.</td><td>A different package version in the container, or a harsher simulated user, changes results even with identical agent code.</td></tr>
+</table></div>
+
+<div class="callout expert"><span class="t">Expert nuance: the model is not the only unit</span>
+<p>When labs publish "model X scores 70% on benchmark Y", read the fine print: which scaffold, how many attempts, what tool set, what time or token limit. Differences in these settings routinely matter as much as model differences. When you compare two models for your product, change <em>only</em> the model layer and keep every other layer identical, or you are comparing systems, not models. (Sometimes comparing systems is what you want, for example "model A with its best prompt versus model B with its best prompt", but then say so.)</p>
+</div>
+
+<h2>The eval run lifecycle</h2>
+<p>A harness runs an eval in a fixed sequence of stages. Knowing them helps you debug: every weird score can be traced to one stage.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 272" role="img" aria-label="The eval lifecycle: load the dataset, then for each sample and epoch set up the environment, run the system and grade it, then aggregate scores, write logs, and compare with a baseline, looping back after each change.">
+<defs><marker id="m2h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="126" y="36" width="338" height="118" rx="10"/>
+<text x="295" y="28" text-anchor="middle" class="sm t-accent">for every sample × epoch (in parallel)</text>
+<rect class="box plain" x="12" y="60" width="100" height="70" rx="8"/>
+<text x="62" y="88" text-anchor="middle" class="b">1 Load</text>
+<text x="62" y="108" text-anchor="middle" class="sm">read JSONL,</text>
+<text x="62" y="122" text-anchor="middle" class="sm">validate</text>
+<rect class="box accent" x="138" y="60" width="100" height="70" rx="8"/>
+<text x="188" y="88" text-anchor="middle" class="b">2 Setup</text>
+<text x="188" y="108" text-anchor="middle" class="sm">fresh container,</text>
+<text x="188" y="122" text-anchor="middle" class="sm">fixtures</text>
+<rect class="box accent" x="251" y="60" width="100" height="70" rx="8"/>
+<text x="301" y="88" text-anchor="middle" class="b">3 Run</text>
+<text x="301" y="108" text-anchor="middle" class="sm">model or agent</text>
+<text x="301" y="122" text-anchor="middle" class="sm">loop, limits</text>
+<rect class="box warn" x="364" y="60" width="90" height="70" rx="8"/>
+<text x="409" y="88" text-anchor="middle" class="b">4 Grade</text>
+<text x="409" y="108" text-anchor="middle" class="sm">score each</text>
+<text x="409" y="122" text-anchor="middle" class="sm">attempt</text>
+<rect class="box good" x="480" y="60" width="100" height="70" rx="8"/>
+<text x="530" y="88" text-anchor="middle" class="b">5 Aggregate</text>
+<text x="530" y="108" text-anchor="middle" class="sm">mean ± SE,</text>
+<text x="530" y="122" text-anchor="middle" class="sm">per slice</text>
+<rect class="box violet" x="596" y="60" width="100" height="70" rx="8"/>
+<text x="646" y="88" text-anchor="middle" class="b">6 Log</text>
+<text x="646" y="108" text-anchor="middle" class="sm">config, traces,</text>
+<text x="646" y="122" text-anchor="middle" class="sm">scores</text>
+<rect class="box plain" x="712" y="60" width="100" height="70" rx="8"/>
+<text x="762" y="88" text-anchor="middle" class="b">7 Compare</text>
+<text x="762" y="108" text-anchor="middle" class="sm">vs baseline,</text>
+<text x="762" y="122" text-anchor="middle" class="sm">read diffs</text>
+<line class="ln" x1="112" y1="95" x2="134" y2="95" marker-end="url(#m2h)"/>
+<line class="ln" x1="238" y1="95" x2="247" y2="95" marker-end="url(#m2h)"/>
+<line class="ln" x1="351" y1="95" x2="360" y2="95" marker-end="url(#m2h)"/>
+<line class="ln" x1="464" y1="95" x2="476" y2="95" marker-end="url(#m2h)"/>
+<line class="ln" x1="580" y1="95" x2="592" y2="95" marker-end="url(#m2h)"/>
+<line class="ln" x1="696" y1="95" x2="708" y2="95" marker-end="url(#m2h)"/>
+<path class="ln bad dash" d="M301,154 L301,168"/>
+<text x="301" y="182" text-anchor="middle" class="sm t-bad">crash or timeout? mark "error", retry; never a silent fail</text>
+<path class="ln dash" d="M762,130 C762,262 62,262 62,134" marker-end="url(#m2h)"/>
+<text x="412" y="262" text-anchor="middle" class="sm">change one thing in the system, run the SAME eval again</text>
+</svg>
+<figcaption><b>Seven stages, one loop.</b> Stages 2 to 4 repeat for every sample and every epoch, usually in parallel. Infrastructure errors must be recorded as errors, not as failures of the agent, or a flaky container will look like a worse model.</figcaption>
+</figure>
+
+<ol>
+<li><b>Load.</b> Read the dataset, check every sample has the required fields, apply any filters (a slice, a limit for a quick smoke test), and shuffle if needed with a fixed seed.</li>
+<li><b>Set up the environment.</b> For a plain Q&amp;A eval this does nothing. For an agent it may start a Docker container, check out a git commit, load a database fixture, or launch a browser. It must be fresh each time: state left over from a previous attempt is one of the most common hidden bugs.</li>
+<li><b>Run.</b> Call the system under test. For an agent this is a loop of model calls and tool calls, bounded by limits (maximum messages, tokens, time or cost) so a stuck agent cannot run forever. The harness also handles rate limits and retries on API errors.</li>
+<li><b>Grade.</b> Apply the grader to the output and, for agents, the final environment state and the transcript. For hidden tests, this is when they are copied in and run.</li>
+<li><b>Aggregate.</b> Combine per-sample scores into metrics: overall mean, standard error, per-slice breakdowns, pass@k or pass^k if there were several epochs.</li>
+<li><b>Log.</b> Save the configuration, every transcript, every score and grader explanation, token use, cost, timing and errors.</li>
+<li><b>Compare.</b> Put the result next to the baseline (last release, other model) on the same samples, look at which samples changed from pass to fail and vice versa, and read those transcripts.</li>
+</ol>
+
+<h2>A minimal eval from scratch</h2>
+<p>Frameworks are helpful, but it is worth building one eval with nothing but Python first, so you can see there is no magic. This eval tests a support assistant on policy questions. It uses Anthropic's Python SDK; any LLM API works the same way.</p>
+
+<p>First, the dataset, <code>support_qa.jsonl</code> (three lines shown; a real one would have dozens to hundreds):</p>
+<pre data-lang="jsonl"><code>{"id": "ret-0142", "input": "I opened my headphones 3 weeks ago. Can I still return them?", "target": {"must_include": ["30 days"], "must_not_include": ["14 days"]}, "metadata": {"category": "returns", "difficulty": "easy"}}
+{"id": "shp-0007", "input": "How much is express shipping to Canada?", "target": {"must_include": ["$25"]}, "metadata": {"category": "shipping", "difficulty": "easy"}}
+{"id": "acc-0019", "input": "Can I merge two accounts into one?", "target": {"must_include": ["cannot"], "must_not_include": ["merged"]}, "metadata": {"category": "account", "difficulty": "medium"}}</code></pre>
+
+<p>Then the eval itself. Every one of the five parts is labelled.</p>
+<pre data-lang="python"><code>"""A complete eval in ~40 lines: dataset, system under test, grader, metric, log."""
+import json, math, re, time
+from collections import defaultdict
+import anthropic
+
+# ---- The system under test: ALL of this is part of what you measure ----
+MODEL = "claude-sonnet-4-5"      # pin an exact model id you have access to
+TEMPERATURE = 1.0
+SYSTEM = open("prompts/support_v7.txt").read()   # system prompt, versioned in git
+client = anthropic.Anthropic()   # reads ANTHROPIC_API_KEY from the environment
+
+def system_under_test(question: str) -&gt; str:
+    resp = client.messages.create(model=MODEL, max_tokens=300, temperature=TEMPERATURE,
+                                  system=SYSTEM, messages=[{"role": "user", "content": question}])
+    return resp.content[0].text
+
+# ---- 1. Dataset ----
+samples = [json.loads(line) for line in open("support_qa.jsonl") if line.strip()]
+
+# ---- 2. Grader: required facts present, forbidden facts absent ----
+def norm(s: str) -&gt; str:
+    return re.sub(r"[^a-z0-9$ ]", "", s.lower())
+
+def grade(output: str, target: dict) -&gt; bool:
+    out = norm(output)
+    has_all = all(norm(x) in out for x in target["must_include"])
+    has_bad = any(norm(x) in out for x in target.get("must_not_include", []))
+    return has_all and not has_bad
+
+# ---- 3. Run + grade every sample ----
+results = []
+for s in samples:
+    out = system_under_test(s["input"])          # note: the target is NOT passed in
+    results.append({"id": s["id"], "category": s["metadata"]["category"],
+                    "output": out, "passed": grade(out, s["target"])})
+
+# ---- 4. Metric: accuracy with a 95% confidence interval, overall and per slice ----
+n = len(results)
+p = sum(r["passed"] for r in results) / n
+print(f"accuracy {p:.1%} ± {1.96 * math.sqrt(p * (1 - p) / n):.1%}  (n={n})")
+by_cat = defaultdict(list)
+for r in results:
+    by_cat[r["category"]].append(r["passed"])
+for cat, v in sorted(by_cat.items()):
+    print(f"  {cat:10s} {sum(v)}/{len(v)}")
+
+# ---- 5. Log: config + every output, so you can read transcripts later ----
+with open(f"logs/run_{int(time.time())}.jsonl", "w") as f:
+    f.write(json.dumps({"model": MODEL, "temperature": TEMPERATURE, "system": SYSTEM}) + "\n")
+    for r in results:
+        f.write(json.dumps(r) + "\n")</code></pre>
+
+<p>Run it and you get something like <code>accuracy 78.0% ± 8.1% (n=100)</code> followed by per-category counts. That is a real eval. It has all the parts: fixed dataset, a clearly defined system, a deterministic grader, a metric with uncertainty, per-slice results, and a log of every output.</p>
+
+<p>It also has real weaknesses, and seeing them is the point:</p>
+<ul>
+<li><b>The grader is naive.</b> "Returns are accepted within 30 days, but not after 14 days of use" contains the forbidden "14 days" and fails, even if it is correct. "Thirty days" contains no "30 days" and fails. Substring graders are cheap and useful, but you must check them against human judgement (<a href="03-graders.html">Module 03</a>).</li>
+<li><b>One attempt per sample.</b> At temperature 1.0 the same question can pass once and fail the next time. Add an epochs loop.</li>
+<li><b>No error handling.</b> If the API times out, the script crashes. A real harness retries and records errors separately from failures.</li>
+<li><b>Sequential.</b> 100 samples run one after another. Real harnesses run many in parallel within rate limits.</li>
+<li><b>Only single-turn.</b> No tools, no environment, no agent loop.</li>
+</ul>
+<p>You could fix all of these yourself. Or you could use a framework that already has.</p>
+
+<h2>The same eval in Inspect</h2>
+<p><b>Inspect</b> (<code>inspect_ai</code>) is an open-source eval framework from the UK AI Security Institute, now co-developed with the non-profit Meridian Labs, and used by several government AI safety institutes. Its vocabulary maps directly onto the anatomy in this module:</p>
+
+<div class="tablewrap"><table>
+<tr><th>Anatomy part</th><th>Inspect concept</th><th>What it is</th></tr>
+<tr><td>Dataset / sample</td><td><code>Dataset</code>, <code>Sample</code></td><td>A list of <code>Sample(input, target, id, metadata, files, setup, sandbox)</code>. Loaders for JSONL, CSV and Hugging Face.</td></tr>
+<tr><td>System under test</td><td><code>Solver</code> (or an <code>Agent</code>) plus the <code>--model</code> and <code>GenerateConfig</code></td><td>A chain of steps that transforms the conversation: add a system message, call the model, run an agent loop with tools.</td></tr>
+<tr><td>Grader</td><td><code>Scorer</code></td><td>A function that takes the final state and the target and returns a <code>Score</code>. Built-ins include <code>match()</code>, <code>includes()</code>, <code>model_graded_qa()</code>.</td></tr>
+<tr><td>Metric</td><td><code>@scorer(metrics=[...])</code></td><td>Aggregators such as <code>accuracy()</code> and <code>stderr()</code>.</td></tr>
+<tr><td>Harness + logs</td><td><code>Task</code>, <code>inspect eval</code>, <code>inspect view</code></td><td>A <code>Task</code> bundles the parts; the runner handles parallelism, retries, limits, epochs, sandboxes and writes a log file per run.</td></tr>
+</table></div>
+
+<pre data-lang="python"><code># support_qa.py  (checked against inspect_ai 0.3.x)
+import re
+from inspect_ai import Task, task
+from inspect_ai.dataset import Sample, json_dataset
+from inspect_ai.model import GenerateConfig
+from inspect_ai.scorer import CORRECT, INCORRECT, Score, Target, accuracy, scorer, stderr
+from inspect_ai.solver import TaskState, generate, system_message
+
+SYSTEM = open("prompts/support_v7.txt").read()
+
+def norm(s: str) -&gt; str:
+    return re.sub(r"[^a-z0-9$ ]", "", s.lower())
+
+# Dataset: map our JSONL fields onto Inspect's Sample
+def record_to_sample(r: dict) -&gt; Sample:
+    return Sample(
+        id=r["id"],
+        input=r["input"],
+        target=r["target"]["must_include"],            # Target can be a list of strings
+        metadata={**r["metadata"],
+                  "must_not_include": r["target"].get("must_not_include", [])},
+    )
+
+# Grader + metric: the same logic as before, packaged as a Scorer
+@scorer(metrics=[accuracy(), stderr()])
+def facts_present():
+    async def score(state: TaskState, target: Target) -&gt; Score:
+        out = norm(state.output.completion)
+        has_all = all(norm(t) in out for t in target.target)
+        has_bad = any(norm(b) in out for b in state.metadata["must_not_include"])
+        return Score(value=CORRECT if has_all and not has_bad else INCORRECT,
+                     answer=state.output.completion)
+    return score
+
+@task
+def support_qa():
+    return Task(
+        dataset=json_dataset("support_qa.jsonl", record_to_sample),
+        solver=[system_message(SYSTEM), generate()],     # the system under test (minus the model)
+        scorer=facts_present(),
+        config=GenerateConfig(temperature=1.0, max_tokens=300),
+        epochs=3,                                        # run every sample 3 times
+    )</code></pre>
+
+<pre data-lang="bash"><code># the model is chosen at run time, so you can compare models on the same Task
+inspect eval support_qa.py --model anthropic/claude-sonnet-4-5
+inspect eval support_qa.py --model openai/gpt-4.1 --limit 10   # quick smoke test
+inspect view                                                    # browse logs and transcripts</code></pre>
+
+<p>What you gained for free: parallel execution with rate-limit handling, retries, epochs, a standard error, a log file for every run containing every message, and a web viewer for transcripts. And because the model is a command-line argument, comparing models is a one-word change.</p>
+
+<h3>Scaling up: the coding item from earlier</h3>
+<p>The same four concepts stretch to agents. For sample (c), the solver becomes a ReAct-style agent (a model that alternates between reasoning and tool calls) with a bash tool inside a Docker sandbox, and the scorer copies in the hidden tests after the agent has finished and runs them.</p>
+<pre data-lang="python"><code>from inspect_ai import Task, task
+from inspect_ai.agent import react
+from inspect_ai.scorer import CORRECT, INCORRECT, Score, Target, accuracy, scorer
+from inspect_ai.solver import TaskState
+from inspect_ai.tool import bash, text_editor
+from inspect_ai.util import sandbox
+
+@scorer(metrics=[accuracy()])
+def hidden_tests():
+    async def score(state: TaskState, target: Target) -&gt; Score:
+        # The hidden test file enters the container only NOW, after the agent is done.
+        await sandbox().write_file("/workspace/" + state.metadata["hidden_test_file"],
+                                   state.metadata["hidden_test_source"])
+        tests = state.metadata["fail_to_pass"] + state.metadata["pass_to_pass"]
+        result = await sandbox().exec(["python", "-m", "pytest", "-q", *tests],
+                                      cwd="/workspace", timeout=600)
+        return Score(value=CORRECT if result.returncode == 0 else INCORRECT,
+                     explanation=result.stdout[-3000:])   # keep the test output for debugging
+    return score
+
+@task
+def date_bugs():
+    return Task(
+        dataset=load_coding_samples("coding_tasks.jsonl"),  # your loader: builds Samples with metadata
+        solver=react(tools=[bash(timeout=180), text_editor()]),
+        scorer=hidden_tests(),
+        sandbox="docker",          # a fresh container per sample (compose.yaml defines the image)
+        message_limit=60,          # stop runaway agents
+    )</code></pre>
+<p>Compare this with the Q&amp;A task: the <em>shape</em> is identical (dataset, solver, scorer, metrics, limits), only the pieces are richer. That is the point of learning the anatomy.</p>
+
+<h2>Reading logs and transcripts</h2>
+<p>An eval produces a number, but the number is the least informative thing it produces. The <b>transcripts</b> (the full record of each attempt: every message, tool call, tool result and grader explanation) are where you learn what is actually going on. Experienced practitioners are close to unanimous on this: before you trust a score, read a sample of transcripts, especially failures, and some passes too.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="An agent transcript where the agent cancelled the wrong order because of a typo in the order id, then told the user the right order was cancelled. A judge reading only the final message scores it as a pass; a database state check scores it as a fail.">
+<defs><marker id="m2j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="250" y="24" text-anchor="middle" class="lg">Transcript</text>
+<rect class="box plain" x="20" y="40" width="460" height="44" rx="6"/>
+<text x="34" y="60" class="sm b">user</text>
+<text x="34" y="76" class="mono">Please cancel order W4821, wrong size.</text>
+<rect class="box accent" x="20" y="94" width="460" height="44" rx="6"/>
+<text x="34" y="114" class="sm b">assistant → tool call</text>
+<text x="34" y="130" class="mono">cancel_pending_order(order_id="W4812")</text>
+<text x="470" y="130" text-anchor="end" class="sm b t-bad">typo!</text>
+<rect class="box plain" x="20" y="148" width="460" height="44" rx="6"/>
+<text x="34" y="168" class="sm b">tool result</text>
+<text x="34" y="184" class="mono">{"order_id": "W4812", "status": "cancelled"}</text>
+<rect class="box accent" x="20" y="202" width="460" height="44" rx="6"/>
+<text x="34" y="222" class="sm b">assistant (final message)</text>
+<text x="34" y="238" class="mono">Done! Order W4821 is cancelled.</text>
+<text x="250" y="276" text-anchor="middle" class="sm">the wrong customer's order was cancelled, and the user was told otherwise</text>
+<rect class="box bad" x="540" y="60" width="280" height="80" rx="8"/>
+<text x="556" y="84" class="b">Grader A: judge on final text</text>
+<text x="556" y="104" class="sm">"Confirms cancellation politely."</text>
+<text x="556" y="126" class="b t-bad">PASS (wrong)</text>
+<rect class="box good" x="540" y="166" width="280" height="80" rx="8"/>
+<text x="556" y="190" class="b">Grader B: database state check</text>
+<text x="556" y="210" class="sm">W4821 still pending; W4812 cancelled.</text>
+<text x="556" y="232" class="b t-good">FAIL (right)</text>
+<line class="ln bad" x1="480" y1="224" x2="536" y2="104" marker-end="url(#m2j)"/>
+<line class="ln good" x1="480" y1="170" x2="536" y2="206" marker-end="url(#m2j)"/>
+</svg>
+<figcaption><b>Why you read transcripts.</b> An illustrative trajectory. The final message sounds perfect; only the tool call reveals the agent acted on the wrong order. Grading outcomes (state) catches it, grading text alone does not, and reading the transcript tells you <em>why</em> it failed.</figcaption>
+</figure>
+
+<p>Transcripts reveal problems no metric can:</p>
+<ul>
+<li><b>Grader bugs.</b> Passes that should be failures (as above) and failures that are actually correct answers the grader could not parse.</li>
+<li><b>Broken samples.</b> A task that is impossible because the fixture is missing a record, or ambiguous because the question has two reasonable readings. If a sample fails for every model you try, suspect the sample before the models.</li>
+<li><b>Infrastructure failures.</b> A container that failed to install a package, a rate-limit error that the agent treated as a tool result, a browser page that never loaded.</li>
+<li><b>Shortcuts and cheating.</b> An agent that edits the tests instead of the code, reads the answer from a file it should not have access to, or hard-codes the expected output. Labs have documented agents doing exactly this; <a href="18-benchmark-pitfalls.html">Module 18</a> has examples.</li>
+<li><b>The <em>kind</em> of failure.</b> "Failed 22%" is not actionable. "Half the failures are the agent not asking for the order number" is. This is error analysis (<a href="12-error-analysis.html">Module 12</a>).</li>
+</ul>
+
+<p>In Inspect, <code>inspect view</code> gives a browsable interface. You can also read logs in code, which is handy for finding the samples that flipped between two runs:</p>
+<pre data-lang="python"><code>from inspect_ai.log import read_eval_log
+
+log = read_eval_log("logs/2026-09-29T10-02-11_support-qa_Ab3x.eval")
+print(log.eval.model, log.results.scores[0].metrics["accuracy"].value)
+
+for s in log.samples:                        # one entry per sample × epoch
+    sc = s.scores["facts_present"]
+    if sc.value == "I":                      # "I" = INCORRECT, "C" = CORRECT
+        print(f"--- {s.id} (epoch {s.epoch}) ---")
+        for m in s.messages:                 # the full conversation
+            print(m.role, ":", m.text[:200])</code></pre>
+
+<div class="callout tip"><span class="t">A habit worth building</span>
+<p>Every time you run an eval, read at least 10 transcripts: 5 random failures, 3 random passes, and 2 samples whose result changed since the last run. It takes 15 minutes, and it is how you find the grader bugs that would otherwise silently corrupt months of decisions.</p>
+</div>
+
+<h2>Worked example: from "be helpful" to samples</h2>
+<p>Real eval projects rarely start with a crisp spec. They start with a wish: "the support bot should be helpful." You cannot grade "helpful". Here is how to turn it into something you can.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 340" role="img" aria-label="Decomposing the vague goal of helpfulness into four concrete criteria: resolves the issue, states policy correctly, hands off when needed, and tone. Each criterion gets example samples and an explicit pass rule.">
+<defs><marker id="m2i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box warn" x="270" y="12" width="300" height="44" rx="8"/>
+<text x="420" y="39" text-anchor="middle" class="b">"The support bot should be helpful"</text>
+<rect class="box accent" x="15" y="96" width="195" height="40" rx="8"/><text x="112" y="121" text-anchor="middle" class="b">Resolves the issue</text>
+<rect class="box accent" x="220" y="96" width="195" height="40" rx="8"/><text x="317" y="121" text-anchor="middle" class="b">States policy correctly</text>
+<rect class="box accent" x="425" y="96" width="195" height="40" rx="8"/><text x="522" y="121" text-anchor="middle" class="b">Hands off when needed</text>
+<rect class="box accent" x="630" y="96" width="195" height="40" rx="8"/><text x="727" y="121" text-anchor="middle" class="b">Tone and brevity</text>
+<line class="ln" x1="420" y1="56" x2="112" y2="92" marker-end="url(#m2i)"/>
+<line class="ln" x1="420" y1="56" x2="317" y2="92" marker-end="url(#m2i)"/>
+<line class="ln" x1="420" y1="56" x2="522" y2="92" marker-end="url(#m2i)"/>
+<line class="ln" x1="420" y1="56" x2="727" y2="92" marker-end="url(#m2i)"/>
+<text x="4" y="168" class="sm t-muted">sample</text>
+<rect class="box plain" x="15" y="176" width="195" height="54" rx="6"/><text x="27" y="198" class="sm">"Where is order #1182?"</text><text x="27" y="216" class="sm">fixture: shipped Tuesday</text>
+<rect class="box plain" x="220" y="176" width="195" height="54" rx="6"/><text x="232" y="198" class="sm">"Can I return opened</text><text x="232" y="216" class="sm">headphones?"</text>
+<rect class="box plain" x="425" y="176" width="195" height="54" rx="6"/><text x="437" y="198" class="sm">"I was charged twice,</text><text x="437" y="216" class="sm">refund me NOW."</text>
+<rect class="box plain" x="630" y="176" width="195" height="54" rx="6"/><text x="642" y="198" class="sm">applies to every sample,</text><text x="642" y="216" class="sm">graded separately</text>
+<line class="ln" x1="112" y1="136" x2="112" y2="172" marker-end="url(#m2i)"/>
+<line class="ln" x1="317" y1="136" x2="317" y2="172" marker-end="url(#m2i)"/>
+<line class="ln" x1="522" y1="136" x2="522" y2="172" marker-end="url(#m2i)"/>
+<line class="ln" x1="727" y1="136" x2="727" y2="172" marker-end="url(#m2i)"/>
+<text x="4" y="262" class="sm t-muted">pass if</text>
+<rect class="box good" x="15" y="270" width="195" height="56" rx="6"/><text x="27" y="292" class="sm">calls get_order(1182) and</text><text x="27" y="310" class="sm">gives tracking link + ETA</text>
+<rect class="box good" x="220" y="270" width="195" height="56" rx="6"/><text x="232" y="292" class="sm">says 30 days from delivery;</text><text x="232" y="310" class="sm">no invented fee</text>
+<rect class="box good" x="425" y="270" width="195" height="56" rx="6"/><text x="437" y="292" class="sm">no refund promised; calls</text><text x="437" y="310" class="sm">transfer_to_human(billing)</text>
+<rect class="box good" x="630" y="270" width="195" height="56" rx="6"/><text x="642" y="292" class="sm">judge rubric score 4 or 5</text><text x="642" y="310" class="sm">of 5; under 120 words</text>
+<line class="ln" x1="112" y1="230" x2="112" y2="266" marker-end="url(#m2i)"/>
+<line class="ln" x1="317" y1="230" x2="317" y2="266" marker-end="url(#m2i)"/>
+<line class="ln" x1="522" y1="230" x2="522" y2="266" marker-end="url(#m2i)"/>
+<line class="ln" x1="727" y1="230" x2="727" y2="266" marker-end="url(#m2i)"/>
+</svg>
+<figcaption><b>From wish to test.</b> Split the vague goal into criteria a stranger could check, write samples that exercise each criterion, and attach an explicit pass rule to each sample. The first three rules are mostly checkable by code; tone needs a rubric and a model or human grader.</figcaption>
+</figure>
+
+<h3>Step 1: ask "helpful how?" until the answers are observable</h3>
+<p>Interview the people who own the product, and read 50 to 100 real conversations (or, before launch, role-play them). Ask: when a conversation went well, what did the bot do? When it went badly, what went wrong? You will get answers like "it told the customer the wrong return window", "it promised a refund it cannot give", "it wrote three paragraphs for a yes/no question". Each complaint is a criterion in disguise. Anthropic's guidance puts it as success criteria that are <b>specific and measurable</b>: not "good answers" but "states the correct policy for the customer's situation".</p>
+
+<h3>Step 2: write criteria a stranger could apply</h3>
+<p>The test for a good criterion: if you gave it to two different people (or a person and a model), would they agree on almost every case? "Friendly" fails that test. "Does not blame the customer, and apologises at most once" passes.</p>
+<div class="tablewrap"><table>
+<tr><th>Criterion</th><th>Type</th><th>Pass rule</th><th>Grader</th></tr>
+<tr><td>Resolves the issue</td><td>Outcome</td><td>Takes the right action (correct tool call, correct final state) and tells the user the result.</td><td>Code: state or tool-call check</td></tr>
+<tr><td>States policy correctly</td><td>Factual</td><td>Every policy fact stated matches the policy document for this situation; no invented rules.</td><td>Code for key facts, model grader with the policy doc for the rest</td></tr>
+<tr><td>Hands off when needed</td><td>Judgement</td><td>For listed situations (disputed charge, legal threat, account security), transfers to a human and makes no promise.</td><td>Code: tool-call check</td></tr>
+<tr><td>Tone and brevity</td><td>Style</td><td>Rubric score 4+ of 5 from a calibrated judge; under 120 words unless the user asked for detail.</td><td>Model grader (validated against humans) + word count</td></tr>
+</table></div>
+
+<h3>Step 3: write samples that exercise each criterion</h3>
+<p>For each criterion, write samples that should pass and samples designed to tempt a failure. Tempting a failure is the valuable part: "I was charged twice, refund me NOW" tests whether the bot caves to pressure and promises a refund. Tag every sample with its criterion, category and difficulty in metadata so you can build the coverage matrix.</p>
+<pre data-lang="jsonl"><code>{"id": "handoff-0004", "input": "I was charged twice for order #5530. Refund me NOW or I'm calling my bank.", "setup": {"db_fixture": "billing_dupe_charge.json"}, "target": {"required_tool_calls": [{"name": "transfer_to_human", "args": {"queue": "billing"}}], "forbidden_phrases": ["I have refunded", "refund has been issued"]}, "rubric": "Pass if the bot acknowledges the problem, does not promise or claim a refund, and transfers to the billing queue.", "metadata": {"criterion": "handoff", "category": "billing", "difficulty": "hard", "adversarial": "pressure"}}</code></pre>
+
+<h3>Step 4: decide how criteria combine</h3>
+<p>Decide up front whether a sample passes only when <em>all</em> hard criteria pass (usual for correctness and safety) and report style scores separately, or whether you use a weighted score. Do not average a safety failure with a tone score: a polite answer that promises an unauthorised refund is a failure, not a 75%. Report each criterion as its own metric as well as the combined pass rate.</p>
+
+<h3>Step 5: check the eval before trusting it</h3>
+<p>Label 30 to 50 outputs by hand, run your graders on the same outputs, and compare. Where they disagree, fix the grader or the rubric. Also run a known-good reference answer through each grader: it must pass. And run a known-bad one: it must fail. Only then start using the numbers to make decisions.</p>
+
+<h2>Common anatomy mistakes</h2>
+<p>Almost every broken eval fails in one of a few ways. Learn to spot them in your own work and in published benchmarks.</p>
+
+<div class="grid2">
+<div class="card bad"><h4>1. Ambiguous tasks</h4><p>"Summarise the document" with no length or audience. "Book a flight to Paris" with no date. If a careful human expert could reasonably produce two different answers, one of which the grader rejects, the sample measures luck. Fix: add the missing constraints, or accept all reasonable answers. SWE-bench Verified exists precisely because human reviewers found many original SWE-bench tasks were under-specified.</p></div>
+<div class="card bad"><h4>2. Wrong references</h4><p>The target itself is wrong or out of date: an old policy, a typo in the answer key, a goal state that violates the policy. The best agents then "fail" by being right. Fix: two people verify each target; re-check when the underlying policy changes; investigate any sample that every strong system fails. τ-bench's maintainers have published dozens of task fixes for exactly this reason.</p></div>
+<div class="card bad"><h4>3. Graders that accept wrong answers</h4><p>A substring check for "Canberra" passes "It's not Canberra, it's Sydney." A judge that sees only the final message passes an agent that lied about what it did (the transcript figure above). A test that only checks a function exists passes an empty function. Fix: include known-wrong outputs in grader tests, and prefer checking outcomes and state.</p></div>
+<div class="card bad"><h4>4. Leaking the answer</h4><p>The target appears in the prompt ("Is the answer 42? What is 6×7?"), in few-shot examples, in a file the agent can read, in the tool output, or in the test file the agent can open. The score then measures copying. Fix: audit exactly what the system can see; keep targets and hidden tests outside its reach until grading.</p></div>
+<div class="card bad"><h4>5. Errors counted as failures</h4><p>A container fails to start, the API rate-limits, and the harness records a zero. The model looks worse because the infrastructure was flaky. Fix: record errors separately, retry them, and report the error rate next to the score.</p></div>
+<div class="card bad"><h4>6. Unversioned systems and data</h4><p>"The score went up" but nobody knows whether the prompt, the model alias, the dataset or the grader changed. Fix: fingerprint the system under test, version the dataset and grader, and store all three with every score.</p></div>
+</div>
+
+<details>
+<summary>Deep dive: how "too strict" can be as bad as "too lenient"</summary>
+<p>Grader errors cut both ways. When OpenAI audited problems from SWE-bench Verified that models were failing, it reported (February 2026) that at least 59.4% of the audited problems had flawed tests that rejected functionally correct solutions, for example tests that required one specific implementation, or tested behaviour the issue never mentioned. An over-strict grader does not just lower the score; it puts a ceiling on the score and makes genuinely better systems look no better than weaker ones. The same audit found contamination too. The lesson for your own evals: whenever a strong system fails a sample, read the transcript and ask "was it actually wrong?" before assuming it was.</p>
+</details>
+
+<details>
+<summary>A pre-flight checklist for any new eval</summary>
+<ul>
+<li>Every sample has a stable id, and metadata for category and difficulty.</li>
+<li>A known-good answer passes every sample; a known-bad answer fails it.</li>
+<li>No target, rubric or hidden test is visible to the system under test (check prompts, files, tool outputs, environment).</li>
+<li>Two people agree on the target for a random 10% of samples.</li>
+<li>The coverage matrix has no empty cells you care about.</li>
+<li>The system under test is fully specified (all six layers) and fingerprinted.</li>
+<li>Errors are logged separately from failures, with retries.</li>
+<li>The metric is reported with a confidence interval and per slice.</li>
+<li>You have read at least 10 transcripts from the first run.</li>
+<li>A dev/test split exists, or you have written down that the score is optimistic because there is none.</li>
+</ul>
+</details>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="2"><p>1. Your coding eval lets the agent read the test file that checks its fix. What is the main risk?</p>
+<button class="opt">The eval will run too slowly</button>
+<button class="opt">The grader will become non-deterministic</button>
+<button class="opt">The agent can satisfy the specific asserts without fixing the real bug, so the score overstates ability</button>
+<button class="opt">Nothing: reading tests is what good developers do</button>
+<div class="why">This is answer leakage. Hidden FAIL_TO_PASS tests are copied in only after the agent finishes, so the agent must solve the issue as described rather than target the checker.</div></div>
+<div class="q" data-answer="1"><p>2. You have 50 samples. Prompt B scores 76%, prompt A scored 72%. What can you conclude?</p>
+<button class="opt">B is better; ship it</button>
+<button class="opt">Very little: with 50 samples the uncertainty on each score is around ±12 to 14 points; look at which samples flipped and gather more data</button>
+<button class="opt">A is better, because smaller differences are usually reversed</button>
+<div class="why">At n=50 the 95% interval on a single score is roughly ±12 to 14 points. A paired comparison helps (Module 04), but a 4-point gap on 50 samples is usually noise.</div></div>
+<div class="q" data-answer="0"><p>3. Which of these is NOT part of the system under test?</p>
+<button class="opt">The reference answers in the dataset</button>
+<button class="opt">The tool descriptions</button>
+<button class="opt">The temperature setting</button>
+<button class="opt">The Docker image the agent runs in</button>
+<div class="why">References belong to the dataset and are read only by the grader. Tool descriptions, sampling parameters and the environment are all layers of the system and all change the score.</div></div>
+<div class="q" data-answer="3"><p>4. Your golden regression set scores 97% and your capability set scores 31%. A teammate proposes merging them into one "quality score". Why is that a bad idea?</p>
+<button class="opt">The merged number would be too low to show leadership</button>
+<button class="opt">Inspect cannot run two tasks at once</button>
+<button class="opt">Capability sets must never be run in CI</button>
+<button class="opt">A regression in the golden items would be diluted by the hard items, and progress on hard items diluted by the easy ones</button>
+<div class="why">The two sets answer different questions (did we break anything? can we do more?). Keep separate numbers and dashboards.</div></div>
+<div class="q" data-answer="1"><p>5. A container fails to start for 8 of 200 samples, and your harness records them as scored 0. What should happen instead?</p>
+<button class="opt">Delete those samples from the dataset</button>
+<button class="opt">Record them as errors, retry them, and report the error rate separately from the pass rate</button>
+<button class="opt">Count them as passes, since it was not the agent's fault</button>
+<div class="why">Infrastructure errors are not agent failures. Mixing them in makes the system look worse and makes run-to-run comparisons noisy.</div></div>
+<div class="q" data-answer="2"><p>6. A strong model fails the same sample on every one of 10 epochs, and so do two other strong models. What is the first thing to suspect?</p>
+<button class="opt">All three models share a hidden weakness</button>
+<button class="opt">The temperature is too low</button>
+<button class="opt">The sample itself: a wrong reference, an ambiguous task, a broken fixture or an over-strict grader. Read the transcripts</button>
+<div class="why">Universal, consistent failure is a classic signature of a broken sample. Sometimes it is a real capability gap, but check the sample first.</div></div>
+</div>
+
+<details>
+<summary>Interview questions (with model answers)</summary>
+<p><b>Q: Walk me through the parts of an eval.</b> A dataset of samples (input, optional setup, target or rubric, metadata); a precisely defined system under test (model, sampling params, prompt, tools, scaffold, environment); a grader that scores each attempt; a metric that aggregates scores with uncertainty and per slice; a harness that runs everything reproducibly; and logs of every transcript and score.</p>
+<p><b>Q: How would you build an eval for a new agent with no users yet?</b> Define observable success criteria with the product owner; hand-write 30 to 50 samples covering the key intents plus edge and negative cases; use dimension-based synthetic generation to fill coverage gaps with human-verified targets; grade outcomes with code where possible and a validated model grader for the rest; read transcripts; then replace synthetic samples with real traffic as soon as it exists.</p>
+<p><b>Q: How do you know your eval is measuring what you think?</b> Known-good and known-bad outputs through every grader; human agreement checks on a sample of grades; reading transcripts of passes and failures; investigating samples that no system passes; checking for leakage of targets; and confirming that scores move in the expected direction when you make a change you know is an improvement.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>UK AI Security Institute and Meridian Labs, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a>: <a href="https://inspect.aisi.org.uk/datasets.html">datasets</a>, <a href="https://inspect.aisi.org.uk/scorers.html">scorers</a>, <a href="https://inspect.aisi.org.uk/react-agent.html">ReAct agent</a>, <a href="https://inspect.aisi.org.uk/sandboxing.html">sandboxing</a>, <a href="https://inspect.aisi.org.uk/eval-logs.html">eval logs</a>. Code in this module checked against inspect_ai 0.3.x.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (January 2026): task, trial, grader, transcript, outcome, harness.</li>
+<li>Anthropic, <a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
+<li>OpenAI, <a href="https://platform.openai.com/docs/guides/evaluation-best-practices">Evaluation best practices</a>.</li>
+<li>Evan Miller (Anthropic), <a href="https://arxiv.org/abs/2411.00640">Adding Error Bars to Evals</a> (2024), and the <a href="https://www.anthropic.com/research/statistical-approach-to-model-evals">blog summary</a>.</li>
+<li>Jimenez et al., <a href="https://www.swebench.com">SWE-bench</a> (FAIL_TO_PASS and PASS_TO_PASS tests); OpenAI, <a href="https://openai.com/index/introducing-swe-bench-verified/">Introducing SWE-bench Verified</a> (2024) and <a href="https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/">Why SWE-bench Verified no longer measures frontier coding capabilities</a> (February 2026).</li>
+<li>Yao et al. (Sierra), <a href="https://arxiv.org/abs/2406.12045">τ-bench: A Benchmark for Tool-Agent-User Interaction</a> (2024); task fixes in the <a href="https://github.com/sierra-research/tau2-bench">tau2-bench repository</a>.</li>
+<li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a>.</li>
+<li>Srivastava et al., <a href="https://arxiv.org/abs/2206.04615">BIG-bench</a> (2022), which popularised benchmark canary strings.</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

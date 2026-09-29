@@ -241,6 +241,131 @@
 
 <p>This course is about that harder, agentic kind of eval, across every way an agent can act: text and tool calls, code, browsers and desktops, voice, and images and video. We build up the foundations first, because every agent eval is still made of the same four parts: dataset, system, grader, metric.</p>
 
+<h2>A short history: from answers to actions</h2>
+<p>Evals have followed what models can do. When models could only fill in blanks, evals were multiple-choice quizzes. When they could write code, evals ran that code. Now that they act in the world, evals build whole worlds for them to act in.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 334" role="img" aria-label="Timeline of landmark evals from GLUE in 2018 to agent benchmarks in 2024 to 2026, moving from static questions to execution to interactive environments.">
+<line class="ln" x1="30" y1="170" x2="815" y2="170"/>
+<rect x="30" y="278" width="190" height="20" rx="4" class="fill-soft"/>
+<rect x="224" y="278" width="222" height="20" rx="4" class="fill-line"/>
+<rect x="450" y="278" width="365" height="20" rx="4" class="fill-soft"/>
+<text x="125" y="292" text-anchor="middle" class="sm b">era 1: static Q&amp;A</text>
+<text x="335" y="292" text-anchor="middle" class="sm b">era 2: execute &amp; compare</text>
+<text x="632" y="292" text-anchor="middle" class="sm b">era 3: act in an environment</text>
+<g>
+<circle cx="50" cy="170" r="5" class="fill-muted"/><line class="ln dash" x1="50" y1="165" x2="50" y2="130"/>
+<text x="50" y="104" text-anchor="middle" class="b">2018</text><text x="50" y="122" text-anchor="middle" class="sm">GLUE</text>
+<circle cx="140" cy="170" r="5" class="fill-muted"/><line class="ln dash" x1="140" y1="175" x2="140" y2="210"/>
+<text x="140" y="228" text-anchor="middle" class="b">2020</text><text x="140" y="246" text-anchor="middle" class="sm">MMLU</text>
+<circle cx="240" cy="170" r="5" class="fill-good"/><line class="ln dash" x1="240" y1="165" x2="240" y2="130"/>
+<text x="240" y="104" text-anchor="middle" class="b">2021</text><text x="240" y="122" text-anchor="middle" class="sm">HumanEval, pass@k</text>
+<circle cx="340" cy="170" r="5" class="fill-good"/><line class="ln dash" x1="340" y1="175" x2="340" y2="210"/>
+<text x="340" y="228" text-anchor="middle" class="b">2023</text><text x="340" y="246" text-anchor="middle" class="sm">MT-Bench, Arena</text><text x="340" y="262" text-anchor="middle" class="sm">(LLM judges, votes)</text>
+<circle cx="430" cy="170" r="5" class="fill-good"/><line class="ln dash" x1="430" y1="165" x2="430" y2="130"/>
+<text x="430" y="104" text-anchor="middle" class="b">2023</text><text x="430" y="122" text-anchor="middle" class="sm">SWE-bench</text>
+<circle cx="510" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="510" y1="175" x2="510" y2="210"/>
+<text x="510" y="228" text-anchor="middle" class="b">2023</text><text x="510" y="246" text-anchor="middle" class="sm">WebArena, GAIA</text>
+<circle cx="590" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="590" y1="165" x2="590" y2="130"/>
+<text x="590" y="104" text-anchor="middle" class="b">2024</text><text x="590" y="122" text-anchor="middle" class="sm">OSWorld, τ-bench</text>
+<circle cx="670" cy="170" r="5" class="fill-violet"/><line class="ln dash" x1="670" y1="175" x2="670" y2="210"/>
+<text x="670" y="228" text-anchor="middle" class="b">2025</text><text x="670" y="246" text-anchor="middle" class="sm">METR time horizons,</text><text x="670" y="262" text-anchor="middle" class="sm">GDPval, Terminal-Bench</text>
+<circle cx="770" cy="170" r="5" class="fill-violet"/><line class="ln dash" x1="770" y1="165" x2="770" y2="130"/>
+<text x="770" y="104" text-anchor="middle" class="b">2026</text><text x="815" y="122" text-anchor="end" class="sm">τ-Voice, ARC-AGI-3,</text><text x="815" y="138" text-anchor="end" class="sm">SWE-bench Verified retired</text>
+</g>
+<text x="420" y="30" text-anchor="middle" class="lg">What gets graded moved from the answer, to the program, to the whole trajectory</text>
+<text x="420" y="322" text-anchor="middle" class="sm">each generation keeps the old tools (exact match, unit tests, judges) and adds environments, simulated users and longer tasks</text>
+</svg>
+<figcaption><b>Three eras of evals.</b> Static question sets (GLUE, MMLU) gave way to execution-based checks (HumanEval ran the code), then to interactive environments where agents browse, code, operate desktops and talk (WebArena, OSWorld, τ-bench and its voice successor τ-Voice). Dates are the public release years of each benchmark or paper; Module 18 covers why benchmarks get retired.</figcaption>
+</figure>
+
+<p>Notice a pattern that repeats across this course: a benchmark launches with low scores, the field climbs it for a year or two, scores saturate near the ceiling (or flaws surface), and it gets replaced. In February 2026, OpenAI stopped using SWE-bench Verified as a frontier measure after an audit found flawed tests in a majority of the problems it examined. Being an expert means knowing not just the names, but where each eval is in that life cycle.</p>
+
+<h2>What makes a good eval</h2>
+<p>Most evals that fail do so in one of six predictable ways. Use these as a checklist every time you design or read one.</p>
+<div class="grid2">
+<div class="card accent"><h4>Valid</h4><p>It measures the thing you care about. A trivia quiz is a poor proxy for "can this agent resolve support tickets".</p></div>
+<div class="card accent"><h4>Unambiguous</h4><p>Two domain experts would agree on whether each output passes. Anthropic's agent-eval guidance puts it simply: a task should have a clear spec and, ideally, a reference solution.</p></div>
+<div class="card accent"><h4>Reliable</h4><p>Re-running it gives nearly the same number. Enough samples, repeated trials, a grader that doesn't flip its mind.</p></div>
+<div class="card good"><h4>Discriminative</h4><p>Better systems score higher. If everything scores 98% (saturated) or 2% (too hard), it cannot tell systems apart.</p></div>
+<div class="card good"><h4>Uncontaminated</h4><p>The answers are not in the model's training data or the agent's reach (a leaked git history, a test file it can edit).</p></div>
+<div class="card good"><h4>Affordable to run often</h4><p>An eval nobody runs is worthless. Fast smoke suites on every change, bigger suites nightly.</p></div>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Three evals scoring the same four systems: a saturated eval where all score near 97 percent, a too-hard eval where all score near 3 percent, and a discriminative eval where scores spread from 25 to 80 percent.">
+<text x="140" y="24" text-anchor="middle" class="b">Too easy (saturated)</text>
+<text x="410" y="24" text-anchor="middle" class="b">Too hard (floor)</text>
+<text x="680" y="24" text-anchor="middle" class="b t-good">Discriminative</text>
+<g>
+<line class="ln" x1="40" y1="200" x2="240" y2="200"/>
+<rect x="55" y="45" width="34" height="155" class="fill-muted"/><rect x="100" y="42" width="34" height="158" class="fill-muted"/><rect x="145" y="44" width="34" height="156" class="fill-muted"/><rect x="190" y="41" width="34" height="159" class="fill-muted"/>
+<text x="140" y="225" text-anchor="middle" class="sm">96–98%: differences are noise</text>
+</g>
+<g>
+<line class="ln" x1="310" y1="200" x2="510" y2="200"/>
+<rect x="325" y="195" width="34" height="5" class="fill-muted"/><rect x="370" y="193" width="34" height="7" class="fill-muted"/><rect x="415" y="196" width="34" height="4" class="fill-muted"/><rect x="460" y="194" width="34" height="6" class="fill-muted"/>
+<text x="410" y="225" text-anchor="middle" class="sm">1–4%: also mostly noise</text>
+</g>
+<g>
+<line class="ln" x1="580" y1="200" x2="780" y2="200"/>
+<rect x="595" y="160" width="34" height="40" class="fill-accent"/><rect x="640" y="120" width="34" height="80" class="fill-accent"/><rect x="685" y="95" width="34" height="105" class="fill-accent"/><rect x="730" y="72" width="34" height="128" class="fill-accent"/>
+<text x="612" y="154" text-anchor="middle" class="sm">25%</text><text x="657" y="114" text-anchor="middle" class="sm">50%</text><text x="702" y="89" text-anchor="middle" class="sm">66%</text><text x="747" y="66" text-anchor="middle" class="sm">80%</text>
+<text x="680" y="225" text-anchor="middle" class="sm">spread reveals real differences</text>
+</g>
+<text x="410" y="246" text-anchor="middle" class="sm t-muted">same four systems (A, B, C, D, left to right) in every panel · illustrative numbers</text>
+</svg>
+<figcaption><b>Headroom matters.</b> A capability eval is most informative when systems land in the middle of the scale. This is why labs keep releasing harder benchmarks, and why your regression suite (near 100% on purpose) cannot tell you whether a new model is <em>better</em>, only whether it broke something.</figcaption>
+</figure>
+
+<h2>Your first eval, by hand</h2>
+<p>Before any framework, do one eval with a pencil. Say you're building a weather assistant that must answer with the temperature in Celsius. You write ten test questions, run your assistant once on each, and check every answer yourself.</p>
+
+<div class="tablewrap"><table>
+<tr><th>#</th><th>Input</th><th>Expected</th><th>Agent said</th><th>Pass?</th></tr>
+<tr><td>1</td><td>Weather in Paris now?</td><td>Temp in °C</td><td>"14 °C, light rain"</td><td><span class="y">✓</span></td></tr>
+<tr><td>2</td><td>How hot is Phoenix?</td><td>Temp in °C</td><td>"97 °F"</td><td><span class="n">✗</span> wrong unit</td></tr>
+<tr><td>3</td><td>Is it cold in Oslo?</td><td>Temp in °C + yes/no</td><td>"Yes, −3 °C"</td><td><span class="y">✓</span></td></tr>
+<tr><td>4</td><td>Weather at the North Pole?</td><td>Temp in °C</td><td>"−25 °C"</td><td><span class="y">✓</span></td></tr>
+<tr><td>5</td><td>Weather in Springfield?</td><td>Ask which Springfield</td><td>"22 °C"</td><td><span class="n">✗</span> didn't clarify</td></tr>
+<tr><td>6–10</td><td>…five more…</td><td>…</td><td>…</td><td>5 × <span class="y">✓</span></td></tr>
+</table></div>
+
+<p>Result: <b>8 of 10 pass, 80%</b>. You also learned more than a number: failures cluster into "wrong unit" and "ambiguous city". That is the seed of <b>error analysis</b> (<a href="12-error-analysis.html">Module 12</a>), the most valuable habit in this whole field.</p>
+
+<div class="callout warn"><span class="t">How much should you trust "80%"?</span>
+<p>Very little, with ten samples. The 95% confidence interval for 7 out of 10 is roughly 40% to 89%; for 8 out of 10 it is similar in width. With 100 samples at 70% it tightens to about 60% to 78%, and with 1,000 to about 67% to 73%. The width shrinks with the square root of the sample size: four times the data, half the error bar. <a href="04-metrics-and-statistics.html">Module 04</a> derives this properly, and the widget below lets you feel it.</p>
+</div>
+<div data-widget="ci"></div>
+
+<p>Now the same eval as code. Nothing magic: a list of cases, a function that calls your system, a grader, an average.</p>
+<pre data-lang="python"><code># first_eval.py: the whole idea of an eval in 25 lines
+import re
+
+CASES = [
+    {"input": "Weather in Paris now?",      "check": "celsius"},
+    {"input": "How hot is Phoenix?",        "check": "celsius"},
+    {"input": "Weather in Springfield?",    "check": "clarify"},
+    # ... more cases
+]
+
+def my_agent(question: str) -&gt; str:
+    ...  # call your model / agent here and return its reply
+
+def grade(case, reply: str) -&gt; bool:
+    if case["check"] == "celsius":          # code-based grader: a regex
+        return bool(re.search(r"-?\d+\s*°?\s*C\b", reply))
+    if case["check"] == "clarify":          # asks which city?
+        return "which" in reply.lower() and "?" in reply
+    raise ValueError(case["check"])
+
+results = [grade(c, my_agent(c["input"])) for c in CASES]
+print(f"accuracy = {sum(results)}/{len(results)} = {sum(results)/len(results):.0%}")
+for c, ok in zip(CASES, results):
+    if not ok:
+        print("FAIL:", c["input"])            # always look at the failures</code></pre>
+<p>Every framework in <a href="14-tools-landscape.html">Module 14</a> is an industrial version of those 25 lines: better datasets, parallel runs, sandboxed environments, model-based graders, logs you can browse, and statistics on top.</p>
+
 <h2>Core vocabulary</h2>
 <p>Terms are used loosely across the industry. This course uses them like this (closely matching the UK AI Security Institute's Inspect framework and Anthropic's and OpenAI's docs):</p>
 <div class="tablewrap"><table>
@@ -254,6 +379,8 @@
 <tr><td><b>Harness</b></td><td>The software that runs evals: loads samples, runs the system, calls graders, records logs. (Inspect, promptfoo, lm-eval-harness…)</td></tr>
 <tr><td><b>Scaffold / agent harness</b></td><td>The code around the model that makes it an agent: tool definitions, the loop, memory, context management.</td></tr>
 <tr><td><b>Environment / sandbox</b></td><td>The world the agent acts in: a Docker container, a browser, a VM, a simulated user.</td></tr>
+<tr><td><b>Outcome</b></td><td>The final state of the environment after an agent trial (was the refund actually issued in the database?). Anthropic's agent-eval guide separates the outcome from the transcript that produced it.</td></tr>
+<tr><td><b>Suite</b></td><td>A collection of evals run together, e.g. a regression suite on every change and a capability suite weekly.</td></tr>
 <tr><td><b>Benchmark</b></td><td>A public, standardised eval used to compare systems (SWE-bench, OSWorld, τ-bench, MMMU…).</td></tr>
 </table></div>
 
@@ -282,6 +409,8 @@
 <li>Anthropic, <a href="https://docs.anthropic.com/en/docs/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
 <li>UK AI Security Institute, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a> (task, dataset, solver, scorer vocabulary).</li>
 <li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (Jan 2026): task, trial, grader, transcript, outcome; capability vs regression evals.</li>
+<li>OpenAI, <a href="https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/">Why SWE-bench Verified no longer measures frontier coding</a> (Feb 2026).</li>
 <li>Anthropic, <a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a> (workflows vs agents).</li>
 </ul>
 

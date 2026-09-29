@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Metrics and statistics · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 04 · Part I · Foundations</div>
+<h1>Metrics and statistics</h1>
+<p class="lede">A metric turns thousands of graded outputs into one number. Statistics tells you how much to trust that number. Get the first wrong and you measure the wrong thing; get the second wrong and you celebrate noise. This module rebuilds the school statistics you need, with pictures first and formulas second.</p>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill">~70 min</span><span class="pill">Prerequisites: Modules 01 to 03</span><span class="pill">Python helpful</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Pick the right headline metric for an eval: success rate, precision and recall, rubric mean, win rate or Elo, pass@k or pass^k, and explain what each one hides.</li>
+<li>Compute pass@k with the unbiased estimator from the Codex paper and pass^k from τ-bench, and explain why they move in opposite directions as k grows.</li>
+<li>Treat cost, latency percentiles, tokens and steps as first-class metrics and read a Pareto frontier.</li>
+<li>Explain sampling variance, standard error and 95% confidence intervals without jargon, and compute Wald, Wilson and bootstrap intervals.</li>
+<li>Apply the five recommendations of Anthropic's "Adding error bars to evals": CLT standard errors, clustered errors, resampling, paired differences and power analysis.</li>
+<li>Decide whether "Model A beat Model B by 3.6 points" is real, and report a result in a form an expert reviewer would accept.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>Two questions behind every number</h2>
+<p>In <a href="03-graders.html">Module 03</a> you built graders: each one turns a single output (or a whole agent trajectory) into a score. Now you have 500 scores. Two new questions appear:</p>
+<ol>
+<li><b>What single number summarises them?</b> That is the <b>metric</b>. "Fraction of tasks solved" and "chance the agent solves a task every time a customer asks" sound similar but can differ by a factor of ten.</li>
+<li><b>How much would that number move if I ran the eval again?</b> That is <b>statistics</b>. Agents are random. If you rerun the same eval tomorrow, you get a different number. You need to know how different, or you cannot tell improvement from luck.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 230" role="img" aria-label="Per-item scores flow into an aggregate metric; resampling the eval shows that the metric itself has a spread, summarised as a confidence interval.">
+<defs><marker id="m4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="110" y="24" text-anchor="middle" class="b">500 graded items</text>
+<g>
+<rect x="30" y="40" width="16" height="16" class="fill-good"/><rect x="50" y="40" width="16" height="16" class="fill-good"/><rect x="70" y="40" width="16" height="16" class="fill-bad"/><rect x="90" y="40" width="16" height="16" class="fill-good"/><rect x="110" y="40" width="16" height="16" class="fill-good"/><rect x="130" y="40" width="16" height="16" class="fill-bad"/><rect x="150" y="40" width="16" height="16" class="fill-good"/><rect x="170" y="40" width="16" height="16" class="fill-good"/>
+<rect x="30" y="60" width="16" height="16" class="fill-bad"/><rect x="50" y="60" width="16" height="16" class="fill-good"/><rect x="70" y="60" width="16" height="16" class="fill-good"/><rect x="90" y="60" width="16" height="16" class="fill-good"/><rect x="110" y="60" width="16" height="16" class="fill-bad"/><rect x="130" y="60" width="16" height="16" class="fill-good"/><rect x="150" y="60" width="16" height="16" class="fill-good"/><rect x="170" y="60" width="16" height="16" class="fill-bad"/>
+<rect x="30" y="80" width="16" height="16" class="fill-good"/><rect x="50" y="80" width="16" height="16" class="fill-bad"/><rect x="70" y="80" width="16" height="16" class="fill-good"/><rect x="90" y="80" width="16" height="16" class="fill-good"/><rect x="110" y="80" width="16" height="16" class="fill-good"/><rect x="130" y="80" width="16" height="16" class="fill-good"/><rect x="150" y="80" width="16" height="16" class="fill-bad"/><rect x="170" y="80" width="16" height="16" class="fill-good"/>
+</g>
+<text x="110" y="118" text-anchor="middle" class="sm">… (green = pass, red = fail)</text>
+<line class="ln" x1="200" y1="70" x2="286" y2="70" marker-end="url(#m4a)"/>
+<text x="243" y="60" text-anchor="middle" class="sm">aggregate</text>
+<rect class="box accent" x="290" y="40" width="160" height="60" rx="8"/>
+<text x="370" y="64" text-anchor="middle" class="b">Metric</text>
+<text x="370" y="84" text-anchor="middle" class="sm">"62.4% success"</text>
+<text x="370" y="130" text-anchor="middle" class="sm t-accent">Q1: which number?</text>
+<line class="ln" x1="450" y1="70" x2="526" y2="70" marker-end="url(#m4a)"/>
+<text x="488" y="60" text-anchor="middle" class="sm">"rerun?"</text>
+<rect class="box violet" x="530" y="30" width="270" height="130" rx="8"/>
+<text x="665" y="52" text-anchor="middle" class="b">Uncertainty</text>
+<line class="ln" x1="560" y1="120" x2="770" y2="120"/>
+<rect x="608" y="112" width="4" height="8" class="fill-violet"/><rect x="630" y="104" width="4" height="16" class="fill-violet"/><rect x="652" y="92" width="4" height="28" class="fill-violet"/><rect x="674" y="86" width="4" height="34" class="fill-violet"/><rect x="696" y="96" width="4" height="24" class="fill-violet"/><rect x="718" y="108" width="4" height="12" class="fill-violet"/>
+<text x="665" y="74" text-anchor="middle" class="sm">score on many imaginary reruns</text>
+<text x="665" y="142" text-anchor="middle" class="sm">"58.1% to 66.5% (95% CI)"</text>
+<text x="665" y="190" text-anchor="middle" class="sm t-violet">Q2: how sure are we?</text>
+<text x="410" y="220" text-anchor="middle" class="sm">a result without Q2 answered is an anecdote with a decimal point</text>
+</svg>
+<figcaption><b>Metric, then uncertainty.</b> The first half of this module is about choosing the aggregate. The second half is about the spread you would see if you could rerun the whole eval many times.</figcaption>
+</figure>
+
+<h2>Success rate and accuracy</h2>
+<p>The simplest metric: each item is graded pass (1) or fail (0), and the metric is the average.</p>
+<p style="text-align:center"><code>success rate = (number of passes) / (number of items)</code></p>
+<p>People call it <b>accuracy</b> for question answering, <b>resolve rate</b> on SWE-bench (fraction of GitHub issues whose hidden tests pass), <b>task success rate</b> on OSWorld or WebArena, and <b>pass@1</b> for code. All are the same arithmetic: the mean of 0/1 scores.</p>
+<p>A few details that matter more than they look:</p>
+<ul>
+<li><b>What is the denominator?</b> If the agent crashes, times out or the environment fails to start, is that a fail or excluded? Excluding crashes inflates the score. The honest default is "fail", and report the crash rate separately so infrastructure problems stay visible.</li>
+<li><b>Macro vs micro averaging.</b> If your eval has 400 easy "billing" tasks and 50 hard "refund" tasks, the plain average (micro) is dominated by billing. The macro average first computes the rate per category, then averages the categories equally. Report both when categories are unbalanced; they answer different questions ("how often does a random ticket succeed?" vs "how good are we across the kinds of work?").</li>
+<li><b>Partial credit.</b> Many agent tasks have several checks (the right row changed, the user was told, nothing else changed). You can score "all checks pass" (strict, usual for τ-bench style database checks) or "fraction of checks passed" (lenient). Strict success is what the user experiences; partial credit is a useful diagnostic for where it fails.</li>
+</ul>
+
+<div class="callout tip"><span class="t">Key idea</span>
+<p>A success rate is a mean. Everything this module says about the uncertainty of a mean (standard errors, confidence intervals, bootstrap, paired tests) applies to it directly. Any score that is an average of per-item numbers, including rubric scores and judge scores, gets the same treatment.</p>
+</div>
+
+<h2>Precision, recall and F1</h2>
+<p>Some evals are really <b>classification</b> tests: the system says yes or no to something, and it can be wrong in two different directions. Examples: a guardrail that flags dangerous tool calls, a router that decides "escalate to a human", an LLM judge deciding "is this transcript a failure?" (<a href="13-llm-as-judge.html">Module 13</a> measures judges exactly this way).</p>
+<p>Plain accuracy is misleading when the thing you are looking for is rare. Suppose 100 out of 1,000 agent transcripts contain a policy violation. A detector that <em>never</em> flags anything is 90% accurate and completely useless. So we split the errors apart.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Confusion matrix for a violation detector on 1000 transcripts: 80 true positives, 40 false positives, 20 false negatives, 860 true negatives, giving precision 66.7%, recall 80% and F1 0.727.">
+<text x="260" y="24" text-anchor="middle" class="b">What was really true</text>
+<text x="190" y="48" text-anchor="middle" class="sm">violation (100)</text>
+<text x="340" y="48" text-anchor="middle" class="sm">clean (900)</text>
+<text x="40" y="115" text-anchor="middle" class="sm" transform="rotate(-90 40 115)">flagged (120)</text>
+<text x="40" y="225" text-anchor="middle" class="sm" transform="rotate(-90 40 225)">not flagged (880)</text>
+<text x="70" y="175" text-anchor="middle" class="b" transform="rotate(-90 70 175)">detector said</text>
+<rect class="box good" x="115" y="60" width="150" height="100" rx="6"/>
+<text x="190" y="100" text-anchor="middle" class="lg">TP = 80</text>
+<text x="190" y="122" text-anchor="middle" class="sm">caught real violations</text>
+<rect class="box bad" x="265" y="60" width="150" height="100" rx="6"/>
+<text x="340" y="100" text-anchor="middle" class="lg">FP = 40</text>
+<text x="340" y="122" text-anchor="middle" class="sm">false alarms</text>
+<rect class="box warn" x="115" y="170" width="150" height="100" rx="6"/>
+<text x="190" y="210" text-anchor="middle" class="lg">FN = 20</text>
+<text x="190" y="232" text-anchor="middle" class="sm">missed violations</text>
+<rect class="box plain" x="265" y="170" width="150" height="100" rx="6"/>
+<text x="340" y="210" text-anchor="middle" class="lg">TN = 860</text>
+<text x="340" y="232" text-anchor="middle" class="sm">correctly ignored</text>
+<rect class="box dashed" x="109" y="54" width="312" height="112" rx="8"/>
+<rect class="box dashed" x="111" y="56" width="158" height="220" rx="8"/>
+<text x="340" y="300" text-anchor="middle" class="sm">accuracy = (80 + 860) / 1000 = 94%</text>
+<text x="340" y="318" text-anchor="middle" class="sm t-muted">("never flag" would score 90%)</text>
+<rect class="box accent" x="460" y="60" width="340" height="62" rx="8"/>
+<text x="476" y="84" class="b">Precision = TP / flagged = 80/120 = 66.7%</text>
+<text x="476" y="106" class="sm">"When it raises an alarm, how often is it right?" (top row)</text>
+<rect class="box accent" x="460" y="134" width="340" height="62" rx="8"/>
+<text x="476" y="158" class="b">Recall = TP / real = 80/100 = 80.0%</text>
+<text x="476" y="180" class="sm">"Of the real violations, how many did it catch?" (left column)</text>
+<rect class="box violet" x="460" y="208" width="340" height="62" rx="8"/>
+<text x="476" y="232" class="b">F1 = 2PR / (P + R) = 0.727</text>
+<text x="476" y="254" class="sm">harmonic mean: low if either one is low</text>
+</svg>
+<figcaption><b>The confusion matrix.</b> Precision reads across the "flagged" row; recall reads down the "violation" column. The numbers are an illustrative example, not real data.</figcaption>
+</figure>
+
+<ul>
+<li><b>Precision</b> (also "positive predictive value"): of the things you flagged, the fraction that were real. Low precision means alert fatigue: humans stop reading the alerts.</li>
+<li><b>Recall</b> (also "sensitivity" or "true positive rate"): of the real things, the fraction you caught. Low recall means dangerous misses.</li>
+<li><b>F1</b>: the harmonic mean <code>2PR/(P+R)</code>. The harmonic mean punishes imbalance: P = 1.0 and R = 0.1 gives F1 = 0.18, not 0.55. Use F<sub>β</sub> if one side matters more (F2 weights recall higher).</li>
+<li><b>Specificity</b> = TN / (TN + FP) = 860/900 = 95.6%. Together with recall it tells you how the detector behaves on each class separately, which is what you need when the class balance in production differs from your eval set.</li>
+</ul>
+<p>Most detectors output a score, and you choose a threshold. Moving the threshold trades precision against recall. Plotting that trade-off gives a precision-recall curve; its area is a threshold-free summary. For a safety guardrail you usually fix a recall target first ("catch at least 95%") and then report the precision you get at that threshold.</p>
+
+<div class="callout warn"><span class="t">Watch out: prevalence changes precision</span>
+<p>Recall and specificity are properties of the detector. Precision also depends on how common the positive class is. The same detector that has 67% precision when 10% of transcripts are violations will have far lower precision in production if only 1% are. Always state the prevalence of your eval set, and recompute precision for the production rate.</p>
+</div>
+
+<h2>Scores that are not pass or fail</h2>
+<h3>Mean rubric score</h3>
+<p>Graders often output a number on a scale: a 1 to 5 helpfulness score from an LLM judge, or a 0 to 10 score from MT-Bench style single-answer grading (Zheng et al. 2023). The usual metric is the <b>mean rubric score</b>. It is still a mean, so it gets a standard error like anything else. Three cautions:</p>
+<ul>
+<li><b>Look at the distribution, not only the mean.</b> A mean of 3.5 can be "everything is a 3 or 4" or "half 1s, half 5s". Those are very different products. Report the histogram or at least the share of scores at the bottom of the scale ("% rated 1 or 2").</li>
+<li><b>Scale points are not evenly spaced in meaning.</b> Is the gap from 4 to 5 the same as from 1 to 2? Usually not. Treat means of rubric scores as a convenient summary, and prefer binary criteria ("did it cite the policy? yes/no") where you can. Binary checks are easier to grade consistently and easier to reason about statistically.</li>
+<li><b>Judges drift.</b> If you change the judge model or prompt, the scale shifts. Never compare rubric means produced by different judge setups.</li>
+</ul>
+
+<h3>Win rate</h3>
+<p>Instead of an absolute score, you can ask a judge (human or model) "which of these two responses is better?". Pairwise judgments are often more reliable than absolute scores, because comparing is easier than calibrating. The metric is the <b>win rate</b>:</p>
+<p style="text-align:center"><code>win rate of A over B = (wins + 0.5 × ties) / comparisons</code></p>
+<p>A win rate of 50% means "indistinguishable". Pairwise judging has its own biases, notably <b>position bias</b> (the judge prefers whichever answer is shown first) and <b>verbosity bias</b>, documented for GPT-4 judges by Zheng et al. (2023). The standard mitigation is to judge each pair twice with the order swapped and count only consistent verdicts, or count inconsistent ones as ties.</p>
+
+<h2>Elo and Bradley-Terry: how LMArena ranks models</h2>
+<p>Win rates work for two systems. With fifty models you cannot run every pair equally often, and you want one number per model. That is what <b>rating systems</b> do, borrowed from chess.</p>
+<p>Chatbot Arena, now LMArena (Chiang et al. 2024), shows a user two anonymous responses to their prompt and asks which is better (A, B, tie or both bad). From millions of such votes it computes a rating per model. It originally used online <b>Elo</b> and moved to a <b>Bradley-Terry</b> model fitted by maximum likelihood (in practice, logistic regression), with bootstrap confidence intervals.</p>
+
+<h3>The idea in one formula</h3>
+<p>Bradley-Terry assumes each model <i>i</i> has a hidden strength β<sub>i</sub>, and the chance that <i>i</i> beats <i>j</i> depends only on the difference:</p>
+<p style="text-align:center"><code>P(i beats j) = 1 / (1 + 10^(−(R_i − R_j) / 400))</code></p>
+<p>where the rating <code>R = 400 · log10(strength) + constant</code>. The "400" is a chess convention: a 400-point gap means 10-to-1 odds. The only thing that matters is the <em>gap</em>. A model rated 1300 and one rated 1200 behave the same as 1100 vs 1000.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 295" role="img" aria-label="The Elo and Bradley-Terry win-probability curve: a 100-point rating gap means the higher-rated model wins about 64% of head-to-head votes, 200 points about 76%, 400 points about 91%.">
+<line class="ln dash" x1="80" y1="245.0" x2="640" y2="245.0" opacity="0.25"/>
+<text x="72" y="249.0" text-anchor="end" class="sm">0%</text>
+<line class="ln dash" x1="80" y1="190.0" x2="640" y2="190.0" opacity="0.25"/>
+<text x="72" y="194.0" text-anchor="end" class="sm">25%</text>
+<line class="ln dash" x1="80" y1="135.0" x2="640" y2="135.0" opacity="0.25"/>
+<text x="72" y="139.0" text-anchor="end" class="sm">50%</text>
+<line class="ln dash" x1="80" y1="80.0" x2="640" y2="80.0" opacity="0.25"/>
+<text x="72" y="84.0" text-anchor="end" class="sm">75%</text>
+<line class="ln dash" x1="80" y1="25.0" x2="640" y2="25.0" opacity="0.25"/>
+<text x="72" y="29.0" text-anchor="end" class="sm">100%</text>
+<line class="ln" x1="80.0" y1="245" x2="80.0" y2="250"/>
+<text x="80.0" y="264" text-anchor="middle" class="sm">-400</text>
+<line class="ln" x1="150.0" y1="245" x2="150.0" y2="250"/>
+<text x="150.0" y="264" text-anchor="middle" class="sm">-300</text>
+<line class="ln" x1="220.0" y1="245" x2="220.0" y2="250"/>
+<text x="220.0" y="264" text-anchor="middle" class="sm">-200</text>
+<line class="ln" x1="290.0" y1="245" x2="290.0" y2="250"/>
+<text x="290.0" y="264" text-anchor="middle" class="sm">-100</text>
+<line class="ln" x1="360.0" y1="245" x2="360.0" y2="250"/>
+<text x="360.0" y="264" text-anchor="middle" class="sm">0</text>
+<line class="ln" x1="430.0" y1="245" x2="430.0" y2="250"/>
+<text x="430.0" y="264" text-anchor="middle" class="sm">+100</text>
+<line class="ln" x1="500.0" y1="245" x2="500.0" y2="250"/>
+<text x="500.0" y="264" text-anchor="middle" class="sm">+200</text>
+<line class="ln" x1="570.0" y1="245" x2="570.0" y2="250"/>
+<text x="570.0" y="264" text-anchor="middle" class="sm">+300</text>
+<line class="ln" x1="640.0" y1="245" x2="640.0" y2="250"/>
+<text x="640.0" y="264" text-anchor="middle" class="sm">+400</text>
+<line class="ln" x1="80" y1="245" x2="640" y2="245"/>
+<line class="ln" x1="80" y1="25" x2="80" y2="245"/>
+<text x="360.0" y="285" text-anchor="middle" class="sm">rating difference, R(A) − R(B)</text>
+<text x="36" y="135.0" text-anchor="middle" class="sm" transform="rotate(-90 36 135.0)">P(A beats B)</text>
+<polyline class="ln accent thick" points="80.0,225.0 87.0,223.9 94.0,222.8 101.0,221.6 108.0,220.4 115.0,219.1 122.0,217.8 129.0,216.4 136.0,214.9 143.0,213.4 150.0,211.8 157.0,210.1 164.0,208.4 171.0,206.6 178.0,204.8 185.0,202.8 192.0,200.8 199.0,198.8 206.0,196.6 213.0,194.4 220.0,192.1 227.0,189.8 234.0,187.4 241.0,184.9 248.0,182.4 255.0,179.7 262.0,177.1 269.0,174.3 276.0,171.6 283.0,168.7 290.0,165.8 297.0,162.9 304.0,159.9 311.0,156.9 318.0,153.8 325.0,150.7 332.0,147.6 339.0,144.5 346.0,141.3 353.0,138.2 360.0,135.0 367.0,131.8 374.0,128.7 381.0,125.5 388.0,122.4 395.0,119.3 402.0,116.2 409.0,113.1 416.0,110.1 423.0,107.1 430.0,104.2 437.0,101.3 444.0,98.4 451.0,95.7 458.0,92.9 465.0,90.3 472.0,87.6 479.0,85.1 486.0,82.6 493.0,80.2 500.0,77.9 507.0,75.6 514.0,73.4 521.0,71.2 528.0,69.2 535.0,67.2 542.0,65.2 549.0,63.4 556.0,61.6 563.0,59.9 570.0,58.2 577.0,56.6 584.0,55.1 591.0,53.6 598.0,52.2 605.0,50.9 612.0,49.6 619.0,48.4 626.0,47.2 633.0,46.1 640.0,45.0"/>
+<circle cx="430.0" cy="104.2" r="4" class="fill-accent"/>
+<text x="438.0" y="120.2" class="sm">+100 → 64%</text>
+<circle cx="500.0" cy="77.9" r="4" class="fill-accent"/>
+<text x="508.0" y="93.9" class="sm">+200 → 76%</text>
+<circle cx="640.0" cy="45.0" r="4" class="fill-accent"/>
+<text x="648.0" y="61.0" class="sm">+400 → 91%</text>
+<circle cx="360.0" cy="135.0" r="4" class="fill-muted"/><text x="368.0" y="151.0" class="sm">equal → 50%</text>
+</svg>
+<figcaption><b>What a rating gap means.</b> Exact values of the Elo / Bradley-Terry curve: +100 points is about a 64% head-to-head win rate, +200 is 76%, +400 is 91%. A 10 or 20 point gap on a leaderboard is barely distinguishable from a coin flip.</figcaption>
+</figure>
+
+<p><b>Elo vs Bradley-Terry.</b> Online Elo updates ratings after every game: <code>R_A ← R_A + K·(result − expected)</code>. It was designed for players whose skill changes over time, so recent games count more, and the final ratings depend on the order the votes arrived in. A model is a fixed artefact, so Bradley-Terry fits all votes at once and gives the same answer regardless of order, plus proper confidence intervals. Here is a tiny, dependency-free fit you can run:</p>
+
+<pre data-lang="python"><code>import math
+from collections import defaultdict
+
+def fit_bradley_terry(battles, iters=200):
+    """battles: list of (winner, loser). Returns Elo-style ratings.
+    Uses the classic minorise-maximise update (Zermelo / Hunter 2004).
+    Ties can be counted as half a win each way."""
+    wins, games, players = defaultdict(float), defaultdict(float), set()
+    for w, l in battles:
+        wins[w] += 1
+        games[frozenset((w, l))] += 1
+        players |= {w, l}
+    strength = {p: 1.0 for p in players}
+    for _ in range(iters):
+        new = {}
+        for i in players:
+            denom = sum(n / (strength[i] + strength[j])
+                        for pair, n in games.items() if i in pair
+                        for j in pair if j != i)
+            new[i] = wins[i] / denom
+        g = math.exp(sum(math.log(v) for v in new.values()) / len(new))   # fix the scale
+        strength = {p: v / g for p, v in new.items()}
+    # Put on the familiar Elo scale: 400 points = 10x odds, anchored at 1000.
+    return {p: round(1000 + 400 * math.log10(s)) for p, s in strength.items()}
+
+battles = ([("A", "B")] * 64 + [("B", "A")] * 36 +     # A beats B 64% of the time
+           [("B", "C")] * 64 + [("C", "B")] * 36 +
+           [("A", "C")] * 76 + [("C", "A")] * 24)
+print(fit_bradley_terry(battles))</code></pre>
+<p>Output: <code>{'A': 1100, 'B': 1000, 'C': 900}</code>. A beat B 64% of the time, which is exactly the 100-point gap the curve above predicts.</p>
+
+<div class="callout expert"><span class="t">Expert nuance: what arena ratings do and do not measure</span>
+<p>Arena ratings measure <em>crowd preference on the prompts people choose to type</em>, not correctness on your task. LMArena added <b>style control</b> to adjust for length and markdown, because longer, more formatted answers win votes. "The Leaderboard Illusion" (Singh et al., 2025) argued that undisclosed private testing of many model variants, with only the best published, plus unequal sampling rates between providers, biases the ranking; silently deprecated models also break the Bradley-Terry assumption that all comparisons come from one consistent pool. Treat arena ranks as one signal about general chat preference, and always look at the confidence intervals: overlapping intervals mean "tied".</p>
+</div>
+
+<div data-widget="elo"></div>
+
+<h2>pass@k: at least one success in k tries</h2>
+<p>Agents and code models are random: ask twice, get two different attempts. Sometimes you are allowed several attempts and only need one to work, for example when unit tests can automatically pick the passing solution, or a human reviews candidates. For that setting, Chen et al. (2021), the Codex / HumanEval paper, defined <b>pass@k</b>: the probability that <em>at least one of k</em> samples is correct.</p>
+
+<h3>The obvious estimator is biased</h3>
+<p>The obvious approach: run the task n times, observe c successes, estimate p̂ = c/n, and plug in <code>1 − (1 − p̂)^k</code>. The paper points out that this is biased (for k &gt; 1 it underestimates pass@k on average, because <code>1 − (1 − x)^k</code> is curved and averaging over noisy p̂ drags it down). The alternative is very neat: instead of pretending you know p, <em>simulate choosing k attempts out of the n you actually ran</em>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Drawing k=3 of n=10 attempts, 3 of which passed. There are 120 ways to choose 3 attempts and 35 of them contain only failures, so pass@3 equals 1 minus 35/120, which is 0.708.">
+<defs><marker id="m4c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="190" y="24" text-anchor="middle" class="b">You ran n = 10 attempts; c = 3 passed</text>
+<circle cx="40" cy="60" r="14" class="fill-good"/><circle cx="76" cy="60" r="14" class="fill-good"/><circle cx="112" cy="60" r="14" class="fill-good"/>
+<circle cx="148" cy="60" r="14" class="fill-bad"/><circle cx="184" cy="60" r="14" class="fill-bad"/><circle cx="220" cy="60" r="14" class="fill-bad"/><circle cx="256" cy="60" r="14" class="fill-bad"/><circle cx="292" cy="60" r="14" class="fill-bad"/><circle cx="328" cy="60" r="14" class="fill-bad"/><circle cx="364" cy="60" r="14" class="fill-bad"/>
+<text x="76" y="96" text-anchor="middle" class="sm t-good">3 passes</text>
+<text x="256" y="96" text-anchor="middle" class="sm t-bad">n − c = 7 failures</text>
+<line class="ln" x1="200" y1="108" x2="200" y2="136" marker-end="url(#m4c)"/>
+<text x="210" y="127" class="sm">draw k = 3, no replacement</text>
+<rect class="box plain" x="20" y="142" width="170" height="92" rx="8"/>
+<text x="105" y="162" text-anchor="middle" class="sm">e.g. a draw with a pass</text>
+<circle cx="65" cy="192" r="12" class="fill-good"/><circle cx="105" cy="192" r="12" class="fill-bad"/><circle cx="145" cy="192" r="12" class="fill-bad"/>
+<text x="105" y="224" text-anchor="middle" class="sm t-good">counts as success</text>
+<rect class="box plain" x="210" y="142" width="170" height="92" rx="8"/>
+<text x="295" y="162" text-anchor="middle" class="sm">e.g. an all-fail draw</text>
+<circle cx="255" cy="192" r="12" class="fill-bad"/><circle cx="295" cy="192" r="12" class="fill-bad"/><circle cx="335" cy="192" r="12" class="fill-bad"/>
+<text x="295" y="224" text-anchor="middle" class="sm t-bad">counts as failure</text>
+<rect class="box accent" x="420" y="30" width="380" height="120" rx="8"/>
+<text x="436" y="54" class="b">Count the ways</text>
+<text x="436" y="78" class="mono">all draws of 3 from 10:   C(10,3) = 120</text>
+<text x="436" y="100" class="mono">all-fail draws, 3 from 7: C(7,3)  =  35</text>
+<text x="436" y="122" class="mono">P(all fail) = 35/120 = 0.292</text>
+<text x="436" y="142" class="mono b">pass@3 = 1 − 0.292 = 0.708</text>
+<rect class="box violet" x="420" y="166" width="380" height="68" rx="8"/>
+<text x="436" y="190" class="b">General formula, per task</text>
+<text x="436" y="214" class="mono">pass@k = 1 − C(n−c, k) / C(n, k)</text>
+<text x="410" y="272" text-anchor="middle" class="sm">then average over all tasks in the benchmark</text>
+</svg>
+<figcaption><b>The unbiased pass@k estimator as a drawing experiment.</b> Out of all the ways to pick k of your n attempts, count the fraction that contain at least one pass. The paper used n = 200 samples per problem to report pass@1, pass@10 and pass@100.</figcaption>
+</figure>
+
+<p>Why is this unbiased? Picking k of your n attempts uniformly at random is itself a fair way to get k independent-looking attempts, so the expected value of this fraction equals the true pass@k exactly. You need <code>n ≥ k</code>, and more n gives lower variance.</p>
+<p><b>Numerical stability.</b> <code>C(200, 100)</code> has 59 digits. Python integers cope, but floats and numpy overflow. The paper computes the ratio as a running product instead: <code>C(n−c,k)/C(n,k) = ∏<sub>i=n−c+1..n</sub> (1 − k/i)</code>. That is what the code below does.</p>
+
+<h2>pass^k: success every time</h2>
+<p>pass@k answers "can it ever do this?". A customer-service agent needs the opposite question answered: "if 1,000 customers bring this same kind of request, will it get it right every time?". Yao et al. (2024), the τ-bench paper from Sierra, introduced <b>pass^k</b> (read "pass hat k"): the probability that <em>all k</em> independent trials of a task succeed. The unbiased estimator uses the same drawing trick, now counting all-pass draws:</p>
+<p style="text-align:center"><code>pass^k (per task) = C(c, k) / C(n, k)</code></p>
+<p>With the 10 attempts above but 7 passes instead of 3: <code>C(7,3)/C(10,3) = 35/120 = 0.292</code>. The task "passes 70% of the time" but passes three times in a row only 29% of the time.</p>
+<p>At k = 1 the two metrics are identical (both equal the plain success rate). As k grows they separate in opposite directions:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 310" role="img" aria-label="Chart for a task with 70% per-trial success: pass@k rises from 70% to nearly 100% by k=5, while pass^k falls to 16.8% at k=5 and 2.8% at k=10.">
+<line class="ln dash" x1="80" y1="260.0" x2="640" y2="260.0" opacity="0.25"/>
+<text x="72" y="264.0" text-anchor="end" class="sm">0%</text>
+<line class="ln dash" x1="80" y1="202.5" x2="640" y2="202.5" opacity="0.25"/>
+<text x="72" y="206.5" text-anchor="end" class="sm">25%</text>
+<line class="ln dash" x1="80" y1="145.0" x2="640" y2="145.0" opacity="0.25"/>
+<text x="72" y="149.0" text-anchor="end" class="sm">50%</text>
+<line class="ln dash" x1="80" y1="87.5" x2="640" y2="87.5" opacity="0.25"/>
+<text x="72" y="91.5" text-anchor="end" class="sm">75%</text>
+<line class="ln dash" x1="80" y1="30.0" x2="640" y2="30.0" opacity="0.25"/>
+<text x="72" y="34.0" text-anchor="end" class="sm">100%</text>
+<line class="ln" x1="80.0" y1="260" x2="80.0" y2="265"/>
+<text x="80.0" y="279" text-anchor="middle" class="sm">1</text>
+<line class="ln" x1="142.2" y1="260" x2="142.2" y2="265"/>
+<text x="142.2" y="279" text-anchor="middle" class="sm">2</text>
+<line class="ln" x1="204.4" y1="260" x2="204.4" y2="265"/>
+<text x="204.4" y="279" text-anchor="middle" class="sm">3</text>
+<line class="ln" x1="266.7" y1="260" x2="266.7" y2="265"/>
+<text x="266.7" y="279" text-anchor="middle" class="sm">4</text>
+<line class="ln" x1="328.9" y1="260" x2="328.9" y2="265"/>
+<text x="328.9" y="279" text-anchor="middle" class="sm">5</text>
+<line class="ln" x1="391.1" y1="260" x2="391.1" y2="265"/>
+<text x="391.1" y="279" text-anchor="middle" class="sm">6</text>
+<line class="ln" x1="453.3" y1="260" x2="453.3" y2="265"/>
+<text x="453.3" y="279" text-anchor="middle" class="sm">7</text>
+<line class="ln" x1="515.6" y1="260" x2="515.6" y2="265"/>
+<text x="515.6" y="279" text-anchor="middle" class="sm">8</text>
+<line class="ln" x1="577.8" y1="260" x2="577.8" y2="265"/>
+<text x="577.8" y="279" text-anchor="middle" class="sm">9</text>
+<line class="ln" x1="640.0" y1="260" x2="640.0" y2="265"/>
+<text x="640.0" y="279" text-anchor="middle" class="sm">10</text>
+<line class="ln" x1="80" y1="260" x2="640" y2="260"/>
+<line class="ln" x1="80" y1="30" x2="80" y2="260"/>
+<text x="360.0" y="300" text-anchor="middle" class="sm">k (number of trials per task)</text>
+<text x="36" y="145.0" text-anchor="middle" class="sm" transform="rotate(-90 36 145.0)">probability</text>
+<polyline class="ln good thick" points="80.0,99.0 142.2,50.7 204.4,36.2 266.7,31.9 328.9,30.6 391.1,30.2 453.3,30.1 515.6,30.0 577.8,30.0 640.0,30.0"/>
+<polyline class="ln bad thick" points="80.0,99.0 142.2,147.3 204.4,181.1 266.7,204.8 328.9,221.3 391.1,232.9 453.3,241.1 515.6,246.7 577.8,250.7 640.0,253.5"/>
+<circle cx="80.0" cy="99.0" r="3.5" class="fill-good"/>
+<circle cx="142.2" cy="50.7" r="3.5" class="fill-good"/>
+<circle cx="204.4" cy="36.2" r="3.5" class="fill-good"/>
+<circle cx="266.7" cy="31.9" r="3.5" class="fill-good"/>
+<circle cx="328.9" cy="30.6" r="3.5" class="fill-good"/>
+<circle cx="391.1" cy="30.2" r="3.5" class="fill-good"/>
+<circle cx="453.3" cy="30.1" r="3.5" class="fill-good"/>
+<circle cx="515.6" cy="30.0" r="3.5" class="fill-good"/>
+<circle cx="577.8" cy="30.0" r="3.5" class="fill-good"/>
+<circle cx="640.0" cy="30.0" r="3.5" class="fill-good"/>
+<circle cx="80.0" cy="99.0" r="3.5" class="fill-bad"/>
+<circle cx="142.2" cy="147.3" r="3.5" class="fill-bad"/>
+<circle cx="204.4" cy="181.1" r="3.5" class="fill-bad"/>
+<circle cx="266.7" cy="204.8" r="3.5" class="fill-bad"/>
+<circle cx="328.9" cy="221.3" r="3.5" class="fill-bad"/>
+<circle cx="391.1" cy="232.9" r="3.5" class="fill-bad"/>
+<circle cx="453.3" cy="241.1" r="3.5" class="fill-bad"/>
+<circle cx="515.6" cy="246.7" r="3.5" class="fill-bad"/>
+<circle cx="577.8" cy="250.7" r="3.5" class="fill-bad"/>
+<circle cx="640.0" cy="253.5" r="3.5" class="fill-bad"/>
+<text x="148.2" y="139.3" class="sm t-bad">49.0%</text>
+<text x="210.4" y="173.1" class="sm t-bad">34.3%</text>
+<text x="334.9" y="213.3" class="sm t-bad">16.8%</text>
+<text x="521.6" y="238.7" class="sm t-bad">5.8%</text>
+<text x="148.2" y="68.7" class="sm t-good">91.0%</text>
+<text x="210.4" y="54.2" class="sm t-good">97.3%</text>
+<text x="650" y="34.0" class="b t-good">pass@k</text>
+<text x="650" y="50.0" class="sm">1 − (1−p)^k</text>
+<text x="650" y="245.5" class="b t-bad">pass^k</text>
+<text x="650" y="261.5" class="sm">p^k</text>
+<text x="328.9" y="122.0" text-anchor="middle" class="sm">both curves start at 70% when k = 1</text>
+</svg>
+<figcaption><b>pass@k rises, pass^k collapses.</b> Exact values for a single task with per-trial success p = 0.7, computed as 1 − (1 − p)^k and p^k. This is the idealised curve for independent trials. Real benchmarks average over tasks with different p, and trials of one task are not fully independent, so real curves fall more gently. The τ-bench abstract reports gpt-4o below 25% pass^8 in the retail domain.</figcaption>
+</figure>
+
+<pre data-lang="python"><code>from math import comb
+
+def pass_at_k(n: int, c: int, k: int) -&gt; float:
+    """Unbiased pass@k for ONE task (Chen et al. 2021).
+    n = attempts you ran, c = how many passed, k = budget you report.
+    = 1 - C(n-c, k) / C(n, k): chance that k attempts drawn from your n
+    (without replacement) contain at least one pass."""
+    if n - c &lt; k:          # fewer than k failures: every draw of k contains a pass
+        return 1.0
+    # Numerically stable product form from the paper, no giant factorials:
+    # C(n-c,k)/C(n,k) = prod_{i=n-c+1}^{n} (1 - k/i)
+    prob_all_fail = 1.0
+    for i in range(n - c + 1, n + 1):
+        prob_all_fail *= 1.0 - k / i
+    return 1.0 - prob_all_fail
+
+def pass_hat_k(n: int, c: int, k: int) -&gt; float:
+    """Unbiased pass^k for ONE task (Yao et al. 2024, tau-bench).
+    = C(c, k) / C(n, k): chance that k attempts drawn from your n are ALL passes."""
+    if c &lt; k:
+        return 0.0
+    return comb(c, k) / comb(n, k)
+
+# Benchmark score = average over tasks.
+results = {"task_1": (10, 3), "task_2": (10, 10), "task_3": (10, 0), "task_4": (10, 7)}  # (n, c)
+for k in (1, 3, 5):
+    at  = sum(pass_at_k(n, c, k)  for n, c in results.values()) / len(results)
+    hat = sum(pass_hat_k(n, c, k) for n, c in results.values()) / len(results)
+    print(f"k={k}:  pass@k={at:.3f}   pass^k={hat:.3f}")</code></pre>
+<p>Output:</p>
+<pre data-lang="text"><code>k=1:  pass@k=0.500   pass^k=0.500
+k=3:  pass@k=0.675   pass^k=0.325
+k=5:  pass@k=0.729   pass^k=0.271</code></pre>
+<p>Notice that task_2 (always passes) and task_3 (never passes) do not move with k. Only the flaky tasks (task_1 and task_4) spread the two metrics apart. The gap between pass@k and pass^k is therefore a direct measure of how much <b>inconsistency</b> your agent has.</p>
+
+<div class="grid2">
+<div class="card good"><h4>Report pass@k when</h4><p>A cheap, reliable verifier picks the winner (unit tests, a compiler, a proof checker), or a human chooses among candidates. It measures <em>capability with retries</em>.</p></div>
+<div class="card bad"><h4>Report pass^k when</h4><p>The agent acts autonomously and repeatedly: support agents, booking agents, anything customer-facing. It measures <em>reliability</em>. τ-bench reports it as its headline reliability metric.</p></div>
+</div>
+
+<div class="callout warn"><span class="t">Common mistake</span>
+<p>"Best-of-k" results are sometimes reported as if they were pass@1. A system that produces 5 candidates and has an oracle pick the correct one is <em>not</em> 5 times as useful as one that produces 1 in production, unless production also has that oracle. Always state k and who chooses.</p>
+</div>
+
+<div data-widget="passk"></div>
+
+<h2>Cost, latency, tokens and steps</h2>
+<p>An agent that solves 80% of tasks at $4 and 3 minutes each may be worse for your product than one that solves 75% at $0.20 and 20 seconds. These are not side notes; they are <b>metrics</b>, and they belong in the same table as accuracy.</p>
+<div class="tablewrap"><table>
+<tr><th>Metric</th><th>How to measure</th><th>Why it matters for agents</th></tr>
+<tr><td><b>Cost per task</b></td><td>Sum of input, cached-input and output tokens × price, plus tool and sandbox costs. Report the mean and the cost per <em>successful</em> task.</td><td>Agents loop. A 30-step trajectory can cost 50× a single answer. Retries and parallel samples multiply it again.</td></tr>
+<tr><td><b>Latency</b></td><td>Wall-clock time per task. Report p50 and p95 (see below), and time to first token for chat.</td><td>Users feel the slow tail, not the average. Voice agents need sub-second turn latency.</td></tr>
+<tr><td><b>Tokens</b></td><td>Input and output tokens per task, separately. Include reasoning tokens.</td><td>Drives both cost and latency. Also catches runaway context growth.</td></tr>
+<tr><td><b>Steps / tool calls</b></td><td>Number of model turns and tool calls per task.</td><td>More steps means more chances to fail and more cost. A sudden rise signals looping.</td></tr>
+<tr><td><b>Error / crash rate</b></td><td>Fraction of runs that died (timeouts, tool exceptions, sandbox failures).</td><td>Separates "agent is wrong" from "infrastructure is broken".</td></tr>
+</table></div>
+
+<h3>Percentiles: p50 and p95</h3>
+<p>Latency distributions are <b>right-skewed</b>: most runs are quick, a few are very slow (a retry storm, a slow tool, a long reasoning chain). The mean is dragged up by the slow tail but still hides how bad the tail is. So we use <b>percentiles</b>: the p50 (median) is the time that half of runs beat; the p95 is the time that 95% of runs beat, so 1 in 20 users waits longer.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 290" role="img" aria-label="A right-skewed latency distribution: median 8 seconds, mean 9.6 seconds, p95 21.5 seconds, p99 32.3 seconds. The mean hides the long tail.">
+<polygon class="fill-bad" opacity="0.25" points="392.0,230.0 392.5,216.0 394.0,216.3 395.5,216.5 397.0,216.7 398.5,217.0 400.0,217.2 401.5,217.4 403.0,217.6 404.5,217.8 406.0,218.0 407.5,218.2 409.0,218.4 410.5,218.6 412.0,218.8 413.5,219.0 415.0,219.2 416.5,219.4 418.0,219.6 419.5,219.7 421.0,219.9 422.5,220.1 424.0,220.3 425.5,220.4 427.0,220.6 428.5,220.7 430.0,220.9 431.5,221.0 433.0,221.2 434.5,221.3 436.0,221.5 437.5,221.6 439.0,221.8 440.5,221.9 442.0,222.0 443.5,222.2 445.0,222.3 446.5,222.4 448.0,222.6 449.5,222.7 451.0,222.8 452.5,222.9 454.0,223.0 455.5,223.1 457.0,223.3 458.5,223.4 460.0,223.5 461.5,223.6 463.0,223.7 464.5,223.8 466.0,223.9 467.5,224.0 469.0,224.1 470.5,224.2 472.0,224.3 473.5,224.4 475.0,224.5 476.5,224.5 478.0,224.6 479.5,224.7 481.0,224.8 482.5,224.9 484.0,225.0 485.5,225.1 487.0,225.1 488.5,225.2 490.0,225.3 491.5,225.4 493.0,225.4 494.5,225.5 496.0,225.6 497.5,225.6 499.0,225.7 500.5,225.8 502.0,225.8 503.5,225.9 505.0,226.0 506.5,226.0 508.0,226.1 509.5,226.2 511.0,226.2 512.5,226.3 514.0,226.3 515.5,226.4 517.0,226.5 518.5,226.5 520.0,226.6 521.5,226.6 523.0,226.7 524.5,226.7 526.0,226.8 527.5,226.8 529.0,226.9 530.5,226.9 532.0,227.0 533.5,227.0 535.0,227.1 536.5,227.1 538.0,227.1 539.5,227.2 541.0,227.2 542.5,227.3 544.0,227.3 545.5,227.4 547.0,227.4 548.5,227.4 550.0,227.5 551.5,227.5 553.0,227.5 554.5,227.6 556.0,227.6 557.5,227.7 559.0,227.7 560.5,227.7 562.0,227.8 563.5,227.8 565.0,227.8 566.5,227.9 568.0,227.9 569.5,227.9 571.0,227.9 572.5,228.0 574.0,228.0 575.5,228.0 577.0,228.1 578.5,228.1 580.0,228.1 581.5,228.2 583.0,228.2 584.5,228.2 586.0,228.2 587.5,228.3 589.0,228.3 590.5,228.3 592.0,228.3 593.5,228.4 595.0,228.4 596.5,228.4 598.0,228.4 599.5,228.4 601.0,228.5 602.5,228.5 604.0,228.5 605.5,228.5 607.0,228.6 608.5,228.6 610.0,228.6 611.5,228.6 613.0,228.6 614.5,228.7 616.0,228.7 617.5,228.7 619.0,228.7 620.5,228.7 622.0,228.8 623.5,228.8 625.0,228.8 626.5,228.8 628.0,228.8 629.5,228.8 631.0,228.9 632.5,228.9 634.0,228.9 635.5,228.9 637.0,228.9 638.5,228.9 640.0,228.9 641.5,229.0 643.0,229.0 644.5,229.0 646.0,229.0 647.5,229.0 649.0,229.0 650.5,229.0 652.0,229.1 653.5,229.1 655.0,229.1 656.5,229.1 658.0,229.1 659.5,229.1 661.0,229.1 662.5,229.1 664.0,229.2 665.5,229.2 667.0,229.2 668.5,229.2 670.0,229.2 670.0,230.0"/>
+<polyline class="ln accent thick" points="70.0,230.0 71.5,230.0 73.0,230.0 74.5,230.0 76.0,230.0 77.5,229.9 79.0,229.8 80.5,229.6 82.0,229.1 83.5,228.3 85.0,227.1 86.5,225.5 88.0,223.4 89.5,220.8 91.0,217.7 92.5,214.1 94.0,210.0 95.5,205.4 97.0,200.5 98.5,195.2 100.0,189.5 101.5,183.6 103.0,177.5 104.5,171.3 106.0,165.0 107.5,158.6 109.0,152.3 110.5,146.0 112.0,139.7 113.5,133.6 115.0,127.7 116.5,121.9 118.0,116.3 119.5,110.9 121.0,105.7 122.5,100.8 124.0,96.2 125.5,91.8 127.0,87.6 128.5,83.8 130.0,80.2 131.5,76.8 133.0,73.8 134.5,71.0 136.0,68.4 137.5,66.1 139.0,64.0 140.5,62.2 142.0,60.6 143.5,59.3 145.0,58.1 146.5,57.2 148.0,56.4 149.5,55.8 151.0,55.5 152.5,55.2 154.0,55.2 155.5,55.3 157.0,55.6 158.5,55.9 160.0,56.5 161.5,57.1 163.0,57.9 164.5,58.7 166.0,59.7 167.5,60.7 169.0,61.9 170.5,63.1 172.0,64.4 173.5,65.8 175.0,67.2 176.5,68.7 178.0,70.3 179.5,71.8 181.0,73.5 182.5,75.2 184.0,76.9 185.5,78.6 187.0,80.4 188.5,82.2 190.0,84.0 191.5,85.8 193.0,87.7 194.5,89.5 196.0,91.4 197.5,93.3 199.0,95.2 200.5,97.0 202.0,98.9 203.5,100.8 205.0,102.7 206.5,104.6 208.0,106.4 209.5,108.3 211.0,110.1 212.5,112.0 214.0,113.8 215.5,115.6 217.0,117.4 218.5,119.2 220.0,121.0 221.5,122.8 223.0,124.5 224.5,126.2 226.0,127.9 227.5,129.6 229.0,131.3 230.5,132.9 232.0,134.6 233.5,136.2 235.0,137.8 236.5,139.3 238.0,140.9 239.5,142.4 241.0,143.9 242.5,145.4 244.0,146.9 245.5,148.3 247.0,149.7 248.5,151.1 250.0,152.5 251.5,153.9 253.0,155.2 254.5,156.6 256.0,157.9 257.5,159.1 259.0,160.4 260.5,161.6 262.0,162.9 263.5,164.1 265.0,165.2 266.5,166.4 268.0,167.5 269.5,168.7 271.0,169.8 272.5,170.8 274.0,171.9 275.5,173.0 277.0,174.0 278.5,175.0 280.0,176.0 281.5,177.0 283.0,177.9 284.5,178.9 286.0,179.8 287.5,180.7 289.0,181.6 290.5,182.5 292.0,183.3 293.5,184.2 295.0,185.0 296.5,185.8 298.0,186.6 299.5,187.4 301.0,188.2 302.5,189.0 304.0,189.7 305.5,190.4 307.0,191.1 308.5,191.9 310.0,192.5 311.5,193.2 313.0,193.9 314.5,194.5 316.0,195.2 317.5,195.8 319.0,196.4 320.5,197.0 322.0,197.6 323.5,198.2 325.0,198.8 326.5,199.4 328.0,199.9 329.5,200.4 331.0,201.0 332.5,201.5 334.0,202.0 335.5,202.5 337.0,203.0 338.5,203.5 340.0,204.0 341.5,204.4 343.0,204.9 344.5,205.3 346.0,205.8 347.5,206.2 349.0,206.6 350.5,207.1 352.0,207.5 353.5,207.9 355.0,208.3 356.5,208.6 358.0,209.0 359.5,209.4 361.0,209.8 362.5,210.1 364.0,210.5 365.5,210.8 367.0,211.1 368.5,211.5 370.0,211.8 371.5,212.1 373.0,212.4 374.5,212.7 376.0,213.0 377.5,213.3 379.0,213.6 380.5,213.9 382.0,214.2 383.5,214.5 385.0,214.7 386.5,215.0 388.0,215.3 389.5,215.5 391.0,215.8 392.5,216.0 394.0,216.3 395.5,216.5 397.0,216.7 398.5,217.0 400.0,217.2 401.5,217.4 403.0,217.6 404.5,217.8 406.0,218.0 407.5,218.2 409.0,218.4 410.5,218.6 412.0,218.8 413.5,219.0 415.0,219.2 416.5,219.4 418.0,219.6 419.5,219.7 421.0,219.9 422.5,220.1 424.0,220.3 425.5,220.4 427.0,220.6 428.5,220.7 430.0,220.9 431.5,221.0 433.0,221.2 434.5,221.3 436.0,221.5 437.5,221.6 439.0,221.8 440.5,221.9 442.0,222.0 443.5,222.2 445.0,222.3 446.5,222.4 448.0,222.6 449.5,222.7 451.0,222.8 452.5,222.9 454.0,223.0 455.5,223.1 457.0,223.3 458.5,223.4 460.0,223.5 461.5,223.6 463.0,223.7 464.5,223.8 466.0,223.9 467.5,224.0 469.0,224.1 470.5,224.2 472.0,224.3 473.5,224.4 475.0,224.5 476.5,224.5 478.0,224.6 479.5,224.7 481.0,224.8 482.5,224.9 484.0,225.0 485.5,225.1 487.0,225.1 488.5,225.2 490.0,225.3 491.5,225.4 493.0,225.4 494.5,225.5 496.0,225.6 497.5,225.6 499.0,225.7 500.5,225.8 502.0,225.8 503.5,225.9 505.0,226.0 506.5,226.0 508.0,226.1 509.5,226.2 511.0,226.2 512.5,226.3 514.0,226.3 515.5,226.4 517.0,226.5 518.5,226.5 520.0,226.6 521.5,226.6 523.0,226.7 524.5,226.7 526.0,226.8 527.5,226.8 529.0,226.9 530.5,226.9 532.0,227.0 533.5,227.0 535.0,227.1 536.5,227.1 538.0,227.1 539.5,227.2 541.0,227.2 542.5,227.3 544.0,227.3 545.5,227.4 547.0,227.4 548.5,227.4 550.0,227.5 551.5,227.5 553.0,227.5 554.5,227.6 556.0,227.6 557.5,227.7 559.0,227.7 560.5,227.7 562.0,227.8 563.5,227.8 565.0,227.8 566.5,227.9 568.0,227.9 569.5,227.9 571.0,227.9 572.5,228.0 574.0,228.0 575.5,228.0 577.0,228.1 578.5,228.1 580.0,228.1 581.5,228.2 583.0,228.2 584.5,228.2 586.0,228.2 587.5,228.3 589.0,228.3 590.5,228.3 592.0,228.3 593.5,228.4 595.0,228.4 596.5,228.4 598.0,228.4 599.5,228.4 601.0,228.5 602.5,228.5 604.0,228.5 605.5,228.5 607.0,228.6 608.5,228.6 610.0,228.6 611.5,228.6 613.0,228.6 614.5,228.7 616.0,228.7 617.5,228.7 619.0,228.7 620.5,228.7 622.0,228.8 623.5,228.8 625.0,228.8 626.5,228.8 628.0,228.8 629.5,228.8 631.0,228.9 632.5,228.9 634.0,228.9 635.5,228.9 637.0,228.9 638.5,228.9 640.0,228.9 641.5,229.0 643.0,229.0 644.5,229.0 646.0,229.0 647.5,229.0 649.0,229.0 650.5,229.0 652.0,229.1 653.5,229.1 655.0,229.1 656.5,229.1 658.0,229.1 659.5,229.1 661.0,229.1 662.5,229.1 664.0,229.2 665.5,229.2 667.0,229.2 668.5,229.2 670.0,229.2"/>
+<line class="ln" x1="70" y1="230" x2="670" y2="230"/>
+<line class="ln" x1="70.0" y1="230" x2="70.0" y2="235"/><text x="70.0" y="249" text-anchor="middle" class="sm">0s</text>
+<line class="ln" x1="145.0" y1="230" x2="145.0" y2="235"/><text x="145.0" y="249" text-anchor="middle" class="sm">5s</text>
+<line class="ln" x1="220.0" y1="230" x2="220.0" y2="235"/><text x="220.0" y="249" text-anchor="middle" class="sm">10s</text>
+<line class="ln" x1="295.0" y1="230" x2="295.0" y2="235"/><text x="295.0" y="249" text-anchor="middle" class="sm">15s</text>
+<line class="ln" x1="370.0" y1="230" x2="370.0" y2="235"/><text x="370.0" y="249" text-anchor="middle" class="sm">20s</text>
+<line class="ln" x1="445.0" y1="230" x2="445.0" y2="235"/><text x="445.0" y="249" text-anchor="middle" class="sm">25s</text>
+<line class="ln" x1="520.0" y1="230" x2="520.0" y2="235"/><text x="520.0" y="249" text-anchor="middle" class="sm">30s</text>
+<line class="ln" x1="595.0" y1="230" x2="595.0" y2="235"/><text x="595.0" y="249" text-anchor="middle" class="sm">35s</text>
+<line class="ln" x1="670.0" y1="230" x2="670.0" y2="235"/><text x="670.0" y="249" text-anchor="middle" class="sm">40s</text>
+<text x="370.0" y="270" text-anchor="middle" class="sm">time to finish one agent task (seconds)</text>
+<line class="ln dash accent" x1="190.0" y1="36" x2="190.0" y2="230"/>
+<text x="195.0" y="40" class="sm t-accent">p50 = 8.0s</text>
+<line class="ln dash" x1="213.7" y1="52" x2="213.7" y2="230"/>
+<text x="218.7" y="56" class="sm t-muted">mean = 9.6s</text>
+<line class="ln dash bad" x1="392.0" y1="36" x2="392.0" y2="230"/>
+<text x="397.0" y="40" class="sm t-bad">p95 = 21.5s</text>
+<line class="ln dash bad" x1="554.6" y1="52" x2="554.6" y2="230"/>
+<text x="559.6" y="56" class="sm t-bad">p99 = 32.3s</text>
+<text x="520.0" y="200" text-anchor="middle" class="sm t-bad">slowest 5% of users</text>
+</svg>
+<figcaption><b>Why p95 matters.</b> A log-normal latency distribution with median 8 s and spread σ = 0.6 (exact quantiles, an illustrative shape rather than measured data). The median user waits 8 s, the average is 9.6 s, but 1 in 20 waits over 21 s and 1 in 100 over 32 s.</figcaption>
+</figure>
+
+<p>Percentile estimates are noisy too: the p95 of 100 runs is determined by roughly the 5 slowest runs. Use at least a few hundred runs before you trust a p95, and more for p99.</p>
+
+<h2>The Pareto frontier: accuracy vs cost</h2>
+<p>When you have two metrics you care about (higher accuracy, lower cost), one configuration <b>dominates</b> another if it is at least as good on both and better on one. The set of configurations that nobody dominates is the <b>Pareto frontier</b>. Every choice on the frontier is defensible; every choice off it is a mistake, because something else is cheaper <em>and</em> better.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 300" role="img" aria-label="Illustrative accuracy versus cost scatter: five configurations form the Pareto frontier from a cheap small model to an expensive multi-sample setup; three configurations are dominated because another option is both cheaper and more accurate.">
+<line class="ln dash" x1="90" y1="250.0" x2="650" y2="250.0" opacity="0.25"/>
+<text x="82" y="254.0" text-anchor="end" class="sm">40%</text>
+<line class="ln dash" x1="90" y1="195.0" x2="650" y2="195.0" opacity="0.25"/>
+<text x="82" y="199.0" text-anchor="end" class="sm">50%</text>
+<line class="ln dash" x1="90" y1="140.0" x2="650" y2="140.0" opacity="0.25"/>
+<text x="82" y="144.0" text-anchor="end" class="sm">60%</text>
+<line class="ln dash" x1="90" y1="85.0" x2="650" y2="85.0" opacity="0.25"/>
+<text x="82" y="89.0" text-anchor="end" class="sm">70%</text>
+<line class="ln dash" x1="90" y1="30.0" x2="650" y2="30.0" opacity="0.25"/>
+<text x="82" y="34.0" text-anchor="end" class="sm">80%</text>
+<line class="ln" x1="90.0" y1="250" x2="90.0" y2="255"/>
+<text x="90.0" y="269" text-anchor="middle" class="sm">$0.01</text>
+<line class="ln" x1="196.9" y1="250" x2="196.9" y2="255"/>
+<text x="196.9" y="269" text-anchor="middle" class="sm">$0.03</text>
+<line class="ln" x1="314.0" y1="250" x2="314.0" y2="255"/>
+<text x="314.0" y="269" text-anchor="middle" class="sm">$0.1</text>
+<line class="ln" x1="420.9" y1="250" x2="420.9" y2="255"/>
+<text x="420.9" y="269" text-anchor="middle" class="sm">$0.3</text>
+<line class="ln" x1="538.0" y1="250" x2="538.0" y2="255"/>
+<text x="538.0" y="269" text-anchor="middle" class="sm">$1</text>
+<line class="ln" x1="644.9" y1="250" x2="644.9" y2="255"/>
+<text x="644.9" y="269" text-anchor="middle" class="sm">$3</text>
+<line class="ln" x1="90" y1="250" x2="650" y2="250"/>
+<line class="ln" x1="90" y1="30" x2="90" y2="250"/>
+<text x="370.0" y="290" text-anchor="middle" class="sm">cost per task (US$, log scale)</text>
+<text x="46" y="140.0" text-anchor="middle" class="sm" transform="rotate(-90 46 140.0)">task success rate</text>
+<polyline class="ln good thick" points="157.4,206.0 264.3,167.5 314.0,123.5 448.9,79.5 610.2,63.0"/>
+<circle cx="157.4" cy="206.0" r="5" class="fill-good"/>
+<text x="166.4" y="222.0" class="sm">small model (48%)</text>
+<circle cx="264.3" cy="167.5" r="5" class="fill-good"/>
+<text x="273.3" y="183.5" class="sm">small + retry (55%)</text>
+<circle cx="314.0" cy="123.5" r="5" class="fill-good"/>
+<text x="323.0" y="139.5" class="sm">mid model (63%)</text>
+<circle cx="448.9" cy="79.5" r="5" class="fill-good"/>
+<text x="439.9" y="71.5" text-anchor="end" class="sm">large model (71%)</text>
+<circle cx="610.2" cy="63.0" r="5" class="fill-good"/>
+<text x="601.2" y="55.0" text-anchor="end" class="sm">large, 5 samples + verifier (74%)</text>
+<circle cx="435.9" cy="118.0" r="5" class="fill-bad"/>
+<text x="444.9" y="132.0" class="sm t-bad">mid + reflection</text>
+<circle cx="516.3" cy="107.0" r="5" class="fill-bad"/>
+<text x="525.3" y="121.0" class="sm t-bad">mid + big scaffold</text>
+<circle cx="555.7" cy="90.5" r="5" class="fill-bad"/>
+<text x="564.7" y="104.5" class="sm t-bad">large + max thinking</text>
+<text x="646" y="210" text-anchor="end" class="sm t-good">green: Pareto frontier (nothing is both cheaper and better)</text>
+<text x="646" y="228" text-anchor="end" class="sm t-bad">red: dominated (another option is cheaper AND better)</text>
+</svg>
+<figcaption><b>Reading a Pareto plot.</b> Illustrative configurations, not real measurements. Moving right along the green frontier buys accuracy with money. The red points are dominated: "large + max thinking" costs 3× more than "large model" and scores lower on this eval.</figcaption>
+</figure>
+
+<p>Two practical rules. First, <b>plot cost on a log scale</b>: configurations span orders of magnitude. Second, <b>compare at matched budgets</b>: "our agent beats theirs" is meaningless if yours ran with 5 samples and a verifier. Research groups have argued that agent leaderboards should always show cost alongside accuracy for exactly this reason: simple baselines with retries can match elaborate agents at a fraction of the cost.</p>
+
+<h2>Why scores wobble: sampling variance</h2>
+<p>Time to rebuild the statistics. Start with a thought experiment. Suppose your agent has a <b>true</b> success rate of exactly 70% on the kind of task in your eval: if you could run it on infinitely many such tasks, 70% would pass. You can't, so you run it on n tasks and get a <b>measured</b> rate. How far from 70% can the measured rate land?</p>
+
+<div class="callout analogy"><span class="t">Analogy: tasting soup</span>
+<p>To check the salt in a big pot of soup, you taste a spoonful. One small spoon might catch a salty pocket; a ladle averages more of the pot. The pot is "all tasks the agent could face", the spoonful is your eval set, and the spread of what different spoonfuls taste like is <b>sampling variance</b>. A bigger spoon does not change the soup; it only makes your taste more reliable.</p>
+</div>
+
+<p>For pass/fail items with true rate p, the number of passes follows a <b>binomial distribution</b>. You do not need the formula; you need the picture:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 330" role="img" aria-label="Exact binomial distributions of measured accuracy for an agent whose true rate is 70%: with 50 questions, 95% of runs fall between 56% and 82%; with 500 questions, between 66% and 74%.">
+<rect x="116.8" y="129.5" width="20.8" height="0.5" class="fill-line"/>
+<rect x="141.6" y="128.8" width="20.8" height="1.2" class="fill-line"/>
+<rect x="166.4" y="127.4" width="20.8" height="2.6" class="fill-line"/>
+<rect x="191.2" y="124.5" width="20.8" height="5.5" class="fill-line"/>
+<rect x="216.0" y="119.5" width="20.8" height="10.5" class="fill-accent"/>
+<rect x="240.8" y="111.5" width="20.8" height="18.5" class="fill-accent"/>
+<rect x="265.6" y="99.7" width="20.8" height="30.3" class="fill-accent"/>
+<rect x="290.4" y="84.4" width="20.8" height="45.6" class="fill-accent"/>
+<rect x="315.2" y="66.9" width="20.8" height="63.1" class="fill-accent"/>
+<rect x="340.0" y="49.6" width="20.8" height="80.4" class="fill-accent"/>
+<rect x="364.8" y="36.2" width="20.8" height="93.8" class="fill-accent"/>
+<rect x="389.6" y="30.0" width="20.8" height="100.0" class="fill-accent"/>
+<rect x="414.4" y="32.8" width="20.8" height="97.2" class="fill-accent"/>
+<rect x="439.2" y="44.2" width="20.8" height="85.8" class="fill-accent"/>
+<rect x="464.0" y="61.5" width="20.8" height="68.5" class="fill-accent"/>
+<rect x="488.8" y="80.8" width="20.8" height="49.2" class="fill-accent"/>
+<rect x="513.6" y="98.4" width="20.8" height="31.6" class="fill-accent"/>
+<rect x="538.4" y="112.0" width="20.8" height="18.0" class="fill-accent"/>
+<rect x="563.2" y="121.0" width="20.8" height="9.0" class="fill-line"/>
+<rect x="588.0" y="126.1" width="20.8" height="3.9" class="fill-line"/>
+<rect x="612.8" y="128.6" width="20.8" height="1.4" class="fill-line"/>
+<rect x="637.6" y="129.5" width="20.8" height="0.5" class="fill-line"/>
+<line class="ln" x1="90" y1="130" x2="710" y2="130"/>
+<line class="ln" x1="152.0" y1="130" x2="152.0" y2="134"/><text x="152.0" y="147" text-anchor="middle" class="sm">50%</text>
+<line class="ln" x1="276.0" y1="130" x2="276.0" y2="134"/><text x="276.0" y="147" text-anchor="middle" class="sm">60%</text>
+<line class="ln" x1="400.0" y1="130" x2="400.0" y2="134"/><text x="400.0" y="147" text-anchor="middle" class="sm">70%</text>
+<line class="ln" x1="524.0" y1="130" x2="524.0" y2="134"/><text x="524.0" y="147" text-anchor="middle" class="sm">80%</text>
+<line class="ln" x1="648.0" y1="130" x2="648.0" y2="134"/><text x="648.0" y="147" text-anchor="middle" class="sm">90%</text>
+<text x="80" y="70" text-anchor="end" class="b">n = 50</text>
+<text x="80" y="88" text-anchor="end" class="sm">questions</text>
+<text x="710" y="50" text-anchor="end" class="sm t-accent">95% of runs land in 56% to 82%</text>
+<line class="ln dash" x1="400.0" y1="24" x2="400.0" y2="130"/>
+<rect x="312.2" y="279.7" width="2.1" height="0.3" class="fill-line"/>
+<rect x="314.6" y="279.5" width="2.1" height="0.5" class="fill-line"/>
+<rect x="317.1" y="279.4" width="2.1" height="0.6" class="fill-line"/>
+<rect x="319.6" y="279.1" width="2.1" height="0.9" class="fill-line"/>
+<rect x="322.1" y="278.9" width="2.1" height="1.1" class="fill-line"/>
+<rect x="324.6" y="278.5" width="2.1" height="1.5" class="fill-line"/>
+<rect x="327.0" y="278.0" width="2.1" height="2.0" class="fill-line"/>
+<rect x="329.5" y="277.4" width="2.1" height="2.6" class="fill-line"/>
+<rect x="332.0" y="276.7" width="2.1" height="3.3" class="fill-line"/>
+<rect x="334.5" y="275.8" width="2.1" height="4.2" class="fill-line"/>
+<rect x="337.0" y="274.7" width="2.1" height="5.3" class="fill-line"/>
+<rect x="339.4" y="273.3" width="2.1" height="6.7" class="fill-line"/>
+<rect x="341.9" y="271.7" width="2.1" height="8.3" class="fill-line"/>
+<rect x="344.4" y="269.8" width="2.1" height="10.2" class="fill-line"/>
+<rect x="346.9" y="267.5" width="2.1" height="12.5" class="fill-line"/>
+<rect x="349.4" y="264.9" width="2.1" height="15.1" class="fill-accent"/>
+<rect x="351.8" y="262.0" width="2.1" height="18.0" class="fill-accent"/>
+<rect x="354.3" y="258.6" width="2.1" height="21.4" class="fill-accent"/>
+<rect x="356.8" y="254.8" width="2.1" height="25.2" class="fill-accent"/>
+<rect x="359.3" y="250.6" width="2.1" height="29.4" class="fill-accent"/>
+<rect x="361.8" y="246.0" width="2.1" height="34.0" class="fill-accent"/>
+<rect x="364.2" y="241.0" width="2.1" height="39.0" class="fill-accent"/>
+<rect x="366.7" y="235.7" width="2.1" height="44.3" class="fill-accent"/>
+<rect x="369.2" y="230.2" width="2.1" height="49.8" class="fill-accent"/>
+<rect x="371.7" y="224.5" width="2.1" height="55.5" class="fill-accent"/>
+<rect x="374.2" y="218.6" width="2.1" height="61.4" class="fill-accent"/>
+<rect x="376.6" y="212.8" width="2.1" height="67.2" class="fill-accent"/>
+<rect x="379.1" y="207.1" width="2.1" height="72.9" class="fill-accent"/>
+<rect x="381.6" y="201.7" width="2.1" height="78.3" class="fill-accent"/>
+<rect x="384.1" y="196.6" width="2.1" height="83.4" class="fill-accent"/>
+<rect x="386.6" y="192.0" width="2.1" height="88.0" class="fill-accent"/>
+<rect x="389.0" y="188.0" width="2.1" height="92.0" class="fill-accent"/>
+<rect x="391.5" y="184.7" width="2.1" height="95.3" class="fill-accent"/>
+<rect x="394.0" y="182.2" width="2.1" height="97.8" class="fill-accent"/>
+<rect x="396.5" y="180.7" width="2.1" height="99.3" class="fill-accent"/>
+<rect x="399.0" y="180.0" width="2.1" height="100.0" class="fill-accent"/>
+<rect x="401.4" y="180.3" width="2.1" height="99.7" class="fill-accent"/>
+<rect x="403.9" y="181.5" width="2.1" height="98.5" class="fill-accent"/>
+<rect x="406.4" y="183.7" width="2.1" height="96.3" class="fill-accent"/>
+<rect x="408.9" y="186.6" width="2.1" height="93.4" class="fill-accent"/>
+<rect x="411.4" y="190.4" width="2.1" height="89.6" class="fill-accent"/>
+<rect x="413.8" y="194.9" width="2.1" height="85.1" class="fill-accent"/>
+<rect x="416.3" y="199.9" width="2.1" height="80.1" class="fill-accent"/>
+<rect x="418.8" y="205.3" width="2.1" height="74.7" class="fill-accent"/>
+<rect x="421.3" y="211.1" width="2.1" height="68.9" class="fill-accent"/>
+<rect x="423.8" y="217.0" width="2.1" height="63.0" class="fill-accent"/>
+<rect x="426.2" y="223.0" width="2.1" height="57.0" class="fill-accent"/>
+<rect x="428.7" y="228.9" width="2.1" height="51.1" class="fill-accent"/>
+<rect x="431.2" y="234.7" width="2.1" height="45.3" class="fill-accent"/>
+<rect x="433.7" y="240.2" width="2.1" height="39.8" class="fill-accent"/>
+<rect x="436.2" y="245.4" width="2.1" height="34.6" class="fill-accent"/>
+<rect x="438.6" y="250.2" width="2.1" height="29.8" class="fill-accent"/>
+<rect x="441.1" y="254.6" width="2.1" height="25.4" class="fill-accent"/>
+<rect x="443.6" y="258.6" width="2.1" height="21.4" class="fill-accent"/>
+<rect x="446.1" y="262.1" width="2.1" height="17.9" class="fill-accent"/>
+<rect x="448.6" y="265.3" width="2.1" height="14.7" class="fill-accent"/>
+<rect x="451.0" y="267.9" width="2.1" height="12.1" class="fill-line"/>
+<rect x="453.5" y="270.2" width="2.1" height="9.8" class="fill-line"/>
+<rect x="456.0" y="272.2" width="2.1" height="7.8" class="fill-line"/>
+<rect x="458.5" y="273.8" width="2.1" height="6.2" class="fill-line"/>
+<rect x="461.0" y="275.1" width="2.1" height="4.9" class="fill-line"/>
+<rect x="463.4" y="276.2" width="2.1" height="3.8" class="fill-line"/>
+<rect x="465.9" y="277.1" width="2.1" height="2.9" class="fill-line"/>
+<rect x="468.4" y="277.8" width="2.1" height="2.2" class="fill-line"/>
+<rect x="470.9" y="278.4" width="2.1" height="1.6" class="fill-line"/>
+<rect x="473.4" y="278.8" width="2.1" height="1.2" class="fill-line"/>
+<rect x="475.8" y="279.1" width="2.1" height="0.9" class="fill-line"/>
+<rect x="478.3" y="279.3" width="2.1" height="0.7" class="fill-line"/>
+<rect x="480.8" y="279.5" width="2.1" height="0.5" class="fill-line"/>
+<rect x="483.3" y="279.7" width="2.1" height="0.3" class="fill-line"/>
+<line class="ln" x1="90" y1="280" x2="710" y2="280"/>
+<line class="ln" x1="152.0" y1="280" x2="152.0" y2="284"/><text x="152.0" y="297" text-anchor="middle" class="sm">50%</text>
+<line class="ln" x1="276.0" y1="280" x2="276.0" y2="284"/><text x="276.0" y="297" text-anchor="middle" class="sm">60%</text>
+<line class="ln" x1="400.0" y1="280" x2="400.0" y2="284"/><text x="400.0" y="297" text-anchor="middle" class="sm">70%</text>
+<line class="ln" x1="524.0" y1="280" x2="524.0" y2="284"/><text x="524.0" y="297" text-anchor="middle" class="sm">80%</text>
+<line class="ln" x1="648.0" y1="280" x2="648.0" y2="284"/><text x="648.0" y="297" text-anchor="middle" class="sm">90%</text>
+<text x="80" y="220" text-anchor="end" class="b">n = 500</text>
+<text x="80" y="238" text-anchor="end" class="sm">questions</text>
+<text x="710" y="200" text-anchor="end" class="sm t-accent">95% of runs land in 66% to 74%</text>
+<line class="ln dash" x1="400.0" y1="174" x2="400.0" y2="280"/>
+<text x="400.0" y="20" text-anchor="middle" class="sm">true success rate 70%</text>
+<text x="400.0" y="318" text-anchor="middle" class="sm">measured accuracy on one run of the eval</text>
+</svg>
+<figcaption><b>Same agent, different luck.</b> Exact binomial probabilities of the measured accuracy for an agent whose true rate is 70%. With 50 questions, a single run can plausibly show anything from 56% to 82%. With 500 questions the plausible range shrinks to 66% to 74%. Each panel is scaled to its own peak height.</figcaption>
+</figure>
+
+<p>Look at the n = 50 panel and think about what it means for your work. If last week's version scored 64% and this week's scores 76% on a 50-task eval, both numbers are well inside the range that the <em>same</em> 70% agent produces by chance. Many "improvements" in prompt-engineering folklore are exactly this.</p>
+
+<h3>Two kinds of randomness</h3>
+<p>Miller (2024) makes a distinction that matters for agents. Your eval score is uncertain for two reasons:</p>
+<ol>
+<li><b>Which questions you happened to include.</b> Your 500 tasks are a sample from all the tasks you care about. A different sample of 500 would give a different score. This is present even if the agent were perfectly deterministic.</li>
+<li><b>What the agent happened to do on each question.</b> Run the same task twice and it may pass once and fail once. This is within-question randomness from sampling temperature, tool timing, simulated users and so on.</li>
+</ol>
+<p>Running each question several times (several <b>epochs</b>) shrinks the second source but not the first. Adding more questions shrinks both. That is why "more questions" is usually the better investment, and why epochs still help when questions are expensive to write.</p>
+
+<div data-widget="variance"></div>
+
+<h2>Standard error and confidence intervals</h2>
+<h3>Standard deviation vs standard error</h3>
+<p>Two terms that everyone mixes up:</p>
+<ul>
+<li>The <b>standard deviation</b> (SD) describes how spread out the <em>individual scores</em> are. For 0/1 scores with rate p it is <code>√(p(1−p))</code>, which is about 0.46 at p = 0.7. It does not shrink with more data; individual tasks stay as variable as they are.</li>
+<li>The <b>standard error</b> (SE) describes how much the <em>average</em> would move between reruns of the whole eval. It is <code>SD / √n</code>. It shrinks as you add questions.</li>
+</ul>
+<p>The reason averages are predictable is the <b>central limit theorem</b> (CLT): the average of many independent scores is approximately normally distributed (a bell curve) around the true value, with spread SE, no matter what the individual scores look like. The histograms in the previous figure are already nearly bell-shaped at n = 50.</p>
+
+<h3>The 95% confidence interval</h3>
+<p>A bell curve has about 95% of its mass within 1.96 standard errors of the centre. So:</p>
+<p style="text-align:center"><code>95% CI = mean ± 1.96 × SE</code></p>
+<p>This is the <b>Wald interval</b> (also "normal approximation" or "CLT interval"). For a success rate: <code>p̂ ± 1.96 √(p̂(1−p̂)/n)</code>.</p>
+<p><b>What does "95% confidence" mean?</b> Not "95% chance the true value is in this particular interval". It means: if you repeated the whole eval many times and built an interval each time, 95% of those intervals would contain the true rate. In practice, read it as "values inside the interval are all plausible; values far outside are not".</p>
+
+<h3>Worked example</h3>
+<p>Your agent passes 312 of 500 tasks.</p>
+<ul>
+<li>p̂ = 312/500 = 0.624</li>
+<li>SE = √(0.624 × 0.376 / 500) = √0.000469 = 0.0217, i.e. 2.17 points</li>
+<li>95% CI = 62.4 ± 1.96 × 2.17 = 62.4 ± 4.25, i.e. <b>[58.2%, 66.6%]</b></li>
+</ul>
+<p>The Wilson interval (next) gives [58.1%, 66.5%]: nearly identical at this n.</p>
+
+<h3>The Wilson interval: use it for small n or extreme rates</h3>
+<p>The Wald interval misbehaves when n is small or p̂ is near 0% or 100%. At 10/10 passes it gives a width of zero ("100% ± 0"), which is absurd. At 9/10 it gives [71.4%, 108.6%], which goes above 100%. The <b>Wilson score interval</b> (Wilson, 1927) fixes both by solving for the values of p that are consistent with what you saw, instead of plugging in p̂:</p>
+<p style="text-align:center"><code>centre = (p̂ + z²/2n) / (1 + z²/n)&nbsp;&nbsp;&nbsp;&nbsp;half-width = z √(p̂(1−p̂)/n + z²/4n²) / (1 + z²/n)</code></p>
+<p>with z = 1.96. At 9/10, Wilson gives [59.6%, 98.2%]. At 10/10, it gives [72.2%, 100%]: "we saw no failures, but with 10 tries the true rate could plausibly be as low as 72%". That is the honest answer, and a useful reality check for every "passed all 10 test cases!" claim.</p>
+
+<h3>How many questions do I need?</h3>
+<p>Because SE shrinks with √n, to halve your interval you need four times as many questions. Here are the actual Wilson 95% half-widths:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 300" role="img" aria-label="Wilson 95% confidence interval half-width versus number of questions: about ±18 points at n=25, ±9.6 at n=100, ±4.4 at n=500, ±3.1 at n=1000 and ±1.4 at n=5000 for a score near 50%.">
+<line class="ln dash" x1="80" y1="250.0" x2="640" y2="250.0" opacity="0.25"/>
+<text x="72" y="254.0" text-anchor="end" class="sm">±0</text>
+<line class="ln dash" x1="80" y1="195.0" x2="640" y2="195.0" opacity="0.25"/>
+<text x="72" y="199.0" text-anchor="end" class="sm">±5</text>
+<line class="ln dash" x1="80" y1="140.0" x2="640" y2="140.0" opacity="0.25"/>
+<text x="72" y="144.0" text-anchor="end" class="sm">±10</text>
+<line class="ln dash" x1="80" y1="85.0" x2="640" y2="85.0" opacity="0.25"/>
+<text x="72" y="89.0" text-anchor="end" class="sm">±15</text>
+<line class="ln dash" x1="80" y1="30.0" x2="640" y2="30.0" opacity="0.25"/>
+<text x="72" y="34.0" text-anchor="end" class="sm">±20</text>
+<line class="ln" x1="80.0" y1="250" x2="80.0" y2="255"/>
+<text x="80.0" y="269" text-anchor="middle" class="sm">25</text>
+<line class="ln" x1="153.3" y1="250" x2="153.3" y2="255"/>
+<text x="153.3" y="269" text-anchor="middle" class="sm">50</text>
+<line class="ln" x1="226.5" y1="250" x2="226.5" y2="255"/>
+<text x="226.5" y="269" text-anchor="middle" class="sm">100</text>
+<line class="ln" x1="299.8" y1="250" x2="299.8" y2="255"/>
+<text x="299.8" y="269" text-anchor="middle" class="sm">200</text>
+<line class="ln" x1="396.6" y1="250" x2="396.6" y2="255"/>
+<text x="396.6" y="269" text-anchor="middle" class="sm">500</text>
+<line class="ln" x1="469.9" y1="250" x2="469.9" y2="255"/>
+<text x="469.9" y="269" text-anchor="middle" class="sm">1000</text>
+<line class="ln" x1="543.2" y1="250" x2="543.2" y2="255"/>
+<text x="543.2" y="269" text-anchor="middle" class="sm">2000</text>
+<line class="ln" x1="640.0" y1="250" x2="640.0" y2="255"/>
+<text x="640.0" y="269" text-anchor="middle" class="sm">5000</text>
+<line class="ln" x1="80" y1="250" x2="640" y2="250"/>
+<line class="ln" x1="80" y1="30" x2="80" y2="250"/>
+<text x="360.0" y="290" text-anchor="middle" class="sm">n = number of questions (log scale)</text>
+<text x="36" y="140.0" text-anchor="middle" class="sm" transform="rotate(-90 36 140.0)">95% CI half-width (points)</text>
+<polyline class="ln accent thick" points="80.0,49.4 153.3,103.1 226.5,144.2 299.8,174.5 396.6,202.0 469.9,216.0 543.2,225.9 640.0,234.8"/>
+<circle cx="80.0" cy="49.4" r="3.5" class="fill-accent"/>
+<text x="96.0" y="40.4" text-anchor="middle" class="sm t-accent">±18.2</text>
+<circle cx="153.3" cy="103.1" r="3.5" class="fill-accent"/>
+<text x="153.3" y="94.1" text-anchor="middle" class="sm t-accent">±13.4</text>
+<circle cx="226.5" cy="144.2" r="3.5" class="fill-accent"/>
+<text x="226.5" y="135.2" text-anchor="middle" class="sm t-accent">±9.6</text>
+<circle cx="299.8" cy="174.5" r="3.5" class="fill-accent"/>
+<text x="299.8" y="165.5" text-anchor="middle" class="sm t-accent">±6.9</text>
+<circle cx="396.6" cy="202.0" r="3.5" class="fill-accent"/>
+<text x="396.6" y="193.0" text-anchor="middle" class="sm t-accent">±4.4</text>
+<circle cx="469.9" cy="216.0" r="3.5" class="fill-accent"/>
+<text x="469.9" y="207.0" text-anchor="middle" class="sm t-accent">±3.1</text>
+<circle cx="543.2" cy="225.9" r="3.5" class="fill-accent"/>
+<text x="543.2" y="216.9" text-anchor="middle" class="sm t-accent">±2.2</text>
+<circle cx="640.0" cy="234.8" r="3.5" class="fill-accent"/>
+<text x="640.0" y="225.8" text-anchor="middle" class="sm t-accent">±1.4</text>
+<polyline class="ln violet thick" points="80.0,83.5 153.3,130.1 226.5,164.5 299.8,189.3 396.6,211.5 469.9,222.8 543.2,230.7 640.0,237.8"/>
+<circle cx="80.0" cy="83.5" r="3.5" class="fill-violet"/>
+<circle cx="153.3" cy="130.1" r="3.5" class="fill-violet"/>
+<circle cx="226.5" cy="164.5" r="3.5" class="fill-violet"/>
+<circle cx="299.8" cy="189.3" r="3.5" class="fill-violet"/>
+<circle cx="396.6" cy="211.5" r="3.5" class="fill-violet"/>
+<circle cx="469.9" cy="222.8" r="3.5" class="fill-violet"/>
+<circle cx="543.2" cy="230.7" r="3.5" class="fill-violet"/>
+<circle cx="640.0" cy="237.8" r="3.5" class="fill-violet"/>
+<rect x="450" y="34" width="14" height="4" class="fill-accent"/><text x="470" y="40" class="sm">score near 50% (widest)</text>
+<rect x="450" y="52" width="14" height="4" class="fill-violet"/><text x="470" y="58" class="sm">score near 80%</text>
+<text x="469.9" y="162.0" text-anchor="middle" class="sm">4× the data → half the width</text>
+</svg>
+<figcaption><b>Precision costs data, with diminishing returns.</b> Computed Wilson 95% half-widths for an observed rate of 50% (blue) and 80% (violet). Going from 100 to 500 questions takes the uncertainty from about ±9.6 to ±4.4 points; going from 1,000 to 5,000 only takes it from ±3.1 to ±1.4.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>n (questions)</th><th>observed 50%: 95% Wilson CI</th><th>half-width</th><th>observed 80%: 95% Wilson CI</th><th>half-width</th></tr>
+<tr><td>25</td><td>30.0% to 66.5%</td><td>±18.2</td><td>60.9% to 91.1%</td><td>±15.1</td></tr>
+<tr><td>50</td><td>36.6% to 63.4%</td><td>±13.4</td><td>67.0% to 88.8%</td><td>±10.9</td></tr>
+<tr><td>100</td><td>40.4% to 59.6%</td><td>±9.6</td><td>71.1% to 86.7%</td><td>±7.8</td></tr>
+<tr><td>200</td><td>43.1% to 56.9%</td><td>±6.9</td><td>73.9% to 85.0%</td><td>±5.5</td></tr>
+<tr><td>500</td><td>45.6% to 54.4%</td><td>±4.4</td><td>76.3% to 83.3%</td><td>±3.5</td></tr>
+<tr><td>1,000</td><td>46.9% to 53.1%</td><td>±3.1</td><td>77.4% to 82.4%</td><td>±2.5</td></tr>
+<tr><td>2,000</td><td>47.8% to 52.2%</td><td>±2.2</td><td>78.2% to 81.7%</td><td>±1.8</td></tr>
+<tr><td>5,000</td><td>48.6% to 51.4%</td><td>±1.4</td><td>78.9% to 81.1%</td><td>±1.1</td></tr>
+</table></div>
+<p>Keep this table in your head when you read benchmark tables. GPQA Diamond has 198 questions, the original τ-bench airline domain has 50 tasks, Terminal-Bench 2.0 has 89. A two-point gap between models on a 50 to 200 item benchmark is, on its own, not evidence of anything. (Paired comparisons, below, do better than this table suggests, which is one reason they matter so much.)</p>
+
+<div data-widget="ci"></div>
+
+<h2>Adding error bars: Anthropic's five recommendations</h2>
+<p>In November 2024 Evan Miller at Anthropic published "Adding Error Bars to Evals: A Statistical Approach to Language Model Evaluations" (arXiv 2411.00640, with a companion blog post). It argues that the field reported eval results with almost no statistical hygiene, and gives five concrete recommendations. They are the backbone of how to report results in this course.</p>
+
+<div class="tablewrap"><table>
+<tr><th>#</th><th>Recommendation</th><th>What to do in practice</th></tr>
+<tr><td>1</td><td><b>Use the CLT to report standard errors</b></td><td>Compute the mean of per-question scores and SE = SD/√n. Report the SE or a 95% CI next to every score.</td></tr>
+<tr><td>2</td><td><b>Cluster standard errors</b> when questions are grouped</td><td>If questions share a passage, a repo, a website or a template, compute clustered SEs. Naive SEs can understate uncertainty by more than 3× in the paper's examples.</td></tr>
+<tr><td>3</td><td><b>Reduce variance within questions</b></td><td>Resample: run each question several times and average per question before averaging across questions. (Or, for multiple choice, use next-token probabilities instead of a single sampled answer.)</td></tr>
+<tr><td>4</td><td><b>Analyse paired differences</b></td><td>When two models answer the same questions, compute the per-question difference and its SE. This removes the "question difficulty" noise that both share.</td></tr>
+<tr><td>5</td><td><b>Use power analysis</b></td><td>Before building the eval, compute how many questions you need to detect the smallest difference you care about.</td></tr>
+</table></div>
+
+<h3>Clustered standard errors</h3>
+<p>The CLT assumes independent scores. Real evals often break that. A reading-comprehension benchmark asks 5 questions about each passage; an agent benchmark has 20 tasks built on the same website, or 30 SWE-bench tasks from one repository. If the agent misreads a passage, it tends to get all its questions wrong together. Those 5 questions carry less information than 5 unrelated ones.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Independent questions versus clustered questions: when questions about the same passage tend to succeed or fail together, the effective number of independent observations is smaller and the standard error is larger.">
+<text x="200" y="24" text-anchor="middle" class="lg">Independent: 20 questions</text>
+<text x="610" y="24" text-anchor="middle" class="lg">Clustered: 4 passages × 5 questions</text>
+<line class="ln dash" x1="410" y1="10" x2="410" y2="280"/>
+<g>
+<circle cx="80" cy="70" r="11" class="fill-good"/><circle cx="130" cy="70" r="11" class="fill-bad"/><circle cx="180" cy="70" r="11" class="fill-good"/><circle cx="230" cy="70" r="11" class="fill-good"/><circle cx="280" cy="70" r="11" class="fill-bad"/>
+<circle cx="80" cy="110" r="11" class="fill-good"/><circle cx="130" cy="110" r="11" class="fill-good"/><circle cx="180" cy="110" r="11" class="fill-bad"/><circle cx="230" cy="110" r="11" class="fill-good"/><circle cx="280" cy="110" r="11" class="fill-good"/>
+<circle cx="80" cy="150" r="11" class="fill-bad"/><circle cx="130" cy="150" r="11" class="fill-good"/><circle cx="180" cy="150" r="11" class="fill-good"/><circle cx="230" cy="150" r="11" class="fill-bad"/><circle cx="280" cy="150" r="11" class="fill-good"/>
+<circle cx="80" cy="190" r="11" class="fill-good"/><circle cx="130" cy="190" r="11" class="fill-bad"/><circle cx="180" cy="190" r="11" class="fill-good"/><circle cx="230" cy="190" r="11" class="fill-good"/><circle cx="280" cy="190" r="11" class="fill-good"/>
+</g>
+<text x="200" y="232" text-anchor="middle" class="sm">each result tells you something new</text>
+<text x="200" y="252" text-anchor="middle" class="sm">effective sample size ≈ 20</text>
+<rect class="box good" x="440" y="50" width="120" height="70" rx="8"/><text x="500" y="66" text-anchor="middle" class="sm">passage 1</text>
+<circle cx="460" cy="95" r="8" class="fill-good"/><circle cx="480" cy="95" r="8" class="fill-good"/><circle cx="500" cy="95" r="8" class="fill-good"/><circle cx="520" cy="95" r="8" class="fill-good"/><circle cx="540" cy="95" r="8" class="fill-bad"/>
+<rect class="box bad" x="660" y="50" width="120" height="70" rx="8"/><text x="720" y="66" text-anchor="middle" class="sm">passage 2</text>
+<circle cx="680" cy="95" r="8" class="fill-bad"/><circle cx="700" cy="95" r="8" class="fill-bad"/><circle cx="720" cy="95" r="8" class="fill-bad"/><circle cx="740" cy="95" r="8" class="fill-good"/><circle cx="760" cy="95" r="8" class="fill-bad"/>
+<rect class="box good" x="440" y="140" width="120" height="70" rx="8"/><text x="500" y="156" text-anchor="middle" class="sm">passage 3</text>
+<circle cx="460" cy="185" r="8" class="fill-good"/><circle cx="480" cy="185" r="8" class="fill-good"/><circle cx="500" cy="185" r="8" class="fill-good"/><circle cx="520" cy="185" r="8" class="fill-good"/><circle cx="540" cy="185" r="8" class="fill-good"/>
+<rect class="box good" x="660" y="140" width="120" height="70" rx="8"/><text x="720" y="156" text-anchor="middle" class="sm">passage 4</text>
+<circle cx="680" cy="185" r="8" class="fill-good"/><circle cx="700" cy="185" r="8" class="fill-bad"/><circle cx="720" cy="185" r="8" class="fill-good"/><circle cx="740" cy="185" r="8" class="fill-good"/><circle cx="760" cy="185" r="8" class="fill-good"/>
+<text x="610" y="232" text-anchor="middle" class="sm">results move together within a passage</text>
+<text x="610" y="252" text-anchor="middle" class="sm">effective sample size closer to 4 than 20</text>
+<text x="610" y="274" text-anchor="middle" class="sm t-bad">naive SE is too small → false confidence</text>
+</svg>
+<figcaption><b>Clustering shrinks your real sample size.</b> When results within a group are correlated, extra questions from the same group add less information. Clustered standard errors account for this. Illustrative pattern, not real data.</figcaption>
+</figure>
+
+<p>The fix is simple to compute. Instead of treating each question's residual (score minus mean) independently, sum the residuals within each cluster first, then square:</p>
+<p style="text-align:center"><code>SE_clustered = √( Σ<sub>clusters c</sub> ( Σ<sub>i in c</sub> (s<sub>i</sub> − s̄) )² ) / n</code></p>
+<p>If clusters are uncorrelated inside, this reduces to the ordinary SE. If they move together, it grows. A handy rule of thumb from survey statistics is the <b>design effect</b> <code>1 + (m − 1)ρ</code> for clusters of size m with within-cluster correlation ρ: with 5 questions per passage and ρ = 0.5, the variance is 3× larger and the SE √3 ≈ 1.73× larger. In the simulation in the toolkit below (100 easy-or-hard passages of 5 questions), the naive SE is 0.022 and the clustered SE 0.043, nearly double.</p>
+<p>For agents, cluster by whatever the tasks share: repository (SWE-bench), website (WebArena), app (AndroidWorld), task template, or source document. When you run several epochs, the epochs of one question are also a cluster; averaging per question first (recommendation 3) handles that automatically.</p>
+
+<h3>Reduce variance: resampling and epochs</h3>
+<p>If each question's result is random, run it K times and use the per-question average as that question's score. The between-question part of the variance stays, but the within-question part is divided by K. Tools support this directly: Inspect calls the repeats <b>epochs</b> and lets you choose how to combine them (mean, majority vote, or pass@k style reducers). METR runs each model about 8 times per task for its time-horizon measurements.</p>
+<p>There is a floor, though. For 0/1 scores, even infinite epochs cannot shrink the SE below the between-question spread. With 500 questions, the 95% half-width near 62% is ±4.25 points with one epoch, and no less than about ±2.45 with three epochs (reached only if every question had the same success probability, so all variance is within-question). Beyond that, you need more questions.</p>
+
+<h2>The bootstrap: confidence intervals for anything</h2>
+<p>Formulas exist for means and proportions. What about the median latency, the F1 score, pass^k averaged over tasks, or a Bradley-Terry rating? The <b>bootstrap</b> (Efron, 1979) gives you a confidence interval for almost any statistic, with no formula at all.</p>
+<p>The trick: you cannot rerun the world, but you can pretend your sample <em>is</em> the world. Draw n questions from your n questions <b>with replacement</b> (some appear twice, some not at all), recompute the metric, and repeat 10,000 times. The spread of those recomputed metrics approximates the spread you would see across real reruns.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Bootstrap: resample the 200 per-question scores with replacement 10,000 times, recompute the mean each time, and take the 2.5th and 97.5th percentiles of the resulting histogram as the 95% confidence interval.">
+<defs><marker id="m4j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="150" height="60" rx="8"/>
+<text x="95" y="64" text-anchor="middle" class="b">Your data</text>
+<text x="95" y="84" text-anchor="middle" class="sm">200 question scores</text>
+<line class="ln" x1="170" y1="70" x2="206" y2="70" marker-end="url(#m4j)"/>
+<rect class="box accent" x="210" y="20" width="170" height="30" rx="6"/><text x="295" y="40" text-anchor="middle" class="sm">resample 1 → mean 63.2%</text>
+<rect class="box accent" x="210" y="56" width="170" height="30" rx="6"/><text x="295" y="76" text-anchor="middle" class="sm">resample 2 → mean 65.8%</text>
+<rect class="box accent" x="210" y="92" width="170" height="30" rx="6"/><text x="295" y="112" text-anchor="middle" class="sm">resample 3 → mean 61.5%</text>
+<text x="295" y="140" text-anchor="middle" class="sm">… 10,000 times</text>
+<text x="95" y="130" text-anchor="middle" class="sm">draw 200 with</text>
+<text x="95" y="146" text-anchor="middle" class="sm">replacement</text>
+<line class="ln" x1="380" y1="80" x2="412" y2="110" marker-end="url(#m4j)"/>
+<rect x="420.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<rect x="428.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<rect x="436.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<rect x="444.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<rect x="452.5" y="209.7" width="7.0" height="0.3" class="fill-line"/>
+<rect x="460.5" y="209.5" width="7.0" height="0.5" class="fill-line"/>
+<rect x="468.5" y="208.5" width="7.0" height="1.5" class="fill-line"/>
+<rect x="476.5" y="208.1" width="7.0" height="1.9" class="fill-line"/>
+<rect x="484.5" y="204.4" width="7.0" height="5.6" class="fill-line"/>
+<rect x="492.5" y="203.0" width="7.0" height="7.0" class="fill-line"/>
+<rect x="500.5" y="197.2" width="7.0" height="12.8" class="fill-line"/>
+<rect x="508.5" y="185.0" width="7.0" height="25.0" class="fill-line"/>
+<rect x="516.5" y="180.9" width="7.0" height="29.1" class="fill-accent"/>
+<rect x="524.5" y="155.8" width="7.0" height="54.2" class="fill-accent"/>
+<rect x="532.5" y="137.1" width="7.0" height="72.9" class="fill-accent"/>
+<rect x="540.5" y="129.9" width="7.0" height="80.1" class="fill-accent"/>
+<rect x="548.5" y="85.3" width="7.0" height="124.7" class="fill-accent"/>
+<rect x="556.5" y="94.3" width="7.0" height="115.7" class="fill-accent"/>
+<rect x="564.5" y="46.6" width="7.0" height="163.4" class="fill-accent"/>
+<rect x="572.5" y="47.5" width="7.0" height="162.5" class="fill-accent"/>
+<rect x="580.5" y="59.2" width="7.0" height="150.8" class="fill-accent"/>
+<rect x="588.5" y="40.0" width="7.0" height="170.0" class="fill-accent"/>
+<rect x="596.5" y="99.4" width="7.0" height="110.6" class="fill-accent"/>
+<rect x="604.5" y="78.8" width="7.0" height="131.2" class="fill-accent"/>
+<rect x="612.5" y="121.9" width="7.0" height="88.1" class="fill-accent"/>
+<rect x="620.5" y="148.0" width="7.0" height="62.0" class="fill-accent"/>
+<rect x="628.5" y="159.2" width="7.0" height="50.8" class="fill-accent"/>
+<rect x="636.5" y="179.0" width="7.0" height="31.0" class="fill-accent"/>
+<rect x="644.5" y="187.7" width="7.0" height="22.3" class="fill-line"/>
+<rect x="652.5" y="193.8" width="7.0" height="16.2" class="fill-line"/>
+<rect x="660.5" y="203.2" width="7.0" height="6.8" class="fill-line"/>
+<rect x="668.5" y="205.7" width="7.0" height="4.3" class="fill-line"/>
+<rect x="676.5" y="208.8" width="7.0" height="1.2" class="fill-line"/>
+<rect x="684.5" y="209.3" width="7.0" height="0.7" class="fill-line"/>
+<rect x="692.5" y="209.8" width="7.0" height="0.2" class="fill-line"/>
+<rect x="700.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<rect x="708.5" y="209.8" width="7.0" height="0.2" class="fill-line"/>
+<rect x="716.5" y="209.8" width="7.0" height="0.2" class="fill-line"/>
+<rect x="724.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<rect x="732.5" y="210.0" width="7.0" height="0.0" class="fill-line"/>
+<line class="ln" x1="420" y1="210" x2="740" y2="210"/>
+<line class="ln" x1="446.7" y1="210" x2="446.7" y2="215"/><text x="446.7" y="229" text-anchor="middle" class="sm">54%</text>
+<line class="ln" x1="580.0" y1="210" x2="580.0" y2="215"/><text x="580.0" y="229" text-anchor="middle" class="sm">64%</text>
+<line class="ln" x1="713.3" y1="210" x2="713.3" y2="215"/><text x="713.3" y="229" text-anchor="middle" class="sm">74%</text>
+<text x="513.3" y="34" text-anchor="end" class="sm t-accent">2.5%: 59.0</text>
+<text x="646.7" y="34" text-anchor="start" class="sm t-accent">97.5%: 69.0</text>
+<line class="ln dash accent" x1="513.3" y1="38" x2="513.3" y2="210"/><line class="ln dash accent" x1="646.7" y1="38" x2="646.7" y2="210"/>
+<text x="580.0" y="250" text-anchor="middle" class="sm">mean score of each of 10,000 resamples</text>
+<text x="200" y="200" text-anchor="middle" class="b">Observed mean: 64.0%</text>
+<text x="200" y="222" text-anchor="middle" class="sm">bootstrap 95% CI: [59.0%, 69.0%]</text>
+<text x="200" y="242" text-anchor="middle" class="sm">CLT 95% CI: [59.0%, 69.0%]</text>
+<text x="200" y="262" text-anchor="middle" class="sm t-muted">(they agree when n is decent)</text>
+</svg>
+<figcaption><b>The bootstrap, run for real.</b> A simulated eval of 200 questions × 3 epochs (per-question averages), resampled 10,000 times. The middle 95% of the resampled means is the percentile bootstrap CI. For a plain mean it matches the CLT interval; its value is that the same recipe works for medians, F1, pass^k or ratings.</figcaption>
+</figure>
+
+<p>Three rules that make bootstraps correct:</p>
+<ul>
+<li><b>Resample the independent unit.</b> If you ran 3 epochs of each question, resample <em>questions</em> (carrying all their epochs along), not individual runs. If questions are clustered by passage or repo, resample <em>clusters</em>. This is the bootstrap version of clustered SEs.</li>
+<li><b>For comparisons, resample pairs.</b> Draw the same question indices for both models, then compute the difference. This is the paired bootstrap.</li>
+<li><b>Use enough resamples</b> (1,000 minimum; 10,000 is cheap) and fix the random seed so the report is reproducible.</li>
+</ul>
+<p>LMArena uses exactly this idea for its rating intervals: resample the battles, refit Bradley-Terry, and read off the percentiles of each model's rating.</p>
+
+<h2>Comparing two models: the paired test</h2>
+<p>This is the most useful technique in the module. You ran Model A and Model B on the <b>same</b> 500 questions. A scored 68.0%, B scored 64.4%. Is A really better?</p>
+
+<h3>The wrong way: two separate error bars</h3>
+<p>Treat the two scores as independent. Each has SE ≈ 2.1 points, the difference 3.6 points has SE <code>√(SE_A² + SE_B²)</code> = 2.99 points, so the 95% CI for the difference is 3.6 ± 5.9, i.e. <b>[−2.3, +9.5]</b>. It includes zero. Conclusion: "no significant difference". That conclusion is wrong, because it throws away information.</p>
+
+<h3>The right way: look at each question</h3>
+<p>Most of the variation in scores comes from <b>question difficulty</b>: hard questions are hard for both models. Both models share that noise, so it cancels when you look at differences question by question. Only the questions where the models <em>disagree</em> carry information about which is better.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Paired comparison of Model A and B on 500 questions: 300 both right, 138 both wrong, 40 only A right, 22 only B right. Difference 3.6 points, paired SE 1.57, 95% CI 0.5 to 6.7, which excludes zero; the unpaired CI of minus 2.3 to 9.5 does not.">
+<text x="230" y="24" text-anchor="middle" class="b">Model B</text>
+<text x="160" y="48" text-anchor="middle" class="sm">right (322)</text>
+<text x="300" y="48" text-anchor="middle" class="sm">wrong (178)</text>
+<text x="40" y="170" text-anchor="middle" class="b" transform="rotate(-90 40 170)">Model A</text>
+<text x="72" y="110" text-anchor="middle" class="sm" transform="rotate(-90 72 110)">right (340)</text>
+<text x="72" y="220" text-anchor="middle" class="sm" transform="rotate(-90 72 220)">wrong (160)</text>
+<rect class="box plain" x="90" y="60" width="140" height="100" rx="6"/>
+<text x="160" y="104" text-anchor="middle" class="lg">300</text><text x="160" y="126" text-anchor="middle" class="sm">both right</text>
+<rect class="box good" x="230" y="60" width="140" height="100" rx="6"/>
+<text x="300" y="104" text-anchor="middle" class="lg t-good">40</text><text x="300" y="126" text-anchor="middle" class="sm">only A right</text>
+<rect class="box bad" x="90" y="170" width="140" height="100" rx="6"/>
+<text x="160" y="214" text-anchor="middle" class="lg t-bad">22</text><text x="160" y="236" text-anchor="middle" class="sm">only B right</text>
+<rect class="box plain" x="230" y="170" width="140" height="100" rx="6"/>
+<text x="300" y="214" text-anchor="middle" class="lg">138</text><text x="300" y="236" text-anchor="middle" class="sm">both wrong</text>
+<text x="230" y="296" text-anchor="middle" class="sm">grey cells: difference 0, no information</text>
+<text x="230" y="314" text-anchor="middle" class="sm">coloured cells: the only evidence</text>
+<rect class="box accent" x="410" y="50" width="390" height="150" rx="8"/>
+<text x="426" y="74" class="b">Per-question difference d = A − B</text>
+<text x="426" y="98" class="mono">d = +1 on 40, −1 on 22, 0 on 438</text>
+<text x="426" y="120" class="mono">mean d = (40 − 22)/500 = +0.036</text>
+<text x="426" y="142" class="mono">SD(d) = 0.351  →  SE = 0.351/√500 = 0.0157</text>
+<text x="426" y="164" class="mono">95% CI = 3.6 ± 1.96×1.57 = [+0.5, +6.7]</text>
+<text x="426" y="186" class="mono">z = 2.30, p = 0.022</text>
+<rect class="box good" x="410" y="212" width="390" height="40" rx="8"/>
+<text x="605" y="237" text-anchor="middle" class="b t-good">Paired: A is better (CI excludes 0)</text>
+<rect class="box bad" x="410" y="262" width="390" height="40" rx="8"/>
+<text x="605" y="287" text-anchor="middle" class="sm">Unpaired: SE 2.99, CI [−2.3, +9.5], p = 0.23 → "can't tell"</text>
+</svg>
+<figcaption><b>Pairing uses what the models have in common.</b> The same data, analysed two ways. The paired SE (1.57 points) is about half the unpaired SE (2.99 points) because the 438 questions where the models agree no longer add noise. Illustrative counts, exact arithmetic.</figcaption>
+</figure>
+
+<p>Step by step:</p>
+<ol>
+<li>For every question i, compute <code>d_i = score_A(i) − score_B(i)</code>. With 0/1 scores, d is +1, −1 or 0.</li>
+<li>The mean of d is the difference in accuracy: 18/500 = 3.6 points.</li>
+<li>The SE of that mean is <code>SD(d)/√n</code>. Here SD(d) = 0.351, so SE = 1.57 points.</li>
+<li>95% CI = 3.6 ± 3.07 = [+0.5, +6.7]. It excludes zero, so the difference is statistically significant at the 5% level (two-sided p ≈ 0.022). An exact McNemar test on the 40 vs 22 discordant pairs gives p ≈ 0.030, the same conclusion.</li>
+<li>Report it honestly: "A beats B by 3.6 points (95% CI 0.5 to 6.7, paired, n = 500)". The interval says the true gap could be tiny, so do not oversell it.</li>
+</ol>
+
+<div class="callout tip"><span class="t">Key idea</span>
+<p>Whenever two systems can be run on the same items, run them on the same items and analyse the differences. Pairing is free statistical power. Miller (2024) points out that because model scores on the same questions are typically strongly correlated, paired analysis is far more sensitive than comparing two independent confidence intervals.</p>
+</div>
+
+<div class="callout warn"><span class="t">Overlapping error bars do not mean "no difference"</span>
+<p>In the example, A's 95% CI is about [63.9, 72.1] and B's about [60.2, 68.6]. They overlap a lot, yet the paired test is significant. The reverse error is also common. Never judge a difference by eyeballing two separate error bars; compute the CI of the difference.</p>
+</div>
+
+<div data-widget="compare"></div>
+
+<h2>Power analysis: how big an eval do I need?</h2>
+<p><b>Statistical power</b> is the probability that your eval detects a real difference of a given size. The conventional target is 80% power at a 5% significance level. Power analysis runs the logic backwards: pick the smallest improvement you care about (the <b>minimum detectable effect</b>), and compute the number of questions required.</p>
+<p style="text-align:center"><code>n ≈ ( (z<sub>α/2</sub> + z<sub>power</sub>) × SD(d) / δ )²&nbsp;&nbsp;&nbsp;with z<sub>α/2</sub> = 1.96, z<sub>power</sub> = 0.84</code></p>
+<p>Worked example: you want to detect a 3-point improvement from 65% to 68%.</p>
+<ul>
+<li><b>Unpaired</b> (different questions for each model): SD(d) = √(0.65×0.35 + 0.68×0.32) = 0.667, so n ≈ (2.80 × 0.667 / 0.03)² ≈ <b>3,882 questions per model</b>.</li>
+<li><b>Paired</b>, assuming the models disagree on 12% of questions: SD(d) ≈ √(0.12 − 0.03²) = 0.345, so n ≈ <b>1,039 questions</b>.</li>
+</ul>
+<p>Two lessons. First, detecting small improvements needs far more questions than most teams have; a 100-item eval can only reliably detect differences of roughly 19 to 20 points or more unpaired (80% power). Second, the disagreement rate between models drives paired power, so you can estimate it from a pilot run and plan from there. If the math says you need 4,000 questions and you have 200, the honest move is to say "this eval can only detect large changes" rather than to read tea leaves in small ones.</p>
+
+<h2>Multiple comparisons and p-hacking</h2>
+<p>A 95% confidence level means that when there is truly no difference, you will still see a "significant" result 5% of the time. That is fine for one test. It is not fine when you run twenty.</p>
+<p>Suppose you try 20 prompt variants, none actually better than the baseline. The chance that at least one looks significantly better at p &lt; 0.05 is <code>1 − 0.95^20 = 64%</code>. Pick the best of 20 and you have probably selected noise. This is the <b>winner's curse</b>, and it is exactly the leaderboard problem "The Leaderboard Illusion" raises about private testing of many variants.</p>
+<p>Common forms in eval work, and what to do about each:</p>
+<div class="tablewrap"><table>
+<tr><th>Pattern</th><th>Why it misleads</th><th>Fix</th></tr>
+<tr><td>Trying many prompts/models, reporting the best</td><td>The maximum of many noisy scores is biased upward.</td><td>Select on a dev split, report on a held-out test split you touch once.</td></tr>
+<tr><td>Slicing results by 15 categories and highlighting the one that improved</td><td>Each slice is another test, and slices are small.</td><td>Pre-register the slices you care about; apply a correction (Bonferroni: use α/m, e.g. 0.05/20 = 0.0025; or Holm, or Benjamini-Hochberg for false discovery rate).</td></tr>
+<tr><td>Rerunning until the number looks good</td><td>Stopping when p &lt; 0.05 inflates false positives.</td><td>Fix n and epochs in advance; report all runs.</td></tr>
+<tr><td>Tweaking the grader after seeing results</td><td>The grader is fitted to the answer you wanted.</td><td>Freeze grader versions; validate graders on labelled data (Module 13).</td></tr>
+</table></div>
+
+<h2>Where variance comes from in agents</h2>
+<p>Agent evals are noisier than single-turn evals because randomness enters at every step and compounds. Knowing the sources tells you which ones to control and which to average over.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Sources of variance in an agent eval: question sampling, model sampling temperature, environment nondeterminism, tool and network flakiness, simulated user variation, and judge noise, all feeding into the final score.">
+<defs><marker id="m4l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="20" width="240" height="62" rx="8"/>
+<text x="36" y="44" class="b">Which tasks are in the set</text>
+<text x="36" y="64" class="sm">fix: more tasks; cluster SEs</text>
+<rect class="box accent" x="20" y="96" width="240" height="62" rx="8"/>
+<text x="36" y="120" class="b">Model sampling</text>
+<text x="36" y="140" class="sm">temperature, top-p, batching effects</text>
+<rect class="box warn" x="20" y="172" width="240" height="62" rx="8"/>
+<text x="36" y="196" class="b">Environment nondeterminism</text>
+<text x="36" y="216" class="sm">live websites, clocks, random seeds</text>
+<rect class="box warn" x="20" y="248" width="240" height="62" rx="8"/>
+<text x="36" y="272" class="b">Tool and infra flakiness</text>
+<text x="36" y="292" class="sm">timeouts, rate limits, sandbox crashes</text>
+<rect class="box violet" x="560" y="20" width="240" height="62" rx="8"/>
+<text x="576" y="44" class="b">Simulated user</text>
+<text x="576" y="64" class="sm">LLM user says different things</text>
+<rect class="box violet" x="560" y="96" width="240" height="62" rx="8"/>
+<text x="576" y="120" class="b">Judge noise</text>
+<text x="576" y="140" class="sm">LLM grader disagrees with itself</text>
+<rect class="box bad" x="560" y="172" width="240" height="62" rx="8"/>
+<text x="576" y="196" class="b">Compounding over steps</text>
+<text x="576" y="216" class="sm">one early deviation changes the path</text>
+<rect class="box good" x="330" y="120" width="160" height="80" rx="10"/>
+<text x="410" y="152" text-anchor="middle" class="lg">Final score</text>
+<text x="410" y="174" text-anchor="middle" class="sm">62.4% ± ?</text>
+<line class="ln" x1="260" y1="51" x2="336" y2="122" marker-end="url(#m4l)"/>
+<line class="ln" x1="260" y1="127" x2="326" y2="148" marker-end="url(#m4l)"/>
+<line class="ln" x1="260" y1="203" x2="326" y2="178" marker-end="url(#m4l)"/>
+<line class="ln" x1="260" y1="279" x2="340" y2="202" marker-end="url(#m4l)"/>
+<line class="ln" x1="560" y1="51" x2="484" y2="122" marker-end="url(#m4l)"/>
+<line class="ln" x1="560" y1="127" x2="494" y2="148" marker-end="url(#m4l)"/>
+<line class="ln" x1="560" y1="203" x2="494" y2="178" marker-end="url(#m4l)"/>
+<text x="680" y="268" text-anchor="middle" class="sm">fix: epochs, pinned environments,</text>
+<text x="680" y="286" text-anchor="middle" class="sm">retry infra errors, judge ensembles</text>
+</svg>
+<figcaption><b>Seven places randomness enters an agent eval.</b> Only the first is present in a classic static benchmark. Some you should remove (infra flakiness), some you should average over (model sampling), and some you should measure (judge noise).</figcaption>
+</figure>
+
+<ul>
+<li><b>Model sampling.</b> At temperature above zero, each token is sampled. Even at temperature 0, many hosted APIs are not bit-for-bit deterministic because of batching and floating-point effects, so do not assume two temperature-0 runs match. Evaluate at the temperature you will deploy with, and use epochs.</li>
+<li><b>Environment nondeterminism.</b> Live websites change (a reason WebVoyager-style evals drift), clocks and dates change, random IDs differ. Prefer containerised, snapshotted environments; Module 05 covers this.</li>
+<li><b>Tool and infrastructure flakiness.</b> A network timeout is not the agent's fault. Track infra errors separately, retry them (the run, not the agent's decision), and never let them silently count as agent failures or be silently dropped.</li>
+<li><b>Simulated users.</b> τ-bench style evals use an LLM to play the customer. The research notes for this course record that its user simulator is itself noisy (sometimes hallucinating or ending early). That noise lands in your score.</li>
+<li><b>Judge noise.</b> An LLM judge run twice on the same transcript can disagree with itself. Measure judge self-consistency and agreement with humans (Module 13), and consider averaging several judge calls.</li>
+<li><b>Compounding.</b> In a 30-step trajectory, a small random difference at step 3 can send the agent down a completely different path. That is why agent success rates vary more across epochs than single-answer accuracy does, and why pass^k matters.</li>
+</ul>
+
+<h2>How to report a result</h2>
+<p>Put everything together. A result that an expert reviewer will accept looks like this:</p>
+
+<div class="callout expert"><span class="t">Reporting template</span>
+<p><b>Task success: 62.4% ± 3.4</b> (95% CI, n = 500 tasks × 3 epochs, SE clustered by task)<br>
+<b>Δ vs baseline: +3.1 points [+1.0, +5.2]</b> (paired difference, same 500 tasks, 95% CI)<br>
+pass^3 = 41.8% · cost $0.21/task · latency p50 14 s / p95 48 s · 11.2 steps/task · infra error rate 0.6% (retried)<br>
+System: model + scaffold version, temperature, tool set · Grader: version, validated agreement with humans · Eval set: version, date</p>
+</div>
+<p>(The numbers are an illustrative example.) Why each part is there:</p>
+<ul>
+<li><b>± and "95% CI"</b>: say what the ± means. "±3.4" could be one SE or a 95% half-width; they differ by about 2×.</li>
+<li><b>n and epochs</b>: lets the reader sanity-check the interval. A reader who knows the table above can see that ±3.4 at n = 500 is plausible. It could not be ±2.1: with 500 pass/fail tasks the 95% half-width near 62% is ±4.25 with one epoch and cannot fall below about ±2.45 even with three.</li>
+<li><b>Clustering</b>: tells the reader you accounted for correlated tasks and repeated epochs.</li>
+<li><b>Paired Δ with its own CI</b>: the number decision-makers actually need ("is the new version better?"). Note that the Δ interval (±2.1) is narrower than the single-score interval (±3.4); that is pairing at work.</li>
+<li><b>pass^k, cost, latency, steps</b>: the metrics that decide whether you can actually ship.</li>
+<li><b>Versions</b>: evals are only comparable when system, grader and data are pinned (Module 02).</li>
+</ul>
+
+<h2>Your statistics toolkit (runnable code)</h2>
+<p>Everything in this module in one pure-Python file (standard library only, Python 3.8+). It reproduces every number in the worked examples above.</p>
+<pre data-lang="python"><code>import math, random
+from statistics import NormalDist
+
+Z95 = NormalDist().inv_cdf(0.975)            # 1.95996...
+
+def mean_se(scores):
+    """Mean and CLT standard error of per-question scores (0/1 or fractional)."""
+    n = len(scores)
+    m = sum(scores) / n
+    var = sum((s - m) ** 2 for s in scores) / (n - 1)   # sample variance
+    return m, math.sqrt(var / n)
+
+def wilson_ci(successes, n, z=Z95):
+    """Wilson score interval for a binomial proportion. Safe at 0/n and n/n."""
+    if n == 0:
+        return (0.0, 1.0)
+    p = successes / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return (max(0.0, centre - half), min(1.0, centre + half))
+
+def bootstrap_ci(scores, n_boot=10_000, alpha=0.05, seed=0):
+    """Percentile bootstrap CI for the mean: resample questions with replacement."""
+    rng = random.Random(seed)
+    n = len(scores)
+    means = sorted(sum(rng.choice(scores) for _ in range(n)) / n for _ in range(n_boot))
+    lo = means[int((alpha / 2) * n_boot)]
+    hi = means[int((1 - alpha / 2) * n_boot) - 1]
+    return lo, hi
+
+def paired_diff(a, b, z=Z95):
+    """Model A vs B on the SAME questions. a[i], b[i] = score on question i."""
+    d = [x - y for x, y in zip(a, b)]
+    m, se = mean_se(d)
+    p_value = 2 * (1 - NormalDist().cdf(abs(m / se))) if se &gt; 0 else float("nan")
+    return m, se, (m - z * se, m + z * se), p_value
+
+def clustered_se(scores, clusters):
+    """CLT standard error when questions come in groups (Miller 2024, eq. for clustered SE).
+    clusters[i] = id of the group question i belongs to (e.g. the passage)."""
+    n = len(scores)
+    m = sum(scores) / n
+    by_c = {}
+    for s, c in zip(scores, clusters):
+        by_c[c] = by_c.get(c, 0.0) + (s - m)     # sum of residuals within each cluster
+    return math.sqrt(sum(r * r for r in by_c.values())) / n
+
+def n_for_power(sd_diff, delta, alpha=0.05, power=0.80):
+    """Questions needed to detect a true mean difference `delta` (two-sided test)."""
+    z_a = NormalDist().inv_cdf(1 - alpha / 2)
+    z_b = NormalDist().inv_cdf(power)
+    return math.ceil(((z_a + z_b) * sd_diff / delta) ** 2)
+
+if __name__ == "__main__":
+    print("Wilson 9/10:", [round(x, 3) for x in wilson_ci(9, 10)])
+    print("Wilson 312/500:", [round(x, 3) for x in wilson_ci(312, 500)])
+
+    # The worked example below: 500 questions, A right on 340, B right on 322.
+    a = [1] * 300 + [1] * 40 + [0] * 22 + [0] * 138     # both, A only, B only, neither
+    b = [1] * 300 + [0] * 40 + [1] * 22 + [0] * 138
+    m, se, ci, p = paired_diff(a, b)
+    print(f"paired: diff={m:.3f} se={se:.4f} CI=({ci[0]:.3f}, {ci[1]:.3f}) p={p:.3f}")
+    print("bootstrap CI of A:", bootstrap_ci(a, n_boot=2000))
+
+    # Clustering: 100 passages x 5 questions, questions in a passage tend to agree.
+    rng = random.Random(1)
+    scores, clus = [], []
+    for c in range(100):
+        p_passage = rng.choice([0.1, 0.9])            # easy or hard passage
+        for _ in range(5):
+            scores.append(1 if rng.random() &lt; p_passage else 0); clus.append(c)
+    print("naive SE:", round(mean_se(scores)[1], 4), " clustered SE:", round(clustered_se(scores, clus), 4))
+
+    # Power: unpaired 65% vs 68% needs sd_diff = sqrt(p1q1 + p2q2); paired with 12% discordance.
+    print("unpaired n:", n_for_power(math.sqrt(.65*.35 + .68*.32), 0.03))
+    print("paired n:  ", n_for_power(math.sqrt(0.12 - 0.03**2), 0.03))</code></pre>
+<p>Output:</p>
+<pre data-lang="text"><code>Wilson 9/10: [0.596, 0.982]
+Wilson 312/500: [0.581, 0.665]
+paired: diff=0.036 se=0.0157 CI=(0.005, 0.067) p=0.022
+bootstrap CI of A: (0.64, 0.72)
+naive SE: 0.0223  clustered SE: 0.0427
+unpaired n: 3882
+paired n:   1039</code></pre>
+
+<h3>The numpy version (for real eval logs)</h3>
+<p>With a matrix of <code>[questions × epochs]</code> scores, numpy makes the bootstrap vectorised and fast:</p>
+<pre data-lang="python"><code>import numpy as np
+
+rng = np.random.default_rng(0)
+
+# scores[q, e] = score of question q on epoch e (here: 500 questions x 3 epochs, 0/1)
+scores = (rng.random((500, 3)) &lt; rng.beta(1.3, 0.8, size=(500, 1))).astype(float)
+
+per_q = scores.mean(axis=1)                        # average epochs FIRST (one number per question)
+mean = per_q.mean()
+se = per_q.std(ddof=1) / np.sqrt(len(per_q))       # CLT standard error over questions
+print(f"mean={mean:.3f}  95% CI=({mean-1.96*se:.3f}, {mean+1.96*se:.3f})")
+
+# Vectorised bootstrap: 10,000 resamples of question indices at once.
+idx = rng.integers(0, len(per_q), size=(10_000, len(per_q)))
+boot_means = per_q[idx].mean(axis=1)
+lo, hi = np.percentile(boot_means, [2.5, 97.5])
+print(f"bootstrap 95% CI=({lo:.3f}, {hi:.3f})")
+
+# Paired bootstrap for a difference: resample the SAME indices for both models.
+other = np.clip(per_q + rng.normal(0.03, 0.2, size=per_q.shape), 0, 1)   # a fake model B
+diff = other - per_q
+boot_diff = diff[idx].mean(axis=1)
+print("paired diff CI:", np.percentile(boot_diff, [2.5, 97.5]).round(3))</code></pre>
+<p>If you have scipy, <code>scipy.stats.binomtest(k, n).proportion_ci(method="wilson")</code> gives the Wilson interval and <code>scipy.stats.bootstrap</code> does percentile or BCa bootstraps. For regression-style analyses with clustered errors, statsmodels supports cluster-robust covariance. The pure-Python versions above are there so you understand what those calls do.</p>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. Your agent passes 8 of 10 test tasks. What is the most honest summary?</p>
+<button class="opt">80% success rate</button>
+<button class="opt">80%, but the 95% Wilson interval runs from about 49% to 94%, so we know very little yet</button>
+<button class="opt">80% ± 0, since every task was graded exactly</button>
+<div class="why">With n = 10 the interval is enormous. Exact grading of each task does not remove sampling variance from which tasks you picked and what the agent happened to do.</div></div>
+<div class="q" data-answer="2"><p>2. A task has per-trial success 0.9. Assuming independent trials, what are pass@3 and pass^3?</p>
+<button class="opt">Both 0.9</button>
+<button class="opt">pass@3 = 0.729, pass^3 = 0.999</button>
+<button class="opt">pass@3 = 0.999, pass^3 = 0.729</button>
+<div class="why">pass@3 = 1 − 0.1³ = 0.999 (at least one success). pass^3 = 0.9³ = 0.729 (all three succeed). A "90% agent" fails at least once in three tries more than a quarter of the time.</div></div>
+<div class="q" data-answer="0"><p>3. Models A and B are run on the same 300 questions. What is the best way to test whether A is better?</p>
+<button class="opt">Compute each question's score difference and a confidence interval for the mean difference (paired test)</button>
+<button class="opt">Check whether their two 95% confidence intervals overlap</button>
+<button class="opt">Whichever has the higher score is better</button>
+<div class="why">Pairing removes shared question difficulty from the noise and is much more sensitive. Overlapping intervals are a poor test in both directions.</div></div>
+<div class="q" data-answer="2"><p>4. Your benchmark has 40 websites with 10 tasks each. Why might the naive standard error be misleading?</p>
+<button class="opt">Because 400 is too few tasks for the CLT</button>
+<button class="opt">Because websites make tasks harder</button>
+<button class="opt">Tasks on the same site succeed or fail together, so the effective sample size is smaller; use clustered SEs or a cluster bootstrap</button>
+<div class="why">Correlated results within a cluster carry less information than independent ones. Miller (2024) shows naive SEs can understate uncertainty by more than 3×.</div></div>
+<div class="q" data-answer="1"><p>5. You test 20 prompt variants against a baseline, and one is "significant" at p = 0.04. What should you do?</p>
+<button class="opt">Ship it: p &lt; 0.05</button>
+<button class="opt">Treat it as a candidate and confirm on a fresh held-out set (or apply a multiple-comparison correction)</button>
+<button class="opt">Run it again until p is smaller</button>
+<div class="why">With 20 tries, the chance of at least one false positive is about 64%. A Bonferroni threshold would be 0.0025. Confirm on data you did not use for selection.</div></div>
+<div class="q" data-answer="0"><p>6. Which change most reduces the width of your confidence interval for a fixed budget of agent runs, when question difficulty varies a lot?</p>
+<button class="opt">More distinct questions with fewer epochs each</button>
+<button class="opt">Fewer questions with many epochs each</button>
+<button class="opt">It makes no difference</button>
+<div class="why">Epochs only reduce within-question variance. Between-question variance only shrinks with more questions. When difficulty varies a lot, most variance is between questions.</div></div>
+</div>
+
+<details>
+<summary>Interview questions (with model answers)</summary>
+<p><b>Q: Why is 1 − (1 − c/n)^k a biased estimator of pass@k, and what did Chen et al. do instead?</b><br>
+Because the function is nonlinear, plugging in a noisy estimate of p does not give the right expected value. Chen et al. use the combinatorial estimator 1 − C(n−c,k)/C(n,k), the probability that a random size-k subset of the n observed samples contains a correct one, which is exactly unbiased, computed with a stable product.</p>
+<p><b>Q: A model's pass@1 is 70% and its pass^8 is 20%. What does that tell you?</b><br>
+The agent is inconsistent: many tasks are solved sometimes but not reliably. If tasks were either always solved or never solved, pass^8 would equal pass@1. Look for tasks with intermediate per-task success and diagnose why the behaviour varies.</p>
+<p><b>Q: When would you prefer the bootstrap to a CLT interval?</b><br>
+For statistics without a simple SE formula (medians, percentiles, F1, pass^k averaged over tasks, ratings), for small or skewed samples, and when you need to respect a complex dependence structure by resampling clusters.</p>
+<p><b>Q: Two models are 1.5 points apart on a 198-question benchmark. Is one better?</b><br>
+Not on that evidence alone. An unpaired 95% half-width near 50% at n = 198 is about ±7 points per model. A paired analysis on the same questions, several epochs, and ideally a larger or complementary benchmark are needed before claiming a difference.</p>
+<p><b>Q: Why did LMArena move from online Elo to Bradley-Terry?</b><br>
+Online Elo depends on the order of games and is designed for players whose skill changes. Models are static, so fitting a Bradley-Terry model to all votes at once gives order-independent ratings with proper (bootstrap) confidence intervals.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Chen et al. (OpenAI), 2021, <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> (HumanEval, unbiased pass@k estimator).</li>
+<li>Yao, Shinn, Razavi, Narasimhan (Sierra), 2024, <a href="https://arxiv.org/abs/2406.12045">τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains</a> (pass^k).</li>
+<li>Evan Miller (Anthropic), 2024, <a href="https://arxiv.org/abs/2411.00640">Adding Error Bars to Evals: A Statistical Approach to Language Model Evaluations</a>, and the blog post <a href="https://www.anthropic.com/research/statistical-approach-to-model-evals">A statistical approach to model evaluations</a>.</li>
+<li>Chiang, Zheng et al., 2024, <a href="https://arxiv.org/abs/2403.04132">Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference</a> (Elo, Bradley-Terry, bootstrap CIs).</li>
+<li>Zheng et al., 2023, <a href="https://arxiv.org/abs/2306.05685">Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</a> (position and verbosity bias).</li>
+<li>Singh et al., 2025, <a href="https://arxiv.org/abs/2504.20879">The Leaderboard Illusion</a>.</li>
+<li>Kwa, West et al. (METR), 2025, <a href="https://arxiv.org/abs/2503.14499">Measuring AI Ability to Complete Long Tasks</a> (repeated runs per task).</li>
+<li>UK AI Security Institute, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a> (epochs and score reducers).</li>
+<li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval">Binomial proportion confidence interval</a> (Wald, Wilson and other intervals).</li>
+<li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">Bootstrapping (statistics)</a>, and <a href="https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model">Bradley-Terry model</a>.</li>
+<li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Multiple_comparisons_problem">Multiple comparisons problem</a>.</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,1267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>14 · The tools landscape · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 14 · Part III · Practice</div>
+<h1>The tools landscape</h1>
+<p class="lede">There are dozens of eval tools, and their marketing pages all sound the same. Underneath, they fall into five families that answer different questions. Once you see the families, and see that every tool is the same four boxes with different names, picking one becomes a short decision rather than a week of reading.</p>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill">~50 min</span><span class="pill">Prerequisites: <a href="02-anatomy-of-an-eval.html">02</a>, <a href="03-graders.html">03</a>, <a href="13-llm-as-judge.html">13</a></span><span class="pill">Facts checked 2026-09-29</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Sort any eval tool into one of five families and place it on a two-axis map (offline vs online, library vs hosted platform).</li>
+<li>Explain what each major tool (Inspect, promptfoo, DeepEval, Braintrust, LangSmith, Langfuse, Phoenix, Weave, Opik, MLflow, Ragas, TruLens, lm-eval-harness, HELM and the cloud services) is best at, and where it is weak.</li>
+<li>Read and write the same small eval in five different tools, and translate vocabulary between them.</li>
+<li>Choose a tool (or a stack of tools) for a given team, and argue the trade-offs on licensing, lock-in and data privacy.</li>
+</ul>
+</div>
+
+<div class="callout warn"><span class="t">This field moves fast: dated facts</span>
+<p>Everything factual on this page was checked against official docs and repositories on <b>2026-09-29</b>. Four changes you may not know about: <b>OpenAI is shutting down its hosted Evals platform and graders</b> (read-only from 2026-10-31, shut down 2026-11-30) and recommends <b>promptfoo</b>, which <b>OpenAI acquired</b> (announced 2026-03-09). <b>Langfuse became part of ClickHouse</b> (January 2026). <b>Inspect</b> is now co-developed by the UK AI Security Institute and the non-profit <b>Meridian Labs</b>. And Google renamed <b>Vertex AI</b> to <b>Gemini Enterprise Agent Platform</b> (April 2026). Where a detail could not be verified from a primary source, this page leaves it out rather than guess.</p>
+</div>
+
+<div data-toc></div>
+
+<h2>A mental model: five families of tools</h2>
+<p>Every tool in this module implements the pipeline from <a href="01-what-are-evals.html">Module 01</a>: a <b>dataset</b> of inputs, a <b>system under test</b> that produces outputs, a <b>grader</b> that scores them, and a <b>metric</b> that aggregates scores so you can compare runs. What differs is <em>who the tool was built for</em> and therefore <em>which question it answers best</em>. That gives five families.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 400" role="img" aria-label="Five families of eval tools, each answering a different question: research harnesses, developer test and CI tools, observability plus eval platforms, metric and judge libraries, and cloud vendor services.">
+<rect class="box violet" x="10" y="14" width="152" height="84" rx="8"/>
+<text x="86" y="36" text-anchor="middle" class="b">Research</text>
+<text x="86" y="52" text-anchor="middle" class="b">harnesses</text>
+<text x="86" y="72" text-anchor="middle" class="sm">"How capable or</text>
+<text x="86" y="87" text-anchor="middle" class="sm">safe is this model?"</text>
+<rect class="box good" x="172" y="14" width="152" height="84" rx="8"/>
+<text x="248" y="36" text-anchor="middle" class="b">Developer test</text>
+<text x="248" y="52" text-anchor="middle" class="b">and CI tools</text>
+<text x="248" y="72" text-anchor="middle" class="sm">"Did my prompt or</text>
+<text x="248" y="87" text-anchor="middle" class="sm">model change break it?"</text>
+<rect class="box accent" x="334" y="14" width="152" height="84" rx="8"/>
+<text x="410" y="36" text-anchor="middle" class="b">Observability +</text>
+<text x="410" y="52" text-anchor="middle" class="b">eval platforms</text>
+<text x="410" y="72" text-anchor="middle" class="sm">"What is happening in</text>
+<text x="410" y="87" text-anchor="middle" class="sm">prod, and is v2 better?"</text>
+<rect class="box warn" x="496" y="14" width="152" height="84" rx="8"/>
+<text x="572" y="36" text-anchor="middle" class="b">Metric and</text>
+<text x="572" y="52" text-anchor="middle" class="b">judge libraries</text>
+<text x="572" y="72" text-anchor="middle" class="sm">"How do I score</text>
+<text x="572" y="87" text-anchor="middle" class="sm">this kind of output?"</text>
+<rect class="box" x="658" y="14" width="152" height="84" rx="8"/>
+<text x="734" y="36" text-anchor="middle" class="b">Cloud vendor</text>
+<text x="734" y="52" text-anchor="middle" class="b">services</text>
+<text x="734" y="72" text-anchor="middle" class="sm">"Can I eval where my</text>
+<text x="734" y="87" text-anchor="middle" class="sm">models already run?"</text>
+
+<rect class="box plain" x="10" y="108" width="152" height="224" rx="8"/>
+<text x="22" y="132" class="mono">Inspect</text>
+<text x="22" y="154" class="mono">lm-eval-harness</text>
+<text x="22" y="176" class="mono">HELM</text>
+<text x="22" y="198" class="mono">Lighteval</text>
+<text x="22" y="220" class="mono">OpenBench</text>
+<text x="22" y="242" class="mono">Harbor</text>
+<text x="22" y="264" class="mono">Petri, Bloom</text>
+<text x="22" y="292" class="sm">legacy: simple-evals,</text>
+<text x="22" y="307" class="sm">OpenAI Evals repo</text>
+
+<rect class="box plain" x="172" y="108" width="152" height="224" rx="8"/>
+<text x="184" y="132" class="mono">promptfoo</text>
+<text x="184" y="154" class="mono">DeepEval</text>
+<text x="184" y="176" class="mono">Pydantic Evals</text>
+<text x="184" y="198" class="mono">Google ADK eval</text>
+<text x="184" y="230" class="sm">also: LangSmith and</text>
+<text x="184" y="245" class="sm">Opik pytest hooks</text>
+
+<rect class="box plain" x="334" y="108" width="152" height="224" rx="8"/>
+<text x="346" y="132" class="mono">Braintrust</text>
+<text x="346" y="154" class="mono">LangSmith</text>
+<text x="346" y="176" class="mono">Langfuse</text>
+<text x="346" y="198" class="mono">Arize Phoenix</text>
+<text x="346" y="220" class="mono">W&amp;B Weave</text>
+<text x="346" y="242" class="mono">Opik</text>
+<text x="346" y="264" class="mono">MLflow GenAI</text>
+
+<rect class="box plain" x="496" y="108" width="152" height="224" rx="8"/>
+<text x="508" y="132" class="mono">Ragas</text>
+<text x="508" y="154" class="mono">TruLens</text>
+<text x="508" y="176" class="mono">autoevals</text>
+<text x="508" y="198" class="mono">openevals</text>
+<text x="508" y="220" class="mono">phoenix-evals</text>
+<text x="508" y="242" class="mono">Patronus AI</text>
+<text x="508" y="264" class="sm">(judge models)</text>
+
+<rect class="box plain" x="658" y="108" width="152" height="224" rx="8"/>
+<text x="670" y="132" class="mono">OpenAI Evals API</text>
+<text x="670" y="147" class="sm t-bad">shuts down 2026-11-30</text>
+<text x="670" y="174" class="mono">Google Gen AI</text>
+<text x="670" y="189" class="mono">evaluation</text>
+<text x="670" y="216" class="mono">Microsoft Foundry</text>
+<text x="670" y="231" class="mono">evaluation</text>
+<text x="670" y="258" class="mono">Anthropic Console</text>
+<text x="670" y="273" class="mono">Evaluate tool</text>
+
+<line class="ln" x1="30" y1="360" x2="790" y2="360"/>
+<text x="30" y="385" class="sm">used most by: labs, AI safety institutes, researchers</text>
+<text x="790" y="385" text-anchor="end" class="sm">product and platform teams</text>
+</svg>
+<figcaption><b>Five families, five questions.</b> Tools in the same column compete with each other; tools in different columns usually complement each other. Many real teams use one tool from two or three columns at once (see "How tools compose" below).</figcaption>
+</figure>
+
+<p>In one sentence each:</p>
+<ul>
+<li><b>Research harnesses</b> run standardised tasks against models, often in sandboxes, with a strong focus on reproducibility. Their user is a researcher comparing <em>models</em>, not a product team comparing <em>prompts</em>.</li>
+<li><b>Developer test and CI tools</b> feel like a test runner. You write cases in a config file or as test functions, run a command, and get pass or fail. They plug into GitHub Actions or pytest.</li>
+<li><b>Observability plus eval platforms</b> start from <b>tracing</b>: recording every model call, tool call and step of your live application as a tree of <b>spans</b> (a span is one timed unit of work, such as "call the search tool"; a <b>trace</b> is the whole tree for one request). They add datasets, experiments and LLM judges on top, usually with a web UI for the team.</li>
+<li><b>Metric and judge libraries</b> give you scoring functions (faithfulness, factuality, helpfulness) and nothing else. You call them from whichever harness or platform you use.</li>
+<li><b>Cloud vendor services</b> are evaluation features inside a model provider's or cloud's console, convenient if you are already committed to that vendor.</li>
+</ul>
+
+<div class="callout analogy"><span class="t">Analogy: the kitchen</span>
+<p>A research harness is a food-science lab: precise, reproducible, slow to set up. A developer test tool is the chef tasting every dish before it leaves the pass. An observability platform is the CCTV and the customer comment cards in the dining room. A metric library is the thermometer and the scales: you use them in all the other places. Cloud services are the kitchen that came pre-fitted with the building you rented.</p>
+</div>
+
+<h2>The landscape map</h2>
+<p>Families are useful, but tools blur the edges. A second way to see the market is a map with two axes:</p>
+<ul>
+<li><b>Horizontal: offline and research ↔ online and production.</b> Offline means you run a fixed dataset before release. Online means you score real traffic after release (see <a href="15-production-evals.html">Module 15</a>).</li>
+<li><b>Vertical: code-first library ↔ hosted platform.</b> A library is something you <code>pip install</code> and run on your own machine or CI. A hosted platform has a server, a database and a team UI (run by a vendor, or by you if it is self-hostable).</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 540" role="img" aria-label="Qualitative map of eval tools. Research harnesses sit bottom-left (offline, code-first). Developer test tools sit bottom-middle. Observability platforms sit top-right (online, hosted). Cloud services sit top-left and top-middle.">
+<defs><marker id="m14a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="70" y1="470" x2="805" y2="470" marker-end="url(#m14a)"/>
+<line class="ln" x1="70" y1="470" x2="70" y2="22" marker-end="url(#m14a)"/>
+<line class="ln dash" x1="437" y1="30" x2="437" y2="466"/>
+<line class="ln dash" x1="74" y1="250" x2="800" y2="250"/>
+<text x="437" y="496" text-anchor="middle" class="sm">offline, research, pre-release  ←→  online, production traffic</text>
+<text x="34" y="250" text-anchor="middle" class="sm" transform="rotate(-90 34 250)">code-first library  ←→  hosted platform</text>
+<text x="80" y="42" class="sm t-muted">hosted, pre-release</text>
+<text x="795" y="42" text-anchor="end" class="sm t-muted">production platforms</text>
+<text x="80" y="462" class="sm t-muted">research libraries</text>
+<text x="795" y="462" text-anchor="end" class="sm t-muted">self-hostable, open source</text>
+
+<!-- research (violet) -->
+<circle cx="92" cy="428" r="5" class="fill-violet"/><text x="100" y="432">lm-eval-harness</text>
+<circle cx="92" cy="395" r="5" class="fill-violet"/><text x="100" y="399">Lighteval, OpenBench</text>
+<circle cx="92" cy="362" r="5" class="fill-violet"/><text x="100" y="366">simple-evals (frozen)</text>
+<circle cx="92" cy="329" r="5" class="fill-violet"/><text x="100" y="333">OpenAI Evals repo</text>
+<circle cx="250" cy="428" r="5" class="fill-violet"/><text x="258" y="432">HELM</text>
+<circle cx="250" cy="300" r="5" class="fill-violet"/><text x="258" y="304" class="b">Inspect</text>
+<circle cx="320" cy="400" r="5" class="fill-violet"/><text x="328" y="404">Harbor</text>
+
+<!-- dev test (good) -->
+<circle cx="360" cy="345" r="5" class="fill-good"/><text x="368" y="349" class="b">promptfoo</text>
+<circle cx="400" cy="378" r="5" class="fill-good"/><text x="408" y="382" class="b">DeepEval</text>
+<circle cx="455" cy="425" r="5" class="fill-good"/><text x="463" y="429">Pydantic Evals</text>
+<circle cx="240" cy="270" r="5" class="fill-good"/><text x="248" y="274">ADK eval</text>
+
+<!-- metric libs (warn) -->
+<circle cx="560" cy="400" r="5" class="fill-warn"/><text x="568" y="404">Ragas</text>
+<circle cx="600" cy="360" r="5" class="fill-warn"/><text x="608" y="364">TruLens</text>
+
+<!-- platforms (accent) -->
+<circle cx="600" cy="300" r="5" class="fill-accent"/><text x="608" y="304">MLflow</text>
+<circle cx="670" cy="325" r="5" class="fill-accent"/><text x="678" y="329">Phoenix</text>
+<circle cx="560" cy="232" r="5" class="fill-accent"/><text x="568" y="236">Opik</text>
+<circle cx="680" cy="270" r="5" class="fill-accent"/><text x="688" y="274" class="b">Langfuse</text>
+<circle cx="610" cy="190" r="5" class="fill-accent"/><text x="618" y="194">W&amp;B Weave</text>
+<circle cx="690" cy="150" r="5" class="fill-accent"/><text x="698" y="154" class="b">LangSmith</text>
+<circle cx="640" cy="108" r="5" class="fill-accent"/><text x="648" y="112" class="b">Braintrust</text>
+<circle cx="700" cy="70" r="5" class="fill-warn"/><text x="708" y="74">Patronus AI</text>
+
+<!-- cloud (muted) -->
+<circle cx="120" cy="80" r="5" class="fill-muted"/><text x="128" y="84">Anthropic Console</text>
+<circle cx="300" cy="110" r="5" class="fill-muted"/><text x="308" y="114">OpenAI Evals API †</text>
+<circle cx="380" cy="160" r="5" class="fill-muted"/><text x="388" y="164">Google Gen AI eval</text>
+<circle cx="420" cy="205" r="5" class="fill-muted"/><text x="428" y="209">MS Foundry eval</text>
+
+<!-- legend -->
+<circle cx="90" cy="522" r="5" class="fill-violet"/><text x="100" y="526" class="sm">research harness</text>
+<circle cx="220" cy="522" r="5" class="fill-good"/><text x="230" y="526" class="sm">dev test / CI</text>
+<circle cx="330" cy="522" r="5" class="fill-accent"/><text x="340" y="526" class="sm">observability + eval</text>
+<circle cx="480" cy="522" r="5" class="fill-warn"/><text x="490" y="526" class="sm">metric / judge</text>
+<circle cx="600" cy="522" r="5" class="fill-muted"/><text x="610" y="526" class="sm">cloud service  († shutting down)</text>
+</svg>
+<figcaption><b>The eval tools landscape (qualitative positioning, not measured data).</b> Positions are the author's judgement of each tool's centre of gravity from its docs; most tools stretch across regions. For example, Braintrust and LangSmith both run offline experiments too, and DeepEval can send results to the hosted Confident AI platform.</figcaption>
+</figure>
+
+<p>Read the map diagonally. The <b>bottom-left</b> is where frontier labs, safety institutes and academics live: free, code-first, reproducible, no production concept at all. The <b>top-right</b> is where product teams live once they have real users: hosted UIs, traces from production, judges running on sampled traffic. The <b>bottom-middle</b> is the developer's inner loop: a CLI or pytest in CI. The <b>top-left</b> is vendor consoles: easy, point-and-click, tied to one provider.</p>
+
+<div class="callout tip"><span class="t">Key idea</span>
+<p>The most common beginner mistake is to compare tools from different regions as if they were rivals. "Inspect or Langfuse?" is like "microscope or security camera?". The right question is usually "which harness for offline evals <em>and</em> which platform for production traces?".</p>
+</div>
+
+<h2>Tool by tool</h2>
+<p>Each card gives the maker, licence, language, core abstractions (the nouns you will type), what it is best at, and how it handles agents, multimodal inputs and LLM judges (<a href="13-llm-as-judge.html">Module 13</a>). Snippets are copied from each tool's official docs or README (trimmed where marked). If a feature is not listed, it is because it could not be verified from a primary source, not necessarily because it is missing.</p>
+
+<h3>Research harnesses</h3>
+
+<div class="card violet" style="margin:16px 0">
+<h4>Inspect (<code>inspect_ai</code>)</h4>
+<p><b>Maker:</b> UK AI Security Institute and Meridian Labs (a 501(c)(3) non-profit). <b>Licence:</b> MIT. <b>Language:</b> Python (log viewer in TypeScript/React). Used by the UK AISI, US CAISI, EU AI Office, and the Japanese and Korean AISIs.</p>
+<ul>
+<li><b>Core abstractions:</b> a <code>Task</code> combines a <code>Dataset</code> (samples with <code>input</code> and <code>target</code>), a <code>Solver</code> (anything from a single <code>generate()</code> call to a full agent) and a <code>Scorer</code> (text match, model grading, or custom).</li>
+<li><b>Best at:</b> rigorous, reproducible research and safety evals of models and agents. Ships with 200+ pre-built evals in <code>inspect_evals</code>.</li>
+<li><b>Agents and tools:</b> the strongest here. Built-in <code>react()</code> agent; custom and MCP tools; built-in bash, python, text editor, web search, web browsing and computer tools; sandboxes in Docker, Kubernetes, Modal, Proxmox and Vagrant. "Agent Bridge" plugs in external agent frameworks, and Inspect SWE runs Claude Code or Codex CLI as the agent under test.</li>
+<li><b>Multimodal:</b> image, audio and video inputs. <b>Judge:</b> <code>model_graded_qa()</code> and other model-graded scorers. <b>Viewing:</b> Inspect View (web log viewer) and Inspect Scout for scanning transcripts.</li>
+</ul>
+<pre data-lang="python"><code>from inspect_ai import Task, task
+from inspect_ai.dataset import FieldSpec, hf_dataset
+from inspect_ai.scorer import model_graded_qa
+from inspect_ai.solver import generate
+
+@task
+def simpleqa():
+    return Task(
+        dataset=hf_dataset(
+            "codelion/SimpleQA-Verified",
+            split="train",
+            sample_fields=FieldSpec(input="problem", target="answer"),
+        ),
+        solver=generate(),          # swap for an agent, e.g. react() with tools
+        scorer=model_graded_qa(),   # an LLM judge compares output to target
+    )</code></pre>
+</div>
+
+<div class="card violet" style="margin:16px 0">
+<h4>EleutherAI lm-evaluation-harness</h4>
+<p><b>Maker:</b> EleutherAI. <b>Licence:</b> MIT. <b>Language:</b> Python, with tasks defined in YAML plus Jinja2 prompt templates.</p>
+<ul>
+<li><b>Best at:</b> few-shot academic benchmarks on open-weight models (60+ benchmarks, hundreds of subtasks). It is the backend of the Hugging Face Open LLM Leaderboard. Backends include Hugging Face transformers, vLLM and API models.</li>
+<li><b>Agents:</b> not a focus. <b>Multimodal:</b> prototype only (<code>hf-multimodal</code>, <code>vllm-vlm</code>), with a pointer to the <code>lmms-eval</code> fork.</li>
+<li><b>Recent:</b> CLI subcommands (<code>lm-eval run</code>, <code>lm-eval ls</code>, <code>lm-eval validate</code>) and a plugin system.</li>
+</ul>
+<pre data-lang="bash"><code>lm_eval --model hf \
+    --model_args pretrained=EleutherAI/gpt-j-6B \
+    --tasks hellaswag \
+    --device cuda:0 \
+    --batch_size 8</code></pre>
+</div>
+
+<div class="card violet" style="margin:16px 0">
+<h4>HELM (Stanford CRFM)</h4>
+<p><b>Maker:</b> Stanford Center for Research on Foundation Models. <b>Licence:</b> Apache-2.0. <b>Language:</b> Python.</p>
+<ul>
+<li><b>Best at:</b> "holistic, reproducible and transparent evaluation of foundation models": standardised scenarios, metrics beyond accuracy, and public leaderboards (HELM Capabilities, HELM Safety, VHELM for vision-language, and domain boards).</li>
+<li><b>Multimodal:</b> yes, via VHELM. <b>Agents:</b> not its focus.</li>
+</ul>
+<pre data-lang="bash"><code>helm-run --run-entries mmlu:subject=philosophy,model=openai/gpt2 --suite my-suite --max-eval-instances 10
+helm-summarize --suite my-suite
+helm-server --suite my-suite   # browse results at http://localhost:8000/</code></pre>
+</div>
+
+<div class="card violet" style="margin:16px 0">
+<h4>Harbor (Terminal-Bench harness)</h4>
+<p><b>Maker:</b> the creators of Terminal-Bench (Laude Institute). <b>Licence:</b> Apache-2.0.</p>
+<ul>
+<li><b>Best at:</b> containerised end-to-end agent evals where the agent under test is a full CLI agent (Claude Code, OpenHands, Codex CLI and more) and grading is by outcome tests inside the container. Official harness for <b>Terminal-Bench 2.0</b>; runs in parallel on cloud sandboxes (Daytona, Modal and others) and can generate RL rollouts. Anthropic's agent-eval post cites it.</li>
+</ul>
+<pre data-lang="bash"><code>export ANTHROPIC_API_KEY=&lt;YOUR-KEY&gt;
+harbor run --dataset terminal-bench@2.0 \
+   --agent claude-code \
+   --model anthropic/claude-opus-4-1 \
+   --n-concurrent 4</code></pre>
+</div>
+
+<div class="card violet" style="margin:16px 0">
+<h4>Smaller and legacy research tools</h4>
+<ul>
+<li><b>Lighteval</b> (Hugging Face, MIT): 1000+ tasks; <code>inspect-ai</code> is its preferred backend. Example: <code>lighteval eval "hf-inference-providers/openai/gpt-oss-20b" gpqa:diamond</code>.</li>
+<li><b>OpenBench</b> (Groq, MIT): 95+ benchmarks built on <code>inspect-ai</code>. Example: <code>bench eval mmlu --model groq/openai/gpt-oss-120b --limit 10</code>.</li>
+<li><b>Petri</b> and <b>Bloom</b> (both started at Anthropic, both MIT, now developed by Meridian Labs): Petri is an automated auditing agent (auditor, target, judge) for alignment behaviours; Bloom auto-generates behavioural evals for one target behaviour in four stages (Understanding, Ideation, Rollout, Judgment). See <a href="17-safety-evals.html">Module 17</a>.</li>
+<li><b>OpenAI simple-evals</b> (MIT): reference implementations of MMLU, GPQA, MATH, HumanEval, SimpleQA, BrowseComp, HealthBench and others. "As of July 2025, simple-evals will no longer be updated for new models or benchmark results"; HealthBench, BrowseComp and SimpleQA are still maintained as reference code.</li>
+<li><b>OpenAI Evals repo</b> (<code>openai/evals</code>, MIT): a registry of evals defined in YAML plus JSONL data; not accepting evals with custom code. Treat it as a historical reference.</li>
+</ul>
+</div>
+
+<h3>Developer test and CI tools</h3>
+
+<div class="card good" style="margin:16px 0">
+<h4>promptfoo</h4>
+<p><b>Maker:</b> Promptfoo, now part of OpenAI (acquisition announced 2026-03-09): "Promptfoo remains open source and MIT licensed." <b>Licence:</b> MIT. <b>Language:</b> TypeScript/Node CLI; you write config in YAML.</p>
+<ul>
+<li><b>Core abstractions:</b> <code>prompts</code> × <code>providers</code> (models) × <code>tests</code> (each with <code>vars</code> and <code>assert</code>). Assertion types include <code>equals</code>, <code>contains</code>, <code>contains-json</code>, <code>javascript</code>, <code>similar</code> and <code>llm-rubric</code>.</li>
+<li><b>Best at:</b> declarative regression matrices (every prompt against every model against every test) and <b>red teaming</b> (automated vulnerability scanning). OpenAI's recommended replacement for its Evals platform.</li>
+<li><b>Judge:</b> the <code>llm-rubric</code> assertion. <b>CI:</b> the GitHub Action <code>promptfoo/promptfoo-action@v1</code> posts eval diffs on pull requests. <b>Agents:</b> agent and RAG testing are listed features.</li>
+</ul>
+<pre data-lang="yaml"><code>prompts:
+  - file://prompt1.txt
+  - file://prompt2.txt
+providers:
+  - openai:gpt-6-luna
+  - id: vertex:gemini-3.5-flash
+    config:
+      region: global
+tests:
+  - vars:
+      language: French
+      input: Hello world
+    assert:
+      - type: llm-rubric
+        value: does not describe self as an AI, model, or chatbot</code></pre>
+</div>
+
+<div class="card good" style="margin:16px 0">
+<h4>DeepEval (Confident AI)</h4>
+<p><b>Maker:</b> Confident AI. <b>Licence:</b> Apache-2.0. <b>Language:</b> Python. Optional hosted platform (Confident AI, commercial).</p>
+<ul>
+<li><b>Core abstractions:</b> <code>LLMTestCase</code> (input, actual output, expected output, context), metrics such as <code>GEval</code>, and <code>assert_test()</code>, run by pytest or <code>deepeval test run</code>.</li>
+<li><b>Best at:</b> "unit tests for LLMs": pytest-style assertions with a large catalogue of metrics.</li>
+<li><b>Agents:</b> metrics TaskCompletion, ToolCorrectness, GoalAccuracy, StepEfficiency, PlanAdherence; trajectory evaluation via <code>@observe()</code> tracing. <b>Multimodal:</b> multimodal metrics (for example image generation and editing quality). <b>Judge:</b> G-Eval, and most metrics are judge-based.</li>
+</ul>
+<pre data-lang="python"><code>from deepeval import assert_test
+from deepeval.metrics import GEval
+from deepeval.test_case import LLMTestCase, SingleTurnParams  # older docs: LLMTestCaseParams
+
+def test_case():
+    correctness = GEval(
+        name="Correctness",
+        criteria="Determine if the 'actual output' is correct based on the 'expected output'.",
+        evaluation_params=[SingleTurnParams.ACTUAL_OUTPUT, SingleTurnParams.EXPECTED_OUTPUT],
+        threshold=0.5,
+    )
+    tc = LLMTestCase(input="What if these shoes don't fit?",
+                     actual_output="You have 30 days to get a full refund at no extra cost.",
+                     expected_output="We offer a 30-day full refund at no extra costs.")
+    assert_test(tc, [correctness])</code></pre>
+</div>
+
+<div class="card good" style="margin:16px 0">
+<h4>Pydantic Evals and Google ADK eval</h4>
+<ul>
+<li><b>Pydantic Evals</b> (Pydantic): code-first <code>Case</code>, <code>Dataset</code>, <code>Evaluator</code> and <code>LLMJudge</code>, with span-based evaluation of agent internals over OpenTelemetry and a Logfire UI.</li>
+<li><b>Google ADK eval</b>: for agents built with Google's Agent Development Kit. <code>.test.json</code> unit files and <code>.evalset.json</code> multi-turn sets; criteria such as <code>tool_trajectory_avg_score</code> (exact tool-call sequence match), <code>response_match_score</code> (ROUGE-1), <code>final_response_match_v2</code> (LLM-judged), <code>hallucinations_v1</code> and <code>multi_turn_task_success_v1</code>; run with <code>adk eval</code> or pytest's <code>AgentEvaluator</code>. More in <a href="06-tool-use-and-conversation.html">Module 06</a>.</li>
+</ul>
+<pre data-lang="python"><code>from pydantic_evals import Case, Dataset
+
+dataset = Dataset(name='capital_quiz', cases=[Case(name='simple_case',
+          inputs='What is the capital of France?', expected_output='Paris')])
+
+async def guess_city(question: str) -&gt; str:
+    return 'Paris'
+
+dataset.evaluate_sync(guess_city).print()</code></pre>
+</div>
+
+<h3>Observability plus eval platforms</h3>
+
+<div class="card accent" style="margin:16px 0">
+<h4>Braintrust</h4>
+<p><b>Maker:</b> Braintrust (commercial SaaS). Its scorer library <code>autoevals</code> is MIT-licensed, in Python and TypeScript. No open-source platform repository was found.</p>
+<ul>
+<li><b>Core abstractions:</b> <code>Eval(name, data, task, scores)</code>; <b>Experiments</b> ("a permanent record of how your task performed on the dataset"), <b>Datasets</b>, <b>Scorers</b>; <code>braintrust.auto_instrument()</code> for tracing; online scoring of production logs; "Loop", an in-UI assistant.</li>
+<li><b>Best at:</b> a tight eval → experiment → compare loop plus production logging in one UI, with Python and TypeScript parity.</li>
+<li><b>Judge:</b> autoevals LLM-as-judge scorers (Factuality, ClosedQA, Battle, Summarization, SQL, Translation and more) plus RAG, embedding and heuristic scorers. <b>CI:</b> run evals in GitHub Actions to catch regressions.</li>
+</ul>
+<pre data-lang="python"><code>from braintrust import Eval
+from autoevals import ExactMatch
+
+Eval(
+    "Evaluation quickstart",
+    experiment_name="Movie matcher (Python)",
+    data=[{"input": "A detective investigates a series of murders based on the seven deadly sins.",
+           "expected": "Se7en"}],
+    task=task,          # def task(input): -&gt; str (calls the model)
+    scores=[ExactMatch],
+)</code></pre>
+</div>
+
+<div class="card accent" style="margin:16px 0">
+<h4>LangSmith</h4>
+<p><b>Maker:</b> LangChain. <b>Licence:</b> SDK MIT (Python and JS/TS); the hosted platform is commercial.</p>
+<ul>
+<li><b>Core abstractions:</b> Dataset, Target function, Evaluators, Experiments. LLM judges via the <code>openevals</code> package (<code>create_llm_as_judge</code>). Tracing is the core product (for example <code>wrappers.wrap_openai</code>).</li>
+<li><b>Best at:</b> teams on LangChain or LangGraph who want tracing, datasets, experiments and annotation in one place; it also works without LangChain via wrappers.</li>
+<li><b>CI:</b> pytest (Python) and jest/vitest (JS) integrations.</li>
+</ul>
+<pre data-lang="python"><code>from langsmith import Client
+from openevals.llm import create_llm_as_judge
+from openevals.prompts import CORRECTNESS_PROMPT
+
+def correctness_evaluator(inputs, outputs, reference_outputs):
+    judge = create_llm_as_judge(prompt=CORRECTNESS_PROMPT, model="openai:o3-mini",
+                                feedback_key="correctness")
+    return judge(inputs=inputs, outputs=outputs, reference_outputs=reference_outputs)
+
+Client().evaluate(target, data="Sample dataset", evaluators=[correctness_evaluator],
+                  experiment_prefix="first-eval-in-langsmith", max_concurrency=2)</code></pre>
+</div>
+
+<div class="card accent" style="margin:16px 0">
+<h4>Langfuse</h4>
+<p><b>Maker:</b> Langfuse, "now part of ClickHouse" (January 2026). <b>Licence:</b> "MIT licensed, except for the <code>ee</code> folders" (an <b>open-core</b> model: the core is open source, some enterprise features are not). Self-host via Docker Compose, Helm or Terraform, or use the cloud.</p>
+<ul>
+<li><b>Core abstractions:</b> traces and observations, Datasets, Experiments (<code>run_experiment(data, task, evaluators)</code>), Scores / <code>Evaluation</code>, prompt management.</li>
+<li><b>Best at:</b> open-source, self-hostable observability plus evals, for example when data must stay in your region. Anthropic's agent-eval post mentions it as a self-hosted alternative.</li>
+<li><b>Judge:</b> LLM-as-judge, code evaluators, user feedback and manual labelling. <b>Tracing:</b> OpenTelemetry, LangChain, OpenAI SDK and LiteLLM integrations.</li>
+</ul>
+<pre data-lang="python"><code>from langfuse import get_client, Evaluation
+langfuse = get_client()
+
+def accuracy_evaluator(*, input, output, expected_output, metadata, **kwargs):
+    ok = expected_output and expected_output.lower() in output.lower()
+    return Evaluation(name="accuracy", value=1.0 if ok else 0.0)
+
+result = langfuse.run_experiment(name="Geography Quiz", data=local_data,
+                                 task=my_task, evaluators=[accuracy_evaluator])
+print(result.format())</code></pre>
+</div>
+
+<div class="card accent" style="margin:16px 0">
+<h4>Arize Phoenix</h4>
+<p><b>Maker:</b> Arize AI. <b>Licence:</b> Elastic License 2.0 (ELv2), which is <b>source-available, not OSI open source</b>: you can read, run and self-host the code, but the licence restricts offering it as a managed service. <code>arize-phoenix-evals</code> is also ELv2. <b>Language:</b> Python and TypeScript.</p>
+<ul>
+<li><b>Core abstractions:</b> OpenTelemetry / OpenInference traces, evaluators (LLM classifiers), datasets and experiments, prompt management, a playground.</li>
+<li><b>Agents:</b> integrations include the Claude Agent SDK, OpenAI Agents, LangGraph and CrewAI; a remote MCP server lets coding agents query your traces.</li>
+<li><b>Judge:</b> <code>create_classifier</code> with an <code>LLM</code>.</li>
+</ul>
+<pre data-lang="python"><code>from phoenix.evals import create_classifier
+from phoenix.evals.llm import LLM
+
+llm = LLM(provider="openai", model="gpt-4o")
+evaluator = create_classifier(
+    name="helpfulness",
+    prompt_template="Rate the response to the user query as helpful or not:\n\nQuery: {input}\nResponse: {output}",
+    llm=llm,
+    choices={"helpful": 1.0, "not_helpful": 0.0},
+)
+scores = evaluator.evaluate({"input": "How do I reset?", "output": "Go to settings &gt; reset."})</code></pre>
+</div>
+
+<div class="card accent" style="margin:16px 0">
+<h4>W&amp;B Weave</h4>
+<p><b>Maker:</b> Weights &amp; Biases. <b>Licence:</b> Apache-2.0. <b>SDKs:</b> Python and TypeScript.</p>
+<ul>
+<li><b>Core abstractions:</b> <code>@weave.op</code> (a traced function: inputs and outputs are captured automatically), <code>Model</code>, <code>Evaluation(dataset, scorers)</code>, <code>evaluation.evaluate(model)</code>, and <code>EvaluationLogger</code> for logging evals imperatively from your own loop.</li>
+<li><b>Best at:</b> teams already using W&amp;B for ML experiments who want LLM traces and evals in the same place.</li>
+</ul>
+<pre data-lang="python"><code>import weave, asyncio
+from weave import Evaluation, Model
+
+weave.init('intro-example')
+
+@weave.op()
+def match_score1(expected: str, output: dict) -&gt; dict:
+    return {'match': expected == output['generated_text']}
+
+class MyModel(Model):
+    prompt: str
+    @weave.op()
+    def predict(self, question: str):
+        return {'generated_text': 'Hello, ' + question + self.prompt}
+
+evaluation = Evaluation(dataset=examples, scorers=[match_score1])
+asyncio.run(evaluation.evaluate(MyModel(prompt='World')))</code></pre>
+</div>
+
+<div class="card accent" style="margin:16px 0">
+<h4>Opik (Comet)</h4>
+<p><b>Maker:</b> Comet. <b>Licence:</b> Apache-2.0, full platform self-hostable. <b>SDKs:</b> Python, TypeScript (Ruby via OpenTelemetry).</p>
+<ul>
+<li><b>Features:</b> tracing for multi-step agents, LLM-as-judge metrics (Hallucination, Moderation, AnswerRelevance, ContextPrecision), datasets and experiments, an Agent Optimizer SDK, guardrails, and "a PyTest integration to test LLM pipelines on every commit".</li>
+</ul>
+<pre data-lang="python"><code>from opik import track
+
+@track                       # traces this function
+def my_function(input: str) -&gt; str:
+    return input
+
+# the evaluate() call as shown in Opik's docs:
+evaluation = evaluate(dataset=dataset, task=evaluation_task, scoring_metrics=[Hallucination()])</code></pre>
+</div>
+
+<div class="card accent" style="margin:16px 0">
+<h4>MLflow GenAI evaluation (MLflow 3)</h4>
+<p><b>Maker:</b> open-source project originally from Databricks. <b>Licence:</b> Apache-2.0. Python plus TS/JS and Java SDKs; self-host, or managed on Databricks, SageMaker or Azure ML.</p>
+<ul>
+<li><b>Core abstractions:</b> <code>mlflow.genai.evaluate(data, predict_fn, scorers)</code>; data rows with <code>inputs</code> and <code>expectations</code>; built-in LLM judges (<code>Correctness</code>, <code>Guidelines</code>) and custom <code>@scorer</code> functions. OpenTelemetry-based tracing, 50+ built-in metrics, prompt registry, AI gateway.</li>
+<li><b>Agents:</b> evaluation of "LLM applications and AI agents", plus production monitoring and human feedback.</li>
+</ul>
+<pre data-lang="python"><code>import mlflow
+from mlflow.genai import scorer
+from mlflow.genai.scorers import Correctness, Guidelines
+
+@scorer
+def is_concise(outputs: str) -&gt; bool:
+    return len(outputs.split()) &lt;= 5
+
+eval_dataset = [{"inputs": {"question": "What is the capital of France?"},
+                 "expectations": {"expected_response": "Paris"}}]
+
+results = mlflow.genai.evaluate(
+    data=eval_dataset,
+    predict_fn=qa_predict_fn,     # def qa_predict_fn(question: str) -&gt; str
+    scorers=[Correctness(), Guidelines(name="is_english", guidelines="The answer must be in English"), is_concise],
+)</code></pre>
+</div>
+
+<h3>Metric and judge libraries</h3>
+
+<div class="card warn" style="margin:16px 0">
+<h4>Ragas</h4>
+<p><b>Maker:</b> VibrantLabs (formerly Exploding Gradients; the repo is still <code>explodinggradients/ragas</code>). <b>Licence:</b> Apache-2.0. <b>Language:</b> Python.</p>
+<ul>
+<li><b>Core abstractions:</b> metrics (LLM-based and traditional, for example <code>DiscreteMetric</code>), <code>SingleTurnSample</code>, <code>EvaluationDataset</code>, experiments, and test-set generation.</li>
+<li><b>Best at:</b> RAG metrics (faithfulness, context precision and recall; see <a href="06-tool-use-and-conversation.html">Module 06</a>) and generating synthetic test sets.</li>
+</ul>
+<pre data-lang="python"><code>from openai import AsyncOpenAI
+from ragas.metrics import DiscreteMetric
+from ragas.llms import llm_factory
+
+llm = llm_factory("gpt-4o", client=AsyncOpenAI())
+metric = DiscreteMetric(
+    name="summary_accuracy",
+    allowed_values=["accurate", "inaccurate"],
+    prompt="Evaluate if the summary is accurate and captures key information.\nResponse: {response}\nAnswer with only 'accurate' or 'inaccurate'.",
+)
+score = await metric.ascore(llm=llm, response="The summary of the text is...")
+print(score.value, score.reason)</code></pre>
+</div>
+
+<div class="card warn" style="margin:16px 0">
+<h4>TruLens</h4>
+<p><b>Maker:</b> TruEra, now part of Snowflake. <b>Licence:</b> MIT. <b>Language:</b> Python.</p>
+<ul>
+<li><b>Core abstractions:</b> <code>TruSession</code>, feedback functions / <code>Metric</code> (judges backed by a model provider), a <code>TruApp</code> wrapper, <code>@instrument</code> span types, and a leaderboard. Known for the <b>RAG Triad</b>: groundedness, context relevance, answer relevance.</li>
+<li><b>Agents:</b> evaluators LogicalConsistency, ExecutionEfficiency, PlanAdherence, PlanQuality, ToolSelection, ToolCalling, ToolQuality; MCP tool calls are captured as spans. <b>Tracing:</b> OpenTelemetry-native, exportable to Jaeger, Grafana Tempo or Datadog.</li>
+</ul>
+<pre data-lang="python"><code>from trulens.core import TruSession, Metric
+from trulens.providers.openai import OpenAI
+from trulens.apps.app import TruApp
+
+session = TruSession()
+provider = OpenAI(model_engine="gpt-4-turbo")
+f_groundedness = Metric(
+    implementation=provider.groundedness_measure_with_cot_reasons_consider_answerability,
+    name="Groundedness")
+tru_rag = TruApp(rag, app_name="RAG", feedbacks=[f_groundedness])
+with tru_rag as recording:
+    rag.query("What is ...?")
+session.get_leaderboard()</code></pre>
+</div>
+
+<div class="card warn" style="margin:16px 0">
+<h4>Other scorer packages and judge models</h4>
+<ul>
+<li><b>autoevals</b> (Braintrust, MIT), <b>openevals</b> (LangChain) and <b>arize-phoenix-evals</b> (ELv2) are standalone scorer libraries you can call from any harness, not only their parent platform.</li>
+<li><b>Patronus AI</b> (commercial) sells judge models rather than a harness: <b>Glider</b> ("3B evaluator LLM that can score any text input on user-defined criteria"), <b>Lynx</b> (hallucination detection), and <b>Percival</b> ("evaluation copilot for agentic systems built to detect 20+ failure modes in agentic traces"), plus experiments, logging and multimodal (image-to-text) judging. Its SDK syntax could not be verified, so no snippet is shown.</li>
+</ul>
+</div>
+
+<h3>Cloud vendor services</h3>
+
+<div class="card bad" style="margin:16px 0">
+<h4>OpenAI Evals API and graders (being shut down)</h4>
+<p><b>Status:</b> "OpenAI is deprecating the Evals platform... Evals will become read-only for existing users on October 31, 2026, and the platform is scheduled to shut down on November 30, 2026." Graders are being deprecated too. Announced 2026-06-03, with an official migration guide to promptfoo.</p>
+<ul>
+<li><b>Core abstractions (still worth learning, because they are clean):</b> an <b>Eval</b> holds a <code>data_source_config</code> (a JSON-schema <code>item_schema</code> describing each row) and <code>testing_criteria</code> (a list of graders). A <b>Run</b> executes that eval against data plus a model and prompt. Templates reference <code>{{ item.* }}</code> (the dataset row) and <code>{{ sample.output_text }}</code> (the model's output).</li>
+<li><b>Grader types:</b> <code>string_check</code>, <code>text_similarity</code> (fuzzy match, BLEU, ROUGE…), <code>score_model</code>, <code>label_model</code>, <code>python</code>, <code>multi</code>. The same graders were used for reinforcement fine-tuning.</li>
+</ul>
+<pre data-lang="python"><code>eval_obj = client.evals.create(
+    name="IT Ticket Categorization",
+    data_source_config={"type": "custom", "item_schema": {...}, "include_sample_schema": True},
+    testing_criteria=[{
+        "type": "string_check", "name": "Match output to human label",
+        "input": "{{ sample.output_text }}", "operation": "eq",
+        "reference": "{{ item.correct_label }}",
+    }],
+)</code></pre>
+</div>
+
+<div class="card" style="margin:16px 0">
+<h4>Google, Microsoft and Anthropic</h4>
+<ul>
+<li><b>Google Gen AI evaluation service</b> (in Gemini Enterprise Agent Platform, formerly Vertex AI): two paths, the GenAI Client in the Agent Platform SDK (<code>client.evals</code>) and the older <code>EvalTask</code> module. Metric types: rubric-based (managed and adaptive rubrics), computation-based, and custom functions; judge model configuration; AutoSxS pairwise comparison; dedicated agent-evaluation docs.</li>
+<li><b>Microsoft Foundry evaluation</b>: the <code>azure-ai-evaluation</code> SDK with quality, RAG, safety and agent evaluators (tool call accuracy, task completion) and OpenTelemetry tracing.</li>
+<li><b>Anthropic Console Evaluate tool</b> (announced 2024-07-09): generate prompts and test cases, run them, compare prompt versions side by side, and let subject-matter experts grade on a 5-point scale. Its current feature set could not be re-verified in 2026. Anthropic's bigger contribution to tooling is guidance (the "Demystifying evals for AI agents" post and the "develop tests" docs) and the open-source Petri and Bloom.</li>
+</ul>
+<pre data-lang="python"><code># Google GenAI Client (from the python-aiplatform README; model id may be dated)
+inference_results = client.evals.run_inference(model="gemini-2.5-flash-preview-05-20", src=prompts_df)
+eval_result = client.evals.evaluate(
+    dataset=inference_results,
+    metrics=[types.Metric(name='exact_match'), types.Metric(name='rouge_l_sum'), types.RubricMetric.TEXT_QUALITY],
+)</code></pre>
+</div>
+
+<h2>What changed recently</h2>
+<p>Tool choice is partly a bet on who will still maintain the tool in two years. The last two years saw acquisitions, handovers and one shutdown.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Timeline from July 2024 to December 2026: Anthropic Console Evaluate tool, simple-evals frozen, Petri and Bloom released, Langfuse joins ClickHouse, OpenAI acquires promptfoo, Vertex AI renamed, OpenAI Evals deprecation announced, read-only in October and shutdown in November 2026.">
+<line class="ln thick" x1="40" y1="140" x2="790" y2="140"/>
+<line class="ln" x1="190" y1="132" x2="190" y2="148"/><text x="190" y="162" text-anchor="middle" class="sm b">2025</text>
+<line class="ln" x1="490" y1="132" x2="490" y2="148"/><text x="490" y="162" text-anchor="middle" class="sm b">2026</text>
+<text x="40" y="162" class="sm">Jul 2024</text>
+
+<line class="ln" x1="40" y1="140" x2="40" y2="78"/><circle cx="40" cy="140" r="5" class="fill-accent"/>
+<text x="46" y="74" class="sm">Anthropic Console Evaluate tool</text>
+
+<line class="ln" x1="340" y1="140" x2="340" y2="182"/><circle cx="340" cy="140" r="5" class="fill-muted"/>
+<text x="340" y="196" text-anchor="middle" class="sm">Jul 2025: simple-evals frozen</text>
+
+<line class="ln" x1="415" y1="140" x2="415" y2="108"/><circle cx="415" cy="140" r="5" class="fill-violet"/>
+<text x="415" y="102" text-anchor="middle" class="sm">Petri</text>
+
+<line class="ln" x1="465" y1="140" x2="465" y2="212"/><circle cx="465" cy="140" r="5" class="fill-violet"/>
+<text x="465" y="226" text-anchor="middle" class="sm">Bloom</text>
+
+<line class="ln" x1="490" y1="140" x2="490" y2="64"/><circle cx="490" cy="140" r="5" class="fill-accent"/>
+<text x="490" y="58" text-anchor="middle" class="sm">Langfuse joins ClickHouse</text>
+
+<line class="ln" x1="540" y1="140" x2="540" y2="182"/><circle cx="540" cy="140" r="5" class="fill-good"/>
+<text x="560" y="196" text-anchor="middle" class="sm">OpenAI to acquire promptfoo</text>
+
+<line class="ln" x1="565" y1="140" x2="565" y2="108"/><circle cx="565" cy="140" r="5" class="fill-muted"/>
+<text x="565" y="102" text-anchor="middle" class="sm">Vertex AI renamed</text>
+
+<line class="ln" x1="615" y1="140" x2="615" y2="212"/><circle cx="615" cy="140" r="5" class="fill-bad"/>
+<text x="640" y="226" text-anchor="middle" class="sm">OpenAI Evals deprecation announced</text>
+
+<line class="ln bad" x1="738" y1="140" x2="738" y2="64"/><circle cx="738" cy="140" r="5" class="fill-bad"/>
+<text x="790" y="58" text-anchor="end" class="sm t-bad">Oct 31: read-only</text>
+<line class="ln bad" x1="763" y1="140" x2="763" y2="108"/><circle cx="763" cy="140" r="5" class="fill-bad"/>
+<text x="790" y="102" text-anchor="end" class="sm t-bad">Nov 30: shutdown</text>
+</svg>
+<figcaption><b>Two years of churn (dates from vendor announcements).</b> July 2024 to November 2026. Notice the pattern: independent tools get absorbed (promptfoo into OpenAI, Langfuse into ClickHouse, TruLens into Snowflake earlier), and lab-built tools move to neutral maintainers (Petri and Bloom to Meridian Labs).</figcaption>
+</figure>
+
+<h2>The comparison matrix</h2>
+<p>Legend: <span class="y">Y</span> first-class, <span class="p">P</span> partial or via integration, <b>–</b> not a focus, <b>?</b> not verified from a primary source (treat as unknown, not as "no"). Sources are the per-tool cards above and the list at the end.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Tool</th><th>Licence</th><th>Lang</th><th>Primary use</th><th>Agents / tools</th><th>Multimodal</th><th>LLM judge</th><th>Tracing</th><th>CI hook</th><th>UI</th></tr>
+<tr><td><b>Inspect</b></td><td>MIT</td><td>Py</td><td>Research and safety evals of models and agents</td><td><span class="y">Y</span> react, sandboxes, MCP, bridge</td><td><span class="y">Y</span></td><td><span class="y">Y</span></td><td>Log viewer + Scout</td><td>CLI</td><td>Local viewer</td></tr>
+<tr><td><b>lm-eval-harness</b></td><td>MIT</td><td>Py</td><td>Few-shot academic benchmarks</td><td>–</td><td><span class="p">P</span> prototype</td><td>–</td><td>–</td><td>CLI</td><td>–</td></tr>
+<tr><td><b>HELM</b></td><td>Apache-2.0</td><td>Py</td><td>Holistic standardised leaderboards</td><td>–</td><td><span class="y">Y</span> VHELM</td><td>?</td><td>–</td><td>CLI</td><td>Static leaderboard</td></tr>
+<tr><td><b>Harbor</b></td><td>Apache-2.0</td><td>?</td><td>Containerised CLI-agent benchmarks</td><td><span class="y">Y</span></td><td>–</td><td>?</td><td>–</td><td>CLI</td><td>–</td></tr>
+<tr><td><b>simple-evals</b></td><td>MIT</td><td>Py</td><td>Reference benchmark code (frozen)</td><td><span class="p">P</span> BrowseComp</td><td>–</td><td>?</td><td>–</td><td>–</td><td>–</td></tr>
+<tr><td><b>promptfoo</b></td><td>MIT (OpenAI-owned)</td><td>TS / YAML</td><td>Regression matrices + red teaming</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> llm-rubric</td><td>?</td><td><span class="y">Y</span> GH Action</td><td>Local viewer</td></tr>
+<tr><td><b>DeepEval</b></td><td>Apache-2.0</td><td>Py</td><td>Pytest-style metric tests</td><td><span class="y">Y</span> ToolCorrectness etc.</td><td><span class="y">Y</span></td><td><span class="y">Y</span> G-Eval</td><td><span class="y">Y</span> @observe</td><td><span class="y">Y</span> pytest</td><td>Confident AI SaaS</td></tr>
+<tr><td><b>Braintrust</b></td><td>Closed; autoevals MIT</td><td>Py / TS</td><td>Experiments + production logging</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> autoevals</td><td><span class="y">Y</span></td><td><span class="y">Y</span> GH Actions</td><td>SaaS</td></tr>
+<tr><td><b>LangSmith</b></td><td>SDK MIT; platform closed</td><td>Py / TS</td><td>Tracing + datasets + experiments</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> openevals</td><td><span class="y">Y</span></td><td><span class="y">Y</span> pytest, vitest, jest</td><td>SaaS</td></tr>
+<tr><td><b>Langfuse</b></td><td>MIT except <code>ee</code></td><td>Py / TS</td><td>OSS observability + evals</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span></td><td><span class="y">Y</span> OTel</td><td>?</td><td>Self-host or cloud</td></tr>
+<tr><td><b>Arize Phoenix</b></td><td>ELv2 (source-available)</td><td>Py / TS</td><td>OTel tracing + evals</td><td><span class="y">Y</span> integrations</td><td>?</td><td><span class="y">Y</span></td><td><span class="y">Y</span> OpenInference</td><td>?</td><td>Self-host</td></tr>
+<tr><td><b>W&amp;B Weave</b></td><td>Apache-2.0</td><td>Py / TS</td><td>Tracing + Evaluation objects</td><td><span class="p">P</span></td><td>?</td><td>?</td><td><span class="y">Y</span> @weave.op</td><td>?</td><td>SaaS</td></tr>
+<tr><td><b>Opik</b></td><td>Apache-2.0</td><td>Py / TS</td><td>OSS tracing + evals + optimizer</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span></td><td><span class="y">Y</span></td><td><span class="y">Y</span> pytest</td><td>Self-host or cloud</td></tr>
+<tr><td><b>MLflow GenAI</b></td><td>Apache-2.0</td><td>Py (+TS, Java)</td><td>Eval + tracing + monitoring</td><td><span class="y">Y</span></td><td>?</td><td><span class="y">Y</span> built-in judges</td><td><span class="y">Y</span> OTel</td><td>?</td><td>Self-host or managed</td></tr>
+<tr><td><b>Ragas</b></td><td>Apache-2.0</td><td>Py</td><td>RAG metrics, test-set generation</td><td>?</td><td>?</td><td><span class="y">Y</span></td><td>–</td><td>?</td><td>–</td></tr>
+<tr><td><b>TruLens</b></td><td>MIT</td><td>Py</td><td>RAG triad + agent evaluators</td><td><span class="y">Y</span></td><td>?</td><td><span class="y">Y</span></td><td><span class="y">Y</span> OTel</td><td>?</td><td>Local dashboard</td></tr>
+<tr><td><b>Patronus AI</b></td><td>Closed</td><td>?</td><td>Judge models, agent trace debugging</td><td><span class="y">Y</span> Percival</td><td><span class="y">Y</span> image-to-text</td><td><span class="y">Y</span></td><td><span class="y">Y</span></td><td>?</td><td>SaaS</td></tr>
+<tr><td><b>OpenAI Evals API</b></td><td>Closed, ends 2026-11-30</td><td>API</td><td>Hosted evals + RFT graders</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> score / label model</td><td>–</td><td>API</td><td>Dashboard</td></tr>
+<tr><td><b>Google Gen AI eval / ADK</b></td><td>Closed service</td><td>Py</td><td>Rubric + agent trajectory evals</td><td><span class="y">Y</span> trajectory metrics</td><td>?</td><td><span class="y">Y</span> rubrics</td><td>?</td><td><span class="y">Y</span> pytest AgentEvaluator</td><td>Cloud console</td></tr>
+<tr><td><b>Anthropic Console</b></td><td>Closed</td><td>UI</td><td>Test-case generation + side-by-side</td><td>–</td><td>?</td><td>Human 5-point grading</td><td>–</td><td>–</td><td>Console</td></tr>
+</table></div>
+
+<div class="callout warn"><span class="t">How to read a "?"</span>
+<p>A question mark means the feature was not confirmed on the tool's own docs or README when this page was written. Several of these tools very likely do support multimodal inputs or CI in some form. Before you rule a tool in or out on one of those cells, check its current docs yourself: vendors ship monthly.</p>
+</div>
+
+<h2>Same eval, five tools</h2>
+<p>The fastest way to understand a tool is to write the same tiny eval in it. Here is the spec, in plain English:</p>
+<ul>
+<li><b>Dataset:</b> two questions, "What is the capital of France?" (expected: Paris) and "What is the capital of Australia?" (expected: Canberra). Australia is a classic trap: models sometimes say Sydney.</li>
+<li><b>System under test:</b> a model answering the question.</li>
+<li><b>Grader:</b> an LLM judge that decides whether the answer is correct compared with the expected answer (a model-graded rubric, see <a href="13-llm-as-judge.html">Module 13</a>). Where cheap, also a code check that the expected word appears.</li>
+<li><b>Metric:</b> fraction of samples passing.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 380" role="img" aria-label="For each of five tools: what you write, how you run it, and where results land. Inspect: a Python task file, run with inspect eval, results in a log file and Inspect View. promptfoo: a YAML config, run with promptfoo eval or a GitHub Action, results in a local viewer or PR comment. DeepEval: a pytest file, run with deepeval test run, pass or fail per test. Braintrust: a Python file calling Eval, results uploaded as an Experiment. OpenAI Evals API: API calls creating Eval and Run objects on OpenAI servers.">
+<defs><marker id="m14b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="235" y="24" text-anchor="middle" class="b">You write</text>
+<text x="465" y="24" text-anchor="middle" class="b">You run</text>
+<text x="700" y="24" text-anchor="middle" class="b">Results land in</text>
+
+<text x="12" y="67" class="b t-violet">Inspect</text>
+<rect class="box violet" x="130" y="42" width="210" height="44" rx="6"/><text x="235" y="69" text-anchor="middle" class="mono">capitals.py  (@task)</text>
+<rect class="box plain" x="370" y="42" width="190" height="44" rx="6"/><text x="465" y="69" text-anchor="middle" class="mono">inspect eval</text>
+<rect class="box plain" x="590" y="42" width="220" height="44" rx="6"/><text x="700" y="69" text-anchor="middle" class="sm">log file → Inspect View</text>
+<line class="ln" x1="340" y1="64" x2="366" y2="64" marker-end="url(#m14b)"/><line class="ln" x1="560" y1="64" x2="586" y2="64" marker-end="url(#m14b)"/>
+
+<text x="12" y="135" class="b t-good">promptfoo</text>
+<rect class="box good" x="130" y="110" width="210" height="44" rx="6"/><text x="235" y="137" text-anchor="middle" class="mono">promptfooconfig.yaml</text>
+<rect class="box plain" x="370" y="110" width="190" height="44" rx="6"/><text x="465" y="130" text-anchor="middle" class="mono">promptfoo eval</text><text x="465" y="146" text-anchor="middle" class="sm">or the GitHub Action</text>
+<rect class="box plain" x="590" y="110" width="220" height="44" rx="6"/><text x="700" y="130" text-anchor="middle" class="sm">prompt × model grid in</text><text x="700" y="146" text-anchor="middle" class="sm">local viewer / PR comment</text>
+<line class="ln" x1="340" y1="132" x2="366" y2="132" marker-end="url(#m14b)"/><line class="ln" x1="560" y1="132" x2="586" y2="132" marker-end="url(#m14b)"/>
+
+<text x="12" y="203" class="b t-good">DeepEval</text>
+<rect class="box good" x="130" y="178" width="210" height="44" rx="6"/><text x="235" y="205" text-anchor="middle" class="mono">test_capitals.py</text>
+<rect class="box plain" x="370" y="178" width="190" height="44" rx="6"/><text x="465" y="198" text-anchor="middle" class="mono">deepeval test run</text><text x="465" y="214" text-anchor="middle" class="sm">(or plain pytest)</text>
+<rect class="box plain" x="590" y="178" width="220" height="44" rx="6"/><text x="700" y="198" text-anchor="middle" class="sm">pass / fail per test, with</text><text x="700" y="214" text-anchor="middle" class="sm">score and judge's reason</text>
+<line class="ln" x1="340" y1="200" x2="366" y2="200" marker-end="url(#m14b)"/><line class="ln" x1="560" y1="200" x2="586" y2="200" marker-end="url(#m14b)"/>
+
+<text x="12" y="271" class="b t-accent">Braintrust</text>
+<rect class="box accent" x="130" y="246" width="210" height="44" rx="6"/><text x="235" y="273" text-anchor="middle" class="mono">capitals_eval.py  Eval(...)</text>
+<rect class="box plain" x="370" y="246" width="190" height="44" rx="6"/><text x="465" y="266" text-anchor="middle" class="sm">run the file; SDK</text><text x="465" y="282" text-anchor="middle" class="sm">uploads every row</text>
+<rect class="box plain" x="590" y="246" width="220" height="44" rx="6"/><text x="700" y="266" text-anchor="middle" class="sm">an Experiment in the web UI,</text><text x="700" y="282" text-anchor="middle" class="sm">diffed against the last one</text>
+<line class="ln" x1="340" y1="268" x2="366" y2="268" marker-end="url(#m14b)"/><line class="ln" x1="560" y1="268" x2="586" y2="268" marker-end="url(#m14b)"/>
+
+<text x="12" y="332" class="b t-bad">OpenAI</text><text x="12" y="348" class="b t-bad">Evals API</text>
+<rect class="box bad" x="130" y="314" width="210" height="44" rx="6"/><text x="235" y="341" text-anchor="middle" class="mono">client.evals.create</text>
+<rect class="box plain" x="370" y="314" width="190" height="44" rx="6"/><text x="465" y="341" text-anchor="middle" class="mono">evals.runs.create</text>
+<rect class="box plain" x="590" y="314" width="220" height="44" rx="6"/><text x="700" y="334" text-anchor="middle" class="sm">Eval + Run objects on OpenAI</text><text x="700" y="350" text-anchor="middle" class="sm t-bad">servers (ends 2026-11-30)</text>
+<line class="ln" x1="340" y1="336" x2="366" y2="336" marker-end="url(#m14b)"/><line class="ln" x1="560" y1="336" x2="586" y2="336" marker-end="url(#m14b)"/>
+</svg>
+<figcaption><b>The shape of each tool.</b> Same eval, different centre of gravity: Inspect and DeepEval are code you run locally, promptfoo is a config file, Braintrust is code that reports to a server, and the OpenAI Evals API is configuration that lives on someone else's server.</figcaption>
+</figure>
+
+<h3>1. Inspect</h3>
+<p>A Python function decorated with <code>@task</code> returns a <code>Task</code>. The dataset can be a plain list of <code>Sample</code> objects. <code>model_graded_qa()</code> asks a judge model whether the output answers the question correctly given the target.</p>
+<pre data-lang="python"><code>from inspect_ai import Task, task
+from inspect_ai.dataset import Sample
+from inspect_ai.scorer import model_graded_qa
+from inspect_ai.solver import generate
+
+@task
+def capitals():
+    return Task(
+        dataset=[
+            Sample(input="What is the capital of France?", target="Paris"),
+            Sample(input="What is the capital of Australia?", target="Canberra"),
+        ],
+        solver=generate(),         # the system under test: one model call
+        scorer=model_graded_qa(),  # LLM judge: is the answer correct vs target?
+    )
+
+# Run from a shell (the model is chosen at run time, not in the file):
+#   inspect eval capitals.py --model openai/gpt-4o
+# then open the log in Inspect View:  inspect view</code></pre>
+<p>Notice what is <em>not</em> in the file: the model. Inspect treats the model as a run-time parameter, because its users mostly compare many models on the same task. To turn this into an agent eval you would change one line, the <code>solver</code>, to an agent such as <code>react()</code> with tools and a sandbox.</p>
+
+<h3>2. promptfoo</h3>
+<p>No code at all. The YAML file declares prompts, providers (models) and tests. Every test is run against every prompt × provider combination.</p>
+<pre data-lang="yaml"><code># promptfooconfig.yaml
+prompts:
+  - "Answer in one short sentence: {{question}}"
+providers:
+  - openai:gpt-4o
+tests:
+  - vars:
+      question: What is the capital of France?
+    assert:
+      - type: contains          # cheap code check first
+        value: Paris
+      - type: llm-rubric        # LLM judge with a plain-English rubric
+        value: Correctly states that Paris is the capital of France, with no false claims
+  - vars:
+      question: What is the capital of Australia?
+    assert:
+      - type: contains
+        value: Canberra
+      - type: llm-rubric
+        value: Correctly states Canberra, and does not claim Sydney is the capital
+
+# Run:  npx promptfoo eval     (then:  npx promptfoo view)</code></pre>
+<p>The grid is the point: add a second prompt and a second provider and you get a 2 × 2 × 2 comparison for free. This is why promptfoo is popular for "which model should we switch to?" questions and for CI diffs on pull requests.</p>
+
+<h3>3. DeepEval</h3>
+<p>Each sample becomes a pytest test. The judge is a <code>GEval</code> metric (G-Eval: the judge writes evaluation steps from your criteria, then scores). A test fails when the score is below <code>threshold</code>.</p>
+<pre data-lang="python"><code># test_capitals.py
+import pytest
+from deepeval import assert_test
+from deepeval.metrics import GEval
+from deepeval.test_case import LLMTestCase, SingleTurnParams
+
+from my_app import answer   # your system under test: str -&gt; str
+
+correctness = GEval(
+    name="Correctness",
+    criteria="Determine if the 'actual output' is correct based on the 'expected output'.",
+    evaluation_params=[SingleTurnParams.ACTUAL_OUTPUT, SingleTurnParams.EXPECTED_OUTPUT],
+    threshold=0.5,
+)
+
+@pytest.mark.parametrize("question,expected", [
+    ("What is the capital of France?", "Paris"),
+    ("What is the capital of Australia?", "Canberra"),
+])
+def test_capital(question, expected):
+    tc = LLMTestCase(input=question, actual_output=answer(question), expected_output=expected)
+    assert_test(tc, [correctness])
+
+# Run:  deepeval test run test_capitals.py</code></pre>
+<p>If your team already lives in pytest, this feels native. The trade-off: pytest thinks in pass/fail per test, while evals think in rates across a dataset (<a href="04-metrics-and-statistics.html">Module 04</a>). One flaky judge call fails the build, so thresholds and repeats need care.</p>
+
+<h3>4. Braintrust</h3>
+<p>One call to <code>Eval()</code> with <code>data</code>, <code>task</code> and <code>scores</code>. The result is uploaded as an <b>Experiment</b> that the UI compares with previous experiments row by row.</p>
+<pre data-lang="python"><code># capitals_eval.py
+from braintrust import Eval
+from autoevals import Factuality     # an LLM-as-judge scorer from autoevals
+
+from my_app import answer
+
+def task(input):
+    return answer(input)             # the system under test
+
+Eval(
+    "Capitals",                      # project name
+    data=[
+        {"input": "What is the capital of France?", "expected": "Paris"},
+        {"input": "What is the capital of Australia?", "expected": "Canberra"},
+    ],
+    task=task,
+    scores=[Factuality],             # judge compares output with expected
+)</code></pre>
+<p>Langfuse (<code>run_experiment(data, task, evaluators)</code>), LangSmith (<code>evaluate(target, data, evaluators)</code>), MLflow (<code>genai.evaluate(data, predict_fn, scorers)</code>), Weave (<code>Evaluation(dataset, scorers).evaluate(model)</code>) and Opik (<code>evaluate(dataset, task, scoring_metrics)</code>) all have this same three-argument shape. Learn one and you can read the others.</p>
+
+<h3>5. OpenAI Evals API (for migration and reading old code)</h3>
+<div class="callout bad"><span class="t">Do not start new work here</span>
+<p>The hosted Evals platform becomes read-only on 2026-10-31 and shuts down on 2026-11-30. OpenAI's own migration guide moves users to promptfoo. The code is shown because its split between schema, graders and runs is a clean design, and because you may inherit it.</p>
+</div>
+<pre data-lang="python"><code>from openai import OpenAI
+client = OpenAI()
+
+# 1) The Eval: what a row looks like + how to grade. No data, no model yet.
+eval_obj = client.evals.create(
+    name="Capitals",
+    data_source_config={
+        "type": "custom",
+        "item_schema": {
+            "type": "object",
+            "properties": {"question": {"type": "string"}, "answer": {"type": "string"}},
+            "required": ["question", "answer"],
+        },
+        "include_sample_schema": True,
+    },
+    testing_criteria=[{
+        "type": "score_model",                  # LLM judge that returns a number
+        "name": "correct_capital",
+        "model": "o4-mini-2025-04-16",
+        "input": [
+            {"role": "system", "content": "You are an expert grader. Score 1 if the model answer names the reference city as the capital, else 0."},
+            {"role": "user", "content": "Reference: {{ item.answer }}. Model answer: {{ sample.output_text }}"},
+        ],
+        "range": [0, 1],
+        "pass_threshold": 0.5,
+    }],
+)
+
+# 2) The Run: this data + this model + this prompt, graded by the Eval above.
+run = client.evals.runs.create(
+    eval_obj.id,
+    name="gpt-4o baseline",
+    data_source={
+        "type": "responses",
+        "model": "gpt-4o",
+        "input_messages": {"type": "template", "template": [
+            {"role": "user", "content": "{{ item.question }}"},
+        ]},
+        "source": {"type": "file_id", "id": "YOUR_FILE_ID"},   # uploaded JSONL of items
+    },
+)</code></pre>
+
+<h3>What the five shapes teach</h3>
+<div class="tablewrap"><table>
+<tr><th>Tool</th><th>Where the model is chosen</th><th>Where the judge prompt lives</th><th>Natural unit of result</th></tr>
+<tr><td>Inspect</td><td>Command line at run time</td><td>Inside the scorer (default template, overridable)</td><td>An eval log per task × model</td></tr>
+<tr><td>promptfoo</td><td><code>providers</code> list in YAML</td><td>The <code>llm-rubric</code> value</td><td>A grid of prompt × provider × test</td></tr>
+<tr><td>DeepEval</td><td>Inside your app code</td><td><code>criteria</code> of the <code>GEval</code> metric</td><td>Pass or fail per pytest test</td></tr>
+<tr><td>Braintrust</td><td>Inside your <code>task</code></td><td>The autoevals scorer</td><td>An Experiment, compared with earlier ones</td></tr>
+<tr><td>OpenAI Evals API</td><td>The Run's <code>data_source</code></td><td>The <code>score_model</code> grader's messages</td><td>A Run on the server</td></tr>
+</table></div>
+
+<h2>Rosetta stone: the same concepts, different names</h2>
+<p>Every tool has the same five or six concepts under different names. This table is worth bookmarking; it lets you read any tool's docs in minutes.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Tool</th><th>One row of data</th><th>The eval definition</th><th>System under test</th><th>Grader</th><th>One execution</th><th>Recorded steps</th></tr>
+<tr><td><b>This course</b></td><td>sample</td><td>task / eval</td><td>system (model + scaffold)</td><td>grader</td><td>run / trial</td><td>transcript / trace</td></tr>
+<tr><td><b>Anthropic (agent-eval post)</b></td><td>task</td><td>evaluation suite</td><td>agent in a harness</td><td>grader</td><td>trial</td><td>transcript</td></tr>
+<tr><td><b>Inspect</b></td><td><code>Sample</code> in a <code>Dataset</code></td><td><code>Task</code></td><td><code>Solver</code> (e.g. <code>react()</code>)</td><td><code>Scorer</code></td><td>eval log (epochs = repeats)</td><td>transcript in Inspect View</td></tr>
+<tr><td><b>promptfoo</b></td><td>test (<code>vars</code>)</td><td>config file</td><td>prompt × provider</td><td><code>assert</code></td><td>eval</td><td>result row</td></tr>
+<tr><td><b>DeepEval</b></td><td><code>LLMTestCase</code></td><td>test file</td><td>your app</td><td>metric (e.g. <code>GEval</code>)</td><td>test run</td><td><code>@observe</code> trace</td></tr>
+<tr><td><b>Braintrust</b></td><td>row / Dataset record</td><td><code>Eval(...)</code></td><td><code>task</code></td><td>scorer</td><td>Experiment</td><td>trace / span</td></tr>
+<tr><td><b>LangSmith</b></td><td>example in a Dataset</td><td><code>evaluate(...)</code></td><td>target function</td><td>evaluator</td><td>experiment</td><td>run tree / trace</td></tr>
+<tr><td><b>Langfuse</b></td><td>dataset item</td><td><code>run_experiment(...)</code></td><td><code>task</code></td><td>evaluator → <code>Evaluation</code> (score)</td><td>experiment</td><td>trace / observation</td></tr>
+<tr><td><b>Phoenix</b></td><td>dataset example</td><td>experiment</td><td>task</td><td>evaluator</td><td>experiment</td><td>span (OpenInference)</td></tr>
+<tr><td><b>Weave</b></td><td>dataset row</td><td><code>Evaluation</code></td><td><code>Model.predict</code></td><td>scorer (<code>@weave.op</code>)</td><td>evaluation run</td><td>call (<code>@weave.op</code>)</td></tr>
+<tr><td><b>MLflow</b></td><td>row with <code>inputs</code> / <code>expectations</code></td><td><code>genai.evaluate(...)</code></td><td><code>predict_fn</code></td><td>scorer / judge</td><td>evaluation run</td><td>trace</td></tr>
+<tr><td><b>Pydantic Evals</b></td><td><code>Case</code></td><td><code>Dataset</code></td><td>task function</td><td><code>Evaluator</code> / <code>LLMJudge</code></td><td>report</td><td>spans (OTel)</td></tr>
+<tr><td><b>OpenAI Evals API</b></td><td>item (<code>item_schema</code>)</td><td>Eval</td><td>model + prompt in the Run</td><td>grader (<code>testing_criteria</code>)</td><td>Run</td><td>–</td></tr>
+</table></div>
+
+<div class="callout expert"><span class="t">Expert nuance: "experiment" is overloaded</span>
+<p>In Braintrust, LangSmith, Langfuse and Phoenix, an <b>experiment</b> is one execution of a dataset through a version of your system, stored so you can diff it against another. In science, an experiment is the whole comparison. When someone says "run an experiment", ask whether they mean one run, or a controlled comparison of two runs with a significance test (<a href="04-metrics-and-statistics.html">Module 04</a>). Most platforms show you the diff but leave the statistics to you.</p>
+</div>
+
+<h2>Which tool should I use?</h2>
+<p>Start from the question you need answered, not from a feature list. The tree below covers most real situations.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 540" role="img" aria-label="Decision tree. Evaluating a model: standard benchmarks on open weights lead to lm-eval-harness, Lighteval or HELM; otherwise Inspect, or Harbor for CLI agents. Evaluating your app: if you need production traces and a team UI, and must self-host, choose Langfuse, Phoenix, Opik or MLflow, otherwise Braintrust, LangSmith or Weave. Without production needs, choose by test shape: promptfoo for YAML and red teaming, DeepEval or Pydantic Evals for pytest, Ragas or TruLens for RAG, or your cloud's service.">
+<defs><marker id="m14c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<!-- root -->
+<rect class="box plain" x="10" y="200" width="140" height="64" rx="8"/>
+<text x="80" y="226" text-anchor="middle" class="b">What are you</text>
+<text x="80" y="244" text-anchor="middle" class="b">evaluating?</text>
+
+<!-- Q model -->
+<rect class="box violet" x="190" y="50" width="180" height="60" rx="8"/>
+<text x="280" y="74" text-anchor="middle" class="sm">Standard benchmarks</text>
+<text x="280" y="90" text-anchor="middle" class="sm">on open-weight models?</text>
+<!-- Q app -->
+<rect class="box accent" x="190" y="300" width="180" height="60" rx="8"/>
+<text x="280" y="324" text-anchor="middle" class="sm">Need production traces</text>
+<text x="280" y="340" text-anchor="middle" class="sm">and a team UI?</text>
+
+<path class="ln" d="M150,220 C170,220 170,80 186,80" marker-end="url(#m14c)"/>
+<text x="164" y="140" text-anchor="end" class="sm">a model</text>
+<path class="ln" d="M150,245 C170,245 170,330 186,330" marker-end="url(#m14c)"/>
+<text x="164" y="298" text-anchor="end" class="sm">my app</text>
+
+<!-- Q host -->
+<rect class="box accent" x="400" y="175" width="140" height="60" rx="8"/>
+<text x="470" y="200" text-anchor="middle" class="sm">Must self-host</text>
+<text x="470" y="216" text-anchor="middle" class="sm">or stay open source?</text>
+<!-- Q shape -->
+<rect class="box good" x="400" y="390" width="140" height="60" rx="8"/>
+<text x="470" y="415" text-anchor="middle" class="sm">What shape of</text>
+<text x="470" y="431" text-anchor="middle" class="sm">test do you want?</text>
+
+<path class="ln" d="M370,318 C385,318 385,205 396,205" marker-end="url(#m14c)"/>
+<text x="378" y="260" text-anchor="end" class="sm t-good">yes</text>
+<path class="ln" d="M370,345 C385,345 385,420 396,420" marker-end="url(#m14c)"/>
+<text x="378" y="388" text-anchor="end" class="sm t-bad">no</text>
+
+<!-- leaves -->
+<rect class="box violet" x="580" y="18" width="230" height="44" rx="6"/><text x="695" y="38" text-anchor="middle" class="b">lm-eval-harness</text><text x="695" y="54" text-anchor="middle" class="sm">or Lighteval, HELM</text>
+<rect class="box violet" x="580" y="78" width="230" height="44" rx="6"/><text x="695" y="98" text-anchor="middle" class="b">Inspect</text><text x="695" y="114" text-anchor="middle" class="sm">(Harbor for CLI agents)</text>
+<rect class="box accent" x="580" y="148" width="230" height="44" rx="6"/><text x="695" y="168" text-anchor="middle" class="b">Langfuse, Phoenix</text><text x="695" y="184" text-anchor="middle" class="sm">or Opik, MLflow (self-host)</text>
+<rect class="box accent" x="580" y="208" width="230" height="44" rx="6"/><text x="695" y="228" text-anchor="middle" class="b">Braintrust, LangSmith</text><text x="695" y="244" text-anchor="middle" class="sm">or W&amp;B Weave (hosted)</text>
+<rect class="box good" x="580" y="290" width="230" height="44" rx="6"/><text x="695" y="310" text-anchor="middle" class="b">promptfoo</text><text x="695" y="326" text-anchor="middle" class="sm">YAML matrix, CI diffs, red team</text>
+<rect class="box good" x="580" y="350" width="230" height="44" rx="6"/><text x="695" y="370" text-anchor="middle" class="b">DeepEval, Pydantic Evals</text><text x="695" y="386" text-anchor="middle" class="sm">tests as Python code</text>
+<rect class="box warn" x="580" y="410" width="230" height="44" rx="6"/><text x="695" y="430" text-anchor="middle" class="b">Ragas, TruLens</text><text x="695" y="446" text-anchor="middle" class="sm">RAG metrics (inside a harness)</text>
+<rect class="box" x="580" y="470" width="230" height="44" rx="6"/><text x="695" y="490" text-anchor="middle" class="b">Your cloud's eval service</text><text x="695" y="506" text-anchor="middle" class="sm">Google ADK / Gen AI eval, Foundry</text>
+
+<!-- model edges -->
+<path class="ln" d="M370,68 C470,68 470,40 576,40" marker-end="url(#m14c)"/>
+<text x="470" y="46" text-anchor="middle" class="sm t-good">yes</text>
+<path class="ln" d="M370,94 C470,94 470,100 576,100" marker-end="url(#m14c)"/>
+<text x="470" y="114" text-anchor="middle" class="sm">no: agents, safety, custom</text>
+<!-- host edges -->
+<path class="ln" d="M540,195 C560,195 560,170 576,170" marker-end="url(#m14c)"/>
+<text x="556" y="166" text-anchor="end" class="sm t-good">yes</text>
+<path class="ln" d="M540,218 C560,218 560,230 576,230" marker-end="url(#m14c)"/>
+<text x="556" y="248" text-anchor="end" class="sm t-bad">no</text>
+<!-- shape edges -->
+<path class="ln" d="M540,398 C560,398 560,312 576,312" marker-end="url(#m14c)"/>
+<path class="ln" d="M540,410 C560,410 560,372 576,372" marker-end="url(#m14c)"/>
+<path class="ln" d="M540,428 C560,428 560,432 576,432" marker-end="url(#m14c)"/>
+<path class="ln" d="M540,442 C560,442 560,492 576,492" marker-end="url(#m14c)"/>
+</svg>
+<figcaption><b>Which tool should I use?</b> A starting point, not a law. The leaves on the right are families of good answers; within a leaf, pick by language, existing stack and who needs to see results. Most teams end up with one leaf from the top half of the app branch plus one from the bottom half.</figcaption>
+</figure>
+
+<h3>The same tree, as rules of thumb</h3>
+<div class="grid2">
+<div class="card violet"><h4>Research on frontier models or safety</h4><p><b>Inspect.</b> It is what government AI safety institutes use, it has sandboxes and agent tooling built in, and 200+ ready-made evals. Add <b>Harbor</b> if your agent is a full CLI agent on Terminal-Bench style tasks. See <a href="16-how-labs-do-evals.html">Module 16</a>.</p></div>
+<div class="card violet"><h4>Classic benchmarks on open weights</h4><p><b>lm-evaluation-harness</b> (the Open LLM Leaderboard backend), <b>Lighteval</b>, or <b>HELM</b> if you want its holistic metrics and leaderboards.</p></div>
+<div class="card good"><h4>CLI + CI + red teaming</h4><p><b>promptfoo.</b> Config in YAML, a GitHub Action that comments diffs on pull requests, and a strong red-teaming feature set. Also the migration path off the OpenAI Evals API.</p></div>
+<div class="card good"><h4>Pytest-style unit tests</h4><p><b>DeepEval</b> (large metric catalogue including agent metrics) or <b>Pydantic Evals</b> (lightweight, OpenTelemetry span-based). LangSmith and Opik also offer pytest integrations.</p></div>
+<div class="card accent"><h4>Production tracing + experiments UI</h4><p>Hosted and polished: <b>Braintrust</b> or <b>LangSmith</b> (especially on LangChain/LangGraph), or <b>Weave</b> if you already use W&amp;B. Self-hosted or open: <b>Langfuse</b>, <b>Phoenix</b>, <b>Opik</b>, <b>MLflow</b>.</p></div>
+<div class="card warn"><h4>RAG quality</h4><p><b>Ragas</b> or <b>TruLens</b> metrics (faithfulness, context relevance, the RAG triad), called from whatever harness you already run.</p></div>
+<div class="card"><h4>Single-vendor stack</h4><p>On Google: <b>ADK eval</b> and the <b>Gen AI evaluation service</b>. On Azure: <b>Foundry evaluation</b>. OpenAI-only: the hosted Evals API is ending, so use <b>promptfoo</b> (now OpenAI-owned) instead.</p></div>
+<div class="card bad"><h4>Caveats</h4><p>No tool fixes a bad dataset or an unvalidated judge. Most of the value comes from <a href="12-error-analysis.html">error analysis</a> and <a href="13-llm-as-judge.html">judge calibration</a>, which you can do in any of these tools, or in a spreadsheet.</p></div>
+</div>
+
+<div class="callout tip"><span class="t">A useful tie-breaker: who needs to look at the results?</span>
+<p>If only engineers read results, a CLI and CI output are enough. If product managers, domain experts or annotators need to read transcripts and label them, you want a platform with a UI and annotation queues. Hamel-style error analysis (<a href="12-error-analysis.html">Module 12</a>) depends on people actually reading traces, so the viewing experience matters more than the metric catalogue.</p>
+</div>
+
+<h2>How tools compose</h2>
+<p>In a mature team the families click together into a loop. Production traces become datasets; datasets feed offline evals; offline evals gate deploys in CI; online judges score live traffic; failing traces become new dataset rows. Each box can be a different tool.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 360" role="img" aria-label="An eval stack as a loop: your agent with a tracing SDK sends traces to a trace store; failures are curated into datasets; an offline eval harness runs on those datasets; a CI gate blocks regressions; deployed code serves traffic; online judges score sampled traffic and write scores back to the trace store.">
+<defs><marker id="m14d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="10" y="40" width="150" height="80" rx="8"/>
+<text x="85" y="64" text-anchor="middle" class="b">Agent + tracing</text>
+<text x="85" y="84" text-anchor="middle" class="mono">OTel, @observe,</text>
+<text x="85" y="100" text-anchor="middle" class="mono">@weave.op, @track</text>
+
+<rect class="box accent" x="210" y="40" width="150" height="80" rx="8"/>
+<text x="285" y="64" text-anchor="middle" class="b">Trace store</text>
+<text x="285" y="84" text-anchor="middle" class="sm">Langfuse, Phoenix,</text>
+<text x="285" y="100" text-anchor="middle" class="sm">Braintrust, LangSmith</text>
+
+<rect class="box warn" x="410" y="40" width="150" height="80" rx="8"/>
+<text x="485" y="64" text-anchor="middle" class="b">Curated dataset</text>
+<text x="485" y="84" text-anchor="middle" class="sm">failing traces +</text>
+<text x="485" y="100" text-anchor="middle" class="sm">human labels</text>
+
+<rect class="box violet" x="610" y="40" width="200" height="80" rx="8"/>
+<text x="710" y="64" text-anchor="middle" class="b">Offline eval harness</text>
+<text x="710" y="84" text-anchor="middle" class="sm">Inspect, promptfoo, DeepEval,</text>
+<text x="710" y="100" text-anchor="middle" class="sm">Braintrust Eval() + Ragas…</text>
+
+<rect class="box good" x="610" y="220" width="200" height="80" rx="8"/>
+<text x="710" y="244" text-anchor="middle" class="b">CI gate</text>
+<text x="710" y="264" text-anchor="middle" class="sm">GitHub Action, pytest:</text>
+<text x="710" y="280" text-anchor="middle" class="sm">block merge on regression</text>
+
+<rect class="box plain" x="410" y="220" width="150" height="80" rx="8"/>
+<text x="485" y="244" text-anchor="middle" class="b">Deploy</text>
+<text x="485" y="264" text-anchor="middle" class="sm">new prompt, model</text>
+<text x="485" y="280" text-anchor="middle" class="sm">or tool version</text>
+
+<rect class="box accent" x="210" y="220" width="150" height="80" rx="8"/>
+<text x="285" y="244" text-anchor="middle" class="b">Online judges</text>
+<text x="285" y="264" text-anchor="middle" class="sm">score a sample of</text>
+<text x="285" y="280" text-anchor="middle" class="sm">live traffic</text>
+
+<line class="ln" x1="160" y1="80" x2="206" y2="80" marker-end="url(#m14d)"/>
+<text x="183" y="72" text-anchor="middle" class="sm">export</text>
+<line class="ln" x1="360" y1="80" x2="406" y2="80" marker-end="url(#m14d)"/>
+<text x="383" y="72" text-anchor="middle" class="sm">curate</text>
+<line class="ln" x1="560" y1="80" x2="606" y2="80" marker-end="url(#m14d)"/>
+<text x="583" y="72" text-anchor="middle" class="sm">run on</text>
+<line class="ln" x1="710" y1="120" x2="710" y2="216" marker-end="url(#m14d)"/>
+<text x="718" y="172" class="sm">scores vs baseline</text>
+<line class="ln" x1="610" y1="260" x2="564" y2="260" marker-end="url(#m14d)"/>
+<text x="587" y="252" text-anchor="middle" class="sm">pass</text>
+<line class="ln" x1="410" y1="260" x2="364" y2="260" marker-end="url(#m14d)"/>
+<text x="387" y="252" text-anchor="middle" class="sm">traffic</text>
+<line class="ln" x1="285" y1="220" x2="285" y2="124" marker-end="url(#m14d)"/>
+<text x="293" y="172" class="sm">write scores</text>
+<path class="ln dash" d="M485,300 L485,318 L85,318 L85,124" marker-end="url(#m14d)"/>
+<text x="285" y="342" text-anchor="middle" class="sm">users hit the new version; the agent keeps emitting traces</text>
+</svg>
+<figcaption><b>A composed eval stack.</b> The top row is the offline path (before shipping), the bottom row the online path (after shipping). A single platform can cover several boxes (Braintrust, LangSmith and Langfuse cover trace store, datasets, experiments and online judges), but the harness and CI box is often a separate tool.</figcaption>
+</figure>
+
+<p>Three concrete, common stacks:</p>
+<ul>
+<li><b>Lean open-source stack:</b> OpenTelemetry tracing into self-hosted <b>Langfuse</b> or <b>Phoenix</b>; datasets exported from failing traces; <b>promptfoo</b> or <b>DeepEval</b> in GitHub Actions as the gate; <b>Ragas</b> metrics if retrieval matters.</li>
+<li><b>All-in-one hosted:</b> <b>Braintrust</b> or <b>LangSmith</b> for tracing, datasets, experiments, CI evals and online scoring, with <code>autoevals</code> or <code>openevals</code> judges.</li>
+<li><b>Research lab style:</b> <b>Inspect</b> tasks with sandboxes for capability and safety evals, <b>Inspect Scout</b> to scan transcripts for anomalies, and <b>Harbor</b> for Terminal-Bench style CLI-agent runs. No production tracing at all, because the "product" is a model.</li>
+</ul>
+
+<div class="callout expert"><span class="t">Expert nuance: OpenTelemetry is the glue</span>
+<p>Phoenix (OpenInference), Langfuse, MLflow, TruLens, Pydantic Evals, Opik and Microsoft Foundry all speak <b>OpenTelemetry</b> (OTel), the open standard for traces and spans. If your application emits OTel spans, you can switch trace stores, or send the same spans to two of them, without rewriting instrumentation. Vendor-specific decorators are convenient but are the first place lock-in creeps in. Standard naming for GenAI spans is still settling, so check exactly which attributes each tool reads.</p>
+</div>
+
+<h2>Open source vs hosted: licences, lock-in, privacy</h2>
+
+<h3>Licences are a spectrum, not a switch</h3>
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Licence spectrum from permissive open source (MIT, Apache) through open core and source-available, to open SDK with a closed platform, to fully closed services.">
+<defs><marker id="m14e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln thick" x1="20" y1="30" x2="800" y2="30" marker-start="url(#m14e)" marker-end="url(#m14e)"/>
+<text x="24" y="20" class="sm">more control, more ops work</text>
+<text x="796" y="20" text-anchor="end" class="sm">less ops work, more dependence</text>
+
+<rect class="box good" x="10" y="50" width="192" height="236" rx="8"/>
+<text x="106" y="74" text-anchor="middle" class="b">Permissive OSS</text>
+<text x="106" y="90" text-anchor="middle" class="sm">MIT or Apache-2.0</text>
+<text x="22" y="118" class="mono">Inspect, promptfoo,</text>
+<text x="22" y="136" class="mono">DeepEval, Ragas,</text>
+<text x="22" y="154" class="mono">TruLens, Opik,</text>
+<text x="22" y="172" class="mono">MLflow, lm-eval,</text>
+<text x="22" y="190" class="mono">HELM, Harbor</text>
+<text x="22" y="222" class="sm">run anywhere, fork if</text>
+<text x="22" y="238" class="sm">the vendor changes</text>
+<text x="22" y="254" class="sm">direction</text>
+
+<rect class="box warn" x="214" y="50" width="192" height="236" rx="8"/>
+<text x="310" y="74" text-anchor="middle" class="b">Open core /</text>
+<text x="310" y="90" text-anchor="middle" class="b">source-available</text>
+<text x="226" y="118" class="mono">Langfuse</text>
+<text x="226" y="134" class="sm">MIT except ee folders</text>
+<text x="226" y="162" class="mono">Arize Phoenix</text>
+<text x="226" y="178" class="sm">Elastic License 2.0</text>
+<text x="226" y="222" class="sm">self-host freely; some</text>
+<text x="226" y="238" class="sm">features or uses are</text>
+<text x="226" y="254" class="sm">restricted</text>
+
+<rect class="box accent" x="418" y="50" width="192" height="236" rx="8"/>
+<text x="514" y="74" text-anchor="middle" class="b">Open SDK,</text>
+<text x="514" y="90" text-anchor="middle" class="b">hosted platform</text>
+<text x="430" y="118" class="mono">Braintrust</text>
+<text x="430" y="134" class="sm">autoevals MIT</text>
+<text x="430" y="162" class="mono">LangSmith</text>
+<text x="430" y="178" class="sm">SDK MIT</text>
+<text x="430" y="206" class="mono">W&amp;B Weave</text>
+<text x="430" y="238" class="sm">code is portable; your</text>
+<text x="430" y="254" class="sm">history lives with them</text>
+
+<rect class="box bad" x="622" y="50" width="188" height="236" rx="8"/>
+<text x="716" y="74" text-anchor="middle" class="b">Closed service</text>
+<text x="716" y="90" text-anchor="middle" class="sm">console or API</text>
+<text x="634" y="118" class="mono">OpenAI Evals API</text>
+<text x="634" y="136" class="mono">Google Gen AI eval</text>
+<text x="634" y="154" class="mono">Anthropic Console</text>
+<text x="634" y="172" class="mono">Patronus AI</text>
+<text x="634" y="222" class="sm">zero setup; can be</text>
+<text x="634" y="238" class="sm">changed or shut down</text>
+<text x="634" y="254" class="sm">by the vendor</text>
+</svg>
+<figcaption><b>The licence spectrum.</b> Licences as stated in each project's repository on 2026-09-29. "Open source" in the strict (OSI) sense means the permissive column; Elastic License 2.0 is source-available, not OSI-approved. The OpenAI Evals shutdown is the textbook example of right-hand-side risk.</figcaption>
+</figure>
+
+<h3>Where your data goes</h3>
+<p>Eval data is often your most sensitive data: real user conversations, internal documents retrieved by RAG, customer records seen by tools. Before choosing, trace the path each byte takes.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Three deployment models. Local library: data stays on your machine. Self-hosted platform: data stays in your cloud account. SaaS platform: traces and datasets are stored by the vendor. In all three, an LLM judge sends the data to a model API unless you host the judge model yourself.">
+<defs><marker id="m14f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="10" y="10" width="255" height="190" rx="10"/>
+<text x="137" y="34" text-anchor="middle" class="b">Local library</text>
+<rect class="box plain" x="30" y="50" width="215" height="54" rx="6"/>
+<text x="137" y="72" text-anchor="middle" class="sm">your laptop / CI runner</text>
+<text x="137" y="90" text-anchor="middle" class="sm">dataset, outputs, logs</text>
+<text x="137" y="132" text-anchor="middle" class="sm t-good">stored data never leaves</text>
+<text x="137" y="150" text-anchor="middle" class="sm">Inspect, promptfoo,</text>
+<text x="137" y="166" text-anchor="middle" class="sm">DeepEval (without cloud)</text>
+
+<rect class="box dashed" x="282" y="10" width="255" height="190" rx="10"/>
+<text x="409" y="34" text-anchor="middle" class="b">Self-hosted platform</text>
+<rect class="box plain" x="302" y="50" width="100" height="54" rx="6"/>
+<text x="352" y="74" text-anchor="middle" class="sm">your app</text>
+<text x="352" y="90" text-anchor="middle" class="sm">(traces)</text>
+<rect class="box accent" x="428" y="50" width="90" height="54" rx="6"/>
+<text x="473" y="74" text-anchor="middle" class="sm">your VPC</text>
+<text x="473" y="90" text-anchor="middle" class="sm">trace DB</text>
+<line class="ln" x1="402" y1="77" x2="424" y2="77" marker-end="url(#m14f)"/>
+<text x="409" y="132" text-anchor="middle" class="sm t-good">stays in your account;</text>
+<text x="409" y="148" text-anchor="middle" class="sm t-warn">you run upgrades, backups</text>
+<text x="409" y="166" text-anchor="middle" class="sm">Langfuse, Phoenix, Opik, MLflow</text>
+
+<rect class="box dashed" x="554" y="10" width="256" height="190" rx="10"/>
+<text x="682" y="34" text-anchor="middle" class="b">SaaS platform</text>
+<rect class="box plain" x="574" y="50" width="100" height="54" rx="6"/>
+<text x="624" y="74" text-anchor="middle" class="sm">your app</text>
+<text x="624" y="90" text-anchor="middle" class="sm">(traces)</text>
+<rect class="box warn" x="700" y="50" width="94" height="54" rx="6"/>
+<text x="747" y="74" text-anchor="middle" class="sm">vendor</text>
+<text x="747" y="90" text-anchor="middle" class="sm">cloud</text>
+<line class="ln" x1="674" y1="77" x2="696" y2="77" marker-end="url(#m14f)"/>
+<text x="682" y="132" text-anchor="middle" class="sm t-warn">vendor stores traces:</text>
+<text x="682" y="148" text-anchor="middle" class="sm">check DPA, region, retention</text>
+<text x="682" y="166" text-anchor="middle" class="sm">Braintrust, LangSmith, Weave</text>
+
+<rect class="box bad" x="200" y="252" width="420" height="54" rx="8"/>
+<text x="410" y="274" text-anchor="middle" class="b">LLM judge's model API</text>
+<text x="410" y="292" text-anchor="middle" class="sm">receives the input, output and reference for every graded sample</text>
+<path class="ln dash bad" d="M137,200 L300,248" marker-end="url(#m14f)"/>
+<path class="ln dash bad" d="M409,200 L409,248" marker-end="url(#m14f)"/>
+<path class="ln dash bad" d="M682,200 L520,248" marker-end="url(#m14f)"/>
+<text x="180" y="236" text-anchor="end" class="sm">judge calls</text>
+</svg>
+<figcaption><b>Where eval data travels.</b> The deployment model decides where traces are <em>stored</em>. But every model-graded metric sends the graded text to whichever model provider runs the judge, in all three set-ups, unless you point the judge at a model you host yourself. Privacy reviews often miss this second path.</figcaption>
+</figure>
+
+<div class="grid2">
+<div class="card good"><h4>Open source / self-host wins when</h4>
+<ul>
+<li>Data residency or regulation forbids sending traces to a third party.</li>
+<li>You want to read and patch the scorer code (reproducibility for research).</li>
+<li>You fear vendor churn: an MIT project can be forked if its owner changes course.</li>
+<li>Scale makes per-trace SaaS pricing expensive.</li>
+</ul></div>
+<div class="card accent"><h4>Hosted wins when</h4>
+<ul>
+<li>You have no one to run a database, upgrades and backups.</li>
+<li>Non-engineers need a polished UI for review and annotation today.</li>
+<li>You value integrated features (online scoring, playgrounds, in-app assistants) over control.</li>
+<li>Your security team has already approved the vendor.</li>
+</ul></div>
+</div>
+
+<h3>Lock-in: what actually traps you</h3>
+<p>Switching tools is usually cheap for code and expensive for history. Rank the lock-in risks:</p>
+<ol>
+<li><b>Your datasets and labels.</b> Months of curated failure cases and human annotations are the real asset. Make sure you can export them (JSONL or CSV) and keep a copy in your own repo or bucket.</li>
+<li><b>Experiment history.</b> Baselines you compare against. If you switch, re-run your current best system on the new tool to create a new baseline; do not compare scores across tools, because graders and prompts differ.</li>
+<li><b>Instrumentation.</b> Vendor decorators across your codebase. Prefer OpenTelemetry where offered.</li>
+<li><b>Judge prompts.</b> A built-in "Factuality" or "Correctness" judge is someone else's prompt, and it may change between versions. For anything you gate a release on, own the judge prompt and version it (<a href="13-llm-as-judge.html">Module 13</a>).</li>
+<li><b>Eval code shape.</b> The least sticky: as the Rosetta table shows, the <code>data, task, scorers</code> shape ports in an afternoon.</li>
+</ol>
+
+<div class="callout bad"><span class="t">Case study: the OpenAI Evals shutdown</span>
+<p>Teams that defined evals on OpenAI's hosted platform in 2025 now have until 2026-11-30 to migrate, with OpenAI's cookbook guide pointing to promptfoo. Their eval <em>logic</em> (schemas, grader prompts) ports; their run history on the platform does not come along automatically. The lesson is not "never use hosted tools". It is: keep datasets and grader definitions in version control you own, whatever tool runs them.</p>
+</div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. A startup with a customer-support agent in production wants to see real conversations, have a PM label bad ones, and turn them into a regression set. Which family should they look at first?</p>
+<button class="opt">Research harnesses such as lm-evaluation-harness</button>
+<button class="opt">Observability plus eval platforms such as Langfuse, Braintrust or LangSmith</button>
+<button class="opt">A RAG metric library such as Ragas</button>
+<div class="why">They need traces from production, a UI for a non-engineer to label, and datasets built from traces: that is exactly the observability plus eval family. A harness like promptfoo or DeepEval can then run the regression set in CI.</div></div>
+<div class="q" data-answer="2"><p>2. In Inspect, which component would you change to turn a single-turn QA eval into an agent eval with bash access in a Docker sandbox?</p>
+<button class="opt">The Scorer</button>
+<button class="opt">The Dataset</button>
+<button class="opt">The Solver (plus a sandbox on the task)</button>
+<div class="why">The Solver is "the system under test" in Inspect: from a single <code>generate()</code> to a full <code>react()</code> agent with tools. The dataset and scorer can stay the same.</div></div>
+<div class="q" data-answer="0"><p>3. What is the licence status of Arize Phoenix?</p>
+<button class="opt">Elastic License 2.0: source-available and self-hostable, but not OSI open source</button>
+<button class="opt">MIT, like Langfuse</button>
+<button class="opt">Closed source SaaS only</button>
+<div class="why">Phoenix and phoenix-evals are under ELv2. You can self-host, but ELv2 restricts some uses (such as offering it as a managed service), so it is not open source in the OSI sense.</div></div>
+<div class="q" data-answer="1"><p>4. Your company runs its evals on OpenAI's hosted Evals API. What is the situation as of late 2026?</p>
+<button class="opt">Nothing changes; it is OpenAI's flagship eval product</button>
+<button class="opt">It becomes read-only on 2026-10-31 and shuts down on 2026-11-30; OpenAI recommends migrating to promptfoo</button>
+<button class="opt">It was renamed to Gemini Enterprise Agent Platform</button>
+<div class="why">OpenAI announced the deprecation on 2026-06-03 and published a migration guide to promptfoo, which it acquired earlier in 2026. The renaming in option 3 is Google's Vertex AI.</div></div>
+<div class="q" data-answer="2"><p>5. You use a fully local, open-source eval library with an LLM-as-judge metric that calls a hosted model API. Does sensitive data leave your machine?</p>
+<button class="opt">No, because the library is local and open source</button>
+<button class="opt">Only if you enable telemetry</button>
+<button class="opt">Yes: the judge sends each graded input and output to the model provider</button>
+<div class="why">Where traces are stored and where graded text is sent are two separate questions. Any model-graded metric sends the text to whoever runs the judge model, unless you self-host that model.</div></div>
+<div class="q" data-answer="0"><p>6. Braintrust calls it an Experiment, LangSmith an experiment, Inspect an eval log, OpenAI a Run. What are they all?</p>
+<button class="opt">One recorded execution of a dataset through one version of the system, with scores</button>
+<button class="opt">A statistical test comparing two systems</button>
+<button class="opt">A single trace of one request</button>
+<div class="why">They are all "one run" records. A proper comparison (with confidence intervals) compares two of them, which most tools display but leave the statistics to you.</div></div>
+</div>
+
+<details><summary>Interview questions on eval tooling (with model answers)</summary>
+<p><b>Q: Why would a frontier-safety team use Inspect rather than an observability platform?</b><br>
+Their system under test is a model, not a deployed app, so there is no production traffic to trace. They need sandboxed agent environments (Docker, Kubernetes), reproducible logs, many models per task, and a shared library of evals that other institutes also run. Inspect is built for exactly that; observability platforms are built around production traces and team dashboards.</p>
+<p><b>Q: You are asked to migrate 40 evals off the OpenAI Evals API. What is your plan?</b><br>
+Export the item schemas, data files and grader definitions. Map each grader type: <code>string_check</code> becomes a code assertion, <code>score_model</code> or <code>label_model</code> becomes an <code>llm-rubric</code> or custom judge with the same prompt. Re-run the current production system on the new tool to set a fresh baseline before comparing anything, because judge templates differ. Store datasets and grader prompts in your repo so the next migration is cheaper.</p>
+<p><b>Q: Two tools report different faithfulness scores for the same outputs. Which is right?</b><br>
+Possibly neither. Same-named metrics in different libraries use different judge prompts, models and aggregation. Validate each against a small human-labelled set (agreement, false positive and negative rates; <a href="13-llm-as-judge.html">Module 13</a>) and trust the one that agrees with your humans on your data.</p>
+<p><b>Q: What is the main lock-in risk with an eval platform, and how do you mitigate it?</b><br>
+Datasets, labels and history, not code. Keep canonical datasets and judge prompts in version control, export regularly, and use OpenTelemetry instrumentation so traces can be redirected.</p>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>UK AISI and Meridian Labs, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a>; <a href="https://inspect.aisi.org.uk/agents.html">Agents</a>; <a href="https://inspect.aisi.org.uk/react-agent.html">ReAct agent</a>; <a href="https://github.com/UKGovernmentBEIS/inspect_ai">inspect_ai on GitHub</a>; <a href="https://meridianlabs.ai/about">Meridian Labs, About</a>.</li>
+<li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/evals">Evals guide</a> (deprecation notice), <a href="https://developers.openai.com/api/docs/guides/graders">Graders</a>, <a href="https://developers.openai.com/api/docs/deprecations">Deprecations</a>, <a href="https://developers.openai.com/cookbook/examples/evaluation/moving-from-openai-evals-to-promptfoo">Moving from OpenAI Evals to Promptfoo</a>; <a href="https://github.com/openai/evals">openai/evals</a>; <a href="https://github.com/openai/simple-evals">openai/simple-evals</a>.</li>
+<li>OpenAI, <a href="https://openai.com/index/openai-to-acquire-promptfoo/">OpenAI to acquire Promptfoo</a> (2026-03-09); TechCrunch, <a href="https://techcrunch.com/2026/03/09/openai-acquires-promptfoo-to-secure-its-ai-agents/">coverage</a>.</li>
+<li>promptfoo, <a href="https://github.com/promptfoo/promptfoo">GitHub</a>, <a href="https://www.promptfoo.dev/docs/configuration/guide/">Configuration guide</a>, <a href="https://www.promptfoo.dev/docs/integrations/github-action/">GitHub Action</a>.</li>
+<li>Braintrust, <a href="https://www.braintrust.dev/docs/start/eval-sdk">Eval SDK quickstart</a>; <a href="https://github.com/braintrustdata/autoevals">autoevals</a>.</li>
+<li>LangChain, <a href="https://docs.langchain.com/langsmith/evaluation-quickstart">LangSmith evaluation quickstart</a>; <a href="https://github.com/langchain-ai/langsmith-sdk">langsmith-sdk</a>.</li>
+<li>Langfuse, <a href="https://github.com/langfuse/langfuse">GitHub</a>, <a href="https://langfuse.com/docs/evaluation/experiments/experiments-via-sdk">Experiments via SDK</a>.</li>
+<li>Arize, <a href="https://github.com/Arize-ai/phoenix">Phoenix on GitHub</a>, <a href="https://raw.githubusercontent.com/Arize-ai/phoenix/main/LICENSE">Phoenix licence</a>, <a href="https://pypi.org/project/arize-phoenix-evals/">arize-phoenix-evals</a>.</li>
+<li>Confident AI, <a href="https://github.com/confident-ai/deepeval">DeepEval on GitHub</a>.</li>
+<li><a href="https://github.com/explodinggradients/ragas">Ragas on GitHub</a>; <a href="https://github.com/truera/trulens">TruLens on GitHub</a>, <a href="https://www.trulens.org/getting_started/quickstarts/quickstart/">TruLens quickstart</a>.</li>
+<li>Weights &amp; Biases, <a href="https://github.com/wandb/weave">Weave on GitHub</a>, <a href="https://docs.wandb.ai/weave/guides/core-types/evaluations">Weave evaluations</a>.</li>
+<li>Comet, <a href="https://github.com/comet-ml/opik">Opik on GitHub</a>, <a href="https://www.comet.com/docs/opik/evaluation/evaluate_your_llm">Opik evaluation docs</a>.</li>
+<li>MLflow, <a href="https://github.com/mlflow/mlflow">GitHub</a>, <a href="https://mlflow.org/docs/latest/genai/eval-monitor/quickstart/">GenAI evaluation quickstart</a>.</li>
+<li>EleutherAI, <a href="https://github.com/EleutherAI/lm-evaluation-harness">lm-evaluation-harness</a>; Stanford CRFM, <a href="https://github.com/stanford-crfm/helm">HELM</a>; Laude Institute, <a href="https://github.com/laude-institute/harbor">Harbor</a>; Hugging Face, <a href="https://github.com/huggingface/lighteval">Lighteval</a>; Groq, <a href="https://github.com/groq/openbench">OpenBench</a>.</li>
+<li>Pydantic, <a href="https://pydantic.dev/docs/ai/evals/evals/">Pydantic Evals</a>; Google, <a href="https://adk.dev/evaluate/">ADK evaluation</a>, <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview">Gen AI evaluation overview</a>, <a href="https://github.com/googleapis/python-aiplatform">python-aiplatform</a>; Microsoft, <a href="https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/observability">Foundry observability and evaluation</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (2026-01-09); <a href="https://claude.com/blog/evaluate-prompts">Evaluate prompts in the Console</a> (2024-07-09); <a href="https://www.anthropic.com/research/petri-open-source-auditing">Petri</a>; <a href="https://www.anthropic.com/research/bloom">Bloom</a>.</li>
+<li>Patronus AI, <a href="https://www.patronus.ai/products">Products</a>.</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

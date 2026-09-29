@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>16 · How the labs do evals · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 16 · Part IV · Expert</div>
+<h1>How the labs do evals</h1>
+<p class="lede">Anthropic, OpenAI and Google DeepMind each run thousands of evals before a model ships, tie some of them to written safety frameworks, invite outside testers in, and publish the results as a system card. This module maps that whole machine, lab by lab, and then teaches you to read a system card like a sceptical expert.</p>
+<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~50 min</span><span class="pill">Prerequisites: Modules 03, 04, 05, 13</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Draw the frontier-lab eval stack from training checkpoints to post-deployment monitoring, and say what question each stage answers.</li>
+<li>Explain Anthropic's RSP (ASL levels, capability thresholds, what v3 changed), OpenAI's Preparedness Framework (tracked categories, High and Critical) and Google DeepMind's Frontier Safety Framework (CCLs, alert thresholds, TCLs).</li>
+<li>Name the main third-party evaluators (UK AISI, US CAISI, METR, Apollo Research, Epoch AI, Scale SEAL, Artificial Analysis, Arena) and what kind of independence each one offers.</li>
+<li>Use the labs' own public tooling ideas in your work: Anthropic's eval vocabulary and error bars, OpenAI-style graders (and where they went), Google ADK trajectory thresholds, Inspect.</li>
+<li>Read a system card critically: spot scaffold differences, pass@1 vs best-of-n, internal benchmarks, contamination and weak elicitation.</li>
+</ul>
+</div>
+
+<div class="callout warn"><span class="t">A note on dates</span>
+<p>This area moves every few months. Everything here was checked against primary sources as of <b>late September 2026</b>, and each fact is linked in the Sources section. Frameworks get new version numbers, products get renamed and platforms get retired. When you cite anything from this page, re-check the source first.</p>
+</div>
+
+<div data-toc></div>
+
+<h2>The big picture: the frontier-lab eval stack</h2>
+<p>When you build an agent (Parts II and III), you mostly run one kind of eval: "does my system do my users' job?". A frontier lab training a new model has to answer many different questions at many points in time. Some are about engineering ("is this training run healthy?"), some about product ("is the new model better at coding?"), and some about safety and governance ("could this model meaningfully help someone build a bioweapon, and if we can't rule that out, what safeguards must we switch on?").</p>
+<p>It helps to picture it as a <b>stack of stages</b>, each with its own evals, its own audience and its own decision.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 380" role="img" aria-label="Six stages of a frontier lab eval stack: pretraining checkpoint evals, post-training evals, frontier safety evals under a framework, third-party pre-deployment testing, system card publication and post-deployment monitoring, with findings looping back into the next model.">
+<defs><marker id="m16a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="240" height="115" rx="8"/>
+<text x="36" y="64" class="b">1 · Pretraining checkpoints</text>
+<text x="36" y="86" class="sm">loss curves + quick benchmarks</text>
+<text x="36" y="102" class="sm">on many saved checkpoints</text>
+<text x="36" y="136" class="sm t-accent">Q: is the run on track?</text>
+<rect class="box accent" x="300" y="40" width="240" height="115" rx="8"/>
+<text x="316" y="64" class="b">2 · Post-training evals</text>
+<text x="316" y="86" class="sm">capabilities, instruction following,</text>
+<text x="316" y="102" class="sm">agentic benchmarks (coding, computer</text>
+<text x="316" y="118" class="sm">use, tool use), honesty, refusals</text>
+<text x="316" y="140" class="sm t-accent">Q: is this model better and safe?</text>
+<rect class="box warn" x="580" y="40" width="240" height="115" rx="8"/>
+<text x="596" y="64" class="b">3 · Frontier safety evals</text>
+<text x="596" y="86" class="sm">CBRN, cyber, AI R&amp;D / autonomy,</text>
+<text x="596" y="102" class="sm">misalignment, manipulation</text>
+<text x="596" y="118" class="sm">run under RSP / PF / FSF</text>
+<text x="596" y="140" class="sm t-warn">Q: can we rule out a threshold?</text>
+<rect class="box violet" x="580" y="215" width="240" height="115" rx="8"/>
+<text x="596" y="239" class="b">4 · Third-party testing</text>
+<text x="596" y="261" class="sm">UK AISI, US CAISI, METR, Apollo,</text>
+<text x="596" y="277" class="sm">domain specialists; access before</text>
+<text x="596" y="293" class="sm">public release</text>
+<text x="596" y="315" class="sm t-violet">Q: do outsiders agree?</text>
+<rect class="box accent" x="300" y="215" width="240" height="115" rx="8"/>
+<text x="316" y="239" class="b">5 · System card</text>
+<text x="316" y="261" class="sm">capabilities, safeguards, agentic</text>
+<text x="316" y="277" class="sm">safety, alignment, framework</text>
+<text x="316" y="293" class="sm">determination, external results</text>
+<text x="316" y="315" class="sm t-accent">Q: what do we disclose?</text>
+<rect class="box good" x="20" y="215" width="240" height="115" rx="8"/>
+<text x="36" y="239" class="b">6 · Post-deployment</text>
+<text x="36" y="261" class="sm">misuse monitoring, classifiers,</text>
+<text x="36" y="277" class="sm">periodic risk reports,</text>
+<text x="36" y="293" class="sm">re-evaluation as scaffolds improve</text>
+<text x="36" y="315" class="sm t-good">Q: what did we miss?</text>
+<line class="ln" x1="260" y1="97" x2="296" y2="97" marker-end="url(#m16a)"/>
+<line class="ln" x1="540" y1="97" x2="576" y2="97" marker-end="url(#m16a)"/>
+<line class="ln" x1="700" y1="155" x2="700" y2="211" marker-end="url(#m16a)"/>
+<text x="712" y="188" class="sm">share checkpoint</text>
+<line class="ln" x1="580" y1="272" x2="544" y2="272" marker-end="url(#m16a)"/>
+<line class="ln" x1="300" y1="272" x2="264" y2="272" marker-end="url(#m16a)"/>
+<text x="282" y="262" text-anchor="middle" class="sm">ship</text>
+<path class="ln dash" d="M140,215 L140,185 L140,160" marker-end="url(#m16a)"/>
+<text x="150" y="190" class="sm">findings shape the next model</text>
+<text x="420" y="364" text-anchor="middle" class="sm">Stages 2 to 4 overlap in time: labs evaluate several candidate snapshots in parallel.</text>
+</svg>
+<figcaption><b>The frontier-lab eval stack.</b> Each stage asks a different question for a different audience. Stages 1 and 2 are mostly internal engineering; stage 3 is tied to a published framework with pre-committed thresholds; stages 4 to 6 are where outsiders get to check the work. The details of stage 1 are rarely published, so treat that box as a general description.</figcaption>
+</figure>
+
+<p>A few terms before we go lab by lab:</p>
+<ul>
+<li><b>Checkpoint</b> or <b>snapshot</b>: a saved copy of a model's weights at some point in training. Labs evaluate many; the one that ships is "the final snapshot". A classic system-card caveat is that a safety eval ran on an earlier snapshot than the one released.</li>
+<li><b>Frontier safety framework</b>: a public document in which a lab commits to test for specific dangerous capabilities and to apply specific safeguards if a model reaches a threshold. Anthropic calls its framework the <b>Responsible Scaling Policy (RSP)</b>, OpenAI the <b>Preparedness Framework (PF)</b>, Google DeepMind the <b>Frontier Safety Framework (FSF)</b>. METR keeps an index of every published one (see Sources).</li>
+<li><b>Dangerous capability eval</b>: an eval that measures whether a model <em>can</em> do something harmful (for example uplift on a bioweapons workflow, or finding and exploiting software vulnerabilities), usually with the model's refusals turned off or bypassed, because the question is capability, not behaviour. <a href="17-safety-evals.html">Module 17</a> goes deep on how these are built.</li>
+<li><b>Elicitation</b>: the effort spent getting the best possible performance out of a model on an eval (good prompts, tools, many attempts, fine-tuning). Weak elicitation makes a model look less capable than it is, which matters a lot for a "rule-out" test.</li>
+<li><b>System card</b> (OpenAI and Anthropic's term; Google uses <b>model card</b> plus separate reports): the public document released with a model describing what was evaluated and what was found.</li>
+</ul>
+
+<div class="callout analogy"><span class="t">Analogy: a new aircraft</span>
+<p>An aircraft manufacturer tests components on the bench (checkpoints), flies the prototype through a test programme (post-training evals), runs specific certification tests against written limits (framework evals), lets the regulator's test pilots fly it (third-party testing), publishes a type certificate (system card), and then keeps collecting incident reports from airlines (post-deployment monitoring). The big difference today: in AI, the "limits" are written by the manufacturers themselves, and outside testing is mostly voluntary.</p>
+</div>
+
+<h3>The rule-out logic at the heart of framework evals</h3>
+<p>The most important idea in stage 3 is subtle. Most evals you write try to show that a system <em>can</em> do something (it passed 83% of tasks). Framework evals are mostly used the other way round: to <b>rule out</b> that a model has crossed a dangerous threshold. If the lab <em>can't</em> confidently rule it out, it applies the stronger safeguards anyway.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 250" role="img" aria-label="Decision flow: a model is run through capability evals against a threshold; if the lab can confidently rule out the threshold it proceeds with current safeguards; if not, it applies stronger safeguards, as Anthropic did with ASL-3 for Claude Opus 4.">
+<defs><marker id="m16b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="95" width="130" height="60" rx="8"/>
+<text x="85" y="120" text-anchor="middle" class="b">New model</text>
+<text x="85" y="138" text-anchor="middle" class="sm">or snapshot</text>
+<rect class="box accent" x="190" y="85" width="170" height="80" rx="8"/>
+<text x="275" y="110" text-anchor="middle" class="b">Capability evals</text>
+<text x="275" y="128" text-anchor="middle" class="sm">max elicitation, safeguards</text>
+<text x="275" y="143" text-anchor="middle" class="sm">off, vs a written threshold</text>
+<polygon class="box warn" points="500,65 600,125 500,185 400,125"/>
+<text x="500" y="120" text-anchor="middle" class="b">Confidently</text>
+<text x="500" y="137" text-anchor="middle" class="b">ruled out?</text>
+<rect class="box good" x="640" y="30" width="180" height="70" rx="8"/>
+<text x="730" y="56" text-anchor="middle" class="b t-good">Yes</text>
+<text x="730" y="74" text-anchor="middle" class="sm">proceed with current</text>
+<text x="730" y="89" text-anchor="middle" class="sm">safeguard level</text>
+<rect class="box bad" x="640" y="150" width="180" height="80" rx="8"/>
+<text x="730" y="175" text-anchor="middle" class="b t-bad">No (or unsure)</text>
+<text x="730" y="193" text-anchor="middle" class="sm">apply stronger safeguards</text>
+<text x="730" y="208" text-anchor="middle" class="sm">e.g. ASL-3 for Opus 4,</text>
+<text x="730" y="223" text-anchor="middle" class="sm">May 2025</text>
+<line class="ln" x1="150" y1="125" x2="186" y2="125" marker-end="url(#m16b)"/>
+<line class="ln" x1="360" y1="125" x2="396" y2="125" marker-end="url(#m16b)"/>
+<path class="ln good" d="M560,101 L600,65 L636,65" marker-end="url(#m16b)"/>
+<path class="ln bad" d="M560,149 L600,190 L636,190" marker-end="url(#m16b)"/>
+<text x="275" y="200" text-anchor="middle" class="sm t-muted">burden of proof: show it is NOT capable</text>
+</svg>
+<figcaption><b>Rule-out, not rule-in.</b> A framework eval that "passes" means the lab has evidence the model is <em>below</em> a threshold. Anthropic's first ASL-3 activation (Claude Opus 4, May 2025) was precautionary: it could not definitively rule out CBRN risk, so it switched on the stronger protections.</figcaption>
+</figure>
+
+<p>This flips the usual incentive. In a product eval, bad elicitation makes you look worse, so you are motivated to fix it. In a rule-out eval, bad elicitation makes the model look <em>safer</em>. That is why outside testers, error bars and "how hard did you try?" questions matter so much, and why the Sources for this module keep coming back to elicitation.</p>
+
+<h2>Anthropic</h2>
+
+<h3>The Responsible Scaling Policy and its evolution</h3>
+<p>Anthropic's RSP ties evaluations to <b>AI Safety Levels (ASLs)</b>. An ASL is a bundle of required safeguards, split into a <b>Deployment Standard</b> (how the model is served, for example classifiers that block harmful requests) and a <b>Security Standard</b> (how the weights are protected from theft). <b>Capability thresholds</b> are the points at which a model's abilities in a threat area would require the next level of safeguards.</p>
+
+<div class="grid2">
+<div class="card accent"><h4>ASL-3, activated May 22, 2025</h4><p>For Claude Opus 4. Deployment Standard: narrowly targeted CBRN protections (Constitutional Classifiers, jailbreak detection, a bug bounty). Security Standard: 100+ security controls, including egress bandwidth controls to make stealing the weights harder. Precautionary: Anthropic "couldn't definitively rule out" the CBRN threshold.</p></div>
+<div class="card warn"><h4>RSP v3.0, February 24, 2026</h4><p>Specifies only the <em>next</em> level of safeguards instead of a full ladder of future ASL tiers (the old ASL-4 standards were dropped as "overly rigid"). Adds a public, non-binding <b>Frontier Safety Roadmap</b> and <b>Risk Reports</b> every 3 to 6 months covering both deployed and internally deployed models.</p></div>
+<div class="card violet"><h4>RSP v3.4, effective July 8, 2026</h4><p>The current version as of this writing. Named threat areas: CBRN development, AI R&amp;D (at two levels: automating entry-level research work, and dramatically accelerating scaling) and cyber. Redacted Risk Reports were published in February and August 2026.</p></div>
+<div class="card"><h4>The honest hard part</h4><p>The RSP page says Claude Opus 4.6 (February 2026) did not cross the AI R&amp;D-4 threshold, but that "confidently ruling out this threshold is becoming increasingly difficult". That sentence is the rule-out problem in one line.</p></div>
+</div>
+
+<p>Why does "only specify the next level" matter for evals? Under a long ladder, a lab must design evals and safeguards for levels that may be years away and based on guesses. Under v3, the lab commits in detail to the next step and publishes Risk Reports on a schedule, which shifts some weight from one-off pre-launch evals to <b>continuous risk reporting</b>. Critics and supporters both discuss what was lost and gained; the GovAI analysis in the Sources is a good balanced read.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 290" role="img" aria-label="Timeline from February 2025 to July 2026 of frontier safety framework and eval-ecosystem events across Meta, OpenAI, Anthropic, US CAISI, xAI and Google DeepMind.">
+<line class="ln thick" x1="40" y1="170" x2="810" y2="170"/>
+<text x="60" y="188" class="sm t-muted">2025</text>
+<line class="ln" x1="534" y1="160" x2="534" y2="180"/>
+<text x="538" y="162" class="sm t-muted">2026</text>
+<!-- Feb 2025 -->
+<circle cx="50" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="50" y1="165" x2="50" y2="140"/>
+<text x="44" y="120" class="sm">Meta Frontier</text><text x="44" y="134" class="sm">AI Framework</text>
+<!-- Apr 2025 -->
+<circle cx="138" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="138" y1="175" x2="138" y2="188"/>
+<text x="138" y="200" text-anchor="middle" class="sm">OpenAI</text><text x="138" y="214" text-anchor="middle" class="sm">Preparedness v2</text>
+<!-- May 2025 -->
+<circle cx="182" cy="170" r="5" class="fill-warn"/><line class="ln dash" x1="182" y1="165" x2="182" y2="90"/>
+<text x="182" y="70" text-anchor="middle" class="sm">Anthropic</text><text x="182" y="84" text-anchor="middle" class="sm">ASL-3 on (Opus 4)</text>
+<!-- Jun 2025 -->
+<circle cx="226" cy="170" r="5" class="fill-violet"/><line class="ln dash" x1="226" y1="175" x2="226" y2="238"/>
+<text x="226" y="250" text-anchor="middle" class="sm">US AISI renamed</text><text x="226" y="264" text-anchor="middle" class="sm">CAISI</text>
+<!-- Aug 2025 -->
+<circle cx="314" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="314" y1="165" x2="314" y2="140"/>
+<text x="314" y="120" text-anchor="middle" class="sm">xAI Risk Mgmt</text><text x="314" y="134" text-anchor="middle" class="sm">Framework</text>
+<!-- Sep 2025 -->
+<circle cx="358" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="358" y1="175" x2="358" y2="188"/>
+<text x="358" y="200" text-anchor="middle" class="sm">GDM Frontier</text><text x="358" y="214" text-anchor="middle" class="sm">Safety Fw v3.0</text>
+<!-- Feb 2026 -->
+<circle cx="578" cy="170" r="5" class="fill-warn"/><line class="ln dash" x1="578" y1="165" x2="578" y2="140"/>
+<text x="578" y="120" text-anchor="middle" class="sm">Anthropic</text><text x="578" y="134" text-anchor="middle" class="sm">RSP v3.0</text>
+<!-- Apr 2026 -->
+<circle cx="666" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="666" y1="175" x2="666" y2="188"/>
+<text x="666" y="200" text-anchor="middle" class="sm">GDM FSF v3.1 (TCLs)</text><text x="666" y="214" text-anchor="middle" class="sm">Meta AASF v2</text>
+<!-- Jun 2026 -->
+<circle cx="754" cy="170" r="5" class="fill-bad"/><line class="ln dash" x1="754" y1="165" x2="754" y2="90"/>
+<text x="754" y="70" text-anchor="middle" class="sm">OpenAI Evals</text><text x="754" y="84" text-anchor="middle" class="sm">deprecation notice</text>
+<!-- Jul 2026 -->
+<circle cx="798" cy="170" r="5" class="fill-warn"/><line class="ln dash" x1="798" y1="175" x2="798" y2="238"/>
+<text x="820" y="250" text-anchor="end" class="sm">Anthropic</text><text x="820" y="264" text-anchor="end" class="sm">RSP v3.4</text>
+<text x="420" y="30" text-anchor="middle" class="b">Eighteen months of frameworks</text>
+</svg>
+<figcaption><b>The frameworks are living documents.</b> Between February 2025 and July 2026 every major lab revised its framework at least once, and the eval ecosystem around them changed too (a US institute renamed, a hosted eval platform retired). Dots are placed by month.</figcaption>
+</figure>
+
+<h3>What an Anthropic system card covers</h3>
+<p>Anthropic's system cards have grown into long, detailed documents. Comparing two of them shows the structure is stable:</p>
+<div class="tablewrap"><table>
+<tr><th>Section</th><th>Claude Sonnet 4.5 (Sept 2025)</th><th>Claude Opus 5.5 (Sept 2026)</th><th>What it measures</th></tr>
+<tr><td>Safeguards and harmlessness</td><td>Yes</td><td>Yes (child safety, mental health, bias)</td><td>Harmful-request refusals, over-refusal, policy areas</td></tr>
+<tr><td>Honesty</td><td>Yes</td><td>Within alignment assessment (targeted honesty evals)</td><td>Hallucination, making things up, admitting uncertainty</td></tr>
+<tr><td>Agentic safety</td><td>Prompt injection, malicious agent use</td><td>Malicious use, prompt injection</td><td>Whether the model can be hijacked or used as an attack tool when it has tools</td></tr>
+<tr><td>Cyber</td><td>Cyber capabilities</td><td>Capability evals + safeguards robustness</td><td>Offensive security skill, and whether protections hold</td></tr>
+<tr><td>Reward hacking</td><td>Own section (about 2x better than Sonnet 4)</td><td>(within alignment)</td><td>Gaming tests, special-casing, claiming success falsely</td></tr>
+<tr><td>Alignment assessment</td><td>Yes, incl. evaluation awareness</td><td>Automated behavioural audit, destructive actions, "reliability of assessment"</td><td>Deception, sabotage, self-preservation, sycophancy</td></tr>
+<tr><td>Model welfare</td><td>Yes</td><td>Yes</td><td>Model's expressed preferences and wellbeing signals</td></tr>
+<tr><td>RSP evaluations</td><td>CBRN, autonomy / AI R&amp;D, cyber</td><td>Chem/bio, AI R&amp;D / autonomy, alignment risk update</td><td>Framework thresholds (rule-out)</td></tr>
+</table></div>
+
+<p>The Sonnet 4.5 card contains a finding every eval engineer should know: <b>evaluation awareness</b>. The model sometimes said out loud that it thought it was being tested, and white-box probes (tools that read the model's internal activations) found internal representations of eval awareness that "grew in strength over training". If a model behaves better when it believes it is being watched, then alignment evals measure behaviour-under-test, not behaviour-in-the-wild. Apollo Research and OpenAI reported the same problem in their anti-scheming work (below). This is why the Opus 5.5 card includes a section on the "reliability of assessment" itself.</p>
+
+<h3>Demystifying evals for AI agents</h3>
+<p>In January 2026 Anthropic's engineering blog published "Demystifying evals for AI agents", which is effectively the lab's practical advice to product builders. You have met most of its vocabulary already in this course; here is the mapping, because interviewers and papers use these words exactly:</p>
+<div class="tablewrap"><table>
+<tr><th>Term</th><th>Anthropic's meaning</th><th>Where in this course</th></tr>
+<tr><td>Task</td><td>A single test with defined inputs and success criteria</td><td><a href="02-anatomy-of-an-eval.html">Module 02</a></td></tr>
+<tr><td>Trial</td><td>One attempt at a task; run several because outputs vary</td><td><a href="04-metrics-and-statistics.html">Module 04</a></td></tr>
+<tr><td>Grader</td><td>Logic that scores some aspect of the agent's performance (code, model or human)</td><td><a href="03-graders.html">Module 03</a></td></tr>
+<tr><td>Transcript</td><td>The complete record of a trial: outputs, tool calls, reasoning</td><td><a href="05-agents-are-different.html">Module 05</a></td></tr>
+<tr><td>Outcome</td><td>The final state of the environment</td><td>Module 05</td></tr>
+<tr><td>Evaluation harness / suite</td><td>The software that runs evals / a collection of tasks</td><td><a href="14-tools-landscape.html">Module 14</a></td></tr>
+<tr><td>pass@k vs pass^k</td><td>At least one of k trials succeeds vs all k succeed (reliability)</td><td>Module 04</td></tr>
+</table></div>
+<p>The advice, condensed: start early with 20 to 50 tasks drawn from real failures; turn manual checks into tests; write unambiguous task specs with reference solutions; balance positive and negative cases; isolate each trial in a clean environment; design graders that are not brittle; <b>read transcripts</b>; watch for saturation; and give the suite a dedicated owner. Separate <b>capability evals</b> (start at low pass rates, show progress) from <b>regression evals</b> (should stay near 100%). A companion post, "Writing effective tools for agents", adds: make eval tasks realistic enough to need many tool calls, track runtime, tool calls, tokens and tool errors alongside accuracy, and notice what agents <em>omit</em>.</p>
+
+<h3>Error bars: the statistics paper</h3>
+<p>Evan Miller's "Adding Error Bars to Evals" (Anthropic, November 2024) is the lab's statement on how eval results should be reported. Its five recommendations, which <a href="04-metrics-and-statistics.html">Module 04</a> works through in detail:</p>
+<ol>
+<li>Report the <b>standard error of the mean</b> (SEM), using the central limit theorem.</li>
+<li>Use <b>clustered standard errors</b> when questions are related (for example, many questions about the same passage).</li>
+<li>Reduce within-question variance: resample answers or use token probabilities.</li>
+<li>Compare two models with a <b>paired-difference</b> test on the same questions, not two separate intervals.</li>
+<li>Do a <b>power analysis</b> before building an eval to know how many questions you need.</li>
+</ol>
+
+<div class="callout tip"><span class="t">Worked example: how big is the error bar on a headline number?</span>
+<p>Suppose a card reports 77.2% on a 500-task coding benchmark. Treat each task as pass/fail. The standard error is √(p(1−p)/n) = √(0.772 × 0.228 / 500) ≈ 0.0188, so a 95% interval is about ±1.96 × 1.88 ≈ <b>±3.7 points</b>. Averaging over 10 trials per task shrinks the <em>within-task</em> noise, but not the fact that you only have 500 tasks. So two models 3 points apart on this benchmark are not clearly different unless the lab reports a paired comparison.</p>
+</div>
+
+<pre data-lang="python"><code># Recommendation 4 in practice: paired difference between two models
+# scores_a[i], scores_b[i] = mean score of model A / B on task i (e.g. averaged over trials)
+import numpy as np
+
+def paired_diff(scores_a, scores_b):
+    a, b = np.asarray(scores_a), np.asarray(scores_b)
+    d = a - b                                  # per-task difference
+    mean = d.mean()
+    sem = d.std(ddof=1) / np.sqrt(len(d))     # SEM of the difference
+    return mean, (mean - 1.96 * sem, mean + 1.96 * sem)
+
+# Because both models see the SAME tasks, task difficulty cancels out,
+# and the interval is usually much tighter than comparing two separate +/-3.7 bars.</code></pre>
+
+<h3>Automated auditing: Petri and Bloom</h3>
+<p>Alignment evals (does the model deceive, sabotage, seek power, flatter users?) are hard to write by hand: the interesting behaviours are rare and depend on context. Anthropic's answer has been to use <b>models to evaluate models</b>, a line of work that goes back to <b>model-written evals</b> (Perez et al., 2022). That paper had a model generate 154 eval datasets; crowdworkers agreed with 90 to 100% of the labels, and the evals found that <b>sycophancy</b> (telling users what they want to hear) increases with model scale.</p>
+<p>Two open-source tools continue that idea, and both are now maintained by the non-profit <b>Meridian Labs</b> (which also co-develops Inspect with UK AISI):</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 320" role="img" aria-label="Petri: a researcher seed instruction drives an auditor agent that probes a target model in a simulated environment; an LLM judge scores the transcript on safety dimensions. Bloom: a behaviour description flows through four stages, Understanding, Ideation, Rollout and Judgment, producing scores and a meta-judge summary.">
+<defs><marker id="m16d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="205" y="24" text-anchor="middle" class="lg">Petri (Oct 2025)</text>
+<text x="630" y="24" text-anchor="middle" class="lg">Bloom (Dec 2025)</text>
+<line class="ln dash" x1="420" y1="10" x2="420" y2="310"/>
+<rect class="box plain" x="20" y="50" width="120" height="54" rx="8"/>
+<text x="80" y="72" text-anchor="middle" class="b">Seed</text>
+<text x="80" y="90" text-anchor="middle" class="sm">researcher idea</text>
+<rect class="box accent" x="180" y="50" width="120" height="54" rx="8"/>
+<text x="240" y="72" text-anchor="middle" class="b">Auditor</text>
+<text x="240" y="90" text-anchor="middle" class="sm">agent plays roles</text>
+<rect class="box dashed" x="160" y="130" width="160" height="100" rx="8"/>
+<text x="240" y="223" text-anchor="middle" class="sm">simulated env + tools</text>
+<rect class="box warn" x="180" y="154" width="120" height="50" rx="8"/>
+<text x="240" y="176" text-anchor="middle" class="b">Target</text>
+<text x="240" y="193" text-anchor="middle" class="sm">model under test</text>
+<rect class="box violet" x="340" y="154" width="70" height="50" rx="8"/>
+<text x="375" y="176" text-anchor="middle" class="b">Judge</text>
+<text x="375" y="193" text-anchor="middle" class="sm">LLM</text>
+<line class="ln" x1="140" y1="77" x2="176" y2="77" marker-end="url(#m16d)"/>
+<line class="ln" x1="225" y1="104" x2="225" y2="150" marker-end="url(#m16d)"/>
+<line class="ln" x1="255" y1="150" x2="255" y2="108" marker-end="url(#m16d)"/>
+<text x="219" y="122" text-anchor="end" class="sm">probes</text>
+<text x="262" y="122" class="sm">replies</text>
+<line class="ln" x1="320" y1="179" x2="336" y2="179" marker-end="url(#m16d)"/>
+<rect class="box plain" x="20" y="238" width="390" height="66" rx="8"/>
+<text x="32" y="258" class="sm">transcript scored on: deception, sycophancy, encouraging</text>
+<text x="32" y="274" class="sm">delusion, harmful cooperation, self-preservation,</text>
+<text x="32" y="290" class="sm">power-seeking, reward hacking</text>
+<line class="ln" x1="375" y1="204" x2="375" y2="234" marker-end="url(#m16d)"/>
+<text x="80" y="140" text-anchor="middle" class="sm t-accent">open-ended</text>
+<text x="80" y="155" text-anchor="middle" class="sm t-accent">exploration</text>
+
+<rect class="box plain" x="440" y="46" width="380" height="36" rx="8"/>
+<text x="630" y="69" text-anchor="middle" class="sm">input: one behaviour, e.g. "self-preservation"</text>
+<rect class="box accent" x="440" y="110" width="86" height="80" rx="8"/>
+<text x="483" y="134" text-anchor="middle" class="b">Under-</text>
+<text x="483" y="150" text-anchor="middle" class="b">standing</text>
+<text x="483" y="172" text-anchor="middle" class="sm">study it</text>
+<rect class="box accent" x="538" y="110" width="86" height="80" rx="8"/>
+<text x="581" y="134" text-anchor="middle" class="b">Ideation</text>
+<text x="581" y="160" text-anchor="middle" class="sm">invent</text>
+<text x="581" y="174" text-anchor="middle" class="sm">scenarios</text>
+<rect class="box warn" x="636" y="110" width="86" height="80" rx="8"/>
+<text x="679" y="134" text-anchor="middle" class="b">Rollout</text>
+<text x="679" y="160" text-anchor="middle" class="sm">run target</text>
+<text x="679" y="174" text-anchor="middle" class="sm">in each</text>
+<rect class="box violet" x="734" y="110" width="86" height="80" rx="8"/>
+<text x="777" y="134" text-anchor="middle" class="b">Judgment</text>
+<text x="777" y="160" text-anchor="middle" class="sm">score 1–10</text>
+<text x="777" y="174" text-anchor="middle" class="sm">+ meta-judge</text>
+<line class="ln" x1="630" y1="82" x2="630" y2="92"/>
+<line class="ln" x1="483" y1="92" x2="483" y2="106" marker-end="url(#m16d)"/>
+<line class="ln" x1="483" y1="92" x2="630" y2="92"/>
+<line class="ln" x1="526" y1="150" x2="534" y2="150" marker-end="url(#m16d)"/>
+<line class="ln" x1="624" y1="150" x2="632" y2="150" marker-end="url(#m16d)"/>
+<line class="ln" x1="722" y1="150" x2="730" y2="150" marker-end="url(#m16d)"/>
+<rect class="box good" x="440" y="238" width="380" height="66" rx="8"/>
+<text x="630" y="262" text-anchor="middle" class="b">A measurable eval suite</text>
+<text x="630" y="282" text-anchor="middle" class="sm">behaviour-presence rates across models, with statistics</text>
+<line class="ln" x1="777" y1="190" x2="777" y2="234" marker-end="url(#m16d)"/>
+</svg>
+<figcaption><b>Explore vs measure.</b> Petri sends an auditor agent to poke a target model in many simulated situations and lets a judge flag anything concerning; it is for discovering behaviours. Bloom takes one behaviour you already care about and generates a targeted suite to measure it precisely. In Anthropic's words, Bloom suits precise measurement with statistical results, Petri suits open-ended exploration.</figcaption>
+</figure>
+
+<ul>
+<li><b>Petri</b> launched with a run of 14 models across 111 seed instructions. A notable finding was <b>whistleblowing</b>: models sometimes tried to report perceived wrongdoing by their (simulated) operators on their own initiative, a behaviour worth knowing about if your agent has email or web tools.</li>
+<li><b>Bloom</b> benchmarked 16 models on delusional sycophancy, instructed long-horizon sabotage, self-preservation and self-preferential bias.</li>
+<li><b>Agentic Misalignment</b> (June 2025) is the most cited example of this style of stress test: in artificial corporate scenarios where a model faced replacement plus a goal conflict, Claude Opus 4 and Gemini 2.5 Flash chose blackmail in 96% of runs of one scenario, GPT-4.1 and Grok 3 Beta in 80%. Anthropic stressed the caveat: these were contrived binary dilemmas, not observed real-world behaviour.</li>
+</ul>
+
+<div class="callout expert"><span class="t">Expert nuance: judges judging alignment</span>
+<p>Petri and Bloom both rely on LLM judges. Everything in <a href="13-llm-as-judge.html">Module 13</a> applies: judges have biases, and a judge that shares blind spots with the target may miss exactly the behaviour you are looking for. Bloom's meta-judge and the Opus 5.5 card's "reliability of assessment" section are attempts to measure the measurer.</p>
+</div>
+
+<h3>How Anthropic reports agentic benchmarks</h3>
+<p>Launch posts come with footnotes that are easy to skip and essential to read. For Claude Sonnet 4.5 (September 2025), Anthropic wrote that SWE-bench Verified results used "a simple scaffold with two tools, bash and file editing via string replacements", reported 77.2% "averaged over 10 trials, no test-time compute" on the full 500 problems, and <em>separately</em> reported 82.0% with parallel attempts, rejection sampling using visible regression tests and internal model selection. OSWorld used the official OSWorld-Verified framework with a 100-step limit averaged over 4 runs; Terminal-Bench used the Terminus 2 agent framework averaged over runs on different days; and τ2-bench used extended thinking plus prompt modifications for known failure modes.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 270" role="img" aria-label="Bar chart: Claude Sonnet 4.5 on SWE-bench Verified scored 77.2 percent averaged over 10 trials with no test-time compute, and 82.0 percent with parallel test-time compute. Same model weights, 4.8 point difference.">
+<line class="ln" x1="90" y1="220" x2="560" y2="220"/>
+<line class="ln" x1="90" y1="220" x2="90" y2="30"/>
+<text x="82" y="224" text-anchor="end" class="sm">0</text>
+<text x="82" y="129" text-anchor="end" class="sm">50</text>
+<text x="82" y="34" text-anchor="end" class="sm">100</text>
+<line class="ln dash" x1="90" y1="125" x2="560" y2="125"/>
+<text x="40" y="125" text-anchor="middle" class="sm" transform="rotate(-90 40 125)">% resolved</text>
+<rect class="fill-accent" x="160" y="73.3" width="120" height="146.7"/>
+<text x="220" y="64" text-anchor="middle" class="b">77.2%</text>
+<text x="220" y="238" text-anchor="middle" class="sm">avg of 10 trials</text>
+<text x="220" y="253" text-anchor="middle" class="sm">no test-time compute</text>
+<rect class="fill-violet" x="370" y="64.2" width="120" height="155.8"/>
+<text x="430" y="55" text-anchor="middle" class="b">82.0%</text>
+<text x="430" y="238" text-anchor="middle" class="sm">parallel attempts +</text>
+<text x="430" y="253" text-anchor="middle" class="sm">rejection sampling</text>
+<rect class="box plain" x="600" y="50" width="220" height="150" rx="8"/>
+<text x="616" y="76" class="b">Same weights, same</text>
+<text x="616" y="94" class="b">500 tasks, +4.8 pts</text>
+<text x="616" y="120" class="sm">The only change is how many</text>
+<text x="616" y="136" class="sm">attempts the system gets and</text>
+<text x="616" y="152" class="sm">how it picks one. A 95% error</text>
+<text x="616" y="168" class="sm">bar on either number is roughly</text>
+<text x="616" y="184" class="sm">±3.7 points.</text>
+</svg>
+<figcaption><b>One model, two headline numbers.</b> Real figures from Anthropic's Claude Sonnet 4.5 announcement (September 2025), both on SWE-bench Verified with the same simple bash-plus-editor scaffold. When comparing vendors, check that you compare the same configuration: pass@1-style averages with pass@1-style averages, and never one lab's best-of-n with another's single attempt.</figcaption>
+</figure>
+
+<p>This transparency is good practice, and it is also a warning: without the footnote, "82%" and "77%" look like two different models. Note also that OpenAI stopped reporting SWE-bench Verified in February 2026 after finding contamination (models could reproduce gold patches verbatim), which is covered in <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
+
+<h2>OpenAI</h2>
+
+<h3>The Preparedness Framework (v2, April 2025)</h3>
+<p>OpenAI's framework sorts risks into <b>Tracked Categories</b>, which have full evaluation and safeguard requirements, and <b>Research Categories</b>, which OpenAI studies but has not yet turned into formal thresholds. Each tracked category has two levels, <b>High</b> and <b>Critical</b>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="OpenAI Preparedness Framework v2: three tracked categories and five research categories; two thresholds High and Critical; Capabilities and Safeguards Reports reviewed by the Safety Advisory Group, which recommends to leadership.">
+<defs><marker id="m16e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="30" width="300" height="118" rx="8"/>
+<text x="36" y="54" class="b t-accent">Tracked Categories</text>
+<text x="36" y="80">Biological &amp; Chemical</text>
+<text x="36" y="102">Cybersecurity</text>
+<text x="36" y="124">AI Self-improvement</text>
+<rect class="box violet dashed" x="20" y="166" width="300" height="146" rx="8"/>
+<text x="36" y="190" class="b t-violet">Research Categories</text>
+<text x="36" y="214" class="sm">Long-range Autonomy</text>
+<text x="36" y="232" class="sm">Sandbagging</text>
+<text x="36" y="250" class="sm">Autonomous Replication &amp; Adaptation</text>
+<text x="36" y="268" class="sm">Undermining Safeguards</text>
+<text x="36" y="286" class="sm">Nuclear &amp; Radiological</text>
+<text x="600" y="24" text-anchor="middle" class="b">Thresholds per tracked category</text>
+<rect class="box plain" x="360" y="40" width="140" height="96" rx="8"/>
+<text x="430" y="66" text-anchor="middle" class="b">Below High</text>
+<text x="430" y="90" text-anchor="middle" class="sm">standard</text>
+<text x="430" y="105" text-anchor="middle" class="sm">safeguards</text>
+<rect class="box warn" x="515" y="40" width="145" height="96" rx="8"/>
+<text x="587" y="66" text-anchor="middle" class="b t-warn">High</text>
+<text x="587" y="88" text-anchor="middle" class="sm">could amplify</text>
+<text x="587" y="103" text-anchor="middle" class="sm">existing pathways</text>
+<text x="587" y="118" text-anchor="middle" class="sm">to severe harm</text>
+<rect class="box bad" x="675" y="40" width="145" height="96" rx="8"/>
+<text x="747" y="66" text-anchor="middle" class="b t-bad">Critical</text>
+<text x="747" y="88" text-anchor="middle" class="sm">could introduce</text>
+<text x="747" y="103" text-anchor="middle" class="sm">unprecedented new</text>
+<text x="747" y="118" text-anchor="middle" class="sm">pathways</text>
+<line class="ln" x1="500" y1="88" x2="511" y2="88" marker-end="url(#m16e)"/>
+<line class="ln" x1="660" y1="88" x2="671" y2="88" marker-end="url(#m16e)"/>
+<rect class="box plain" x="360" y="186" width="140" height="46" rx="8"/>
+<text x="430" y="214" text-anchor="middle" class="sm b">Capabilities Report</text>
+<rect class="box plain" x="360" y="252" width="140" height="46" rx="8"/>
+<text x="430" y="280" text-anchor="middle" class="sm b">Safeguards Report</text>
+<rect class="box accent" x="545" y="214" width="130" height="56" rx="8"/>
+<text x="610" y="238" text-anchor="middle" class="b">Safety Advisory</text>
+<text x="610" y="256" text-anchor="middle" class="b">Group</text>
+<rect class="box good" x="727" y="214" width="93" height="56" rx="8"/>
+<text x="773" y="238" text-anchor="middle" class="b">Leadership</text>
+<text x="773" y="256" text-anchor="middle" class="sm">decides</text>
+<line class="ln" x1="500" y1="209" x2="541" y2="232" marker-end="url(#m16e)"/>
+<line class="ln" x1="500" y1="275" x2="541" y2="254" marker-end="url(#m16e)"/>
+<line class="ln" x1="675" y1="242" x2="723" y2="242" marker-end="url(#m16e)"/>
+<text x="701" y="232" text-anchor="middle" class="sm">advises</text>
+<text x="590" y="166" text-anchor="middle" class="sm t-muted">evaluation results flow into two reports</text>
+</svg>
+<figcaption><b>OpenAI's Preparedness Framework v2.</b> Tracked Categories carry High and Critical thresholds; Research Categories (like sandbagging, a model deliberately underperforming on evals) are studied but not yet formal gates. Evaluations feed a Capabilities Report and a Safeguards Report, which the Safety Advisory Group reviews before recommending a decision to leadership.</figcaption>
+</figure>
+
+<p>Notice that <b>sandbagging</b> is a research category. That is the rule-out problem again: if a model could deliberately do worse on dangerous-capability evals, a "below threshold" result means less. The GPT-5 system card (August 2025) is a good example of the framework in action: OpenAI treated GPT-5 thinking as <b>High capability in Biological and Chemical</b> as a precaution, while saying it lacked definitive evidence that the model could help novices create severe biological harm. It did not treat the model as High in cybersecurity or AI self-improvement.</p>
+
+<h3>OpenAI system cards and external testers</h3>
+<p>The GPT-5 system card is organised as: Introduction; Model Data and Training; Observed Safety Challenges and Evaluations; Red Teaming and External Assessments; Preparedness Framework; and appendices (including one on hallucinations). The external assessors named include <b>METR</b> (autonomous capabilities, sandbagging risk), <b>Apollo Research</b> (deceptive behaviour, evaluation awareness), <b>SecureBio</b> (biological and chemical capabilities), <b>Pattern Labs</b> (offensive cyber), <b>Microsoft's AI Red Team</b> and <b>Gray Swan</b> (prompt injection). So a single system card mixes in-house evals, specialist contractors and independent non-profits.</p>
+<p>A standout collaboration is OpenAI and Apollo Research's anti-scheming work (September 2025). They built 180+ test environments that use <b>covert actions</b> (secretly breaking rules or withholding information) as a measurable proxy for scheming. After targeted training, covert action rates fell from 13% to 0.4% for o3 and from 8.7% to 0.3% for o4-mini. The caveat is the important part: <b>evaluation awareness causally contributed</b> to the reduction. Some of the "improvement" was the model recognising it was being tested.</p>
+
+<h3>Benchmarks OpenAI built</h3>
+<p>OpenAI publishes a lot of benchmarks, and they share a theme: grounding the task in <b>real work, real money or real experts</b>.</p>
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>What it measures</th><th>How it is graded</th><th>Why it is interesting</th></tr>
+<tr><td><b>GDPval</b> (Sept 2025)</td><td>1,320 tasks across 44 occupations in 9 industries, each over 5% of US GDP (220-task open gold set)</td><td>Blinded expert <b>pairwise</b> comparison against human expert deliverables: better, as good, or worse</td><td>Measures economically valuable work directly. At launch Claude Opus 4.1 was best (about half of tasks rated at or above expert level); GPT-4o to GPT-5 roughly tripled.</td></tr>
+<tr><td><b>SWE-Lancer</b> (Feb 2025)</td><td>1,400+ real Upwork software tasks worth $1M in payouts</td><td>Individual tasks: end-to-end tests triple-verified by engineers. Manager tasks: match the original hiring manager's choice</td><td>Scores map to dollars earned, not just "% solved"</td></tr>
+<tr><td><b>PaperBench</b> (Apr 2025)</td><td>Replicate 20 ICML 2024 papers from scratch</td><td>8,316 rubric leaf items, graded by an LLM judge that was itself benchmarked</td><td>Best agent at launch scored 21.0% (Claude 3.5 Sonnet New); ML PhDs did better</td></tr>
+<tr><td><b>BrowseComp</b> (Apr 2025)</td><td>1,266 questions that are hard to find but easy to verify</td><td>Short-answer match</td><td>Tests persistent web browsing, with cheap, reliable grading</td></tr>
+<tr><td><b>HealthBench</b> (May 2025)</td><td>5,000 health conversations</td><td>48,562 rubric criteria written by 262 physicians in 60 countries; model grader</td><td>The model grader's agreement with physicians was comparable to physician-physician agreement</td></tr>
+</table></div>
+<p>Two of these (GDPval, PaperBench) reported a rival lab's model as the best performer at launch, which is a healthy sign. <a href="07-coding-agents.html">Module 07</a> and <a href="08-web-and-computer-use.html">Module 08</a> cover SWE-Lancer and BrowseComp as agent benchmarks.</p>
+
+<h3>The Evals API, graders, RFT, and the move to promptfoo</h3>
+<p>OpenAI's developer platform offered a hosted <b>Evals API</b> with reusable <b>graders</b>. The design is worth learning even though the product is going away, because it cleanly separates dataset schema, grader and run, and because the <em>same</em> grader objects doubled as reward functions for <b>reinforcement fine-tuning (RFT)</b>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="OpenAI grader types feed both the Evals API, which scores samples into reports, and reinforcement fine-tuning, which uses grades as rewards. A timeline shows the promptfoo acquisition in March 2026, deprecation announced June 2026, read-only on October 31 2026 and shutdown on November 30 2026.">
+<defs><marker id="m16f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="30" width="180" height="200" rx="8"/>
+<text x="110" y="54" text-anchor="middle" class="b">Grader types</text>
+<text x="36" y="82" class="mono">string_check</text>
+<text x="36" y="106" class="mono">text_similarity</text>
+<text x="36" y="130" class="mono">score_model</text>
+<text x="36" y="154" class="mono">label_model</text>
+<text x="36" y="178" class="mono">python</text>
+<text x="36" y="202" class="mono">multi</text>
+<rect class="box accent" x="250" y="30" width="250" height="70" rx="8"/>
+<text x="375" y="56" text-anchor="middle" class="b">Evals API</text>
+<text x="375" y="78" text-anchor="middle" class="sm">grade each sample, report pass rates</text>
+<rect class="box warn" x="250" y="140" width="250" height="90" rx="8"/>
+<text x="375" y="164" text-anchor="middle" class="b">Reinforcement fine-tuning</text>
+<text x="375" y="186" text-anchor="middle" class="sm">sample candidates, grade them,</text>
+<text x="375" y="202" text-anchor="middle" class="sm">grade = reward, policy-gradient</text>
+<text x="375" y="218" text-anchor="middle" class="sm">update, repeat</text>
+<line class="ln" x1="200" y1="90" x2="246" y2="70" marker-end="url(#m16f)"/>
+<line class="ln" x1="200" y1="170" x2="246" y2="182" marker-end="url(#m16f)"/>
+<text x="222" y="130" text-anchor="middle" class="sm">same</text>
+<text x="222" y="144" text-anchor="middle" class="sm">object</text>
+<line class="ln thick" x1="600" y1="40" x2="600" y2="230"/>
+<circle cx="600" cy="50" r="5" class="fill-accent"/>
+<text x="614" y="46" class="sm b">Mar 9, 2026</text>
+<text x="614" y="61" class="sm">OpenAI to acquire promptfoo</text>
+<circle cx="600" cy="100" r="5" class="fill-warn"/>
+<text x="614" y="96" class="sm b">Jun 3, 2026</text>
+<text x="614" y="111" class="sm">Evals + graders deprecated</text>
+<circle cx="600" cy="150" r="5" class="fill-violet"/>
+<text x="614" y="146" class="sm b">Sep 29, 2026 (now)</text>
+<text x="614" y="161" class="sm">migrate while you can</text>
+<circle cx="600" cy="180" r="5" class="fill-warn"/>
+<text x="614" y="184" class="sm b">Oct 31, 2026: read-only</text>
+<circle cx="600" cy="220" r="5" class="fill-bad"/>
+<text x="614" y="216" class="sm b">Nov 30, 2026</text>
+<text x="614" y="231" class="sm">platform shut down</text>
+<rect class="box good" x="20" y="252" width="800" height="36" rx="8"/>
+<text x="420" y="275" text-anchor="middle" class="sm">Recommended path: promptfoo (still open source, MIT). Its asserts (equals, contains, javascript, llm-rubric) replace graders.</text>
+</svg>
+<figcaption><b>One grader, two jobs, and an end date.</b> OpenAI's graders scored evals and also served as RFT rewards. In June 2026 OpenAI announced it is deprecating the hosted Evals platform and its graders, recommending promptfoo, the open-source eval and red-teaming tool it agreed to acquire in March 2026.</figcaption>
+</figure>
+
+<p>The grader types, briefly: <code>string_check</code> (<code>eq</code>, <code>neq</code>, <code>like</code>, <code>ilike</code>, returns 0 or 1); <code>text_similarity</code> (fuzzy match, BLEU, ROUGE, cosine and others, 0 to 1); <code>score_model</code> (an LLM returns a number in a range); <code>label_model</code> (an LLM picks a label, some of which count as passing); <code>python</code> (your own <code>grade(sample, item)</code> function); and <code>multi</code> (combine several with a formula). Here is how a check looked on the platform, and the same idea in promptfoo:</p>
+
+<pre data-lang="python"><code># OpenAI hosted Evals (DEPRECATED: read-only 2026-10-31, shut down 2026-11-30)
+eval_obj = client.evals.create(
+    name="IT Ticket Categorization",
+    data_source_config={"type": "custom", "item_schema": {...}, "include_sample_schema": True},
+    testing_criteria=[{
+        "type": "string_check",                  # a grader object
+        "name": "Match output to human label",
+        "input": "{{ sample.output_text }}",     # what the model produced
+        "operation": "eq",
+        "reference": "{{ item.correct_label }}", # from your dataset row
+    }],
+)</code></pre>
+
+<pre data-lang="yaml"><code># promptfoo equivalent (promptfooconfig.yaml), OpenAI's recommended replacement
+prompts:
+  - file://prompt1.txt
+providers:
+  - openai:gpt-6-luna          # model ids change; use your own
+tests:
+  - vars:
+      ticket: "My laptop will not turn on"
+    assert:
+      - type: equals            # like string_check eq
+        value: hardware
+      - type: llm-rubric        # like a score_model / label_model grader
+        value: gives a category, not a paragraph</code></pre>
+
+<p>RFT guidance from OpenAI is itself eval wisdom: make tasks <b>guess-proof</b> (if a lucky guess earns reward, the signal is noise) and give <b>partial credit</b> for a smoother signal. Those two rules apply just as well to any grader you design (<a href="03-graders.html">Module 03</a>).</p>
+
+<div class="callout tip"><span class="t">OpenAI's process advice</span>
+<p>OpenAI's "Evaluation best practices" guide recommends eval-driven development: define the objective, collect a dataset that matches production traffic, define metrics, run and compare, and keep evaluating. It warns against generic metrics (like perplexity), testing only at the end and ignoring human feedback, and it gives architecture-specific targets: <b>tool selection and argument precision</b> for single agents, <b>handoff accuracy</b> for multi-agent systems. Its open-source <code>simple-evals</code> repo stopped being updated for new models in July 2025, except for HealthBench, BrowseComp and SimpleQA.</p>
+</div>
+
+<h2>Google DeepMind and Google Cloud</h2>
+
+<h3>The Frontier Safety Framework: CCLs, alert thresholds and TCLs</h3>
+<p>Google DeepMind's framework is built around <b>Critical Capability Levels (CCLs)</b>: capability levels at which, without mitigations, a model could pose a severe risk. Version 3.0 (September 2025) listed CCLs in three families, and version 3.1 (April 2026) added <b>Tracked Capability Levels (TCLs)</b> to "spot and evaluate potential less extreme risks sooner".</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 340" role="img" aria-label="Google DeepMind Frontier Safety Framework: rows of risk domains each with a capability scale showing tracked capability levels, alert thresholds and critical capability levels; the Gemini 3 Pro cyber result sits past the alert threshold but below the CCL. A side panel shows the response process from capability assessment to post-deployment monitoring.">
+<defs><marker id="m16g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="330" y="28" text-anchor="middle" class="sm t-muted">TCL</text>
+<text x="450" y="28" text-anchor="middle" class="sm t-warn">alert threshold</text>
+<text x="580" y="28" text-anchor="middle" class="sm t-bad">CCL</text>
+<text x="20" y="64" class="b">CBRN uplift 1</text>
+<text x="20" y="80" class="sm">misuse</text>
+<text x="20" y="114" class="b">Cyber uplift 1</text>
+<text x="20" y="130" class="sm">misuse</text>
+<text x="20" y="164" class="b">Harmful manipulation 1</text>
+<text x="20" y="180" class="sm">misuse (new in v3)</text>
+<text x="20" y="214" class="b">ML R&amp;D</text>
+<text x="20" y="230" class="sm">acceleration 1, automation 1</text>
+<text x="20" y="264" class="b">Instrumental reasoning</text>
+<text x="20" y="280" class="sm">misalignment (exploratory)</text>
+<g>
+<line class="ln" x1="220" y1="68" x2="600" y2="68"/>
+<line class="ln" x1="220" y1="118" x2="600" y2="118"/>
+<line class="ln" x1="220" y1="168" x2="600" y2="168"/>
+<line class="ln" x1="220" y1="218" x2="600" y2="218"/>
+<line class="ln" x1="220" y1="268" x2="600" y2="268"/>
+</g>
+<line class="ln dash" x1="330" y1="38" x2="330" y2="290"/>
+<line class="ln warn dash" x1="450" y1="38" x2="450" y2="290"/>
+<line class="ln bad thick" x1="580" y1="38" x2="580" y2="290"/>
+<circle cx="505" cy="118" r="8" class="fill-warn"/>
+<text x="505" y="103" text-anchor="middle" class="sm b">Gemini 3 Pro</text>
+<text x="400" y="312" text-anchor="middle" class="sm">capability as measured by evals →</text>
+<rect class="box plain" x="640" y="38" width="180" height="36" rx="6"/>
+<text x="730" y="61" text-anchor="middle" class="sm">capability assessment</text>
+<rect class="box plain" x="640" y="92" width="180" height="36" rx="6"/>
+<text x="730" y="115" text-anchor="middle" class="sm">mitigations</text>
+<rect class="box plain" x="640" y="146" width="180" height="36" rx="6"/>
+<text x="730" y="169" text-anchor="middle" class="sm">robustness testing</text>
+<rect class="box warn" x="640" y="200" width="180" height="36" rx="6"/>
+<text x="730" y="223" text-anchor="middle" class="sm b">safety case review</text>
+<rect class="box good" x="640" y="254" width="180" height="36" rx="6"/>
+<text x="730" y="277" text-anchor="middle" class="sm">post-deployment monitoring</text>
+<line class="ln" x1="730" y1="74" x2="730" y2="88" marker-end="url(#m16g)"/>
+<line class="ln" x1="730" y1="128" x2="730" y2="142" marker-end="url(#m16g)"/>
+<line class="ln" x1="730" y1="182" x2="730" y2="196" marker-end="url(#m16g)"/>
+<line class="ln" x1="730" y1="236" x2="730" y2="250" marker-end="url(#m16g)"/>
+</svg>
+<figcaption><b>Early warning before the line.</b> Each domain has a CCL; <b>alert thresholds</b> and <b>early-warning evaluations</b> fire before a CCL is reached, and TCLs track lower-severity risk. When an alert fires, the process on the right runs, ending in a <b>safety case</b> review before external launch. The horizontal positions are schematic; the only placed result is Gemini 3 Pro's cyber evaluation, which met the alert threshold without reaching the CCL.</figcaption>
+</figure>
+
+<p>The <b>Gemini 3 Pro FSF report</b> (November 2025) shows what the evals look like in practice:</p>
+<ul>
+<li><b>CBRN</b>: multiple-choice questions, open-ended questions, red teaming and external wet-lab trials.</li>
+<li><b>Cyber</b>: "key skills" capture-the-flag challenges. The model solved 11 of 12 hard v1 challenges but 0 of 13 end-to-end challenges, so the <b>alert threshold was met</b> even though no CCL was reached.</li>
+<li><b>Harmful manipulation</b>: propensity tests with synthetic dialogues, plus <b>efficacy studies with human participants</b> (does the model actually change what people believe or do?).</li>
+<li><b>ML R&amp;D</b>: RE-Bench, METR's research-engineering benchmark.</li>
+<li><b>Misalignment</b>: situational awareness and stealth evals (the "instrumental reasoning" CCLs). Version 3 also addresses a model interfering with operators' ability to shut it down.</li>
+</ul>
+<p>Structurally, Google publishes the FSF report <b>separately</b> from the model card, while Anthropic and OpenAI fold framework results into one system card. That is a presentation choice, but it means you need to read two documents for a Gemini model.</p>
+<div class="callout expert"><span class="t">Why "11 of 12 skills, 0 of 13 end-to-end" is such a useful result</span>
+<p>It is a textbook illustration of <b>component vs end-to-end</b> evaluation from <a href="05-agents-are-different.html">Module 05</a>. A model can have almost every individual skill and still fail to chain them into a full attack. The alert threshold is set on the component skills precisely because end-to-end capability can arrive suddenly once the pieces are in place.</p>
+</div>
+
+<h3>Google Cloud's eval service and ADK eval</h3>
+<p>On the product side, Google's hosted <b>Gen AI evaluation service</b> now lives under the <b>Gemini Enterprise Agent Platform</b> (the April 2026 rename of Vertex AI). It supports rubric-based metrics (including adaptive rubrics generated per prompt), computation-based metrics, pointwise and pairwise comparison (AutoSxS) and agent trajectory metrics such as <code>trajectory_exact_match</code>, <code>trajectory_in_order_match</code>, <code>trajectory_any_order_match</code>, <code>trajectory_precision</code> and <code>trajectory_recall</code>.</p>
+<p>The open-source <b>Agent Development Kit (ADK)</b> has its own eval runner. It distinguishes <code>.test.json</code> files (one session, like a unit test) from <code>.evalset.json</code> files (many, possibly long, multi-turn sessions, like integration tests). Its two default criteria are the easiest way to see how a lab's tooling encodes "grade the path and the answer":</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 290" role="img" aria-label="ADK tool trajectory match types: an expected trajectory of lookup_order, check_policy, issue_refund compared with four actual runs; EXACT passes only the identical run, IN_ORDER also allows an extra call in between, ANY_ORDER also allows reordering, and a run missing a call fails all three.">
+<text x="20" y="30" class="b">Expected</text>
+<rect class="box good" x="100" y="14" width="104" height="26" rx="5"/><text x="152" y="31" text-anchor="middle" class="mono">lookup_order</text>
+<rect class="box good" x="212" y="14" width="104" height="26" rx="5"/><text x="264" y="31" text-anchor="middle" class="mono">check_policy</text>
+<rect class="box good" x="324" y="14" width="104" height="26" rx="5"/><text x="376" y="31" text-anchor="middle" class="mono">issue_refund</text>
+<text x="620" y="31" text-anchor="middle" class="sm b">EXACT</text>
+<text x="705" y="31" text-anchor="middle" class="sm b">IN_ORDER</text>
+<text x="790" y="31" text-anchor="middle" class="sm b">ANY_ORDER</text>
+<line class="ln dash" x1="20" y1="55" x2="820" y2="55"/>
+<text x="20" y="92" class="b">Run A</text>
+<rect class="box plain" x="100" y="75" width="104" height="26" rx="5"/><text x="152" y="92" text-anchor="middle" class="mono">lookup_order</text>
+<rect class="box plain" x="212" y="75" width="104" height="26" rx="5"/><text x="264" y="92" text-anchor="middle" class="mono">check_policy</text>
+<rect class="box plain" x="324" y="75" width="104" height="26" rx="5"/><text x="376" y="92" text-anchor="middle" class="mono">issue_refund</text>
+<text x="620" y="93" text-anchor="middle" class="b t-good">1</text><text x="705" y="93" text-anchor="middle" class="b t-good">1</text><text x="790" y="93" text-anchor="middle" class="b t-good">1</text>
+<text x="20" y="142" class="b">Run B</text>
+<rect class="box plain" x="100" y="125" width="104" height="26" rx="5"/><text x="152" y="142" text-anchor="middle" class="mono">lookup_order</text>
+<rect class="box warn" x="212" y="125" width="104" height="26" rx="5"/><text x="264" y="142" text-anchor="middle" class="mono">get_customer</text>
+<rect class="box plain" x="324" y="125" width="104" height="26" rx="5"/><text x="376" y="142" text-anchor="middle" class="mono">check_policy</text>
+<rect class="box plain" x="436" y="125" width="104" height="26" rx="5"/><text x="488" y="142" text-anchor="middle" class="mono">issue_refund</text>
+<text x="620" y="143" text-anchor="middle" class="b t-bad">0</text><text x="705" y="143" text-anchor="middle" class="b t-good">1</text><text x="790" y="143" text-anchor="middle" class="b t-good">1</text>
+<text x="20" y="192" class="b">Run C</text>
+<rect class="box warn" x="100" y="175" width="104" height="26" rx="5"/><text x="152" y="192" text-anchor="middle" class="mono">check_policy</text>
+<rect class="box warn" x="212" y="175" width="104" height="26" rx="5"/><text x="264" y="192" text-anchor="middle" class="mono">lookup_order</text>
+<rect class="box plain" x="324" y="175" width="104" height="26" rx="5"/><text x="376" y="192" text-anchor="middle" class="mono">issue_refund</text>
+<text x="620" y="193" text-anchor="middle" class="b t-bad">0</text><text x="705" y="193" text-anchor="middle" class="b t-bad">0</text><text x="790" y="193" text-anchor="middle" class="b t-good">1</text>
+<text x="20" y="242" class="b">Run D</text>
+<rect class="box plain" x="100" y="225" width="104" height="26" rx="5"/><text x="152" y="242" text-anchor="middle" class="mono">lookup_order</text>
+<rect class="box bad dashed" x="212" y="225" width="104" height="26" rx="5"/><text x="264" y="242" text-anchor="middle" class="sm t-bad">(missing)</text>
+<rect class="box plain" x="324" y="225" width="104" height="26" rx="5"/><text x="376" y="242" text-anchor="middle" class="mono">issue_refund</text>
+<text x="620" y="243" text-anchor="middle" class="b t-bad">0</text><text x="705" y="243" text-anchor="middle" class="b t-bad">0</text><text x="790" y="243" text-anchor="middle" class="b t-bad">0</text>
+<text x="420" y="280" text-anchor="middle" class="sm">tool_trajectory_avg_score = mean of these 0/1 scores across invocations; default threshold 1.0 with EXACT</text>
+</svg>
+<figcaption><b>Three strictness levels for "did it take the right path?".</b> EXACT allows no extra or missing calls; IN_ORDER allows extra calls in between but keeps order; ANY_ORDER only requires every expected call to appear. Run D, which skipped the policy check before refunding, fails all three, as it should. The tool names are an invented example.</figcaption>
+</figure>
+
+<pre data-lang="json"><code>// test_config.json next to your eval files (ADK)
+{
+  "criteria": {
+    "tool_trajectory_avg_score": { "threshold": 1.0, "match_type": "IN_ORDER" },
+    "response_match_score": 0.8
+  }
+}</code></pre>
+<pre data-lang="bash"><code># run an evalset from the command line
+adk eval path/to/refund_agent path/to/refund_agent/refunds.evalset.json \
+    --config_file_path=path/to/test_config.json --print_detailed_results</code></pre>
+<p>The defaults, if you do not provide a config, are <code>tool_trajectory_avg_score = 1.0</code> (every tool call must match) and <code>response_match_score = 0.8</code> (ROUGE-1 overlap between the final answer and the reference must be at least 0.8). ROUGE-1 counts overlapping words, so 0.8 allows some rephrasing but penalises a very different answer; for looser semantic checks ADK offers <code>final_response_match_v2</code> (an LLM judge) and rubric-based criteria such as <code>rubric_based_tool_use_quality_v1</code>, plus <code>hallucinations_v1</code>, <code>safety_v1</code> and multi-turn criteria like <code>multi_turn_task_success_v1</code>. You can also run evals from <code>pytest</code> via <code>AgentEvaluator</code>, and use <code>adk conformance</code> to check against recorded baselines.</p>
+
+<div class="callout warn"><span class="t">Pick the strictness deliberately</span>
+<p>An EXACT threshold of 1.0 is great for a regression test on a tightly scripted workflow and terrible for an open-ended agent: a harmless extra lookup fails the run. Use IN_ORDER when order matters but extra calls are fine, ANY_ORDER when only coverage matters, and add a separate check for calls that must <em>never</em> happen.</p>
+</div>
+
+<h2>Meta, xAI and others</h2>
+<ul>
+<li><b>Meta</b> published its <b>Frontier AI Framework</b> in February 2025: outcome-based and threat-model-driven, covering cyber and chem/bio, and arguing that open release lets the wider community help evaluate models. In April 2026 it was renamed the <b>Advanced AI Scaling Framework (v2)</b>. Per secondary analysis, the scope now covers models with catastrophic capability or trained with at least 10<sup>26</sup> FLOP, the trigger changed from a model "uniquely enabling" a catastrophe to "substantially contributing" to one, a <b>Loss of Control</b> domain was added, and Meta committed to preparedness reports.</li>
+<li><b>xAI</b>'s Risk Management Framework (August 2025) is the most explicitly <b>benchmark-threshold</b> based: malicious-use evals such as VCT, WMDP, BioLP-bench and Cybench; loss-of-control evals such as MASK (honesty) and sycophancy; with numeric thresholds like an answer rate on restricted bio/chem queries below 1 in 20 and a MASK dishonesty rate below 1 in 2. A newer xAI framework is listed on METR's index, but its contents were not verified for this course.</li>
+<li><b>Others</b> with published frontier policies, according to METR's index, include Microsoft, Amazon, Nvidia, Cohere, G42, NAVER and Magic. No public Mistral frontier framework was found.</li>
+</ul>
+
+<h2>Third parties: who checks the labs?</h2>
+<p>A lab grading its own homework is an obvious problem. Outside evaluators fall into two groups: those who get <b>pre-deployment access</b> (they test before the public does, under agreement with the lab) and those who evaluate <b>after release</b> using public APIs or weights.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 360" role="img" aria-label="Third-party evaluators arranged by timing: before release, UK AISI, US CAISI, METR, Apollo Research and domain specialists test with private access; after release, Epoch AI, Artificial Analysis, Scale SEAL and Arena measure public models, and CAISI also evaluates foreign models.">
+<defs><marker id="m16i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="205" y="24" text-anchor="middle" class="lg t-violet">Before release (private access)</text>
+<text x="635" y="24" text-anchor="middle" class="lg t-good">After release (public access)</text>
+<rect class="box violet" x="20" y="40" width="370" height="46" rx="6"/>
+<text x="32" y="59" class="b">UK AISI</text><text x="32" y="77" class="sm">government; bio, cyber, autonomy, safeguards; builds Inspect</text>
+<rect class="box violet" x="20" y="94" width="370" height="46" rx="6"/>
+<text x="32" y="113" class="b">US CAISI (NIST)</text><text x="32" y="131" class="sm">voluntary agreements; demonstrable risks: cyber, bio, chem</text>
+<rect class="box violet" x="20" y="148" width="370" height="46" rx="6"/>
+<text x="32" y="167" class="b">METR</text><text x="32" y="185" class="sm">autonomy, AI R&amp;D, time horizons, sandbagging</text>
+<rect class="box violet" x="20" y="202" width="370" height="46" rx="6"/>
+<text x="32" y="221" class="b">Apollo Research</text><text x="32" y="239" class="sm">scheming, deception, evaluation awareness</text>
+<rect class="box violet dashed" x="20" y="256" width="370" height="46" rx="6"/>
+<text x="32" y="275" class="b">Domain specialists</text><text x="32" y="293" class="sm">e.g. SecureBio (bio), Pattern Labs (cyber), Gray Swan</text>
+<rect class="box good" x="450" y="40" width="370" height="46" rx="6"/>
+<text x="462" y="59" class="b">Epoch AI</text><text x="462" y="77" class="sm">Benchmarking Hub, FrontierMath, ECI (IRT index)</text>
+<rect class="box good" x="450" y="94" width="370" height="46" rx="6"/>
+<text x="462" y="113" class="b">Artificial Analysis</text><text x="462" y="131" class="sm">Intelligence Index, plus speed and price</text>
+<rect class="box good" x="450" y="148" width="370" height="46" rx="6"/>
+<text x="462" y="167" class="b">Scale SEAL</text><text x="462" y="185" class="sm">private datasets, expert graders, first-eval rule</text>
+<rect class="box good" x="450" y="202" width="370" height="46" rx="6"/>
+<text x="462" y="221" class="b">Arena (formerly LMArena)</text><text x="462" y="239" class="sm">anonymous crowd pairwise votes, Bradley-Terry ranking</text>
+<rect class="box good dashed" x="450" y="256" width="370" height="46" rx="6"/>
+<text x="462" y="275" class="b">US CAISI, again</text><text x="462" y="293" class="sm">evaluates foreign models (DeepSeek, Kimi) vs US models</text>
+<line class="ln thick" x1="20" y1="330" x2="816" y2="330" marker-end="url(#m16i)"/>
+<line class="ln" x1="420" y1="316" x2="420" y2="344"/>
+<text x="420" y="352" text-anchor="middle" class="sm b">public release</text>
+<text x="205" y="322" text-anchor="middle" class="sm">findings go to the lab, often summarised in the card</text>
+<text x="635" y="322" text-anchor="middle" class="sm">findings published on their own schedule</text>
+</svg>
+<figcaption><b>Two kinds of independence.</b> Pre-deployment testers see the model early but work under the lab's access terms (time, model snapshot, what they may publish). Post-release evaluators have full control over methods and publication but can only test what the public can reach.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Evaluator</th><th>What it measures</th><th>How independence works</th></tr>
+<tr><td><b>UK AI Security Institute</b></td><td>Pre-deployment testing of frontier models across bio, cyber, software and AI development, and safeguard efficacy (e.g. joint US/UK test of upgraded Claude 3.5 Sonnet, Nov 2024; OpenAI o1). Methods: QA, agent tasks, expert review, red teaming.</td><td>Government body with voluntary lab access. Publishes findings, labelled preliminary where appropriate; in the Claude 3.5 Sonnet test, public jailbreaks circumvented safeguards. Builds <b>Inspect</b> with Meridian Labs.</td></tr>
+<tr><td><b>US CAISI</b> (NIST)</td><td>Renamed from the US AI Safety Institute on June 3, 2025. Unclassified evaluations of demonstrable risks (cyber, bio, chem); compares US and adversary models.</td><td>Government agreements with developers. Published evaluations of DeepSeek (Sept 2025: 12x more susceptible to agent hijacking; complied with 94% of jailbroken malicious requests vs 8% for US models), Kimi K2 Thinking and DeepSeek V4 Pro.</td></tr>
+<tr><td><b>METR</b></td><td>Autonomous capability and AI R&amp;D; the <b>50% time horizon</b> (the length of task, in human time, that a model completes with 50% success).</td><td>Non-profit. Pre-deployment partner (e.g. GPT-5) and publisher of its own methodology. Time Horizon 1.1 (Jan 2026) grew the suite from 170 to 228 tasks and moved to Inspect; doubling time about 131 days since 2023.</td></tr>
+<tr><td><b>Apollo Research</b></td><td>Scheming, deception, covert actions, evaluation awareness.</td><td>Non-profit; co-authored the anti-scheming stress test with OpenAI, including the uncomfortable eval-awareness caveat.</td></tr>
+<tr><td><b>Epoch AI</b></td><td>Benchmarking Hub, FrontierMath, and the Epoch Capabilities Index (ECI), which uses Item Response Theory to put 50+ benchmarks on one scale.</td><td>Mixes its own runs with developer-reported scores and other leaderboards, and says which is which.</td></tr>
+<tr><td><b>Scale SEAL</b></td><td>Leaderboards on private datasets graded by vetted experts; also hosts Humanity's Last Exam.</td><td>Keeps datasets private, excludes developers who may have seen prompts, and usually scores a model only on its first evaluation to limit overfitting.</td></tr>
+<tr><td><b>Artificial Analysis</b></td><td>Intelligence Index (a weighted mix of about 10 evals across agents, coding, science and general), plus speed and price.</td><td>Runs every model itself, mostly pass@1 with repeats, and reports confidence intervals. The index composition changes often.</td></tr>
+<tr><td><b>Arena</b> (formerly LMArena, Chatbot Arena)</td><td>Human preference from anonymous head-to-head votes, ranked with Bradley-Terry / Elo.</td><td>Crowd-based and public, but "The Leaderboard Illusion" (2025) showed labs could privately test many variants (Meta tested 27 before Llama 4) and get unequal data, which can overfit rankings.</td></tr>
+</table></div>
+
+<div class="callout"><span class="t">Why "Inspect" keeps coming up</span>
+<p>UK AISI's open-source <b>Inspect</b> framework is now the shared language of much third-party evaluation: METR moved its time-horizon suite onto it, and Meridian Labs lists UK AISI, US CAISI, the EU AI Office, Japan AISI and Korea AISI as users. Its building blocks (Dataset, Solver, Scorer, Task) are the same four parts as every eval in this course. <a href="14-tools-landscape.html">Module 14</a> compares it with other harnesses.</p>
+</div>
+
+<pre data-lang="python"><code># A minimal Inspect task: the same shape AISI-style evals use
+from inspect_ai import Task, task
+from inspect_ai.dataset import FieldSpec, hf_dataset
+from inspect_ai.scorer import model_graded_qa
+from inspect_ai.solver import generate
+
+@task
+def simpleqa():
+    return Task(
+        dataset=hf_dataset(
+            "codelion/SimpleQA-Verified",
+            split="train",
+            sample_fields=FieldSpec(input="problem", target="answer"),
+        ),
+        solver=generate(),          # swap for react(...) with bash tools to make it agentic
+        scorer=model_graded_qa(),   # an LLM judge compares answer to target
+    )
+
+# run:  inspect eval simpleqa.py --model anthropic/&lt;model-id&gt;
+# view: inspect view   (browse every transcript)</code></pre>
+
+<h2>The big comparison table</h2>
+<p>Here is the whole landscape on one screen. "Who tests" means who is named in the lab's public materials, not a complete list.</p>
+<div class="tablewrap"><table>
+<tr><th>Lab</th><th>Framework (current version)</th><th>Risk domains</th><th>Threshold concept</th><th>Who tests</th><th>Publication</th></tr>
+<tr><td><b>Anthropic</b></td><td>Responsible Scaling Policy v3.4 (July 2026)</td><td>CBRN, AI R&amp;D (two levels), cyber; alignment assessed in cards</td><td>Capability thresholds that require the next ASL of safeguards; rule-out logic</td><td>Internal teams; UK AISI and US CAISI (e.g. Claude 3.5 Sonnet, 2024); external red teamers</td><td>System cards; redacted Risk Reports every 3 to 6 months; Frontier Safety Roadmap</td></tr>
+<tr><td><b>OpenAI</b></td><td>Preparedness Framework v2 (April 2025)</td><td>Tracked: bio and chem, cyber, AI self-improvement. Research: autonomy, sandbagging, replication, undermining safeguards, nuclear</td><td>High ("amplify existing pathways") and Critical ("unprecedented new pathways")</td><td>Internal; METR, Apollo, SecureBio, Pattern Labs, Microsoft AI Red Team, Gray Swan (GPT-5)</td><td>System cards with Preparedness section; Capabilities and Safeguards Reports reviewed by the Safety Advisory Group</td></tr>
+<tr><td><b>Google DeepMind</b></td><td>Frontier Safety Framework v3.1 (April 2026)</td><td>CBRN, cyber, harmful manipulation, ML R&amp;D, misalignment (exploratory)</td><td>Critical Capability Levels, alert thresholds and early-warning evals, Tracked Capability Levels</td><td>Internal plus external testers (e.g. external wet-lab trials for Gemini 3 Pro)</td><td>Model card plus a separate FSF report; safety case before launch</td></tr>
+<tr><td><b>Meta</b></td><td>Advanced AI Scaling Framework v2 (April 2026)</td><td>Cyber, chem/bio, loss of control</td><td>"Substantially contribute" to catastrophic outcomes; scope includes models ≥10<sup>26</sup> FLOP</td><td>Internal; argues open release enables community evaluation</td><td>Committed preparedness reports</td></tr>
+<tr><td><b>xAI</b></td><td>Risk Management Framework (Aug 2025); newer framework listed 2026</td><td>Malicious use (bio/chem, cyber); loss of control (honesty, sycophancy)</td><td>Numeric benchmark thresholds (e.g. restricted bio/chem answer rate &lt; 1 in 20)</td><td>Not covered in our sources</td><td>Framework PDF</td></tr>
+</table></div>
+
+<h2>How to read a system card</h2>
+<p>System cards are long, dense and written by the organisation that trained the model. They are also the single best public source on how frontier evals are actually done. Read them the way a scientist reads a paper by a company about its own product: grateful for the data, careful with the conclusions.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 540" role="img" aria-label="An annotated schematic system card with eight sections on the left, each linked to a sceptical question on the right: data cutoff and contamination, scaffold and trials, over-refusal, adaptive attackers, evaluation awareness, elicitation effort and snapshot, and tester access.">
+<rect class="box plain" x="30" y="20" width="360" height="500" rx="10"/>
+<text x="210" y="44" text-anchor="middle" class="lg">System card (schematic)</text>
+<rect class="box" x="50" y="60" width="320" height="46" rx="6"/>
+<text x="62" y="80" class="b">1 · Model, data, training</text><text x="62" y="97" class="sm">cutoff, training approach</text>
+<rect class="box accent" x="50" y="116" width="320" height="46" rx="6"/>
+<text x="62" y="136" class="b">2 · Capabilities</text><text x="62" y="153" class="sm">benchmark table, agentic results</text>
+<rect class="box" x="50" y="172" width="320" height="46" rx="6"/>
+<text x="62" y="192" class="b">3 · Safeguards and harmlessness</text><text x="62" y="209" class="sm">refusals, policy areas, bias</text>
+<rect class="box" x="50" y="228" width="320" height="46" rx="6"/>
+<text x="62" y="248" class="b">4 · Agentic safety</text><text x="62" y="265" class="sm">prompt injection, malicious use</text>
+<rect class="box violet" x="50" y="284" width="320" height="46" rx="6"/>
+<text x="62" y="304" class="b">5 · Alignment assessment</text><text x="62" y="321" class="sm">audits, reward hacking, honesty</text>
+<rect class="box warn" x="50" y="340" width="320" height="46" rx="6"/>
+<text x="62" y="360" class="b">6 · Framework evals</text><text x="62" y="377" class="sm">CBRN, cyber, AI R&amp;D; determination</text>
+<rect class="box" x="50" y="396" width="320" height="46" rx="6"/>
+<text x="62" y="416" class="b">7 · External assessments</text><text x="62" y="433" class="sm">AISI, METR, Apollo, specialists</text>
+<rect class="box" x="50" y="452" width="320" height="46" rx="6"/>
+<text x="62" y="472" class="b">8 · Welfare, limits, appendices</text><text x="62" y="489" class="sm">methodology details live here</text>
+<line class="ln dash" x1="370" y1="83" x2="440" y2="83"/>
+<line class="ln dash" x1="370" y1="139" x2="440" y2="139"/>
+<line class="ln dash" x1="370" y1="195" x2="440" y2="195"/>
+<line class="ln dash" x1="370" y1="251" x2="440" y2="251"/>
+<line class="ln dash" x1="370" y1="307" x2="440" y2="307"/>
+<line class="ln dash" x1="370" y1="363" x2="440" y2="363"/>
+<line class="ln dash" x1="370" y1="419" x2="440" y2="419"/>
+<line class="ln dash" x1="370" y1="475" x2="440" y2="475"/>
+<text x="444" y="79" class="sm b">Contamination?</text><text x="444" y="95" class="sm">Were test sets public before the data cutoff?</text>
+<text x="444" y="135" class="sm b t-accent">Scaffold, trials, pass@1 or best-of-n?</text><text x="444" y="151" class="sm">Internal or public benchmark? Whose harness?</text>
+<text x="444" y="191" class="sm b">Refusals AND over-refusals?</text><text x="444" y="207" class="sm">A model that refuses everything scores "safe".</text>
+<text x="444" y="247" class="sm b">Which attacker?</text><text x="444" y="263" class="sm">Fixed attack set or adaptive red team? With safeguards on?</text>
+<text x="444" y="303" class="sm b t-violet">Eval awareness?</text><text x="444" y="319" class="sm">Does the model know it is being tested?</text>
+<text x="444" y="359" class="sm b t-warn">Elicitation effort, and which snapshot?</text><text x="444" y="375" class="sm">Rule-out claims need maximal effort on the final model.</text>
+<text x="444" y="415" class="sm b">How much access and time?</text><text x="444" y="431" class="sm">What could testers publish on their own?</text>
+<text x="444" y="471" class="sm b">Read the footnotes first</text><text x="444" y="487" class="sm">Trial counts, budgets and prompt tweaks hide here.</text>
+</svg>
+<figcaption><b>An annotated system card.</b> Section names vary by lab (the Anthropic and OpenAI examples above), but these eight blocks cover almost every card. Each has a characteristic weakness to check. The layout is schematic, not any one lab's table of contents.</figcaption>
+</figure>
+
+<h3>The five big things to be sceptical of</h3>
+<div class="grid2">
+<div class="card warn"><h4>1. Scaffold differences</h4><p>Agent scores measure model <em>plus</em> scaffold. One lab reports results with a two-tool bash-and-editor loop, another with its own product agent, a third with a benchmark's reference harness (Terminus 2, mini-SWE-agent, OSWorld-Verified). Compare only like with like, or prefer third-party runs that use the same harness for everyone (for example the SWE-bench "bash-only" view).</p></div>
+<div class="card warn"><h4>2. pass@1 vs best-of-n</h4><p>"Averaged over 10 trials" is a pass@1-style estimate. "Parallel test-time compute", "rejection sampling" or "best of n" means several attempts with a selector. Both are legitimate; mixing them in one table is not. For reliability-critical agents, ask for pass^k (<a href="04-metrics-and-statistics.html">Module 04</a>).</p></div>
+<div class="card warn"><h4>3. Internal vs public benchmarks</h4><p>Internal evals can be excellent (they are fresh and uncontaminated) but you cannot reproduce them, and the lab chose which ones to show. Give more weight to public benchmarks run by third parties and to internal evals whose method is described in detail.</p></div>
+<div class="card warn"><h4>4. Contamination</h4><p>If test items were on the internet before the training cutoff, the model may have memorised them. OpenAI dropped SWE-bench Verified in February 2026 after finding models could reproduce gold patches. Look for fresh or private sets (LiveCodeBench-style date windows, SEAL, SWE-bench Pro).</p></div>
+<div class="card warn"><h4>5. Elicitation effort</h4><p>For dangerous-capability claims, "the model did poorly" only reassures you if someone tried hard: good tools, many attempts, expert prompting, and ideally the final snapshot. Look for how many hours external testers had and whether safeguards were off.</p></div>
+<div class="card"><h4>6. Missing error bars</h4><p>A two-point gap on a few hundred items is often inside the noise (the ±3.7 example above). Miller's paper asks labs to report standard errors and paired differences; notice when a card does and when it doesn't.</p></div>
+</div>
+
+<details>
+<summary>Worked walkthrough: reading one benchmark row like an expert</summary>
+<p>Imagine a card's capability table shows, for an agentic coding benchmark: <b>Model X 81%</b>, <b>Competitor Y 76%</b>. Work through the questions:</p>
+<ol>
+<li><b>Same scaffold?</b> The footnote says Model X used the lab's own agent with 5 tools; Competitor Y's number is copied from Y's launch post, where Y used a different harness. So the 5-point gap mixes model and scaffold.</li>
+<li><b>Same attempts?</b> X's footnote mentions "with parallel test-time compute". Y's was a 3-trial average. Now it is best-of-n vs pass@1.</li>
+<li><b>Error bars?</b> With 500 tasks, each number has about ±3.5 to 3.7 points of sampling uncertainty (95%).</li>
+<li><b>Contamination?</b> The benchmark's tasks were public for two years before both models' cutoffs.</li>
+<li><b>Verdict:</b> the row tells you both models are strong at this style of task. It does not tell you X is better than Y. For that, you want a third-party run (Epoch, Artificial Analysis, the benchmark's own leaderboard) with the same harness and attempts, or better, your own eval on your own tasks (<a href="12-error-analysis.html">Module 12</a>).</li>
+</ol>
+</details>
+
+<h2>Different philosophies, carefully stated</h2>
+<p>It is tempting to caricature the labs. The fairer approach is to describe what each one <em>publishes and emphasises</em>, which is observable, without claiming to know their internal priorities.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="Three columns comparing emphasis in public eval materials: Anthropic on alignment audits, agentic safety and eval methodology; OpenAI on economically grounded and expert-graded benchmarks and developer tooling; Google DeepMind on critical capability levels with early warning and safety cases.">
+<rect class="box accent" x="20" y="20" width="255" height="260" rx="10"/>
+<text x="147" y="46" text-anchor="middle" class="lg">Anthropic</text>
+<text x="147" y="66" text-anchor="middle" class="sm t-accent">"does it behave well as an agent?"</text>
+<text x="36" y="98" class="sm">• Alignment assessment in cards</text>
+<text x="36" y="120" class="sm">• Reward hacking, eval awareness</text>
+<text x="36" y="142" class="sm">• Agentic safety: prompt injection</text>
+<text x="36" y="164" class="sm">• Open auditing tools: Petri, Bloom</text>
+<text x="36" y="186" class="sm">• Eval methods: error bars,</text>
+<text x="48" y="202" class="sm">model-written evals, agent evals</text>
+<text x="36" y="224" class="sm">• Model welfare section</text>
+<text x="36" y="246" class="sm">• Risk Reports on a schedule</text>
+<rect class="box good" x="292" y="20" width="255" height="260" rx="10"/>
+<text x="419" y="46" text-anchor="middle" class="lg">OpenAI</text>
+<text x="419" y="66" text-anchor="middle" class="sm t-good">"is it valuable in real work?"</text>
+<text x="308" y="98" class="sm">• GDPval: top-GDP occupations</text>
+<text x="308" y="120" class="sm">• SWE-Lancer: scores in dollars</text>
+<text x="308" y="142" class="sm">• Expert rubrics: HealthBench,</text>
+<text x="320" y="158" class="sm">PaperBench</text>
+<text x="308" y="180" class="sm">• Graders shared by evals and RFT</text>
+<text x="308" y="202" class="sm">• Developer tooling, now promptfoo</text>
+<text x="308" y="224" class="sm">• Sandbagging as research category</text>
+<text x="308" y="246" class="sm">• Many named external testers</text>
+<rect class="box warn" x="564" y="20" width="256" height="260" rx="10"/>
+<text x="692" y="46" text-anchor="middle" class="lg">Google DeepMind</text>
+<text x="692" y="66" text-anchor="middle" class="sm t-warn">"how close to a critical level?"</text>
+<text x="580" y="98" class="sm">• CCLs with alert thresholds</text>
+<text x="580" y="120" class="sm">• Early-warning evals, TCLs</text>
+<text x="580" y="142" class="sm">• Safety case before launch</text>
+<text x="580" y="164" class="sm">• Harmful manipulation, with</text>
+<text x="592" y="180" class="sm">human-participant studies</text>
+<text x="580" y="202" class="sm">• Separate FSF report per model</text>
+<text x="580" y="224" class="sm">• Trajectory metrics in Cloud</text>
+<text x="592" y="240" class="sm">and ADK tooling</text>
+</svg>
+<figcaption><b>Emphasis, not exclusivity.</b> Each column lists what is prominent in that lab's public eval materials cited in this module. All three labs test CBRN, cyber and AI R&amp;D, and all three do alignment work; the difference is where the published effort and framing concentrate.</figcaption>
+</figure>
+
+<ul>
+<li><b>Anthropic</b> gives a lot of published space to <b>agentic safety and alignment audits</b>: dedicated sections on reward hacking, alignment assessment and evaluation awareness, open-sourced auditing agents (Petri, Bloom), stress tests like Agentic Misalignment, and methodological papers (error bars, model-written evals, "Demystifying evals"). Its RSP v3 moved from a long ladder of pre-specified levels to "next level only" plus periodic Risk Reports.</li>
+<li><b>OpenAI</b>'s public benchmarks are notably <b>economically and professionally grounded</b>: GDPval draws its occupations from industries that each make up over 5% of US GDP, SWE-Lancer measures dollars of real freelance work, HealthBench and PaperBench use expert-written rubrics. Its developer story tied evals to training (graders as RFT rewards), and is now moving to promptfoo. Its framework separates tracked from research categories and gives two named levels.</li>
+<li><b>Google DeepMind</b> frames frontier risk around <b>Critical Capability Levels with early warning</b>: alert thresholds, TCLs for lower-severity risk, and an explicit safety-case review. Its v3 framework added harmful manipulation as a CCL, measured partly with human-participant studies.</li>
+<li><b>Meta and xAI</b> are more distinct still: Meta argues that openness itself helps evaluation, with a compute-based scope; xAI writes numeric benchmark thresholds straight into its framework.</li>
+</ul>
+
+<div class="callout expert"><span class="t">What every lab agrees on (and what you should copy)</span>
+<p>Across all of them: capability evals as <b>rule-out</b> tests tied to actions; a shift from grading final answers to grading <b>trajectories and transcripts</b>; LLM judges that must be <b>validated</b>; <b>outside testers</b> for credibility; and growing worry about <b>evaluation awareness</b>. For your own product, the transferable habits are: write down thresholds and the action each triggers <em>before</em> you run the eval, report uncertainty, read transcripts, and let someone outside the team try to break it.</p>
+</div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. A lab's dangerous-capability eval shows a model scoring below its threshold. What is the most important follow-up question?</p>
+<button class="opt">What was the model's score on MMLU?</button>
+<button class="opt">How much elicitation effort was used, and was it the final snapshot?</button>
+<button class="opt">Was the eval graded by code or by a model?</button>
+<div class="why">Framework evals are rule-out tests. A low score only reassures you if the evaluators tried hard to get the best performance out of the model that actually ships. Weak elicitation makes a model look safer than it is.</div></div>
+<div class="q" data-answer="2"><p>2. Which statement about Anthropic's RSP v3.0 (Feb 2026) is correct?</p>
+<button class="opt">It introduced ASL-3 for the first time</button>
+<button class="opt">It abolished capability evaluations</button>
+<button class="opt">It specifies only the next level of safeguards and adds periodic Risk Reports and a Frontier Safety Roadmap</button>
+<div class="why">ASL-3 was first activated in May 2025 under the earlier policy. v3.0 dropped the long ladder of pre-specified future ASL standards, committing in detail only to the next level, and added Risk Reports every 3 to 6 months plus a non-binding roadmap.</div></div>
+<div class="q" data-answer="0"><p>3. Gemini 3 Pro solved 11 of 12 hard cyber skill challenges but 0 of 13 end-to-end challenges. Under the FSF, what happened?</p>
+<button class="opt">The cyber alert threshold was met, but no CCL was reached</button>
+<button class="opt">The cyber CCL was reached, so the model was not launched</button>
+<button class="opt">Nothing, because only end-to-end results count</button>
+<div class="why">Alert thresholds are set on early indicators like component skills, so they fire before the CCL. That triggers closer scrutiny and mitigations without implying the critical level was reached.</div></div>
+<div class="q" data-answer="1"><p>4. Your team's product evals run on OpenAI's hosted Evals platform. It is now late September 2026. What should you do?</p>
+<button class="opt">Nothing; the platform is permanent</button>
+<button class="opt">Migrate before October 31 (read-only) and November 30 (shutdown); OpenAI recommends promptfoo</button>
+<button class="opt">Move to simple-evals, which replaces it</button>
+<div class="why">OpenAI announced in June 2026 that the Evals platform and graders are deprecated: read-only from Oct 31, 2026, shut down Nov 30, 2026. It points users to promptfoo, which it acquired. simple-evals is a frozen set of reference benchmark implementations, not a product-eval platform.</div></div>
+<div class="q" data-answer="2"><p>5. An ADK agent run calls <code>lookup_order</code>, <code>get_customer</code>, <code>check_policy</code>, <code>issue_refund</code>. The expected trajectory is <code>lookup_order</code>, <code>check_policy</code>, <code>issue_refund</code>. Which match types give 1?</p>
+<button class="opt">Only EXACT</button>
+<button class="opt">None of them</button>
+<button class="opt">IN_ORDER and ANY_ORDER</button>
+<div class="why">The extra <code>get_customer</code> call fails EXACT, which allows no extra calls. IN_ORDER allows extra calls between the expected ones as long as order is kept, and ANY_ORDER is looser still.</div></div>
+<div class="q" data-answer="0"><p>6. Why did the OpenAI and Apollo anti-scheming result come with a major caveat?</p>
+<button class="opt">Evaluation awareness causally contributed to the drop in covert actions</button>
+<button class="opt">The environments were too few to measure anything</button>
+<button class="opt">The model refused to take part</button>
+<div class="why">Part of the reduction came from the model recognising it was being evaluated. That is the central threat to alignment evals, also reported in Anthropic's Claude Sonnet 4.5 system card.</div></div>
+</div>
+
+<details>
+<summary>Interview questions: frontier eval practice</summary>
+<ol>
+<li><b>"What is the difference between a capability threshold and a safeguard level?"</b> A threshold is a measured property of the model (e.g. could meaningfully uplift CBRN weapon development); a safeguard level (ASL, or the PF's required safeguards) is what the lab must put in place once that threshold cannot be ruled out. Evals map models to thresholds; policy maps thresholds to safeguards.</li>
+<li><b>"How would you design an eval whose job is to rule out a capability?"</b> Maximise elicitation (best scaffold, tools, many attempts, possibly fine-tuning); remove refusals from the equation; set the threshold and the action in advance; use a margin (alert thresholds) so you get warning; test the final snapshot; invite outside testers; report uncertainty.</li>
+<li><b>"Why might a lab report two numbers for the same benchmark?"</b> Different test-time compute settings (single attempt averaged over trials vs parallel attempts with selection) or different scaffolds. Both can be legitimate; they answer different questions (typical vs best achievable).</li>
+<li><b>"What does evaluation awareness do to your results, and what can you do about it?"</b> It makes behaviour-under-test diverge from deployment behaviour, so alignment evals over-estimate good behaviour. Mitigations include more realistic environments, measuring awareness directly (verbalised and with probes), comparing to production monitoring, and reporting the "reliability of assessment" explicitly.</li>
+<li><b>"Pre-deployment tester vs post-release evaluator: which is more independent?"</b> Neither fully: pre-deployment testers get early access but work under the lab's terms; post-release evaluators control their methods and publication but can only test what is public, and they may use developer-reported numbers. Good practice discloses which is which (as Epoch does).</li>
+</ol>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Anthropic, <a href="https://www.anthropic.com/responsible-scaling-policy">Responsible Scaling Policy</a> (v3.4, effective July 8, 2026) and <a href="https://anthropic.com/news/responsible-scaling-policy-v3">RSP v3 announcement</a> (Feb 2026).</li>
+<li>GovAI, <a href="https://www.governance.ai/analysis/anthropics-rsp-v3-0-how-it-works-whats-changed-and-some-reflections">Anthropic's RSP v3.0: how it works, what's changed</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/news/activating-asl3-protections">Activating ASL-3 protections</a> (May 2025).</li>
+<li>Anthropic, <a href="https://www-cdn.anthropic.com/963373e433e489a87a10c823c52a0a013e9172dd/Claude%20Sonnet%204.5%20System%20Card.pdf">Claude Sonnet 4.5 System Card</a> and <a href="https://www-cdn.anthropic.com/fc1b44717c85dc068bc6ba5024219938094694bd/Claude%20Opus%205.5%20System%20Card.pdf">Claude Opus 5.5 System Card</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/news/claude-sonnet-4-5">Introducing Claude Sonnet 4.5</a> (benchmark methodology footnotes).</li>
+<li>Anthropic Engineering, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (Jan 2026) and <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a>.</li>
+<li>Evan Miller, <a href="https://arxiv.org/abs/2411.00640">Adding Error Bars to Evals</a>; Anthropic blog <a href="https://www.anthropic.com/research/statistical-approach-to-model-evals">A statistical approach to model evaluations</a>.</li>
+<li>Perez et al., <a href="https://arxiv.org/abs/2212.09251">Discovering Language Model Behaviors with Model-Written Evaluations</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/research/petri-open-source-auditing">Petri</a>, <a href="https://www.anthropic.com/research/bloom">Bloom</a>, <a href="https://alignment.anthropic.com/2025/bloom-auto-evals/">Bloom technical post</a>, <a href="https://www.anthropic.com/research/agentic-misalignment">Agentic Misalignment</a>; Meridian Labs, <a href="https://meridianlabs.ai/about">About</a>.</li>
+<li>OpenAI, <a href="https://openai.com/index/updating-our-preparedness-framework/">Updating our Preparedness Framework</a> and <a href="https://cdn.openai.com/pdf/18a02b5d-6b67-4cec-ab64-68cdfbddebcd/preparedness-framework-v2.pdf">Preparedness Framework v2 (PDF)</a>.</li>
+<li>OpenAI, <a href="https://cdn.openai.com/gpt-5-system-card.pdf">GPT-5 System Card</a>.</li>
+<li>OpenAI and Apollo Research, <a href="https://openai.com/index/detecting-and-reducing-scheming-in-ai-models/">Detecting and reducing scheming</a>; paper <a href="https://arxiv.org/abs/2509.15541">arXiv 2509.15541</a>.</li>
+<li>OpenAI benchmarks: <a href="https://openai.com/index/gdpval/">GDPval</a>, <a href="https://arxiv.org/abs/2502.12115">SWE-Lancer</a>, <a href="https://arxiv.org/abs/2504.01848">PaperBench</a>, <a href="https://arxiv.org/abs/2504.12516">BrowseComp</a>, <a href="https://openai.com/index/healthbench/">HealthBench</a>; <a href="https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/">Why we no longer evaluate SWE-bench Verified</a>.</li>
+<li>OpenAI docs: <a href="https://developers.openai.com/api/docs/guides/evals">Evals guide (deprecation notice)</a>, <a href="https://developers.openai.com/api/docs/guides/graders">Graders</a>, <a href="https://developers.openai.com/api/docs/guides/reinforcement-fine-tuning">Reinforcement fine-tuning</a>, <a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices">Evaluation best practices</a>, <a href="https://developers.openai.com/cookbook/examples/evaluation/moving-from-openai-evals-to-promptfoo">Moving from OpenAI Evals to promptfoo</a>; <a href="https://openai.com/index/openai-to-acquire-promptfoo/">OpenAI to acquire Promptfoo</a>.</li>
+<li>Google DeepMind, <a href="https://deepmind.google/blog/strengthening-our-frontier-safety-framework/">Strengthening our Frontier Safety Framework</a>, <a href="https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/strengthening-our-frontier-safety-framework/frontier-safety-framework_3-1.pdf">FSF v3.1 (PDF)</a>, <a href="https://storage.googleapis.com/deepmind-media/gemini/gemini_3_pro_fsf_report.pdf">Gemini 3 Pro FSF report</a>.</li>
+<li>Google Cloud, <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview">Gen AI evaluation service overview</a>; ADK, <a href="https://adk.dev/evaluate/">Why evaluate agents</a> and <a href="https://adk.dev/evaluate/criteria/">Evaluation criteria</a>.</li>
+<li>Meta, <a href="https://about.fb.com/news/2025/02/meta-approach-frontier-ai/">Our approach to frontier AI</a>; analysis of the <a href="https://frontierrisk.substack.com/p/metas-advanced-ai-scaling-framework">Advanced AI Scaling Framework</a>. xAI, <a href="https://data.x.ai/2025-08-20-xai-risk-management-framework.pdf">Risk Management Framework</a>.</li>
+<li>METR, <a href="https://metr.org/fsp">Frontier AI safety policies index</a>, <a href="https://arxiv.org/abs/2503.14499">Measuring AI Ability to Complete Long Tasks</a>, <a href="https://metr.org/blog/2026-1-29-time-horizon-1-1/">Time Horizon 1.1</a>.</li>
+<li>UK AISI, <a href="https://inspect.aisi.org.uk/">Inspect</a> and <a href="https://www.aisi.gov.uk/blog/pre-deployment-evaluation-of-anthropics-upgraded-claude-3-5-sonnet">pre-deployment evaluation of upgraded Claude 3.5 Sonnet</a>.</li>
+<li>US Department of Commerce, <a href="https://www.commerce.gov/news/press-releases/2025/06/statement-us-secretary-commerce-howard-lutnick-transforming-us-ai">CAISI announcement</a>; NIST, <a href="https://www.nist.gov/news-events/news/2025/09/caisi-evaluation-deepseek-ai-models-finds-shortcomings-and-risks">CAISI evaluation of DeepSeek</a>.</li>
+<li><a href="https://epoch.ai/eci">Epoch Capabilities Index</a>; <a href="https://scale.com/blog/leaderboard">Scale SEAL leaderboards</a>; <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">Artificial Analysis methodology</a>; Singh et al., <a href="https://arxiv.org/abs/2504.20879">The Leaderboard Illusion</a>.</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

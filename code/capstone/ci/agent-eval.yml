@@ -1,0 +1,36 @@
+# Example GitHub Actions workflow. Copy to .github/workflows/agent-eval.yml in
+# your own repo and adjust paths. It runs two gates:
+#   1. smoke test on every PR (free, no API key): the eval itself is not broken
+#   2. real eval when the prompt, tools or tasks change: block on regressions
+name: agent-eval
+on:
+  pull_request:
+    paths: ["code/capstone/**"]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: code/capstone } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+
+      - name: Smoke test (scripted mock agents, no API calls)
+        run: python smoke_test.py
+
+      - name: Real eval (small epochs to control cost)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          inspect eval support_eval.py --model anthropic/${{ vars.AGENT_MODEL }} \
+            -T epochs=3 --log-dir logs/ci
+          python analyze.py --k 1 3 | tee summary.txt
+
+      - name: Gate on the regression floor
+        run: python ci/gate.py logs/ci --min-pass-hat-k 0.80 --k 3
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: eval-logs, path: code/capstone/logs/ci }

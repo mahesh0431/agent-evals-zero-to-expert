@@ -121,9 +121,7 @@
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     if ("IntersectionObserver" in window && !reduce) {
       const els = document.querySelectorAll(".content figure.diagram, .content .widget");
-      els.forEach(el => { if (el.getBoundingClientRect().top > innerHeight) el.classList.add("reveal-pending"); });
       const io = new IntersectionObserver(entries => entries.forEach(e => {
-        if (e.isIntersecting) e.target.classList.remove("reveal-pending");
         if (e.target.matches("figure.diagram")) e.target.classList.toggle("in-view", e.intersectionRatio > 0.35);
       }), { threshold: [0, 0.35, 0.7] });
       els.forEach(el => io.observe(el));
