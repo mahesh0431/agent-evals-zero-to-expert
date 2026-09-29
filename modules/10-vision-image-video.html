@@ -111,6 +111,47 @@
 <p>Reference "invoice 2023", prediction "invoce 2023". Levenshtein distance = 1 (one missing letter). Normalise by the longer length, 12 characters: 1/12 ≈ 0.083. Similarity = 1 − 0.083 = 0.917, which is above the 0.5 threshold, so the item scores 0.917. Prediction "receipt" against the same reference is far more than half wrong, so the similarity falls under 0.5 and the item scores 0. The benchmark score is the mean over questions (taking the best match when there are several accepted answers).</p>
 </div>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 270" role="img" aria-label="ANLS scoring curve: item score equals one minus the normalised edit distance until the distance reaches 0.5, then drops to zero. Examples: a typo scores 0.92, a letter swap 0.80, a wrong year still 0.83, and an unrelated word zero.">
+<rect class="fill-bad" x="215" y="40" width="155" height="180" opacity="0.08"/>
+<line class="ln dash" x1="60" y1="130" x2="370" y2="130" opacity="0.3"/>
+<line class="ln" x1="60" y1="40" x2="60" y2="220"/>
+<line class="ln" x1="60" y1="220" x2="370" y2="220"/>
+<polyline class="ln accent thick" points="60,40 215,130"/>
+<line class="ln accent dash" x1="215" y1="130" x2="215" y2="220"/>
+<line class="ln accent thick" x1="215" y1="220" x2="370" y2="220"/>
+<text x="52" y="44" text-anchor="end" class="sm">1</text>
+<text x="52" y="134" text-anchor="end" class="sm">0.5</text>
+<text x="52" y="224" text-anchor="end" class="sm">0</text>
+<text x="60" y="236" text-anchor="middle" class="sm">0</text>
+<text x="215" y="236" text-anchor="middle" class="sm b">0.5</text>
+<text x="370" y="236" text-anchor="middle" class="sm">1</text>
+<text x="215" y="256" text-anchor="middle" class="sm">normalised edit distance (edits ÷ longer length)</text>
+<text x="20" y="130" text-anchor="middle" class="sm" transform="rotate(-90 20 130)">item score</text>
+<text x="292" y="58" text-anchor="middle" class="sm b t-bad">score = 0</text>
+<text x="292" y="74" text-anchor="middle" class="sm t-bad">beyond threshold</text>
+<circle class="fill-good" cx="86" cy="55" r="5"/><text x="78" y="46" text-anchor="end" class="sm b">①</text>
+<circle class="fill-warn" cx="112" cy="70" r="5"/><text x="104" y="88" text-anchor="end" class="sm b">③</text>
+<circle class="fill-good" cx="122" cy="76" r="5"/><text x="132" y="70" class="sm b">②</text>
+<circle class="fill-bad" cx="318" cy="220" r="5"/><text x="318" y="208" text-anchor="middle" class="sm b">④</text>
+<text x="420" y="34" class="b">Reference → prediction</text>
+<text x="778" y="34" text-anchor="end" class="b">ANLS</text>
+<rect class="box good" x="420" y="48" width="370" height="36" rx="8"/>
+<text x="432" y="71" class="mono">① invoice 2023 → invoce 2023</text>
+<text x="726" y="71" text-anchor="end" class="sm">typo</text><text x="778" y="71" text-anchor="end" class="b t-good">0.92</text>
+<rect class="box good" x="420" y="92" width="370" height="36" rx="8"/>
+<text x="432" y="115" class="mono">② John Smith → Jonh Smith</text>
+<text x="726" y="115" text-anchor="end" class="sm">swap</text><text x="778" y="115" text-anchor="end" class="b t-good">0.80</text>
+<rect class="box warn" x="420" y="136" width="370" height="36" rx="8"/>
+<text x="432" y="159" class="mono">③ invoice 2023 → invoice 2032</text>
+<text x="726" y="159" text-anchor="end" class="sm b t-warn">wrong year!</text><text x="778" y="159" text-anchor="end" class="b t-warn">0.83</text>
+<rect class="box bad" x="420" y="180" width="370" height="36" rx="8"/>
+<text x="432" y="203" class="mono">④ invoice 2023 → receipt</text>
+<text x="726" y="203" text-anchor="end" class="sm">unrelated</text><text x="778" y="203" text-anchor="end" class="b t-bad">0</text>
+</svg>
+<figcaption><b>How ANLS turns edit distance into credit.</b> Small reading slips keep most of their credit, and anything more than half wrong scores zero. Example ③ shows the catch: a wrong year differs by only two characters, so ANLS gives it 0.83. For fields where one digit matters (amounts, dates, IDs), add an exact-match check on top.</figcaption>
+</figure>
+
 <h2>The big pitfall: did the model actually look?</h2>
 <p>The most important idea in vision understanding evals is that a question can be answerable <em>without the image</em>. That happens for two reasons: the question text gives the answer away ("What colour is the sky in this clear daytime photo?"), or the model has memorised the item from training data. Either way the benchmark stops measuring vision.</p>
 <p>The MMStar paper (Chen et al., 2024) measured this directly. Its headline example: Gemini Pro scored <b>42.9% on MMMU with no image at all</b>, and across six popular benchmarks, models running without images beat the random-choice baseline by over 24% on average. MMMU-Pro was built partly as a response: it filters out questions that text-only models can solve.</p>
@@ -123,8 +164,8 @@
 <text x="85" y="158" text-anchor="middle" class="sm">+ image + options</text>
 <line class="ln" x1="150" y1="130" x2="226" y2="70" marker-end="url(#m10b)"/>
 <line class="ln" x1="150" y1="160" x2="226" y2="220" marker-end="url(#m10b)"/>
-<text x="186" y="64" text-anchor="end" class="sm">with image</text>
-<text x="186" y="248" text-anchor="end" class="sm">image removed</text>
+<text x="178" y="94" text-anchor="end" class="sm">with image</text>
+<text x="176" y="206" text-anchor="end" class="sm">image removed</text>
 <rect class="box accent" x="230" y="40" width="150" height="60" rx="8"/>
 <text x="305" y="66" text-anchor="middle" class="b">VLM (normal)</text>
 <text x="305" y="84" text-anchor="middle" class="sm">accuracy = 70%</text>
@@ -181,7 +222,7 @@ def audit(items, ask, n_blind_samples=3):
 </div>
 
 <h3>Resolution, cropping and the invisible detail</h3>
-<p>Every VLM resizes images before it reads them. Claude's documentation, for example, says images above a model's maximum are downscaled while preserving aspect ratio: 1568 px on the long edge for most models, 2576 px for the newer high-resolution tier (Anthropic vision docs, fetched September 2026). Other providers tile the image into crops, or let you choose a "detail" level. This matters for evals in two ways.</p>
+<p>Every VLM resizes images before it reads them. Claude's documentation, for example, says images above a model's maximum are downscaled while preserving aspect ratio: 1568 px on the long edge for most models, 2576 px for the newer high-resolution tier (Anthropic vision docs, fetched September 2026). Other providers tile the image into crops, or let you choose a "detail" level. Image cost scales with pixels too: Claude counts roughly one visual token per 28 × 28 pixel patch, so a 1920 × 1080 screenshot is shrunk to 1456 × 819 (about 1,560 tokens) on the standard tier but sent whole (about 2,700 tokens) on the high-resolution tier. This matters for evals in two ways.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 820 280" role="img" aria-label="A tall document image is downscaled to fit the model's limit, so small footnote text becomes unreadable. The same question passes if the image is tiled or cropped around the region.">
@@ -243,6 +284,41 @@ def audit(items, ask, n_blind_samples=3):
 <div class="callout expert"><span class="t">Expert nuance: counterfactual image edits</span>
 <p>The strongest test that a model uses the image is to change the image and check that the answer changes. Swap the colours of two bars, flip the arrow in a diagram, shuffle video frames. If the model gives the same answer to both versions, it is not reading that detail. For video, shuffling or reversing frames is a cheap probe of whether a "temporal" question really needs time order.</p>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 260" role="img" aria-label="Counterfactual probe: the original bar chart shows A taller than B; the edited chart swaps the heights. A model that looks changes its answer from A to B; a model that guesses answers A both times.">
+<defs><marker id="m10k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="110" y="28" text-anchor="middle" class="b">Original</text>
+<text x="390" y="28" text-anchor="middle" class="b">Counterfactual edit</text>
+<rect class="box plain" x="20" y="40" width="180" height="130" rx="10"/>
+<line class="ln" x1="40" y1="148" x2="180" y2="148"/>
+<rect class="fill-accent" x="60" y="58" width="40" height="90" rx="3"/>
+<rect class="fill-violet" x="120" y="98" width="40" height="50" rx="3"/>
+<text x="80" y="163" text-anchor="middle" class="sm b">A</text><text x="140" y="163" text-anchor="middle" class="sm b">B</text>
+<line class="ln accent thick" x1="206" y1="105" x2="294" y2="105" marker-end="url(#m10k)"/>
+<text x="250" y="96" text-anchor="middle" class="sm">swap heights</text>
+<rect class="box plain" x="300" y="40" width="180" height="130" rx="10"/>
+<line class="ln" x1="320" y1="148" x2="460" y2="148"/>
+<rect class="fill-accent" x="340" y="98" width="40" height="50" rx="3"/>
+<rect class="fill-violet" x="400" y="58" width="40" height="90" rx="3"/>
+<text x="360" y="163" text-anchor="middle" class="sm b">A</text><text x="420" y="163" text-anchor="middle" class="sm b">B</text>
+<text x="250" y="198" text-anchor="middle" class="b">Q: "Which region sold more, A or B?"</text>
+<text x="250" y="216" text-anchor="middle" class="sm">same question text, only the pixels changed</text>
+<rect class="box good" x="520" y="40" width="260" height="62" rx="10"/>
+<text x="536" y="62" class="b">Model that looks</text>
+<text x="764" y="62" text-anchor="end" class="mono">A → B</text>
+<text x="536" y="86" class="sm t-good">answer flips with the image ✓</text>
+<rect class="box bad" x="520" y="112" width="260" height="62" rx="10"/>
+<text x="536" y="134" class="b">Model that guesses</text>
+<text x="764" y="134" text-anchor="end" class="mono">A → A</text>
+<text x="536" y="158" class="sm t-bad">answer ignores the edit ✗</text>
+<line class="ln dash" x1="500" y1="40" x2="500" y2="174" opacity="0.4"/>
+<text x="650" y="200" text-anchor="middle" class="sm b">counterfactual consistency</text>
+<text x="650" y="216" text-anchor="middle" class="sm">= share of pairs where the answer</text>
+<text x="650" y="232" text-anchor="middle" class="sm">changes the way the edit requires</text>
+</svg>
+<figcaption><b>A counterfactual probe.</b> Make a minimal edit that should flip the answer and check that it does. Prior knowledge, question wording and memorised items cannot follow the edit, so this separates looking from guessing more sharply than any single accuracy number. Schematic chart, not real data.</figcaption>
+</figure>
 
 <h3>Long video and the visual needle in a haystack</h3>
 <p>Long-context text models are tested with <b>needle in a haystack</b>: hide one fact in a very long document and ask for it. The video version inserts a "needle" (an out-of-place image or short clip with a question about it) somewhere inside a long video. Zhang et al.'s <b>V-NIAH</b> (June 2024, from the LongVA paper) is the standard example: it measures whether a model can find and use one piece of visual information buried among thousands of frames' worth of visual tokens.</p>
@@ -367,13 +443,15 @@ def audit(items, ask, n_blind_samples=3):
 <line class="ln dash" x1="20" y1="170" x2="800" y2="170"/>
 <text x="20" y="194" class="b t-bad">Blind spot: composition</text>
 <rect class="box good" x="220" y="182" width="170" height="60" rx="6"/>
-<text x="305" y="206" text-anchor="middle" class="sm">image: red cube ON</text>
-<text x="305" y="222" text-anchor="middle" class="sm">blue sphere ✓</text>
+<text x="305" y="202" text-anchor="middle" class="sm">image: red cube ON</text>
+<text x="305" y="217" text-anchor="middle" class="sm">blue sphere ✓</text>
+<text x="305" y="234" text-anchor="middle" class="b t-good">CLIP-S 0.78</text>
 <rect class="box bad" x="410" y="182" width="170" height="60" rx="6"/>
-<text x="495" y="206" text-anchor="middle" class="sm">image: blue cube ON</text>
-<text x="495" y="222" text-anchor="middle" class="sm">red sphere ✗</text>
-<text x="690" y="206" text-anchor="middle" class="sm">often near-identical</text>
-<text x="690" y="222" text-anchor="middle" class="sm">CLIPScores</text>
+<text x="495" y="202" text-anchor="middle" class="sm">image: blue cube ON</text>
+<text x="495" y="217" text-anchor="middle" class="sm">red sphere ✗</text>
+<text x="495" y="234" text-anchor="middle" class="b t-bad">CLIP-S 0.77</text>
+<text x="690" y="206" text-anchor="middle" class="b t-bad">gap ≈ 0.01</text>
+<text x="690" y="224" text-anchor="middle" class="sm">cannot separate them</text>
 </svg>
 <figcaption><b>CLIPScore and its bag-of-words problem.</b> CLIP embeddings capture which concepts are present much better than how they are bound together (which colour belongs to which object, what is on top). The score values are illustrative.</figcaption>
 </figure>
@@ -621,6 +699,49 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 </table></div>
 <p><b>C2PA</b> (Coalition for Content Provenance and Authenticity) is an open standard for <b>Content Credentials</b>: signed metadata attached to a file that records its origin and edit history, described by C2PA as "a nutrition label for digital content". Metadata can be stripped, so providers often combine it with invisible watermarks. An eval here is a robustness test: apply common transformations and measure how often the credential or watermark is still detected.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 290" role="img" aria-label="Provenance robustness harness: a generated image carrying C2PA credentials and an invisible watermark goes through six transformations; for each, a verifier checks whether the credential is still valid and a detector checks for the watermark. Metadata tends to be lost on screenshots and stripping, while watermarks tend to survive most edits.">
+<rect class="box violet" x="20" y="120" width="130" height="64" rx="10"/>
+<text x="85" y="146" text-anchor="middle" class="b">Generated</text>
+<text x="85" y="166" text-anchor="middle" class="sm">C2PA + watermark</text>
+<text x="255" y="24" text-anchor="middle" class="b">Transformation</text>
+<text x="485" y="24" text-anchor="middle" class="b">C2PA still valid?</text>
+<text x="675" y="24" text-anchor="middle" class="b">Watermark found?</text>
+<line class="ln" x1="150" y1="152" x2="180" y2="51"/>
+<rect class="box plain" x="180" y="36" width="150" height="30" rx="6"/><text x="255" y="56" text-anchor="middle" class="sm">none (control)</text>
+<line class="ln dash" x1="330" y1="51" x2="395" y2="51" opacity="0.5"/>
+<rect class="box good" x="400" y="36" width="170" height="30" rx="6"/><text x="485" y="56" text-anchor="middle" class="sm b t-good">✓ valid</text>
+<rect class="box good" x="590" y="36" width="170" height="30" rx="6"/><text x="675" y="56" text-anchor="middle" class="sm b t-good">✓ found</text>
+<line class="ln" x1="150" y1="152" x2="180" y2="91"/>
+<rect class="box plain" x="180" y="76" width="150" height="30" rx="6"/><text x="255" y="96" text-anchor="middle" class="sm">resize 50%</text>
+<line class="ln dash" x1="330" y1="91" x2="395" y2="91" opacity="0.5"/>
+<rect class="box warn" x="400" y="76" width="170" height="30" rx="6"/><text x="485" y="96" text-anchor="middle" class="sm b t-warn">depends on tool</text>
+<rect class="box good" x="590" y="76" width="170" height="30" rx="6"/><text x="675" y="96" text-anchor="middle" class="sm b t-good">✓ found</text>
+<line class="ln" x1="150" y1="152" x2="180" y2="131"/>
+<rect class="box plain" x="180" y="116" width="150" height="30" rx="6"/><text x="255" y="136" text-anchor="middle" class="sm">JPEG quality 50</text>
+<line class="ln dash" x1="330" y1="131" x2="395" y2="131" opacity="0.5"/>
+<rect class="box warn" x="400" y="116" width="170" height="30" rx="6"/><text x="485" y="136" text-anchor="middle" class="sm b t-warn">depends on tool</text>
+<rect class="box good" x="590" y="116" width="170" height="30" rx="6"/><text x="675" y="136" text-anchor="middle" class="sm b t-good">✓ usually</text>
+<line class="ln" x1="150" y1="152" x2="180" y2="171"/>
+<rect class="box plain" x="180" y="156" width="150" height="30" rx="6"/><text x="255" y="176" text-anchor="middle" class="sm">crop to 60%</text>
+<line class="ln dash" x1="330" y1="171" x2="395" y2="171" opacity="0.5"/>
+<rect class="box warn" x="400" y="156" width="170" height="30" rx="6"/><text x="485" y="176" text-anchor="middle" class="sm b t-warn">depends on tool</text>
+<rect class="box warn" x="590" y="156" width="170" height="30" rx="6"/><text x="675" y="176" text-anchor="middle" class="sm b t-warn">~ weaker</text>
+<line class="ln" x1="150" y1="152" x2="180" y2="211"/>
+<rect class="box plain" x="180" y="196" width="150" height="30" rx="6"/><text x="255" y="216" text-anchor="middle" class="sm">screenshot</text>
+<line class="ln dash" x1="330" y1="211" x2="395" y2="211" opacity="0.5"/>
+<rect class="box bad" x="400" y="196" width="170" height="30" rx="6"/><text x="485" y="216" text-anchor="middle" class="sm b t-bad">✗ gone</text>
+<rect class="box good" x="590" y="196" width="170" height="30" rx="6"/><text x="675" y="216" text-anchor="middle" class="sm b t-good">✓ usually</text>
+<line class="ln" x1="150" y1="152" x2="180" y2="251"/>
+<rect class="box plain" x="180" y="236" width="150" height="30" rx="6"/><text x="255" y="256" text-anchor="middle" class="sm">strip metadata</text>
+<line class="ln dash" x1="330" y1="251" x2="395" y2="251" opacity="0.5"/>
+<rect class="box bad" x="400" y="236" width="170" height="30" rx="6"/><text x="485" y="256" text-anchor="middle" class="sm b t-bad">✗ gone</text>
+<rect class="box good" x="590" y="236" width="170" height="30" rx="6"/><text x="675" y="256" text-anchor="middle" class="sm b t-good">✓ found</text>
+<text x="400" y="284" text-anchor="middle" class="sm">typical pattern only: run each transform on a few hundred images and report detection rates</text>
+</svg>
+<figcaption><b>Testing provenance like a robustness eval.</b> Signed metadata (C2PA) is exact but fragile: it survives only if every tool in the chain preserves it, and a screenshot creates a brand-new file without it. Invisible watermarks live in the pixels, so they usually survive ordinary edits but can weaken under heavy crops or deliberate attacks. That is why providers combine both, and why your eval should report a detection rate per transformation. The cell values show a typical qualitative pattern, not measurements.</figcaption>
+</figure>
+
 <h2>Part C: multimodal agents that see and make</h2>
 <p>A <b>multimodal agent</b> uses vision and generation as steps in a loop. Examples: a design agent that produces a social-media banner from a brief, looks at its draft, and fixes the logo placement; an image-editing agent that takes "remove the car and make it evening" and applies several tool calls; a slide agent that renders a deck and checks each slide for overflow. Computer-use agents (Module 08) are the closest cousin: they also see screenshots and act, and "did the rendered page look right?" is a shared question.</p>
 
@@ -659,6 +780,51 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 
 <h3>Layer 1: code checks first</h3>
 <p>Many requirements are objective and cheap. Is the image 1200 × 628? Is it a PNG under 1 MB? Does OCR find the exact headline "Summer Sale, 30% off" with no misspellings (text rendering is still a common weak spot of image generators)? Is the brand hex colour present in the palette? For an edit ("remove the car"), are pixels outside the edit region unchanged? Measure that with a pixel difference or a perceptual similarity metric such as <b>SSIM</b> or <b>LPIPS</b> on the masked region. Code checks are deterministic, so they belong in CI (Module 15).</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 220" role="img" aria-label="Edit preservation check for the instruction remove the car: original image, the agent's edit, and a pixel difference map. The car region changed as intended, but the house window outside the edit mask also changed, which the outside-mask check flags.">
+<defs><marker id="m10l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="30" class="b">Instruction: "remove the car"</text>
+<rect class="box plain" x="20" y="50" width="150" height="110" rx="8"/>
+<line class="ln" x1="30" y1="140" x2="160" y2="140"/>
+<polygon class="fill-line" points="36,100 62,80 88,100"/>
+<rect class="box" x="40" y="100" width="45" height="40"/>
+<rect class="fill-accent" x="55" y="110" width="15" height="12"/>
+<circle class="fill-warn" cx="145" cy="72" r="9"/>
+<rect class="fill-bad" x="100" y="122" width="52" height="13" rx="3"/>
+<rect class="fill-bad" x="110" y="112" width="28" height="12" rx="3"/>
+<circle class="fill-muted" cx="112" cy="137" r="5"/><circle class="fill-muted" cx="140" cy="137" r="5"/>
+<rect class="box plain" x="200" y="50" width="150" height="110" rx="8"/>
+<line class="ln" x1="210" y1="140" x2="340" y2="140"/>
+<polygon class="fill-line" points="216,100 242,80 268,100"/>
+<rect class="box" x="220" y="100" width="45" height="40"/>
+<rect class="fill-violet" x="235" y="110" width="15" height="12"/>
+<circle class="fill-warn" cx="325" cy="72" r="9"/>
+
+<rect class="box plain" x="380" y="50" width="150" height="110" rx="8"/>
+<rect class="fill-warn" x="460" y="112" width="52" height="25" rx="3" opacity="0.85"/>
+<rect class="fill-bad" x="415" y="110" width="15" height="12"/>
+<rect class="ln dash" x="450" y="104" width="72" height="40"/>
+<text x="486" y="98" text-anchor="middle" class="sm">edit mask</text>
+<line class="ln" x1="170" y1="105" x2="196" y2="105" marker-end="url(#m10l)"/>
+<line class="ln" x1="350" y1="105" x2="376" y2="105" marker-end="url(#m10l)"/>
+<text x="95" y="178" text-anchor="middle" class="sm">1 · original</text>
+<text x="275" y="178" text-anchor="middle" class="sm">2 · agent's edit</text>
+<text x="455" y="178" text-anchor="middle" class="sm">3 · |difference|</text>
+<line class="ln" x1="530" y1="105" x2="556" y2="105" marker-end="url(#m10l)"/>
+<rect class="box good" x="560" y="40" width="220" height="44" rx="8"/>
+<text x="574" y="58" class="b">Edit happened?</text>
+<text x="574" y="75" class="sm">VQA "Is there a car?" → no ✓</text>
+<rect class="box bad" x="560" y="92" width="220" height="44" rx="8"/>
+<text x="574" y="110" class="b">Rest preserved?</text>
+<text x="574" y="127" class="sm">outside-mask LPIPS 0.21 &gt; 0.05 ✗</text>
+<rect class="box good" x="560" y="144" width="220" height="44" rx="8"/>
+<text x="574" y="162" class="b">Format kept?</text>
+<text x="574" y="179" class="sm">same size, PNG, under 1 MB ✓</text>
+<text x="275" y="206" text-anchor="middle" class="sm t-bad">the window changed too: collateral damage outside the mask</text>
+</svg>
+<figcaption><b>Checking an edit with code.</b> Diff the before and after images, split the difference into inside and outside the edit mask, and test each part separately: the inside should change (confirmed with a VQA question), the outside should not (a pixel or LPIPS threshold). A judge looking at the whole picture easily misses the recoloured window. Schematic images; the threshold and score are illustrative.</figcaption>
+</figure>
 
 <h3>Layer 2: a VLM judge with a rubric</h3>
 <p>For everything subjective, use a VLM as the judge: give it the brief, the image and a rubric with separate criteria, and ask for a short reason before each score. Separate criteria stop one strong impression (a gorgeous image) from hiding a failure (the wrong product in it).</p>
@@ -799,6 +965,16 @@ print(passed, result)</code></pre>
 <tr><td>Is the video good?</td><td>VBench dimensions</td><td>Arena votes</td><td>Static videos scoring well on smoothness</td></tr>
 <tr><td>Is my design / edit agent good?</td><td>Code checks + VLM rubric judge</td><td>Plus reference comparison and human review</td><td>Same-family judge; counting and text</td></tr>
 </table></div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Vision understanding has an answer key; the danger is that the model never looked. Always run a blind (no-image) baseline and report the visual gain over it, not just raw accuracy.</li>
+<li>Counterfactual edits (change the image, expect the answer to change) are the sharpest proof that a model uses the pixels.</li>
+<li>Preprocessing is part of the system: resolution limits, tiling, frame sampling and subtitles can move scores as much as the model does. Log the exact pixels and frames the model received.</li>
+<li>FID compares populations (quality and diversity) and ignores the prompt; CLIPScore checks concepts but is blind to composition. Neither is enough alone.</li>
+<li>Compositional checks (GenEval, T2I-CompBench) and VQA-based checks (TIFA, DSG, VQAScore) turn "is it faithful?" into small verifiable questions, but inherit their detector or VQA model's errors.</li>
+<li>For multimodal agents, layer the graders: code checks, a rubric VLM judge from a different model family, reference comparisons, then sampled human review.</li>
+<li>Every automatic metric needs a sanity check on your data: contrast pairs, a few hundred human labels, and a look at what it cannot see.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
