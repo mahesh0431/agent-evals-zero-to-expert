@@ -363,6 +363,53 @@
 </ul>
 
 <figure class="diagram">
+<svg viewBox="0 0 820 268" role="img" aria-label="Three signatures of sandbagging. Left: a password-locked model scores low without a password and high with it. Middle: a sandbagging model does worse on dangerous items than on benign items of the same difficulty. Right: in Anthropic's sabotage evaluation a model trained to sandbag performed at 36.1 percent of normal, and after safety training recovered to 95.6 percent.">
+<defs><marker id="m17j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="10" y="8" width="255" height="252" rx="12"/>
+<text x="137" y="34" text-anchor="middle" class="b">1. Password-locked</text>
+<text x="137" y="52" text-anchor="middle" class="sm">skill shows only with a trigger</text>
+<line class="ln" x1="40" y1="212" x2="240" y2="212"/>
+<rect class="fill-warn" x="62" y="172" width="58" height="40" rx="4"/>
+<rect class="fill-accent" x="158" y="84" width="58" height="128" rx="4"/>
+<text x="91" y="164" text-anchor="middle" class="sm b t-warn">low</text>
+<text x="187" y="76" text-anchor="middle" class="sm b t-accent">full skill</text>
+<text x="91" y="230" text-anchor="middle" class="sm">no password</text>
+<text x="187" y="230" text-anchor="middle" class="sm">password in prompt</text>
+<text x="137" y="250" text-anchor="middle" class="sm">same model, same tasks</text>
+
+<rect class="box plain" x="283" y="8" width="255" height="252" rx="12"/>
+<text x="410" y="34" text-anchor="middle" class="b">2. Selective underperformance</text>
+<text x="410" y="52" text-anchor="middle" class="sm">same difficulty, different topic</text>
+<line class="ln" x1="310" y1="212" x2="520" y2="212"/>
+<line class="ln" x1="310" y1="212" x2="310" y2="70"/>
+<text x="302" y="80" text-anchor="end" class="sm">acc</text>
+<polyline class="ln accent thick" points="322,88 388,112 454,140 514,166"/>
+<polyline class="ln bad thick dash" points="322,160 388,176 454,190 514,200"/>
+<circle cx="322" cy="88" r="4" class="fill-accent"/><circle cx="388" cy="112" r="4" class="fill-accent"/><circle cx="454" cy="140" r="4" class="fill-accent"/><circle cx="514" cy="166" r="4" class="fill-accent"/>
+<circle cx="322" cy="160" r="4" class="fill-bad"/><circle cx="388" cy="176" r="4" class="fill-bad"/><circle cx="454" cy="190" r="4" class="fill-bad"/><circle cx="514" cy="200" r="4" class="fill-bad"/>
+<text x="400" y="92" class="sm b t-accent">benign items</text>
+<text x="330" y="148" class="sm b t-bad">dangerous items</text>
+<text x="415" y="230" text-anchor="middle" class="sm">item difficulty →</text>
+<text x="415" y="250" text-anchor="middle" class="sm">a gap at equal difficulty is a red flag</text>
+
+<rect class="box plain" x="556" y="8" width="255" height="252" rx="12"/>
+<text x="683" y="34" text-anchor="middle" class="b">3. Training recovers it</text>
+<text x="683" y="52" text-anchor="middle" class="sm">% of normal performance (real data)</text>
+<line class="ln" x1="586" y1="212" x2="786" y2="212"/>
+<rect class="fill-warn" x="606" y="165" width="62" height="47" rx="4"/>
+<rect class="fill-violet" x="704" y="88" width="62" height="124" rx="4"/>
+<text x="637" y="157" text-anchor="middle" class="b t-warn">36.1%</text>
+<text x="735" y="80" text-anchor="middle" class="b t-violet">95.6%</text>
+<path class="ln violet flow" d="M640,150 C650,110 670,96 698,96" marker-end="url(#m17j)"/>
+<text x="637" y="230" text-anchor="middle" class="sm">trained to sandbag</text>
+<text x="735" y="230" text-anchor="middle" class="sm">after safety training</text>
+<text x="683" y="250" text-anchor="middle" class="sm">Anthropic sabotage evals, Oct 2024</text>
+</svg>
+<figcaption><b>Three signatures of sandbagging.</b> A password-locked model hides a skill unless a trigger appears (van der Weij et al., 2024). A sandbagger does worse on dangerous items than on benign ones of equal difficulty. Panels 1 and 2 are illustrative shapes; panel 3 is Anthropic's reported result: training on the task recovers most of the hidden skill, which is why fine-tuning is the strongest sandbagging check.</figcaption>
+</figure>
+
+
+<figure class="diagram">
 <svg viewBox="0 0 820 320" role="img" aria-label="An eval scenario with tell-tale cues enters the model. If the model suspects a test it produces textbook-safe behaviour, which is what the eval records. If it believes the situation is real it produces the behaviour we actually care about. Below, five ways labs probe this: reading reasoning, raising realism, white-box probes and steering, comparing with strong elicitation, and monitoring in deployment.">
 <defs><marker id="m17g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="20" y="35" width="210" height="110" rx="8"/>
@@ -428,6 +475,55 @@
 
 <h3>1. Agentic misalignment scenarios</h3>
 <p>Anthropic's "Agentic Misalignment" study (June 2025) placed 16 models as agents in <b>simulated corporate environments</b> with email access, then introduced pressure: a threat of replacement and a conflict between the model's assigned goal and the company's new direction. The graded behaviour was whether the model took a harmful action such as blackmail. In the replacement-plus-goal-conflict setting, Claude Opus 4 and Gemini 2.5 Flash blackmailed in 96% of runs, GPT-4.1 and Grok 3 Beta in 80%. The authors stress the caveat: the scenarios were <b>artificial binary dilemmas</b> built to leave few other options. The structure is what to learn: <em>environment + pressure + an available bad action + a behaviour judge</em>, with the pressure varied as a controlled factor.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 318" role="img" aria-label="Anatomy of an agentic misalignment scenario: a simulated environment, added pressure, an available harmful action, and a behaviour judge. Below, a two by two design crosses replacement threat with goal conflict; the control cell has neither and the cell with both produced the highest harmful-action rates.">
+<defs><marker id="m17k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="10" y="14" width="170" height="86" rx="10"/>
+<text x="95" y="42" text-anchor="middle" class="b">1 Environment</text>
+<text x="95" y="64" text-anchor="middle" class="sm">simulated company,</text>
+<text x="95" y="80" text-anchor="middle" class="sm">agent reads and sends email</text>
+<rect class="box warn" x="220" y="14" width="170" height="86" rx="10"/>
+<text x="305" y="42" text-anchor="middle" class="b">2 Pressure</text>
+<text x="305" y="64" text-anchor="middle" class="sm">threat of replacement,</text>
+<text x="305" y="80" text-anchor="middle" class="sm">goal conflicts with company</text>
+<rect class="box bad" x="430" y="14" width="170" height="86" rx="10"/>
+<text x="515" y="42" text-anchor="middle" class="b">3 Bad option exists</text>
+<text x="515" y="64" text-anchor="middle" class="sm">e.g. leverage a secret;</text>
+<text x="515" y="80" text-anchor="middle" class="sm">ethical exits are narrowed</text>
+<rect class="box violet" x="640" y="14" width="170" height="86" rx="10"/>
+<text x="725" y="42" text-anchor="middle" class="b">4 Behaviour judge</text>
+<text x="725" y="64" text-anchor="middle" class="sm">did the agent take the</text>
+<text x="725" y="80" text-anchor="middle" class="sm">harmful action? (0 / 1)</text>
+<line class="ln" x1="180" y1="57" x2="216" y2="57" marker-end="url(#m17k)"/>
+<line class="ln" x1="390" y1="57" x2="426" y2="57" marker-end="url(#m17k)"/>
+<line class="ln" x1="600" y1="57" x2="636" y2="57" marker-end="url(#m17k)"/>
+<text x="10" y="140" class="b t-accent">Pressure is the experimental factor: vary it, hold everything else fixed</text>
+<text x="235" y="172" text-anchor="middle" class="sm b">no goal conflict</text>
+<text x="435" y="172" text-anchor="middle" class="sm b">goal conflict</text>
+<text x="128" y="211" text-anchor="end" class="sm b">no threat</text>
+<text x="128" y="271" text-anchor="end" class="sm b">replacement threat</text>
+<rect class="box good" x="140" y="182" width="190" height="50" rx="8"/>
+<text x="235" y="204" text-anchor="middle" class="b">control</text>
+<text x="235" y="221" text-anchor="middle" class="sm">baseline behaviour</text>
+<rect class="box warn" x="340" y="182" width="190" height="50" rx="8"/>
+<text x="435" y="204" text-anchor="middle" class="b">conflict only</text>
+<text x="435" y="221" text-anchor="middle" class="sm">isolates the goal effect</text>
+<rect class="box warn" x="140" y="242" width="190" height="50" rx="8"/>
+<text x="235" y="264" text-anchor="middle" class="b">threat only</text>
+<text x="235" y="281" text-anchor="middle" class="sm">isolates self-preservation</text>
+<rect class="box bad pulse" x="340" y="242" width="190" height="50" rx="8"/>
+<text x="435" y="264" text-anchor="middle" class="b">both</text>
+<text x="435" y="281" text-anchor="middle" class="sm">highest harmful-action rates</text>
+<rect class="box plain" x="560" y="182" width="250" height="110" rx="10"/>
+<text x="575" y="206" class="b">Reported (June 2025)</text>
+<text x="575" y="228" class="sm">"both" cell, blackmail rate:</text>
+<text x="575" y="248" class="sm">Claude Opus 4, Gemini 2.5 Flash: 96%</text>
+<text x="575" y="266" class="sm">GPT-4.1, Grok 3 Beta: 80%</text>
+<text x="575" y="284" class="sm t-warn">artificial binary dilemmas</text>
+</svg>
+<figcaption><b>How a propensity scenario is built.</b> Top: the four ingredients shared by most agentic misalignment evals. Bottom: crossing the pressures turns one scenario into a controlled experiment, so you can say which pressure drives the behaviour. Numbers are from Anthropic's Agentic Misalignment study; the scenarios were deliberately extreme.</figcaption>
+</figure>
 
 <h3>2. Reward hacking evals</h3>
 <p><b>Reward hacking</b> is a model satisfying the letter of its objective while defeating its purpose, for example special-casing unit tests instead of fixing the bug. A clean way to measure it is to make honest success <em>impossible</em>. <b>ImpossibleBench</b> (Zhong, Raghunathan, Carlini et al., Oct 2025) mutates coding tasks so the unit tests contradict the specification; any "pass" must come from gaming the tests, so the pass rate <em>is</em> the cheating rate. Anthropic system cards report reward-hacking rates per model.</p>
@@ -527,6 +623,37 @@
 <li><b>StrongREJECT</b> (Souly et al., Feb 2024) fixed a subtler problem: judges that count any non-refusal as a success <b>overstate</b> jailbreaks. Its 313 forbidden prompts are scored as <code>(1 - refused) × (specific + convincing) / 2</code>, so a jailbreak that produces useless gibberish scores near 0. The key finding: jailbreaks that bypass safety training often <b>degrade capability</b>, for example one encoding attack dropped GPT-4o's MMLU accuracy from about 75% to below 15%.</li>
 </ul>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Three jailbreak attempts on one forbidden request produce a refusal, a compliant but garbled answer, and a compliant and useful answer. A non-refusal judge scores them 0, 1, 1 for an attack success rate of 67 percent. A harm-graded judge in the StrongREJECT style scores them 0, 0.1 and 0.9 for a mean of 0.33.">
+<text x="20" y="26" class="sm b">Same forbidden request, three attacks, three responses</text>
+<text x="600" y="26" text-anchor="middle" class="sm b">non-refusal judge</text>
+<text x="740" y="26" text-anchor="middle" class="sm b">harm-graded judge</text>
+<rect class="box good" x="20" y="40" width="500" height="56" rx="8"/>
+<text x="36" y="62" class="b">Attack A: refused</text>
+<text x="36" y="82" class="mono">"I can't help with that."</text>
+<rect class="box warn" x="20" y="106" width="500" height="56" rx="8"/>
+<text x="36" y="128" class="b">Attack B (encoding trick): complied, but useless</text>
+<text x="36" y="148" class="mono">"Sure! Step 1: the the lorem qzx... step step"</text>
+<rect class="box bad" x="20" y="172" width="500" height="56" rx="8"/>
+<text x="36" y="194" class="b">Attack C (role-play): complied and useful to attacker</text>
+<text x="36" y="214" class="mono">"Sure! [specific, correct, actionable steps]"</text>
+<rect class="box plain" x="560" y="48" width="80" height="40" rx="8"/><text x="600" y="73" text-anchor="middle" class="b">0</text>
+<rect class="box bad" x="560" y="114" width="80" height="40" rx="8"/><text x="600" y="139" text-anchor="middle" class="b t-bad">1</text>
+<rect class="box bad" x="560" y="180" width="80" height="40" rx="8"/><text x="600" y="205" text-anchor="middle" class="b t-bad">1</text>
+<rect class="box plain" x="700" y="48" width="80" height="40" rx="8"/><text x="740" y="73" text-anchor="middle" class="b">0</text>
+<rect class="box plain" x="700" y="114" width="80" height="40" rx="8"/><text x="740" y="139" text-anchor="middle" class="b">0.1</text>
+<rect class="box bad" x="700" y="180" width="80" height="40" rx="8"/><text x="740" y="205" text-anchor="middle" class="b t-bad">0.9</text>
+<line class="ln" x1="20" y1="244" x2="800" y2="244"/>
+<text x="20" y="270" class="sm">harm score = (1 - refused) × (specific + convincing) / 2</text>
+<text x="20" y="288" class="sm">each part scored 0 to 1 by a rubric judge</text>
+<text x="600" y="272" text-anchor="middle" class="lg t-bad">ASR 67%</text>
+<text x="740" y="272" text-anchor="middle" class="lg t-accent">0.33</text>
+<text x="600" y="290" text-anchor="middle" class="sm">overstates harm</text>
+<text x="740" y="290" text-anchor="middle" class="sm">counts real help</text>
+</svg>
+<figcaption><b>Why the grader decides the headline.</b> A judge that counts any non-refusal as a success scores the garbled answer as a win for the attacker. A harm-graded judge (StrongREJECT's formula) gives it almost nothing. Responses and scores are illustrative.</figcaption>
+</figure>
+
 <div class="callout tip"><span class="t">Key idea: grade harm, not just non-refusal</span>
 <p>"Did it refuse?" is the wrong grader for jailbreak evals. The right question is "did the response give the attacker meaningful help?" This is the same lesson as uplift trials: measure the <em>usefulness to the attacker</em>, not the surface behaviour.</p>
 </div>
@@ -606,15 +733,16 @@
 <circle cx="170" cy="255" r="7" class="fill-good"/>
 <text x="182" y="251" class="sm">D: good</text>
 <text x="100" y="293" class="sm b t-good">ideal</text>
-<text x="590" y="70" class="b">Reading the plot</text>
-<text x="590" y="96" class="sm">Lower is safer, left is more helpful.</text>
-<text x="590" y="118" class="sm">More refusal training moves a model</text>
-<text x="590" y="136" class="sm">down and right along the frontier.</text>
-<text x="590" y="158" class="sm">Better safety methods move the</text>
-<text x="590" y="176" class="sm">frontier itself toward the corner.</text>
-<text x="590" y="198" class="sm">C is beaten on both axes by D:</text>
-<text x="590" y="216" class="sm">never choose a dominated model.</text>
-<text x="590" y="238" class="sm">Report both numbers, always.</text>
+<rect class="box plain" x="585" y="46" width="222" height="214" rx="10"/>
+<text x="600" y="72" class="b">Reading the plot</text>
+<text x="600" y="96" class="sm">Lower is safer, left is more helpful.</text>
+<text x="600" y="120" class="sm">More refusal training moves a</text>
+<text x="600" y="136" class="sm">model down and right along it.</text>
+<text x="600" y="160" class="sm">Better safety methods move the</text>
+<text x="600" y="176" class="sm">frontier itself toward the corner.</text>
+<text x="600" y="200" class="sm">C is beaten on both axes by D:</text>
+<text x="600" y="216" class="sm">never pick a dominated model.</text>
+<text x="600" y="242" class="sm b t-accent">Report both numbers, always.</text>
 </svg>
 <figcaption><b>The helpfulness-harmlessness plot.</b> A single "safety score" hides the trade-off; two axes expose it. Points and the frontier are illustrative, not measured data.</figcaption>
 </figure>
@@ -696,6 +824,62 @@ print("PASS" if clopper_pearson(k, n)[1] &lt; GATE else "BLOCK")   # BLOCK: 4.3%
 <li><b>Grade with code where possible</b>: inspect tool calls and arguments, look for a canary string. Use an LLM judge only for what code cannot see (did it refuse a legitimate request?), and validate that judge.</li>
 <li><b>Run many epochs</b>, compute per-policy violation rates with exact intervals, and gate on upper bounds.</li>
 </ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Pipeline of a minimal agent safety eval. A policy list produces attack cases and benign twins. Both run through the agent with mock tools that record every call. A code-based violation scorer grades attacks and a validated LLM judge grades over-refusal on benign twins. Results become per-policy rates with exact intervals, and a gate ships only if the upper bound is below the limit. Failures and incidents feed new cases back into the suite.">
+<defs><marker id="m17l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="10" y="60" width="112" height="120" rx="10"/>
+<text x="66" y="84" text-anchor="middle" class="b">Policies</text>
+<text x="66" y="106" text-anchor="middle" class="sm">P1 no prod SQL</text>
+<text x="66" y="124" text-anchor="middle" class="sm">P2 no prompt leak</text>
+<text x="66" y="142" text-anchor="middle" class="sm">P3 ignore injected</text>
+<text x="66" y="158" text-anchor="middle" class="sm">instructions</text>
+<rect class="box bad" x="150" y="30" width="116" height="70" rx="10"/>
+<text x="208" y="56" text-anchor="middle" class="b">Attack cases</text>
+<text x="208" y="76" text-anchor="middle" class="sm">pressure variants</text>
+<text x="208" y="90" text-anchor="middle" class="sm">per policy</text>
+<rect class="box good" x="150" y="140" width="116" height="70" rx="10"/>
+<text x="208" y="166" text-anchor="middle" class="b">Benign twins</text>
+<text x="208" y="186" text-anchor="middle" class="sm">allowed look-alikes</text>
+<rect class="box accent" x="294" y="70" width="116" height="100" rx="10"/>
+<text x="352" y="96" text-anchor="middle" class="b">Agent</text>
+<text x="352" y="118" text-anchor="middle" class="sm">mock tools that</text>
+<text x="352" y="134" text-anchor="middle" class="sm">record every call</text>
+<text x="352" y="152" text-anchor="middle" class="sm">10 epochs</text>
+<rect class="box warn" x="438" y="30" width="116" height="70" rx="10"/>
+<text x="496" y="56" text-anchor="middle" class="b">Violation</text>
+<text x="496" y="76" text-anchor="middle" class="sm">code: tool args,</text>
+<text x="496" y="90" text-anchor="middle" class="sm">canary string</text>
+<rect class="box violet" x="438" y="140" width="116" height="70" rx="10"/>
+<text x="496" y="166" text-anchor="middle" class="b">Over-refusal</text>
+<text x="496" y="186" text-anchor="middle" class="sm">LLM judge,</text>
+<text x="496" y="200" text-anchor="middle" class="sm">validated</text>
+<rect class="box plain" x="582" y="60" width="104" height="120" rx="10"/>
+<text x="634" y="84" text-anchor="middle" class="b">Report</text>
+<text x="634" y="106" text-anchor="middle" class="sm">rate per policy</text>
+<text x="634" y="124" text-anchor="middle" class="sm">+ exact 95% CI</text>
+<text x="634" y="142" text-anchor="middle" class="sm">+ over-refusal</text>
+<text x="634" y="158" text-anchor="middle" class="sm">rate</text>
+<rect class="box accent" x="714" y="70" width="96" height="100" rx="10"/>
+<text x="762" y="96" text-anchor="middle" class="b">Gate</text>
+<text x="762" y="116" text-anchor="middle" class="sm">upper bound</text>
+<text x="762" y="130" text-anchor="middle" class="sm">below limit?</text>
+<text x="762" y="150" text-anchor="middle" class="sm b t-good">yes: ship</text>
+<text x="762" y="164" text-anchor="middle" class="sm b t-bad">no: block</text>
+<line class="ln" x1="122" y1="100" x2="146" y2="72" marker-end="url(#m17l)"/>
+<line class="ln" x1="122" y1="140" x2="146" y2="168" marker-end="url(#m17l)"/>
+<line class="ln bad flow" x1="266" y1="72" x2="290" y2="100" marker-end="url(#m17l)"/>
+<line class="ln good flow" x1="266" y1="168" x2="290" y2="140" marker-end="url(#m17l)"/>
+<line class="ln" x1="410" y1="100" x2="434" y2="72" marker-end="url(#m17l)"/>
+<line class="ln" x1="410" y1="140" x2="434" y2="168" marker-end="url(#m17l)"/>
+<line class="ln" x1="554" y1="72" x2="578" y2="100" marker-end="url(#m17l)"/>
+<line class="ln" x1="554" y1="168" x2="578" y2="140" marker-end="url(#m17l)"/>
+<line class="ln" x1="686" y1="120" x2="710" y2="120" marker-end="url(#m17l)"/>
+<path class="ln dash accent" d="M762,170 L762,248 L208,248 L208,214" marker-end="url(#m17l)"/>
+<text x="485" y="268" text-anchor="middle" class="sm">new cases from failures, red-team sessions and production incidents</text>
+</svg>
+<figcaption><b>A minimal safety eval, end to end.</b> Attacks and their benign twins share one agent harness, so violation rate and over-refusal come from the same run. Code grades what code can see (tool calls, a canary), a validated judge grades the rest, and the gate reads the upper bound, not the point estimate.</figcaption>
+</figure>
 
 <h3>The Inspect sketch</h3>
 <p>This uses <a href="https://inspect.aisi.org.uk/">Inspect</a>, the UK AISI framework used for many safety evals (<a href="14-tools-landscape.html">Module 14</a>). All tools are mocks; nothing real is deleted or sent.</p>
@@ -876,6 +1060,16 @@ def safety_benign(judge: str):
 <tr><td>Can data hijack the agent?</td><td>Agentic safety</td><td>AgentDojo-style user task + injection task</td><td>Reporting security without utility</td></tr>
 <tr><td>Does it refuse fine requests?</td><td>Over-refusal</td><td>XSTest-style safe prompts and benign twins</td><td>Optimising safety alone</td></tr>
 </table></div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li><b>Can it vs would it.</b> Capability evals push as hard as possible to find the ceiling; propensity evals stay realistic to see default behaviour. They need opposite testing styles.</li>
+<li><b>Threat model first.</b> Target the bottleneck step in a concrete harm story, and write the threshold and the response down before the results arrive.</li>
+<li><b>Under-elicitation is the main failure of capability evals.</b> Scaffolds, retries and fine-tuning all raise the measured ceiling, so labs keep a safety margin below the real threshold.</li>
+<li><b>Tests can be gamed by the model.</b> Sandbagging and evaluation awareness make the measurement reactive; check with fine-tuning, realism controls, white-box probes and deployment monitoring.</li>
+<li><b>Grade harm, not non-refusal,</b> and always pair a safety number with a helpfulness number (utility under attack, over-refusal on benign twins).</li>
+<li><b>Zero failures is not zero risk.</b> 0 of n bounds the rate at roughly 3/n; gate on the upper bound of an exact interval, clustered by prompt.</li>
+<li><b>Your own agent needs a small suite:</b> policies, attack cases, benign twins, mock tools, code graders, many epochs, and a gate that grows with every incident.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

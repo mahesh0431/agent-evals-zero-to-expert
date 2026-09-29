@@ -449,8 +449,8 @@ print(score(M, final_state))
 <rect x="250" y="266" width="12" height="12" class="fill-violet"/>
 <rect x="420" y="266" width="12" height="12" class="fill-violet"/>
 <rect x="620" y="266" width="12" height="12" class="fill-violet"/>
-<path class="ln violet dash" d="M424,264 C410,236 340,236 320,200" marker-end="url(#m11c)"/>
-<text x="440" y="276" class="sm t-violet">reload notes</text>
+<path class="ln violet dash" d="M256,262 C258,222 290,214 314,202" marker-end="url(#m11c)"/>
+<text x="328" y="222" class="sm t-violet">reload notes after compaction</text>
 <polygon points="220,300 227,290 234,300" class="fill-good"/><text x="240" y="300" class="sm t-good">probe ✓</text>
 <polygon points="340,300 347,290 354,300" class="fill-bad"/><text x="360" y="300" class="sm t-bad">probe ✗ detail lost</text>
 <polygon points="600,300 607,290 614,300" class="fill-good"/><text x="620" y="300" class="sm t-good">probe ✓</text>
@@ -477,6 +477,40 @@ print(score(M, final_state))
 <li><b>The budget is a variable you must fix and report.</b> Agents can often trade money for success: more attempts, more thinking tokens, more subagents. An agent at 60% for $2 per task and one at 65% for $40 per task are not ranked by success alone. Report success at a stated budget, or plot success against cost and look for the <b>Pareto frontier</b> (the set of systems not beaten on both axes at once).</li>
 <li><b>You will run fewer samples</b>, so statistics matter more (Module 04). Prefer paired comparisons on the same tasks, report confidence intervals, and use partial credit to squeeze more signal from each run.</li>
 </ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 300" role="img" aria-label="Scatter of five agent systems by cost per task on a log axis and success rate. Systems A, C and E form the Pareto frontier. B costs more than C and succeeds less, and D costs more than C and succeeds less, so both are dominated.">
+<defs><marker id="m11g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln dash" x1="80" y1="40" x2="760" y2="40" opacity="0.25"/>
+<line class="ln dash" x1="80" y1="140" x2="760" y2="140" opacity="0.25"/>
+<line class="ln dash" x1="420" y1="40" x2="420" y2="240" opacity="0.25"/>
+<line class="ln" x1="80" y1="240" x2="760" y2="240"/>
+<line class="ln" x1="80" y1="240" x2="80" y2="30"/>
+<text x="72" y="244" text-anchor="end" class="sm">40%</text>
+<text x="72" y="144" text-anchor="end" class="sm">65%</text>
+<text x="72" y="44" text-anchor="end" class="sm">90%</text>
+<text x="80" y="258" text-anchor="middle" class="sm">$1</text>
+<text x="250" y="258" text-anchor="middle" class="sm">$3</text>
+<text x="420" y="258" text-anchor="middle" class="sm">$10</text>
+<text x="590" y="258" text-anchor="middle" class="sm">$30</text>
+<text x="760" y="258" text-anchor="middle" class="sm">$100</text>
+<text x="420" y="282" text-anchor="middle" class="sm">cost per task (log scale)</text>
+<text x="28" y="140" text-anchor="middle" class="sm" transform="rotate(-90 28 140)">task success rate</text>
+<polyline class="ln good thick" points="182,160 387,112 555,88"/>
+<line class="ln good dash" x1="555" y1="88" x2="760" y2="88"/>
+<text x="660" y="80" text-anchor="middle" class="sm b t-good">Pareto frontier</text>
+<circle class="fill-good" cx="182" cy="160" r="7"/><text x="182" y="184" text-anchor="middle" class="sm b">A · $2 · 60%</text>
+<circle class="fill-good" cx="387" cy="112" r="7"/><text x="387" y="98" text-anchor="middle" class="sm b">C · $8 · 72%</text>
+<circle class="fill-good" cx="555" cy="88" r="7"/><text x="555" y="74" text-anchor="middle" class="sm b">E · $25 · 78%</text>
+<circle class="fill-muted" cx="480" cy="168" r="7"/><text x="480" y="192" text-anchor="middle" class="sm">D · $15 · 58%</text>
+<circle class="fill-bad" cx="625" cy="140" r="7"/><text x="625" y="164" text-anchor="middle" class="sm">B · $40 · 65%</text>
+<path class="ln bad dash" d="M616,136 C540,118 460,112 398,112" marker-end="url(#m11g)"/>
+<text x="512" y="140" text-anchor="middle" class="sm t-bad">C is cheaper AND better</text>
+<text x="756" y="214" text-anchor="end" class="sm">grey and red points are dominated:</text>
+<text x="756" y="229" text-anchor="end" class="sm">never the right choice</text>
+</svg>
+<figcaption><b>Rank agents on two axes, not one.</b> Every system on the green frontier is a defensible choice depending on how much a success is worth to you; B and D are not, because C beats both on cost and success at once. Reporting only success would have made B look better than A. Invented systems and numbers for illustration.</figcaption>
+</figure>
 <p>Measure at least: tokens in and out (and cached), dollar cost, number of tool calls, wall-clock time, and for multi-agent systems, peak parallelism. Put hard caps in the harness (maximum steps, tokens, minutes) and record <b>why</b> a run ended: finished, gave up, hit the cap, or crashed. "Hit the step cap" is a very different failure from "confidently submitted a wrong answer".</p>
 
 <h2>Part B · Multi-agent systems: the architectures</h2>
@@ -623,6 +657,44 @@ print(score(M, final_state))
 <li><b>Shapley-style attribution.</b> For a small number of agents, measure the outcome for every subset of "upgraded" agents and average each agent's marginal contribution (the Shapley value from game theory). The cost grows as 2<sup>n</sup>, so it is only practical for a handful of agents.</li>
 </ol>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 260" role="img" aria-label="Counterfactual replay grid: the original run succeeds 1 in 5 reruns. Replacing search_1 or citations with a known-good output barely helps, but replacing search_2 lifts success to 4 in 5, so search_2 is the bottleneck.">
+<text x="20" y="30" class="b">Replay</text>
+<text x="270" y="30" text-anchor="middle" class="b">lead</text>
+<text x="380" y="30" text-anchor="middle" class="b">search_1</text>
+<text x="490" y="30" text-anchor="middle" class="b">search_2</text>
+<text x="600" y="30" text-anchor="middle" class="b">citations</text>
+<text x="720" y="24" text-anchor="middle" class="b">success</text><text x="720" y="38" text-anchor="middle" class="sm">over 5 reruns</text>
+<text x="20" y="72" class="">original run</text>
+<rect class="box plain" x="222" y="52" width="96" height="30" rx="6"/><text x="270" y="72" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="332" y="52" width="96" height="30" rx="6"/><text x="380" y="72" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="442" y="52" width="96" height="30" rx="6"/><text x="490" y="72" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="552" y="52" width="96" height="30" rx="6"/><text x="600" y="72" text-anchor="middle" class="sm">own output</text>
+<rect class="box bad" x="672" y="52" width="96" height="30" rx="6"/><text x="720" y="72" text-anchor="middle" class="b t-bad">1 / 5</text>
+<text x="20" y="116" class="">swap search_1</text>
+<rect class="box plain" x="222" y="96" width="96" height="30" rx="6"/><text x="270" y="116" text-anchor="middle" class="sm">own output</text>
+<rect class="box good" x="332" y="96" width="96" height="30" rx="6"/><text x="380" y="116" text-anchor="middle" class="sm b t-good">known-good ★</text>
+<rect class="box plain" x="442" y="96" width="96" height="30" rx="6"/><text x="490" y="116" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="552" y="96" width="96" height="30" rx="6"/><text x="600" y="116" text-anchor="middle" class="sm">own output</text>
+<rect class="box bad" x="672" y="96" width="96" height="30" rx="6"/><text x="720" y="116" text-anchor="middle" class="b t-bad">1 / 5</text>
+<text x="20" y="160" class="b">swap search_2</text>
+<rect class="box plain" x="222" y="140" width="96" height="30" rx="6"/><text x="270" y="160" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="332" y="140" width="96" height="30" rx="6"/><text x="380" y="160" text-anchor="middle" class="sm">own output</text>
+<rect class="box good" x="442" y="140" width="96" height="30" rx="6"/><text x="490" y="160" text-anchor="middle" class="sm b t-good">known-good ★</text>
+<rect class="box plain" x="552" y="140" width="96" height="30" rx="6"/><text x="600" y="160" text-anchor="middle" class="sm">own output</text>
+<rect class="box good" x="672" y="140" width="96" height="30" rx="6"/><text x="720" y="160" text-anchor="middle" class="b t-good">4 / 5</text>
+<text x="20" y="204" class="">swap citations</text>
+<rect class="box plain" x="222" y="184" width="96" height="30" rx="6"/><text x="270" y="204" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="332" y="184" width="96" height="30" rx="6"/><text x="380" y="204" text-anchor="middle" class="sm">own output</text>
+<rect class="box plain" x="442" y="184" width="96" height="30" rx="6"/><text x="490" y="204" text-anchor="middle" class="sm">own output</text>
+<rect class="box good" x="552" y="184" width="96" height="30" rx="6"/><text x="600" y="204" text-anchor="middle" class="sm b t-good">known-good ★</text>
+<rect class="box bad" x="672" y="184" width="96" height="30" rx="6"/><text x="720" y="204" text-anchor="middle" class="b t-bad">2 / 5</text>
+<rect class="ln accent dash" x="12" y="138" width="770" height="38" rx="8"/>
+<text x="400" y="244" text-anchor="middle" class="b t-accent">search_2 is the bottleneck: fixing it alone lifts success from 1/5 to 4/5</text>
+</svg>
+<figcaption><b>Credit assignment by counterfactual replay.</b> Rerun the same task several times, each time swapping one agent's output for a known-good one (from a stronger model or a human) while everything else runs normally. The agent whose swap moves success the most is where to invest. Rerun each row several times, because a single replay is as noisy as a single run. Invented numbers.</figcaption>
+</figure>
+
 <h2>Tracing across agents: span trees</h2>
 <p>A single-agent transcript is a flat list. A multi-agent run is a <b>tree</b>: the lead's work contains each subagent's work, which contains each tool call. Tracing tools record this as nested <b>spans</b> (a span is a timed unit of work with a parent, attributes and a status). The OpenTelemetry GenAI semantic conventions (still marked "Development", i.e. not yet stable) define span names like <code>invoke_agent {gen_ai.agent.name}</code> and <code>execute_tool</code>, with attributes such as <code>gen_ai.agent.name</code> and token usage counts. Many eval and observability tools (Module 14) ingest these traces, which means you can attach graders to <em>any node</em> of the tree.</p>
 
@@ -741,27 +813,27 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <p>When you label failed traces (Module 12), it helps to start from an established taxonomy rather than inventing categories. The most cited one is <b>MAST</b> (Multi-Agent System failure Taxonomy) from <a href="https://arxiv.org/abs/2503.13657">"Why Do Multi-Agent LLM Systems Fail?"</a> (Cemri, Pan, Yang et al., UC Berkeley, March 2025). The authors annotated traces from seven open multi-agent frameworks (including ChatDev, MetaGPT, HyperAgent, AppWorld, AG2, Magentic-One and OpenManus), reached high inter-annotator agreement (Cohen's kappa 0.88), and released a dataset of more than 1,600 annotated traces along with an LLM-as-judge pipeline for labelling new ones. They found 14 failure modes in 3 categories.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 440" role="img" aria-label="Horizontal bar chart of the 14 MAST failure modes and their share of observed failures, grouped into system design issues 43.8 percent, inter-agent misalignment 32.2 percent and task verification 24.1 percent. Largest single modes are step repetition, reasoning-action mismatch and unaware of stopping conditions.">
-<text x="20" y="26" class="b t-accent">FC1 System design issues · 43.8%</text>
+<svg viewBox="0 0 820 440" role="img" aria-label="Horizontal bar chart of the 14 MAST failure modes and their share of observed failures, grouped into system design issues 44.2 percent, inter-agent misalignment 32.3 percent and task verification 23.5 percent. Largest single modes are step repetition, reasoning-action mismatch and unaware of stopping conditions.">
+<text x="20" y="26" class="b t-accent">FC1 System design issues · 44.2%</text>
 <text x="300" y="52" text-anchor="end" class="sm">1.1 Disobey task specification</text><rect x="310" y="42" width="295" height="14" class="fill-accent"/><text x="611" y="53" class="sm">11.8%</text>
 <text x="300" y="74" text-anchor="end" class="sm">1.2 Disobey role specification</text><rect x="310" y="64" width="38" height="14" class="fill-accent"/><text x="354" y="75" class="sm">1.5%</text>
 <text x="300" y="96" text-anchor="end" class="sm">1.3 Step repetition</text><rect x="310" y="86" width="393" height="14" class="fill-accent"/><text x="709" y="97" class="sm">15.7%</text>
 <text x="300" y="118" text-anchor="end" class="sm">1.4 Loss of conversation history</text><rect x="310" y="108" width="70" height="14" class="fill-accent"/><text x="386" y="119" class="sm">2.8%</text>
 <text x="300" y="140" text-anchor="end" class="sm">1.5 Unaware of stopping conditions</text><rect x="310" y="130" width="310" height="14" class="fill-accent"/><text x="626" y="141" class="sm">12.4%</text>
-<text x="20" y="172" class="b t-violet">FC2 Inter-agent misalignment · 32.2%</text>
+<text x="20" y="172" class="b t-violet">FC2 Inter-agent misalignment · 32.3%</text>
 <text x="300" y="198" text-anchor="end" class="sm">2.1 Conversation reset</text><rect x="310" y="188" width="55" height="14" class="fill-violet"/><text x="371" y="199" class="sm">2.2%</text>
 <text x="300" y="220" text-anchor="end" class="sm">2.2 Fail to ask for clarification</text><rect x="310" y="210" width="170" height="14" class="fill-violet"/><text x="486" y="221" class="sm">6.8%</text>
 <text x="300" y="242" text-anchor="end" class="sm">2.3 Task derailment</text><rect x="310" y="232" width="185" height="14" class="fill-violet"/><text x="501" y="243" class="sm">7.4%</text>
 <text x="300" y="264" text-anchor="end" class="sm">2.4 Information withholding</text><rect x="310" y="254" width="21" height="14" class="fill-violet"/><text x="337" y="265" class="sm">0.85%</text>
 <text x="300" y="286" text-anchor="end" class="sm">2.5 Ignored other agent's input</text><rect x="310" y="276" width="48" height="14" class="fill-violet"/><text x="364" y="287" class="sm">1.9%</text>
 <text x="300" y="308" text-anchor="end" class="sm">2.6 Reasoning-action mismatch</text><rect x="310" y="298" width="330" height="14" class="fill-violet"/><text x="646" y="309" class="sm">13.2%</text>
-<text x="20" y="340" class="b t-warn">FC3 Task verification · 24.1%</text>
+<text x="20" y="340" class="b t-warn">FC3 Task verification · 23.5%</text>
 <text x="300" y="366" text-anchor="end" class="sm">3.1 Premature termination</text><rect x="310" y="356" width="155" height="14" class="fill-warn"/><text x="471" y="367" class="sm">6.2%</text>
 <text x="300" y="388" text-anchor="end" class="sm">3.2 No or incomplete verification</text><rect x="310" y="378" width="205" height="14" class="fill-warn"/><text x="521" y="389" class="sm">8.2%</text>
 <text x="300" y="410" text-anchor="end" class="sm">3.3 Incorrect verification</text><rect x="310" y="400" width="228" height="14" class="fill-warn"/><text x="544" y="411" class="sm">9.1%</text>
 <text x="310" y="434" class="sm">share of annotated failures (as reported in the paper's HTML version, arXiv 2503.13657)</text>
 </svg>
-<figcaption><b>The MAST taxonomy with reported frequencies.</b> Percentages are as given in the paper for its annotated traces from specific open frameworks; your system's mix will differ. The striking point is that fewer than a third of failures are about agents misunderstanding each other: most are ordinary design and verification problems.</figcaption>
+<figcaption><b>The MAST taxonomy with reported frequencies.</b> Percentages are as given in the paper for its annotated traces from specific open frameworks; your system's mix will differ. Shares are of labelled failure occurrences (one trace can carry several labels). The striking point is that only about a third of failures are about agents misunderstanding each other: most are ordinary design and verification problems.</figcaption>
 </figure>
 
 <p>Three lessons from MAST that change how you build evals:</p>
@@ -783,6 +855,43 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <div class="card warn"><h4>Conformity and echo chambers</h4><p>In debate and voting setups, agents may defer to a confident peer instead of checking. Measure how often a minority-correct agent flips to a majority-wrong answer across rounds.</p></div>
 <div class="card warn"><h4>Runaway resource use</h4><p>Spawning loops, ping-pong hand-offs, and agents that keep delegating. Cap depth and count in the harness, and treat "hit the cap" as a graded failure.</p></div>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 250" role="img" aria-label="Fault injection: a wrong revenue figure is planted in one worker's output. The lead cites it, the reviewer trusts the lead, and the error reaches the final report. A reviewer that re-checks the source catches it. The propagation rate is injected errors reaching the output divided by injections.">
+<defs><marker id="m11h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="100" y="26" text-anchor="middle" class="sm b t-bad">inject a fault here</text>
+<rect class="box bad" x="20" y="36" width="160" height="72" rx="10"/>
+<text x="100" y="58" text-anchor="middle" class="b">Worker search_2</text>
+<text x="100" y="78" text-anchor="middle" class="mono">revenue $4.1B</text>
+<text x="100" y="96" text-anchor="middle" class="sm">(true value: $1.4B)</text>
+<rect class="box warn" x="220" y="36" width="150" height="72" rx="10"/>
+<text x="295" y="62" text-anchor="middle" class="b">Lead synthesis</text>
+<text x="295" y="84" text-anchor="middle" class="sm">cites the figure</text>
+<rect class="box warn" x="410" y="36" width="150" height="72" rx="10"/>
+<text x="485" y="62" text-anchor="middle" class="b">Reviewer agent</text>
+<text x="485" y="84" text-anchor="middle" class="sm">trusts the lead</text>
+<rect class="box bad" x="600" y="36" width="180" height="72" rx="10"/>
+<text x="690" y="62" text-anchor="middle" class="b">Final report</text>
+<text x="690" y="84" text-anchor="middle" class="sm t-bad">error shipped ✗</text>
+<line class="ln bad thick flow" x1="180" y1="72" x2="216" y2="72" marker-end="url(#m11h)"/>
+<line class="ln bad thick flow" x1="370" y1="72" x2="406" y2="72" marker-end="url(#m11h)"/>
+<line class="ln bad thick flow" x1="560" y1="72" x2="596" y2="72" marker-end="url(#m11h)"/>
+<line class="ln good" x1="485" y1="108" x2="485" y2="150" marker-end="url(#m11h)"/>
+<text x="495" y="134" class="sm t-good">better reviewer</text>
+<rect class="box good" x="400" y="154" width="170" height="60" rx="10"/>
+<text x="485" y="178" text-anchor="middle" class="b">Re-checks source</text>
+<text x="485" y="198" text-anchor="middle" class="sm t-good">error caught ✓</text>
+<rect class="box plain" x="600" y="144" width="180" height="80" rx="10"/>
+<text x="690" y="166" text-anchor="middle" class="b">propagation rate</text>
+<text x="690" y="184" text-anchor="middle" class="sm">injections reaching output</text>
+<text x="690" y="210" text-anchor="middle" class="lg t-bad">14 / 40 = 35%</text>
+<text x="20" y="150" class="sm b">Vary the fault:</text>
+<text x="20" y="170" class="sm">wrong number, fake citation,</text>
+<text x="20" y="188" class="sm">injected instruction, empty result.</text>
+<text x="20" y="206" class="sm">Vary where: each worker in turn.</text>
+</svg>
+<figcaption><b>Fault injection measures cascading errors.</b> Corrupt one agent's output on purpose, let the system run, and count how often the fault reaches the final output. A low propagation rate means some agent (here, a reviewer that re-checks sources) acts as a firewall. The same harness tests prompt injection: plant an instruction instead of a wrong number. Illustrative numbers.</figcaption>
+</figure>
 <p>The Cooperative AI Foundation's report <a href="https://arxiv.org/abs/2502.14143">"Multi-Agent Risks from Advanced AI"</a> (Hammond et al., February 2025) organises the risks into three failure modes (<b>miscoordination</b>, <b>conflict</b>, <b>collusion</b>) and seven risk factors (information asymmetries, network effects, selection pressures, destabilising dynamics, commitment problems, emergent agency, and multi-agent security). It is a good checklist for designing adversarial multi-agent evals, and Module 17 returns to dangerous-capability testing more broadly.</p>
 
 <div class="callout bad"><span class="t">Security: every message is an input</span>
@@ -809,13 +918,25 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <rect class="box warn" x="20" y="94" width="560" height="34" rx="6"/><text x="36" y="116" class="b">Budgets</text><text x="200" y="116" class="sm">tokens, $, wall-clock, token multiplier, caps hit</text>
 <rect class="box bad" x="20" y="134" width="560" height="34" rx="6"/><text x="36" y="156" class="b">Robustness</text><text x="200" y="156" class="sm">repeats (pass^k), fault injection, prompt injection</text>
 <rect class="box plain" x="20" y="174" width="560" height="34" rx="6"/><text x="36" y="196" class="b">Human review</text><text x="200" y="196" class="sm">weekly trace reading for what rubrics miss</text>
-<line class="ln" x1="580" y1="111" x2="656" y2="111" marker-end="url(#m11f)"/>
+<path class="ln" d="M580,31 L604,31 M580,71 L604,71 M580,151 L604,151 M580,191 L604,191 M604,31 L604,191"/>
+<line class="ln" x1="580" y1="111" x2="604" y2="111"/>
+<line class="ln" x1="604" y1="111" x2="656" y2="111" marker-end="url(#m11f)"/>
 <rect class="box good" x="660" y="80" width="140" height="62" rx="8"/>
 <text x="730" y="106" text-anchor="middle" class="b">Ship decision</text>
 <text x="730" y="124" text-anchor="middle" class="sm">better AND worth it?</text>
 </svg>
 <figcaption><b>Five layers of a multi-agent eval.</b> The outcome layer decides whether the system is better; the other layers explain why, check it is worth the cost, and check it stays safe when something goes wrong.</figcaption>
 </figure>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Errors compound: at 99% per step, a 100-step task succeeds only about 37% of the time. Report end-to-end success for long tasks and treat step accuracy as a diagnostic.</li>
+<li>Error recovery is the biggest lever on long-horizon success, and correlated "snowball" errors make real tasks harder than p<sup>n</sup> suggests. Measure both.</li>
+<li>METR's 50% time horizon expresses capability in human expert minutes via a logistic fit on log time. It is a statistic of a task distribution, with wide intervals at the frontier.</li>
+<li>Long tasks need richer scoring: gated, weighted milestones plus binary success plus furthest-milestone histograms, always at a stated budget.</li>
+<li>For multi-agent systems, first beat a single-agent baseline with the same budget, then report the token multiplier and the cost-success Pareto frontier.</li>
+<li>Traces are trees: attach graders at the root (outcome), agent spans (delegation, contribution) and tool spans, and assign blame with counterfactual replay.</li>
+<li>Use MAST to label failures, and test emergent risks directly with fault and prompt injection at the worker level.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
@@ -843,7 +964,7 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <button class="opt">System design issues</button>
 <button class="opt">Inter-agent misalignment</button>
 <button class="opt">Task verification</button>
-<div class="why">Task verification (premature termination, no or incomplete verification, incorrect verification) was about 24% of failures in the paper's annotated traces.</div></div>
+<div class="why">Task verification (premature termination, no or incomplete verification, incorrect verification) was about 23.5% of failures in the paper's annotated traces.</div></div>
 </div>
 
 <details><summary>Interview questions (with model answers)</summary>

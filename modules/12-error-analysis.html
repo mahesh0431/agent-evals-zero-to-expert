@@ -42,6 +42,49 @@
 <p>A thermometer gives you a number (a generic metric). A good doctor first examines the patient, forms a diagnosis, and <em>then</em> decides which tests to order. Error analysis is the examination. Evaluators are the tests you order once you know what you are looking for. Ordering every test in the catalogue without examining the patient is expensive and tells you little.</p>
 </div>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 280" role="img" aria-label="Two workflows. Metrics first: pick generic metrics, build a dashboard, numbers wiggle, product unchanged. Data first: read traces, name failure modes, build targeted checks, ship fixes that stick, and repeat on new traffic.">
+<defs><marker id="m12j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="26" class="b t-bad">Metrics first (common, weak)</text>
+<rect class="box plain" x="20" y="38" width="160" height="58" rx="10"/>
+<text x="100" y="62" text-anchor="middle" class="b">Pick 5 metrics</text>
+<text x="100" y="81" text-anchor="middle" class="sm">helpfulness, coherence…</text>
+<line class="ln" x1="180" y1="67" x2="206" y2="67" marker-end="url(#m12j)"/>
+<rect class="box plain" x="210" y="38" width="160" height="58" rx="10"/>
+<text x="290" y="62" text-anchor="middle" class="b">Dashboard</text>
+<text x="290" y="81" text-anchor="middle" class="sm">numbers on a chart</text>
+<line class="ln" x1="370" y1="67" x2="396" y2="67" marker-end="url(#m12j)"/>
+<rect class="box plain" x="400" y="38" width="160" height="58" rx="10"/>
+<text x="480" y="62" text-anchor="middle" class="b">Numbers wiggle</text>
+<text x="480" y="81" text-anchor="middle" class="sm">no link to real failures</text>
+<line class="ln" x1="560" y1="67" x2="586" y2="67" marker-end="url(#m12j)"/>
+<rect class="box bad" x="590" y="38" width="160" height="58" rx="10"/>
+<text x="670" y="62" text-anchor="middle" class="b">Nothing improves</text>
+<text x="670" y="81" text-anchor="middle" class="sm">no action to take ✗</text>
+
+<text x="20" y="136" class="b t-good">Data first (error analysis)</text>
+<rect class="box accent" x="20" y="148" width="160" height="58" rx="10"/>
+<text x="100" y="172" text-anchor="middle" class="b">Read ~100 traces</text>
+<text x="100" y="191" text-anchor="middle" class="sm">real or synthetic</text>
+<line class="ln" x1="180" y1="177" x2="206" y2="177" marker-end="url(#m12j)"/>
+<rect class="box accent" x="210" y="148" width="160" height="58" rx="10"/>
+<text x="290" y="172" text-anchor="middle" class="b">Name failures</text>
+<text x="290" y="191" text-anchor="middle" class="sm">your own taxonomy</text>
+<line class="ln" x1="370" y1="177" x2="396" y2="177" marker-end="url(#m12j)"/>
+<rect class="box violet" x="400" y="148" width="160" height="58" rx="10"/>
+<text x="480" y="172" text-anchor="middle" class="b">Targeted checks</text>
+<text x="480" y="191" text-anchor="middle" class="sm">code + narrow judges</text>
+<line class="ln" x1="560" y1="177" x2="586" y2="177" marker-end="url(#m12j)"/>
+<rect class="box good" x="590" y="148" width="160" height="58" rx="10"/>
+<text x="670" y="172" text-anchor="middle" class="b">Fixes that stick</text>
+<text x="670" y="191" text-anchor="middle" class="sm">measured and guarded ✓</text>
+
+<path class="ln accent thick flow" d="M670,206 L670,244 L100,244 L100,210" marker-end="url(#m12j)"/>
+<text x="385" y="264" text-anchor="middle" class="sm b t-accent">repeat on new traffic: new failures, new checks</text>
+</svg>
+<figcaption><b>Where you start decides where you end up.</b> Generic metrics were written by someone who never saw your agent fail, so they rarely point at a fix. Starting from traces produces failure modes that are specific, countable and fixable, and the checks you build measure exactly those.</figcaption>
+</figure>
+
 <p>Two new terms before we go on:</p>
 <ul>
 <li>A <b>trace</b> (also transcript or trajectory) is the full record of one run of your agent: the user's messages, the model's replies, every tool call with its arguments and results, and the final state. (Module 01 introduced the vocabulary.)</li>
@@ -152,7 +195,7 @@
 <text x="442" y="146" class="mono sm">full, late)</text>
 <text x="430" y="190" class="mono sm">(terse,</text>
 <text x="442" y="206" class="mono sm">cancel, no-ID)</text>
-<text x="505" y="260" text-anchor="middle" class="sm t-muted">... 40 more</text>
+<text x="505" y="260" text-anchor="middle" class="sm t-muted">... 42 more</text>
 <line class="ln" x1="590" y1="164" x2="626" y2="164" marker-end="url(#m12b)"/>
 <text x="608" y="154" text-anchor="middle" class="sm">LLM</text>
 <text x="730" y="20" text-anchor="middle" class="b">Realistic messages</text>
@@ -230,6 +273,41 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <li><b>Do not fix things mid-session.</b> Write it down and keep reading. You want the distribution first.</li>
 </ul>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 300" role="img" aria-label="Annotated trace T-017: the user asks to refund the jacket, lookup returns a mug and a jacket order, the agent refunds the mug order, then confirms the wrong refund. The first failure is step 3; step 4 is a downstream symptom. The open code describes only the first failure, and the verdict is a binary fail.">
+<defs><marker id="m12k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="24" class="b">Trace T-017, as the reviewer reads it</text>
+<line class="ln" x1="36" y1="60" x2="36" y2="216" opacity="0.5"/>
+<circle class="box good" cx="36" cy="60" r="12"/><text x="36" y="64" text-anchor="middle" class="sm b">1</text>
+<rect class="box accent" x="60" y="40" width="410" height="40" rx="8"/>
+<text x="74" y="65" class="sm"><tspan class="b">User:</tspan> "refund the jacket pls, it's torn"</text>
+<circle class="box good" cx="36" cy="112" r="12"/><text x="36" y="116" text-anchor="middle" class="sm b">2</text>
+<rect class="box violet" x="60" y="92" width="410" height="40" rx="8"/>
+<text x="74" y="117" class="mono">lookup_orders(881) → #1182 mug, #1190 jacket</text>
+<circle class="box bad pulse" cx="36" cy="164" r="12"/><text x="36" y="168" text-anchor="middle" class="sm b">3</text>
+<rect class="box bad" x="60" y="144" width="410" height="40" rx="8"/>
+<text x="74" y="169" class="mono">issue_refund(order=1182, amount=64)</text>
+<text x="458" y="169" text-anchor="end" class="sm b t-bad">FIRST FAILURE</text>
+<circle class="box dashed" cx="36" cy="216" r="12"/><text x="36" y="220" text-anchor="middle" class="sm t-muted">4</text>
+<rect class="box dashed" x="60" y="196" width="410" height="40" rx="8"/>
+<text x="74" y="221" class="sm t-muted"><tspan class="b">Agent:</tspan> "Done! $64 refunded for #1182."</text>
+<line class="ln bad" x1="470" y1="164" x2="506" y2="164" marker-end="url(#m12k)"/>
+<rect class="box warn" x="510" y="104" width="270" height="116" rx="10"/>
+<text x="524" y="126" class="b">Open code (first failure only)</text>
+<text x="524" y="150" class="sm">Refunded the mug (#1182), not the</text>
+<text x="524" y="166" class="sm">jacket the user named (#1190). Took</text>
+<text x="524" y="182" class="sm">the most recent order without</text>
+<text x="524" y="198" class="sm">matching the item to the request.</text>
+<text x="524" y="244" class="sm t-muted">Step 4 is a downstream symptom:</text>
+<text x="524" y="260" class="sm t-muted">fixing step 3 removes it, so no</text>
+<text x="524" y="276" class="sm t-muted">separate code for it.</text>
+<rect class="box bad" x="60" y="252" width="140" height="32" rx="8"/>
+<text x="130" y="273" text-anchor="middle" class="b t-bad">Verdict: FAIL</text>
+<text x="214" y="273" class="sm">binary, with the note carrying the nuance</text>
+</svg>
+<figcaption><b>Open coding one trace.</b> Read until the first thing goes wrong, mark it, and write a concrete note about it in plain words. Everything after that point is usually a consequence, so coding it separately would double-count one root cause. The verdict is pass or fail, never a 1 to 5 score.</figcaption>
+</figure>
+
 <h2>Step 3: axial coding (the taxonomy)</h2>
 <p><b>Axial coding</b> is the second qualitative pass: you take your pile of open codes and group them into categories, building connections ("axes") between notes that describe the same underlying problem. The output is a <b>failure taxonomy</b>: a short list of named failure modes, each with a clear definition and examples. The FAQ calls this "the most important step".</p>
 
@@ -275,6 +353,47 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <h2>Step 4: count and prioritize</h2>
 <p>Once each failing trace has a category, count. This is the moment qualitative work becomes quantitative, and it is often the most clarifying moment of the whole process: the failure you were emotionally sure was the big problem is frequently third or fourth on the list.</p>
 <p>Frequency is not the only input. Multiply mentally by <b>severity</b> (a wrongly issued $900 refund costs real money; a slightly stiff tone does not) and by <b>ease of fix</b>. A useful rule: the top of your list is whatever is frequent <em>and</em> costly <em>and</em> not trivially fixed by a prompt change.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 300" role="img" aria-label="Prioritisation chart of the refund agent's nine failure modes by frequency and severity. Refund outside policy and wrong order selected are both frequent and high severity, so they are attacked first; missing escalation is rare but critical.">
+<rect class="fill-bad" x="300" y="40" width="240" height="110" opacity="0.08"/>
+<rect class="fill-warn" x="80" y="40" width="220" height="56" opacity="0.08"/>
+<line class="ln dash" x1="300" y1="40" x2="300" y2="250" opacity="0.4"/>
+<line class="ln dash" x1="80" y1="150" x2="540" y2="150" opacity="0.4"/>
+<line class="ln" x1="80" y1="250" x2="540" y2="250"/>
+<line class="ln" x1="80" y1="250" x2="80" y2="36"/>
+<text x="72" y="74" text-anchor="end" class="sm">critical</text>
+<text x="72" y="124" text-anchor="end" class="sm">high</text>
+<text x="72" y="184" text-anchor="end" class="sm">medium</text>
+<text x="72" y="234" text-anchor="end" class="sm">low</text>
+<text x="80" y="266" text-anchor="middle" class="sm">0</text><text x="216" y="266" text-anchor="middle" class="sm">4</text>
+<text x="352" y="266" text-anchor="middle" class="sm">8</text><text x="488" y="266" text-anchor="middle" class="sm">12</text>
+<text x="310" y="288" text-anchor="middle" class="sm">how often (failing traces, first failure only)</text>
+<text x="530" y="58" text-anchor="end" class="sm b t-bad">attack first</text>
+<text x="92" y="92" class="sm b t-warn">rare but costly</text>
+<circle class="box accent" cx="488" cy="120" r="12"/><text x="488" y="124" text-anchor="middle" class="sm b">1</text>
+<circle class="box accent" cx="386" cy="120" r="12"/><text x="386" y="124" text-anchor="middle" class="sm b">2</text>
+<circle class="box violet" cx="236" cy="180" r="12"/><text x="236" y="184" text-anchor="middle" class="sm b">3</text>
+<circle class="box violet" cx="264" cy="180" r="12"/><text x="264" y="184" text-anchor="middle" class="sm b">4</text>
+<circle class="box accent" cx="216" cy="70" r="12"/><text x="216" y="74" text-anchor="middle" class="sm b">5</text>
+<circle class="box accent" cx="216" cy="120" r="12"/><text x="216" y="124" text-anchor="middle" class="sm b">6</text>
+<circle class="box accent" cx="182" cy="120" r="12"/><text x="182" y="124" text-anchor="middle" class="sm b">7</text>
+<circle class="box good" cx="148" cy="230" r="12"/><text x="148" y="234" text-anchor="middle" class="sm b">8</text>
+<circle class="box good" cx="114" cy="230" r="12"/><text x="114" y="234" text-anchor="middle" class="sm b">9</text>
+<text x="580" y="40" class="b">Failure modes</text>
+<text x="580" y="64" class="sm"><tspan class="b">1</tspan>  Refund outside policy</text>
+<text x="580" y="86" class="sm"><tspan class="b">2</tspan>  Wrong order selected</text>
+<text x="580" y="108" class="sm"><tspan class="b">3</tspan>  Hallucinated promise</text>
+<text x="580" y="130" class="sm"><tspan class="b">4</tspan>  Assumed, didn't clarify</text>
+<text x="580" y="152" class="sm"><tspan class="b">5</tspan>  Missing escalation</text>
+<text x="580" y="174" class="sm"><tspan class="b">6</tspan>  Tool failure mishandled</text>
+<text x="580" y="196" class="sm"><tspan class="b">7</tspan>  Policy check skipped</text>
+<text x="580" y="218" class="sm"><tspan class="b">8</tspan>  Misclassified intent</text>
+<text x="580" y="240" class="sm"><tspan class="b">9</tspan>  Incomplete confirmation</text>
+<text x="580" y="274" class="sm t-muted">colour = planned grader</text>
+</svg>
+<figcaption><b>Frequency is only half of priority.</b> The worked example's nine failure modes (counts from later in this module), placed by how often they occur and how much damage each does. Frequent and severe modes (top right) come first. Missing escalation (5) is rare but lets a $900 refund through, so it still earns a guard. Colours follow the bar chart below: blue code check, violet LLM judge, green direct fix. Severity ratings are the team's judgement, not data.</figcaption>
+</figure>
 
 <h3>When to stop reading: theoretical saturation</h3>
 <p>How many traces is enough? Qualitative researchers use the idea of <b>theoretical saturation</b>: you stop when new material stops producing new categories. Husain and Shankar translate this directly: "Continue until new traces stop revealing failure modes or changing existing ones," and they recommend reviewing at least 100 traces as a practical floor. Treat 100 as a rule of thumb, not a law. A narrow agent may saturate sooner; a broad general assistant can keep surprising you for much longer.</p>
@@ -406,6 +525,39 @@ with open("synthetic_inputs.jsonl", "w") as f:
 
 <h2>Steps 6 to 8: validate, automate, iterate</h2>
 <p><b>Validate judges.</b> An LLM judge is a classifier, and classifiers make mistakes. Before you trust it, compare its verdicts against your domain expert's labels on traces the judge was not tuned on. The FAQ recommends train, dev and test splits of your labeled traces and reporting the judge's <b>true positive rate</b> (TPR: of the traces the human passed, how many the judge passed) and <b>true negative rate</b> (TNR: of the traces the human failed, how many the judge failed). Your error analysis labels are exactly the ground truth you need. <a href="13-llm-as-judge.html">Module 13</a> does this in depth, including how to correct the measured pass rate for judge error.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 280" role="img" aria-label="Judge validation: 180 labelled traces are split into train for few-shot examples, dev for tuning the judge prompt, and test for measuring once. On 72 test traces the judge agrees with the human on 42 passes and 24 fails, giving a true positive rate of 93 percent and a true negative rate of 89 percent.">
+<defs><marker id="m12l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="24" class="b">Human-labelled traces from error analysis (n = 180)</text>
+<rect class="box accent" x="20" y="36" width="180" height="38" rx="8"/>
+<text x="110" y="60" text-anchor="middle" class="sm b">train · few-shot examples</text>
+<rect class="box violet" x="204" y="36" width="280" height="38" rx="8"/>
+<text x="344" y="60" text-anchor="middle" class="sm b">dev · tune the judge prompt</text>
+<rect class="box good" x="488" y="36" width="292" height="38" rx="8"/>
+<text x="634" y="60" text-anchor="middle" class="sm b">test · measure once (n = 72)</text>
+<line class="ln" x1="563" y1="74" x2="563" y2="108" marker-end="url(#m12l)"/>
+<text x="571" y="96" class="sm">score the judge on test</text>
+<text x="505" y="122" text-anchor="middle" class="sm b">judge PASS</text>
+<text x="621" y="122" text-anchor="middle" class="sm b">judge FAIL</text>
+<text x="440" y="160" text-anchor="end" class="sm b">human PASS</text>
+<text x="440" y="214" text-anchor="end" class="sm b">human FAIL</text>
+<rect class="box good" x="450" y="130" width="110" height="48" rx="8"/>
+<text x="505" y="154" text-anchor="middle" class="lg">42</text><text x="505" y="170" text-anchor="middle" class="sm">agree</text>
+<rect class="box bad" x="566" y="130" width="110" height="48" rx="8"/>
+<text x="621" y="154" text-anchor="middle" class="lg">3</text><text x="621" y="170" text-anchor="middle" class="sm">judge too harsh</text>
+<rect class="box bad" x="450" y="184" width="110" height="48" rx="8"/>
+<text x="505" y="208" text-anchor="middle" class="lg">3</text><text x="505" y="224" text-anchor="middle" class="sm">judge too lenient</text>
+<rect class="box good" x="566" y="184" width="110" height="48" rx="8"/>
+<text x="621" y="208" text-anchor="middle" class="lg">24</text><text x="621" y="224" text-anchor="middle" class="sm">agree</text>
+<text x="20" y="130" class="b t-good">TPR = 42 / 45 = 93%</text>
+<text x="20" y="148" class="sm">of traces the human passed, share the judge passed</text>
+<text x="20" y="190" class="b t-good">TNR = 24 / 27 = 89%</text>
+<text x="20" y="208" class="sm">of traces the human failed, share the judge failed</text>
+<text x="20" y="262" class="sm b t-accent">Both high? Then run the judge on unlabelled traffic, and correct its rate for known error (Module 13).</text>
+</svg>
+<figcaption><b>Validating a judge with your error-analysis labels.</b> Few-shot examples come only from train, prompt tweaks are judged only on dev, and test is touched once so the reported TPR and TNR are honest. A judge that is too lenient (bottom left) hides real failures, which is usually the more dangerous error. Illustrative numbers; the split proportions are one reasonable choice.</figcaption>
+</figure>
 <p><b>Add to CI and production.</b> Once checks and validated judges exist, run them automatically: on a fixed regression set on every prompt or code change, and on a sample of production traffic. Failures in production feed straight back into step 1. <a href="15-production-evals.html">Module 15</a> covers the plumbing.</p>
 <p><b>Iterate.</b> Keep a steady trickle of fresh traces flowing into review. The FAQ notes you should expect pass rates well below 100% on a healthy eval (they suggest around 70% as a sign it is challenging enough; a perfect score suggests the eval is too easy). And be ready for your definitions to change, which is the subject of the next section.</p>
 
@@ -508,7 +660,7 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <text x="420" y="87" text-anchor="middle" class="sm">Was the world set up as the task assumed?</text>
 <text x="420" y="103" text-anchor="middle" class="sm">(sandbox, fixtures, network, rate limits)</text>
 <line class="ln" x1="240" y1="90" x2="140" y2="90"/>
-<line class="ln" x1="140" y1="90" x2="140" y2="176" marker-end="url(#m12h)"/>
+<line class="ln" x1="140" y1="90" x2="140" y2="198" marker-end="url(#m12h)"/>
 <text x="190" y="82" text-anchor="middle" class="sm t-bad">no</text>
 <line class="ln" x1="420" y1="112" x2="420" y2="138" marker-end="url(#m12h)"/>
 <text x="436" y="130" class="sm t-good">yes</text>
@@ -520,13 +672,13 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <text x="650" y="156" text-anchor="middle" class="sm t-bad">yes</text>
 <line class="ln" x1="420" y1="186" x2="420" y2="198" marker-end="url(#m12h)"/>
 <text x="436" y="196" class="sm t-good">no</text>
-<rect class="box warn" x="20" y="180" width="240" height="140" rx="8"/>
-<text x="140" y="202" text-anchor="middle" class="b">Environment error</text>
-<text x="32" y="226" class="sm">e.g. test DB missing the order;</text>
-<text x="32" y="242" class="sm">API rate-limited in the harness</text>
-<text x="32" y="270" class="sm b">Fix: the harness or task.</text>
-<text x="32" y="288" class="sm">Exclude or re-run; never</text>
-<text x="32" y="304" class="sm">count it against the agent.</text>
+<rect class="box warn" x="20" y="202" width="240" height="118" rx="8"/>
+<text x="140" y="224" text-anchor="middle" class="b">Environment error</text>
+<text x="32" y="246" class="sm">e.g. test DB missing the order;</text>
+<text x="32" y="262" class="sm">API rate-limited in the harness</text>
+<text x="32" y="284" class="sm b">Fix: the harness or task.</text>
+<text x="32" y="299" class="sm">Exclude or re-run; never</text>
+<text x="32" y="313" class="sm">count it against the agent.</text>
 <rect class="box violet" x="300" y="202" width="240" height="118" rx="8"/>
 <text x="420" y="224" text-anchor="middle" class="b">Reasoning error</text>
 <text x="312" y="246" class="sm">e.g. ignored the order date</text>
@@ -791,6 +943,16 @@ print(hot)
 <div class="card bad"><h4>Judging what a fix would solve</h4><p>Building an evaluator for a failure that a one-line prompt or tool change removes permanently.</p></div>
 <div class="card bad"><h4>Stopping forever</h4><p>Doing error analysis once at launch. New models, prompts, features and users all bring new failure modes.</p></div>
 </div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Read data before choosing metrics. Generic metrics were written by someone who never saw your agent fail; your failure modes come from your traces.</li>
+<li>The loop: collect traces, open code the first failure per trace, axial code into a small written taxonomy, count, then decide.</li>
+<li>Generate synthetic inputs from dimensions and tuples, then phrase them in a separate step, and keep the tuple as metadata for slicing.</li>
+<li>Stop discovering at saturation (about 100 traces as a floor), and let one domain expert own the definition of "good".</li>
+<li>Fix spec gaps directly; build code checks where the answer is objective and one narrow, validated LLM judge per remaining failure mode.</li>
+<li>For agents, transition failure matrices show where in the workflow failures cluster, and the environment, tool or reasoning split shows who owns the fix.</li>
+<li>Criteria drift is normal: version your definitions, re-label old traces, and keep reading fresh traces for as long as the product lives.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

@@ -84,7 +84,7 @@
 <line class="ln" x1="580" y1="272" x2="544" y2="272" marker-end="url(#m16a)"/>
 <line class="ln" x1="300" y1="272" x2="264" y2="272" marker-end="url(#m16a)"/>
 <text x="282" y="262" text-anchor="middle" class="sm">ship</text>
-<path class="ln dash" d="M140,215 L140,185 L140,160" marker-end="url(#m16a)"/>
+<path class="ln accent flow" d="M140,215 L140,185 L140,160" marker-end="url(#m16a)"/>
 <text x="150" y="190" class="sm">findings shape the next model</text>
 <text x="420" y="364" text-anchor="middle" class="sm">Stages 2 to 4 overlap in time: labs evaluate several candidate snapshots in parallel.</text>
 </svg>
@@ -155,42 +155,47 @@
 <p>Why does "only specify the next level" matter for evals? Under a long ladder, a lab must design evals and safeguards for levels that may be years away and based on guesses. Under v3, the lab commits in detail to the next step and publishes Risk Reports on a schedule, which shifts some weight from one-off pre-launch evals to <b>continuous risk reporting</b>. Critics and supporters both discuss what was lost and gained; the GovAI analysis in the Sources is a good balanced read.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 290" role="img" aria-label="Timeline from February 2025 to July 2026 of frontier safety framework and eval-ecosystem events across Meta, OpenAI, Anthropic, US CAISI, xAI and Google DeepMind.">
+<svg viewBox="0 0 840 306" role="img" aria-label="Timeline from February 2025 to July 2026 of frontier safety framework and eval-ecosystem events across Meta, OpenAI, Anthropic, US CAISI, xAI and Google DeepMind.">
 <line class="ln thick" x1="40" y1="170" x2="810" y2="170"/>
 <text x="60" y="188" class="sm t-muted">2025</text>
 <line class="ln" x1="534" y1="160" x2="534" y2="180"/>
 <text x="538" y="162" class="sm t-muted">2026</text>
 <!-- Feb 2025 -->
-<circle cx="50" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="50" y1="165" x2="50" y2="140"/>
+<circle cx="50" cy="170" r="7" class="fill-accent"/><line class="ln dash" x1="50" y1="165" x2="50" y2="140"/>
 <text x="44" y="120" class="sm">Meta Frontier</text><text x="44" y="134" class="sm">AI Framework</text>
 <!-- Apr 2025 -->
-<circle cx="138" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="138" y1="175" x2="138" y2="188"/>
+<circle cx="138" cy="170" r="7" class="fill-accent"/><line class="ln dash" x1="138" y1="175" x2="138" y2="188"/>
 <text x="138" y="200" text-anchor="middle" class="sm">OpenAI</text><text x="138" y="214" text-anchor="middle" class="sm">Preparedness v2</text>
 <!-- May 2025 -->
-<circle cx="182" cy="170" r="5" class="fill-warn"/><line class="ln dash" x1="182" y1="165" x2="182" y2="90"/>
+<circle cx="182" cy="170" r="7" class="fill-warn"/><line class="ln dash" x1="182" y1="165" x2="182" y2="90"/>
 <text x="182" y="70" text-anchor="middle" class="sm">Anthropic</text><text x="182" y="84" text-anchor="middle" class="sm">ASL-3 on (Opus 4)</text>
 <!-- Jun 2025 -->
-<circle cx="226" cy="170" r="5" class="fill-violet"/><line class="ln dash" x1="226" y1="175" x2="226" y2="238"/>
+<circle cx="226" cy="170" r="7" class="fill-violet"/><line class="ln dash" x1="226" y1="175" x2="226" y2="238"/>
 <text x="226" y="250" text-anchor="middle" class="sm">US AISI renamed</text><text x="226" y="264" text-anchor="middle" class="sm">CAISI</text>
 <!-- Aug 2025 -->
-<circle cx="314" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="314" y1="165" x2="314" y2="140"/>
+<circle cx="314" cy="170" r="7" class="fill-accent"/><line class="ln dash" x1="314" y1="165" x2="314" y2="140"/>
 <text x="314" y="120" text-anchor="middle" class="sm">xAI Risk Mgmt</text><text x="314" y="134" text-anchor="middle" class="sm">Framework</text>
 <!-- Sep 2025 -->
-<circle cx="358" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="358" y1="175" x2="358" y2="188"/>
+<circle cx="358" cy="170" r="7" class="fill-accent"/><line class="ln dash" x1="358" y1="175" x2="358" y2="188"/>
 <text x="358" y="200" text-anchor="middle" class="sm">GDM Frontier</text><text x="358" y="214" text-anchor="middle" class="sm">Safety Fw v3.0</text>
 <!-- Feb 2026 -->
-<circle cx="578" cy="170" r="5" class="fill-warn"/><line class="ln dash" x1="578" y1="165" x2="578" y2="140"/>
+<circle cx="578" cy="170" r="7" class="fill-warn"/><line class="ln dash" x1="578" y1="165" x2="578" y2="140"/>
 <text x="578" y="120" text-anchor="middle" class="sm">Anthropic</text><text x="578" y="134" text-anchor="middle" class="sm">RSP v3.0</text>
 <!-- Apr 2026 -->
-<circle cx="666" cy="170" r="5" class="fill-accent"/><line class="ln dash" x1="666" y1="175" x2="666" y2="188"/>
+<circle cx="666" cy="170" r="7" class="fill-accent"/><line class="ln dash" x1="666" y1="175" x2="666" y2="188"/>
 <text x="666" y="200" text-anchor="middle" class="sm">GDM FSF v3.1 (TCLs)</text><text x="666" y="214" text-anchor="middle" class="sm">Meta AASF v2</text>
 <!-- Jun 2026 -->
-<circle cx="754" cy="170" r="5" class="fill-bad"/><line class="ln dash" x1="754" y1="165" x2="754" y2="90"/>
+<circle cx="754" cy="170" r="7" class="fill-bad"/><line class="ln dash" x1="754" y1="165" x2="754" y2="90"/>
 <text x="754" y="70" text-anchor="middle" class="sm">OpenAI Evals</text><text x="754" y="84" text-anchor="middle" class="sm">deprecation notice</text>
 <!-- Jul 2026 -->
-<circle cx="798" cy="170" r="5" class="fill-warn"/><line class="ln dash" x1="798" y1="175" x2="798" y2="238"/>
+<circle cx="798" cy="170" r="7" class="fill-warn"/><line class="ln dash" x1="798" y1="175" x2="798" y2="238"/>
 <text x="820" y="250" text-anchor="end" class="sm">Anthropic</text><text x="820" y="264" text-anchor="end" class="sm">RSP v3.4</text>
 <text x="420" y="30" text-anchor="middle" class="b">Eighteen months of frameworks</text>
+<circle cx="30" cy="292" r="6" class="fill-accent"/><text x="42" y="296" class="sm">framework published or revised</text>
+<circle cx="262" cy="292" r="6" class="fill-warn"/><text x="274" y="296" class="sm">Anthropic RSP milestone</text>
+<circle cx="450" cy="292" r="6" class="fill-violet"/><text x="462" y="296" class="sm">evaluator change</text>
+<circle cx="592" cy="292" r="6" class="fill-bad"/><text x="604" y="296" class="sm">eval tooling retired</text>
+<line class="ln dash" x1="20" y1="276" x2="820" y2="276"/>
 </svg>
 <figcaption><b>The frameworks are living documents.</b> Between February 2025 and July 2026 every major lab revised its framework at least once, and the eval ecosystem around them changed too (a US institute renamed, a hosted eval platform retired). Dots are placed by month.</figcaption>
 </figure>
@@ -223,6 +228,67 @@
 <tr><td>Evaluation harness / suite</td><td>The software that runs evals / a collection of tasks</td><td><a href="14-tools-landscape.html">Module 14</a></td></tr>
 <tr><td>pass@k vs pass^k</td><td>At least one of k trials succeeds vs all k succeed (reliability)</td><td>Module 04</td></tr>
 </table></div>
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="Anthropic's agent eval vocabulary as a pipeline: a task is run as several trials; each trial produces a transcript and an outcome; graders (code, model or human) score them; results roll up into pass@k or pass^k. Below, capability suites start at a low pass rate while regression suites should stay near 100 percent.">
+<defs><marker id="m16c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="70" width="140" height="124" rx="8"/>
+<text x="34" y="96" class="b">Task</text>
+<text x="34" y="118" class="sm">defined inputs</text>
+<text x="34" y="134" class="sm">success criteria</text>
+<text x="34" y="150" class="sm">reference solution</text>
+<text x="34" y="176" class="sm t-accent">one test case</text>
+<rect class="box plain" x="200" y="50" width="110" height="44" rx="8"/>
+<text x="255" y="77" text-anchor="middle" class="sm b">Trial 1</text>
+<rect class="box plain" x="200" y="110" width="110" height="44" rx="8"/>
+<text x="255" y="137" text-anchor="middle" class="sm b">Trial 2</text>
+<rect class="box plain" x="200" y="170" width="110" height="44" rx="8"/>
+<text x="255" y="197" text-anchor="middle" class="sm b">Trial k</text>
+<text x="255" y="232" text-anchor="middle" class="sm t-muted">clean env each time</text>
+<line class="ln" x1="160" y1="120" x2="196" y2="74" marker-end="url(#m16c)"/>
+<line class="ln" x1="160" y1="132" x2="196" y2="132" marker-end="url(#m16c)"/>
+<line class="ln" x1="160" y1="144" x2="196" y2="190" marker-end="url(#m16c)"/>
+<rect class="box violet" x="350" y="50" width="150" height="84" rx="8"/>
+<text x="364" y="74" class="b">Transcript</text>
+<text x="364" y="96" class="sm">outputs, tool calls,</text>
+<text x="364" y="112" class="sm">reasoning (the path)</text>
+<rect class="box good" x="350" y="150" width="150" height="64" rx="8"/>
+<text x="364" y="174" class="b">Outcome</text>
+<text x="364" y="196" class="sm">final env state</text>
+<line class="ln" x1="310" y1="132" x2="346" y2="96" marker-end="url(#m16c)"/>
+<line class="ln" x1="310" y1="140" x2="346" y2="180" marker-end="url(#m16c)"/>
+<rect class="box warn" x="540" y="50" width="130" height="164" rx="8"/>
+<text x="554" y="74" class="b">Graders</text>
+<text x="554" y="100" class="sm">code: tests, diffs</text>
+<text x="554" y="124" class="sm">model: rubric</text>
+<text x="554" y="148" class="sm">human: spot checks</text>
+<text x="554" y="190" class="sm t-warn">not brittle</text>
+<line class="ln" x1="500" y1="92" x2="536" y2="100" marker-end="url(#m16c)"/>
+<line class="ln" x1="500" y1="182" x2="536" y2="170" marker-end="url(#m16c)"/>
+<rect class="box plain" x="710" y="50" width="110" height="164" rx="8"/>
+<text x="765" y="78" text-anchor="middle" class="b mono">pass@k</text>
+<text x="765" y="96" text-anchor="middle" class="sm">any trial passes</text>
+<line class="ln dash" x1="724" y1="130" x2="806" y2="130"/>
+<text x="765" y="162" text-anchor="middle" class="b mono">pass^k</text>
+<text x="765" y="180" text-anchor="middle" class="sm">all k pass</text>
+<text x="765" y="198" text-anchor="middle" class="sm t-muted">(reliability)</text>
+<line class="ln" x1="670" y1="132" x2="706" y2="132" marker-end="url(#m16c)"/>
+<text x="20" y="30" class="sm t-muted">Read transcripts, not just scores: the grader sees the outcome, you need the path too.</text>
+<rect class="box accent" x="20" y="252" width="390" height="64" rx="8"/>
+<text x="34" y="276" class="b">Capability suite</text>
+<text x="34" y="298" class="sm">starts at a low pass rate, shows progress</text>
+<rect class="box plain" x="300" y="280" width="96" height="12" rx="3"/>
+<rect class="fill-accent" x="300" y="280" width="29" height="12" rx="3"/>
+<text x="348" y="274" text-anchor="middle" class="sm t-accent">low, climbing</text>
+<rect class="box good" x="430" y="252" width="390" height="64" rx="8"/>
+<text x="444" y="276" class="b">Regression suite</text>
+<text x="444" y="298" class="sm">should stay near 100%</text>
+<rect class="box plain" x="710" y="280" width="96" height="12" rx="3"/>
+<rect class="fill-good" x="710" y="280" width="94" height="12" rx="3"/>
+<text x="758" y="274" text-anchor="middle" class="sm t-good">near 100%</text>
+</svg>
+<figcaption><b>The vocabulary as one pipeline.</b> A task runs as several trials, each in a clean environment. Every trial leaves a transcript (the path) and an outcome (the end state), graders score them, and the results roll up into pass@k or pass^k. Keep capability suites and regression suites apart, because they answer different questions.</figcaption>
+</figure>
+
 <p>The advice, condensed: start early with 20 to 50 tasks drawn from real failures; turn manual checks into tests; write unambiguous task specs with reference solutions; balance positive and negative cases; isolate each trial in a clean environment; design graders that are not brittle; <b>read transcripts</b>; watch for saturation; and give the suite a dedicated owner. Separate <b>capability evals</b> (start at low pass rates, show progress) from <b>regression evals</b> (should stay near 100%). A companion post, "Writing effective tools for agents", adds: make eval tasks realistic enough to need many tool calls, track runtime, tool calls, tokens and tool errors alongside accuracy, and notice what agents <em>omit</em>.</p>
 
 <h3>Error bars: the statistics paper</h3>
@@ -238,6 +304,51 @@
 <div class="callout tip"><span class="t">Worked example: how big is the error bar on a headline number?</span>
 <p>Suppose a card reports 77.2% on a 500-task coding benchmark. Treat each task as pass/fail. The standard error is √(p(1−p)/n) = √(0.772 × 0.228 / 500) ≈ 0.0188, so a 95% interval is about ±1.96 × 1.88 ≈ <b>±3.7 points</b>. Averaging over 10 trials per task shrinks the <em>within-task</em> noise, but not the fact that you only have 500 tasks. So two models 3 points apart on this benchmark are not clearly different unless the lab reports a paired comparison.</p>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 290" role="img" aria-label="Left panel: two separate 95 percent intervals, model A at 77.2 percent plus or minus 3.7 and model B at 74.2 percent plus or minus 3.8, overlap heavily, so they look indistinguishable. Right panel: the paired difference A minus B on the same tasks is 3.0 points with an illustrative interval from 1.2 to 4.8 that excludes zero.">
+<rect class="box plain" x="20" y="10" width="390" height="250" rx="8"/>
+<text x="36" y="36" class="b">Two separate intervals</text>
+<text x="36" y="54" class="sm t-muted">each model scored on 500 tasks</text>
+<rect class="box warn dashed" x="170" y="72" width="72" height="104" rx="4"/>
+<text x="206" y="194" text-anchor="middle" class="sm t-warn">overlap</text>
+<text x="296" y="108" class="sm b t-accent">A: 77.2% ± 3.7</text>
+<line class="ln accent thick" x1="170" y1="104" x2="288" y2="104"/>
+<line class="ln accent" x1="170" y1="96" x2="170" y2="112"/>
+<line class="ln accent" x1="288" y1="96" x2="288" y2="112"/>
+<circle class="box accent" cx="229" cy="104" r="6"/>
+<text x="250" y="156" class="sm b t-violet">B: 74.2% ± 3.8</text>
+<line class="ln violet thick" x1="120" y1="152" x2="242" y2="152"/>
+<line class="ln violet" x1="120" y1="144" x2="120" y2="160"/>
+<line class="ln violet" x1="242" y1="144" x2="242" y2="160"/>
+<circle class="box violet" cx="181" cy="152" r="6"/>
+<line class="ln" x1="50" y1="212" x2="380" y2="212"/>
+<line class="ln" x1="114" y1="208" x2="114" y2="216"/><text x="114" y="232" text-anchor="middle" class="sm">70</text>
+<line class="ln" x1="194" y1="208" x2="194" y2="216"/><text x="194" y="232" text-anchor="middle" class="sm">75</text>
+<line class="ln" x1="274" y1="208" x2="274" y2="216"/><text x="274" y="232" text-anchor="middle" class="sm">80</text>
+<line class="ln" x1="354" y1="208" x2="354" y2="216"/><text x="354" y="232" text-anchor="middle" class="sm">85</text>
+<text x="215" y="250" text-anchor="middle" class="sm t-bad">looks like "no clear difference"</text>
+<rect class="box plain" x="430" y="10" width="390" height="250" rx="8"/>
+<text x="446" y="36" class="b">Paired difference, A minus B</text>
+<text x="446" y="54" class="sm t-muted">same 500 tasks, task difficulty cancels</text>
+<line class="ln dash" x1="576.7" y1="70" x2="576.7" y2="208"/>
+<text x="582" y="84" class="sm t-muted">no difference</text>
+<text x="656.7" y="116" text-anchor="middle" class="sm b">+3.0 points</text>
+<line class="ln good thick" x1="608.7" y1="136" x2="704.7" y2="136"/>
+<line class="ln good" x1="608.7" y1="128" x2="608.7" y2="144"/>
+<line class="ln good" x1="704.7" y1="128" x2="704.7" y2="144"/>
+<circle class="box good pulse" cx="656.7" cy="136" r="7"/>
+<text x="656.7" y="168" text-anchor="middle" class="sm">95% CI about [+1.2, +4.8]</text>
+<line class="ln" x1="460" y1="212" x2="800" y2="212"/>
+<line class="ln" x1="470" y1="208" x2="470" y2="216"/><text x="470" y="232" text-anchor="middle" class="sm">−4</text>
+<line class="ln" x1="576.7" y1="208" x2="576.7" y2="216"/><text x="576.7" y="232" text-anchor="middle" class="sm">0</text>
+<line class="ln" x1="683.3" y1="208" x2="683.3" y2="216"/><text x="683.3" y="232" text-anchor="middle" class="sm">+4</text>
+<line class="ln" x1="790" y1="208" x2="790" y2="216"/><text x="790" y="232" text-anchor="middle" class="sm">+8</text>
+<text x="625" y="250" text-anchor="middle" class="sm t-good">excludes zero: A is better</text>
+<text x="420" y="284" text-anchor="middle" class="sm t-muted">Illustrative numbers: how tight the paired interval gets depends on how correlated the two models' per-task scores are.</text>
+</svg>
+<figcaption><b>Recommendation 4, drawn.</b> Two independent ±3.7 bars overlap, so a 3-point gap looks like noise. Because both models answered the same tasks, the per-task differences remove the shared "this task is hard" variation, and the paired interval can be much narrower. This is why Miller asks labs to report paired comparisons, not two separate intervals.</figcaption>
+</figure>
 
 <pre data-lang="python"><code># Recommendation 4 in practice: paired difference between two models
 # scores_a[i], scores_b[i] = mean score of model A / B on task i (e.g. averaged over trials)
@@ -428,6 +539,44 @@ def paired_diff(scores_a, scores_b):
 <h3>OpenAI system cards and external testers</h3>
 <p>The GPT-5 system card is organised as: Introduction; Model Data and Training; Observed Safety Challenges and Evaluations; Red Teaming and External Assessments; Preparedness Framework; and appendices (including one on hallucinations). The external assessors named include <b>METR</b> (autonomous capabilities, sandbagging risk), <b>Apollo Research</b> (deceptive behaviour, evaluation awareness), <b>SecureBio</b> (biological and chemical capabilities), <b>Pattern Labs</b> (offensive cyber), <b>Microsoft's AI Red Team</b> and <b>Gray Swan</b> (prompt injection). So a single system card mixes in-house evals, specialist contractors and independent non-profits.</p>
 <p>A standout collaboration is OpenAI and Apollo Research's anti-scheming work (September 2025). They built 180+ test environments that use <b>covert actions</b> (secretly breaking rules or withholding information) as a measurable proxy for scheming. After targeted training, covert action rates fell from 13% to 0.4% for o3 and from 8.7% to 0.3% for o4-mini. The caveat is the important part: <b>evaluation awareness causally contributed</b> to the reduction. Some of the "improvement" was the model recognising it was being tested.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="Bar chart of covert action rates before and after anti-scheming training: o3 fell from 13 percent to 0.4 percent and o4-mini from 8.7 percent to 0.3 percent. A caveat box notes that evaluation awareness causally contributed to the reduction.">
+<defs><marker id="m16h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="26" class="b">Covert action rate, 180+ test environments</text>
+<rect class="fill-bad" x="20" y="40" width="14" height="12" rx="2"/><text x="40" y="51" class="sm">before</text>
+<rect class="fill-good" x="100" y="40" width="14" height="12" rx="2"/><text x="120" y="51" class="sm">after anti-scheming training</text>
+<line class="ln" x1="70" y1="240" x2="470" y2="240"/>
+<line class="ln" x1="70" y1="240" x2="70" y2="84"/>
+<text x="62" y="244" text-anchor="end" class="sm">0%</text>
+<line class="ln dash" x1="70" y1="190" x2="470" y2="190"/><text x="62" y="194" text-anchor="end" class="sm">5%</text>
+<line class="ln dash" x1="70" y1="140" x2="470" y2="140"/><text x="62" y="144" text-anchor="end" class="sm">10%</text>
+<line class="ln dash" x1="70" y1="90" x2="470" y2="90"/><text x="62" y="94" text-anchor="end" class="sm">15%</text>
+<rect class="fill-bad" x="110" y="110" width="64" height="130"/>
+<text x="142" y="102" text-anchor="middle" class="b">13%</text>
+<rect class="fill-good" x="184" y="236" width="64" height="4"/>
+<text x="216" y="228" text-anchor="middle" class="b t-good">0.4%</text>
+<text x="179" y="262" text-anchor="middle" class="b">o3</text>
+<rect class="fill-bad" x="300" y="153" width="64" height="87"/>
+<text x="332" y="145" text-anchor="middle" class="b">8.7%</text>
+<rect class="fill-good" x="374" y="237" width="64" height="3"/>
+<text x="406" y="228" text-anchor="middle" class="b t-good">0.3%</text>
+<text x="369" y="262" text-anchor="middle" class="b">o4-mini</text>
+<text x="270" y="288" text-anchor="middle" class="sm t-muted">about a 30-fold drop for both models</text>
+<rect class="box warn" x="510" y="40" width="310" height="230" rx="10"/>
+<text x="528" y="66" class="b t-warn">Caveat: evaluation awareness</text>
+<rect class="box plain" x="528" y="82" width="274" height="38" rx="6"/>
+<text x="665" y="106" text-anchor="middle" class="sm">"This looks like a test."</text>
+<line class="ln" x1="665" y1="120" x2="665" y2="142" marker-end="url(#m16h)"/>
+<rect class="box good" x="528" y="146" width="274" height="38" rx="6"/>
+<text x="665" y="170" text-anchor="middle" class="sm">behaves well, covert rate drops</text>
+<text x="528" y="210" class="sm">Awareness causally contributed to the</text>
+<text x="528" y="228" class="sm">reduction, so part of the gain may not</text>
+<text x="528" y="246" class="sm">carry over to real, unmonitored use.</text>
+</svg>
+<figcaption><b>A large drop with an asterisk.</b> OpenAI and Apollo Research (September 2025) used covert actions as a measurable proxy for scheming. Rates fell sharply after training, but the model recognising a test was part of why. Any behavioural safety eval has this weakness: the more a model can tell it is being evaluated, the less the score says about deployment.</figcaption>
+</figure>
+
 
 <h3>Benchmarks OpenAI built</h3>
 <p>OpenAI publishes a lot of benchmarks, and they share a theme: grounding the task in <b>real work, real money or real experts</b>.</p>
@@ -651,6 +800,45 @@ adk eval path/to/refund_agent path/to/refund_agent/refunds.evalset.json \
 <li><b>Others</b> with published frontier policies, according to METR's index, include Microsoft, Amazon, Nvidia, Cohere, G42, NAVER and Magic. No public Mistral frontier framework was found.</li>
 </ul>
 
+<figure class="diagram">
+<svg viewBox="0 0 840 310" role="img" aria-label="Two ways to write a threshold. Meta's outcome-based framework asks, per threat model, whether a model could substantially contribute to a catastrophic outcome, with scope set by catastrophic capability or at least 10 to the 26 FLOP of training compute. xAI's benchmark-threshold framework sets numeric limits: answer rate on restricted bio and chem queries below 1 in 20, and MASK dishonesty rate below 1 in 2.">
+<defs><marker id="m16j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="10" width="390" height="250" rx="10"/>
+<text x="36" y="36" class="b t-accent">Outcome-based (Meta, v2 2026)</text>
+<rect class="box plain" x="40" y="54" width="350" height="46" rx="6"/>
+<text x="54" y="74" class="sm b">1 · Pick a threat model</text>
+<text x="54" y="91" class="sm">cyber, chem/bio, loss of control</text>
+<line class="ln" x1="215" y1="100" x2="215" y2="120" marker-end="url(#m16j)"/>
+<rect class="box plain" x="40" y="124" width="350" height="46" rx="6"/>
+<text x="54" y="144" class="sm b">2 · Could it "substantially contribute"?</text>
+<text x="54" y="161" class="sm">(v1 asked whether it "uniquely enables")</text>
+<line class="ln" x1="215" y1="170" x2="215" y2="190" marker-end="url(#m16j)"/>
+<rect class="box plain" x="40" y="194" width="350" height="46" rx="6"/>
+<text x="54" y="214" class="sm b">3 · Is the model in scope?</text>
+<text x="54" y="231" class="sm">catastrophic capability, or ≥ 10²⁶ FLOP</text>
+<rect class="box violet" x="430" y="10" width="390" height="250" rx="10"/>
+<text x="446" y="36" class="b t-violet">Benchmark thresholds (xAI, 2025)</text>
+<text x="450" y="70" class="sm b">Restricted bio/chem queries answered</text>
+<rect class="box plain" x="450" y="80" width="350" height="16" rx="3"/>
+<rect class="fill-good" x="450" y="80" width="17.5" height="16" rx="3"/>
+<line class="ln bad thick" x1="467.5" y1="74" x2="467.5" y2="102"/>
+<text x="474" y="118" class="sm">must stay below 1 in 20 (5%)</text>
+<text x="800" y="118" text-anchor="end" class="sm t-muted">100%</text>
+<text x="450" y="152" class="sm b">MASK dishonesty rate</text>
+<rect class="box plain" x="450" y="162" width="350" height="16" rx="3"/>
+<rect class="fill-good" x="450" y="162" width="175" height="16" rx="3"/>
+<line class="ln bad thick" x1="625" y1="156" x2="625" y2="184"/>
+<text x="450" y="200" class="sm">must stay below 1 in 2 (50%)</text>
+<text x="800" y="200" text-anchor="end" class="sm t-muted">100%</text>
+<text x="446" y="232" class="sm t-muted">evals: VCT, WMDP, BioLP-bench, Cybench,</text>
+<text x="446" y="248" class="sm t-muted">MASK, sycophancy</text>
+<text x="215" y="286" text-anchor="middle" class="sm">flexible, but harder for outsiders to check</text>
+<text x="625" y="286" text-anchor="middle" class="sm">easy to audit, but only as good as the benchmark</text>
+</svg>
+<figcaption><b>Two ways to write a threshold.</b> Meta's framework reasons from catastrophic outcomes and threat models (scope and trigger per secondary analysis of v2). xAI's 2025 framework writes numeric limits on named benchmarks. Most labs sit between the two: pre-committed capability levels backed by several evals and expert judgement.</figcaption>
+</figure>
+
+
 <h2>Third parties: who checks the labs?</h2>
 <p>A lab grading its own homework is an obvious problem. Outside evaluators fall into two groups: those who get <b>pre-deployment access</b> (they test before the public does, under agreement with the lab) and those who evaluate <b>after release</b> using public APIs or weights.</p>
 
@@ -853,6 +1041,16 @@ def simpleqa():
 <div class="callout expert"><span class="t">What every lab agrees on (and what you should copy)</span>
 <p>Across all of them: capability evals as <b>rule-out</b> tests tied to actions; a shift from grading final answers to grading <b>trajectories and transcripts</b>; LLM judges that must be <b>validated</b>; <b>outside testers</b> for credibility; and growing worry about <b>evaluation awareness</b>. For your own product, the transferable habits are: write down thresholds and the action each triggers <em>before</em> you run the eval, report uncertainty, read transcripts, and let someone outside the team try to break it.</p>
 </div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>A frontier lab runs a stack of evals (checkpoints, post-training, frontier safety, third-party testing, system card, post-deployment), and each stage answers a different question for a different audience.</li>
+<li>Framework evals are rule-out tests: "below threshold" is only as strong as the elicitation behind it, and sandbagging or evaluation awareness weakens it.</li>
+<li>Anthropic's RSP (ASL levels), OpenAI's Preparedness Framework (High and Critical) and Google DeepMind's FSF (CCLs plus alert thresholds) share one shape: pre-committed thresholds tied to required safeguards.</li>
+<li>A headline number depends on its configuration. The same weights scored 77.2% and 82.0% on SWE-bench Verified, so compare like with like.</li>
+<li>On 500 tasks a single score carries about ±3.7 points of 95% uncertainty; compare models with paired differences on the same tasks.</li>
+<li>Outside testers (UK AISI, US CAISI, METR, Apollo Research and others) are the check on a lab grading its own work.</li>
+<li>Read a system card sceptically: which snapshot, which scaffold, how many trials, what error bars, and who ran each eval.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

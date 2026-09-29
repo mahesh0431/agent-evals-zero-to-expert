@@ -71,14 +71,14 @@
 <rect class="box violet" x="100" y="76" width="160" height="52" rx="8"/>
 <text x="180" y="98" text-anchor="middle" class="b">Grow the dataset</text>
 <text x="180" y="116" text-anchor="middle" class="sm">failures become tests</text>
-<line class="ln thick" x1="492" y1="50" x2="570" y2="74" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="676" y1="130" x2="706" y2="190" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="706" y1="248" x2="676" y2="308" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="570" y1="364" x2="494" y2="386" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="326" y1="386" x2="250" y2="366" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="144" y1="310" x2="114" y2="250" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="114" y1="190" x2="144" y2="132" marker-end="url(#m15a)"/>
-<line class="ln thick" x1="250" y1="74" x2="326" y2="50" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="492" y1="50" x2="570" y2="74" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="676" y1="130" x2="706" y2="190" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="706" y1="248" x2="676" y2="308" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="570" y1="364" x2="494" y2="386" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="326" y1="386" x2="250" y2="366" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="144" y1="310" x2="114" y2="250" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="114" y1="190" x2="144" y2="132" marker-end="url(#m15a)"/>
+<line class="ln thick accent flow" x1="250" y1="74" x2="326" y2="50" marker-end="url(#m15a)"/>
 <text x="410" y="196" text-anchor="middle" class="lg">The eval flywheel</text>
 <text x="410" y="222" text-anchor="middle" class="sm">before shipping: prevent known failures</text>
 <text x="410" y="242" text-anchor="middle" class="sm">after shipping: discover unknown ones</text>
@@ -492,7 +492,7 @@ def judge_trace(t: dict):
         enqueue_for_human_review(t["id"], reason=f"judge fail ({stream})")</code></pre>
 
 <div class="callout expert"><span class="t">Expert nuance: the judge drifts too</span>
-<p>An online judge is a measuring instrument that lives for months. If the judge model is an alias that the provider updates, your "quality dropped 4 points" alert might be the judge changing, not your agent. Pin a dated judge model snapshot, log the judge version on every score, and keep a small <b>anchor set</b> of human-labelled traces that you re-judge weekly: if the judge's agreement with humans on the anchor set moves, recalibrate before trusting the trend (<a href="13-llm-as-judge.html">Module 13</a>).</p>
+<p>An online judge is a measuring instrument that lives for months. If the judge model is an alias that the provider updates, your "quality dropped 4 points" alert might be the judge changing, not your agent. Pin an exact judge model version (never a moving alias such as "latest"), log it on every score, and keep a small <b>anchor set</b> of human-labelled traces that you re-judge weekly: if the judge's agreement with humans on the anchor set moves, recalibrate before trusting the trend (<a href="13-llm-as-judge.html">Module 13</a>).</p>
 </div>
 
 <h3>Implicit feedback signals</h3>
@@ -592,6 +592,31 @@ def judge_trace(t: dict):
 <p>Your baseline resolution rate is 60%. You want 80% power to detect a 2-point absolute improvement at a two-sided 5% significance level. The usual approximation for two proportions:</p>
 <p style="text-align:center"><code>n per arm ≈ (z<sub>α/2</sub> + z<sub>β</sub>)² × 2p(1−p) / d² = (1.96 + 0.84)² × 2 × 0.6 × 0.4 / 0.02² ≈ 9,400</code></p>
 <p>So about 9,400 users per arm, around 19,000 in total, and more if users have several sessions (sessions from the same user are correlated, so cluster your standard errors by user, as in <a href="04-metrics-and-statistics.html">Module 04</a>). If you only have 2,000 users a week, a 2-point A/B test takes ten weeks. That is why most day-to-day decisions are made offline, with A/B tests reserved for big changes.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Sample size per arm against the smallest effect you want to detect, for a 60% baseline, 80% power and 5% significance: about 37,600 users per arm for 1 point, 9,400 for 2 points, 1,500 for 5 points and 380 for 10 points. At 2,000 users a week, a 2-point test takes about ten weeks.">
+<text x="280" y="24" text-anchor="middle" class="b">Users per arm vs detectable effect</text>
+<line class="ln" x1="90" y1="250" x2="480" y2="250"/><line class="ln" x1="90" y1="250" x2="90" y2="36"/>
+<line class="ln dash" x1="90" y1="180" x2="480" y2="180"/><line class="ln dash" x1="90" y1="110" x2="480" y2="110"/><line class="ln dash" x1="90" y1="40" x2="480" y2="40"/>
+<text x="82" y="254" text-anchor="end" class="sm">100</text><text x="82" y="184" text-anchor="end" class="sm">1,000</text><text x="82" y="114" text-anchor="end" class="sm">10,000</text><text x="82" y="44" text-anchor="end" class="sm">100,000</text>
+<text x="128" y="268" text-anchor="middle" class="sm">1</text><text x="166" y="268" text-anchor="middle" class="sm">2</text><text x="204" y="268" text-anchor="middle" class="sm">3</text><text x="280" y="268" text-anchor="middle" class="sm">5</text><text x="470" y="268" text-anchor="middle" class="sm">10</text>
+<text x="285" y="288" text-anchor="middle" class="sm">smallest improvement to detect (points, absolute)</text>
+<polyline class="ln accent thick" points="128,70 147,94 166,112 204,137 242,154 280,168 318,179 356,188 394,196 470,210"/>
+<circle cx="128" cy="70" r="3.5" class="fill-accent"/><circle cx="166" cy="112" r="5" class="fill-bad"/><circle cx="204" cy="137" r="3.5" class="fill-accent"/><circle cx="280" cy="168" r="3.5" class="fill-accent"/><circle cx="470" cy="210" r="3.5" class="fill-accent"/>
+<text x="178" y="106" class="sm b t-bad">2 pts → 9,400 per arm</text>
+<text x="138" y="66" class="sm">1 pt → 37,600</text>
+<text x="288" y="160" class="sm">5 pts → 1,500</text>
+<text x="464" y="230" text-anchor="end" class="sm">10 pts → 380</text>
+<line class="ln dash" x1="505" y1="16" x2="505" y2="290"/>
+<text x="660" y="24" text-anchor="middle" class="b">Weeks needed at 2,000 users/week</text>
+<text x="530" y="74" class="sm b">2 pts</text><rect x="580" y="60" width="169" height="20" rx="4" class="fill-bad"/><text x="756" y="75" class="sm b">~9.4 wk</text>
+<text x="530" y="124" class="sm b">3 pts</text><rect x="580" y="110" width="76" height="20" rx="4" class="fill-warn"/><text x="663" y="125" class="sm b">~4.2 wk</text>
+<text x="530" y="174" class="sm b">5 pts</text><rect x="580" y="160" width="27" height="20" rx="4" class="fill-good"/><text x="614" y="175" class="sm b">~1.5 wk</text>
+<text x="530" y="224" class="sm b">10 pts</text><rect x="580" y="210" width="7" height="20" rx="3" class="fill-good"/><text x="594" y="225" class="sm b">~3 days</text>
+<text x="660" y="268" text-anchor="middle" class="sm t-muted">two arms, so total users = 2 × n</text>
+</svg>
+<figcaption><b>Small effects are expensive.</b> Halving the effect you want to detect roughly quadruples the users you need, because n grows with 1/d². Computed with the formula above (baseline 60%, 80% power, two-sided 5%); the log scale on the left hides how steep this really is.</figcaption>
+</figure>
 
 <h3>Interleaving and side-by-side</h3>
 <p><b>Interleaving</b> is a trick from search and recommendation: instead of showing user group A ranker A and group B ranker B, you show <em>every</em> user a merged list with results from both rankers and see which ranker's items get clicked. Because each user compares both, it needs far fewer users than an A/B test. For agents that produce one answer, pure interleaving rarely applies, but two related ideas do:</p>
@@ -861,7 +886,7 @@ jobs:
 <div class="tablewrap"><table>
 <tr><th>Source</th><th>Fix</th></tr>
 <tr><td>Model sampling variance</td><td>Several epochs per case; statistical gate instead of exact thresholds; report pass^k for reliability-critical cases (<a href="04-metrics-and-statistics.html">Module 04</a>)</td></tr>
-<tr><td>Judge variance</td><td>Pinned judge snapshot, temperature 0, binary rubrics, majority vote of 3 for borderline cases</td></tr>
+<tr><td>Judge variance</td><td>Pinned judge model version, low randomness (temperature 0 where the model accepts it), binary rubrics, majority vote of 3 for borderline cases</td></tr>
 <tr><td>External tools and APIs (rate limits, live web, changing data)</td><td>Record and replay tool responses ("cassettes"), local fakes, frozen snapshots of data; mark live-web tasks as a separate, non-gating suite</td></tr>
 <tr><td>Infrastructure errors (timeouts, sandbox failures)</td><td>Count errors separately from failures; retry infra errors, never retry model failures until they pass</td></tr>
 <tr><td>Time-dependent tasks ("what's today's date?")</td><td>Inject a fixed clock in the environment</td></tr>
@@ -904,16 +929,75 @@ jobs:
 </table></div>
 <p>The overall number says "ship it". The slices say "the new model is better at explaining policy but worse at refunds". Transcript reading shows it calls <code>lookup_order</code> again before refunding and sometimes hits a rate limit. That is fixable (cache lookups within a session), and fixing it is a better outcome than either blindly shipping or rejecting the model. Illustrative numbers.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Forest plot of the migration report: order lookup +2.0 points with an interval crossing zero, refunds -7.0 points clearly worse, policy questions +8.0 points clearly better, and overall +1.1 points with an interval crossing zero that hides both.">
+<text x="20" y="26" class="b">New model minus old model, per slice</text>
+<text x="748" y="26" class="sm b">read</text>
+<line class="ln dash" x1="490" y1="36" x2="490" y2="236"/>
+<line class="ln" x1="250" y1="236" x2="730" y2="236"/>
+<text x="20" y="66" class="sm b">Order lookup (180)</text><line class="ln accent thick" x1="483" y1="62" x2="564" y2="62"/><line class="ln accent" x1="483" y1="56" x2="483" y2="68"/><line class="ln accent" x1="564" y1="56" x2="564" y2="68"/><circle cx="524" cy="62" r="6" class="fill-accent"/><text x="524" y="50" text-anchor="middle" class="sm">+2.0</text><text x="748" y="66" class="sm b ">fine</text><text x="20" y="108" class="sm b">Refunds (120)</text><line class="ln bad thick" x1="293" y1="104" x2="445" y2="104"/><line class="ln bad" x1="293" y1="98" x2="293" y2="110"/><line class="ln bad" x1="445" y1="98" x2="445" y2="110"/><circle cx="370" cy="104" r="6" class="fill-bad"/><text x="370" y="92" text-anchor="middle" class="sm">-7.0</text><text x="748" y="108" class="sm b t-bad">block</text><text x="20" y="150" class="sm b">Policy questions (150)</text><line class="ln good thick" x1="557" y1="146" x2="697" y2="146"/><line class="ln good" x1="557" y1="140" x2="557" y2="152"/><line class="ln good" x1="697" y1="140" x2="697" y2="152"/><circle cx="627" cy="146" r="6" class="fill-good"/><text x="627" y="134" text-anchor="middle" class="sm">+8.0</text><text x="748" y="150" class="sm b t-good">clear gain</text><line class="ln dash" x1="20" y1="174" x2="810" y2="174"/><text x="20" y="210" class="sm b">Overall (450)</text><line class="ln warn thick" x1="469" y1="206" x2="548" y2="206"/><polygon points="509,197 518,206 509,215 500,206" class="fill-warn"/><text x="509" y="192" text-anchor="middle" class="sm">+1.1</text><text x="748" y="202" class="sm b t-warn">looks</text><text x="748" y="217" class="sm b t-warn">neutral</text>
+<line class="ln" x1="319" y1="236" x2="319" y2="242"/><text x="319" y="256" text-anchor="middle" class="sm">-10</text><line class="ln" x1="404" y1="236" x2="404" y2="242"/><text x="404" y="256" text-anchor="middle" class="sm">-5</text><line class="ln" x1="490" y1="236" x2="490" y2="242"/><text x="490" y="256" text-anchor="middle" class="sm">0</text><line class="ln" x1="576" y1="236" x2="576" y2="242"/><text x="576" y="256" text-anchor="middle" class="sm">+5</text><line class="ln" x1="661" y1="236" x2="661" y2="242"/><text x="661" y="256" text-anchor="middle" class="sm">+10</text>
+<text x="490" y="280" text-anchor="middle" class="sm">paired difference in points, with 95% CI</text>
+<text x="319" y="46" text-anchor="middle" class="sm t-bad">← new is worse</text>
+<text x="661" y="46" text-anchor="middle" class="sm t-good">new is better →</text>
+</svg>
+<figcaption><b>The average hides both stories.</b> The same migration report drawn as a forest plot: each dot is a slice's paired difference and each bar its 95% interval. Refunds is clearly worse and policy questions clearly better, yet the overall diamond sits near zero. Illustrative numbers from the table above.</figcaption>
+</figure>
+
 <h2>Drift: when nothing changed but everything changed</h2>
 <p><b>Drift</b> means the world your agent operates in changes after you evaluated it. Your code did not change, but your quality did. Three sources matter for agents:</p>
 <div class="tablewrap"><table>
 <tr><th>Drift source</th><th>Example</th><th>How you detect it</th><th>Response</th></tr>
 <tr><td><b>Data / input drift</b></td><td>New product launched, users ask about it; a marketing campaign brings a new user segment; seasonality</td><td>Topic or intent classifier distribution over time; embedding-cluster shifts; rising "unknown intent" rate; new slices with low judge scores</td><td>Error analysis on the new cluster; add cases; the offline suite's slice mix should track production's mix</td></tr>
-<tr><td><b>Model / provider drift</b></td><td>An alias such as "latest" points to a new snapshot; provider changes safety filters, tokenization or defaults; a region fails over to another deployment</td><td>Log <code>gen_ai.response.model</code>; alert on change; nightly suite on a fixed dataset shows step changes; shape metrics (output length, tool-call count) jump</td><td>Pin dated model versions; treat any provider change as a migration</td></tr>
+<tr><td><b>Model / provider drift</b></td><td>An alias such as "latest" points to a new snapshot; provider changes safety filters, tokenization or defaults; a region fails over to another deployment</td><td>Log <code>gen_ai.response.model</code>; alert on change; nightly suite on a fixed dataset shows step changes; shape metrics (output length, tool-call count) jump</td><td>Pin exact model versions rather than aliases; treat any provider change as a migration</td></tr>
 <tr><td><b>Tool / API / environment drift</b></td><td>A downstream API adds a required field; a website your browser agent uses is redesigned; search results change</td><td>Tool error rate by tool; schema-validation failures; per-tool latency; sudden step-count increases (the agent is flailing)</td><td>Contract tests for tools (<a href="06-tool-use-and-conversation.html">Module 06</a>); versioned tool schemas; circuit breakers</td></tr>
 </table></div>
 
 <p>A fourth, subtler kind is <b>criteria drift</b>: what "good" means changes as you look at more outputs. Shankar and colleagues found that people need criteria to grade outputs, but grading outputs changes their criteria. That is healthy, but it means your rubrics and judges need versioning just like your prompts, and a score series should note when the rubric changed.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Four kinds of drift push on an agent whose code did not change: input drift from users, model or provider drift, tool and environment drift, and criteria drift in what good means. Each arrow is labelled with the signal that detects it, and the agent's quality line drops even though no commit happened.">
+<defs><marker id="m15k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="20" width="220" height="118" rx="10"/>
+<text x="130" y="42" text-anchor="middle" class="b">Input drift</text>
+<rect x="44" y="84" width="16" height="30" class="fill-muted"/><rect x="62" y="64" width="16" height="50" class="fill-muted"/><rect x="80" y="74" width="16" height="40" class="fill-muted"/><rect x="98" y="96" width="16" height="18" class="fill-muted"/>
+<rect x="140" y="100" width="16" height="14" class="fill-accent"/><rect x="158" y="80" width="16" height="34" class="fill-accent"/><rect x="176" y="56" width="16" height="58" class="fill-accent"/><rect x="194" y="72" width="16" height="42" class="fill-accent"/>
+<text x="80" y="130" text-anchor="middle" class="sm t-muted">last month</text><text x="176" y="130" text-anchor="middle" class="sm t-accent">this month</text>
+
+<rect class="box violet" x="580" y="20" width="220" height="118" rx="10"/>
+<text x="690" y="42" text-anchor="middle" class="b">Model / provider drift</text>
+<text x="690" y="70" text-anchor="middle" class="mono">alias "latest"</text>
+<text x="690" y="88" text-anchor="middle" class="mono">→ new snapshot</text>
+<text x="690" y="112" text-anchor="middle" class="sm">safety filters, defaults,</text>
+<text x="690" y="127" text-anchor="middle" class="sm">region failover</text>
+<rect class="box warn" x="580" y="172" width="220" height="118" rx="10"/>
+<text x="690" y="194" text-anchor="middle" class="b">Tool / environment drift</text>
+<text x="690" y="220" text-anchor="middle" class="mono">+ "currency" required</text>
+<text x="690" y="244" text-anchor="middle" class="sm">API contract changes,</text>
+<text x="690" y="259" text-anchor="middle" class="sm">website redesigned,</text>
+<text x="690" y="274" text-anchor="middle" class="sm">search results shift</text>
+<rect class="box good" x="20" y="172" width="220" height="118" rx="10"/>
+<text x="130" y="194" text-anchor="middle" class="b">Criteria drift</text>
+<text x="130" y="220" text-anchor="middle" class="sm">reading outputs changes</text>
+<text x="130" y="236" text-anchor="middle" class="sm">what you call "good"</text>
+<text x="130" y="262" text-anchor="middle" class="mono">rubric v3 → v4</text>
+<rect class="box plain" x="320" y="96" width="180" height="132" rx="12"/>
+<text x="410" y="118" text-anchor="middle" class="b">Your agent</text>
+<text x="410" y="134" text-anchor="middle" class="sm t-muted">no commit since Monday</text>
+<polyline class="ln bad thick" points="340,160 370,158 400,161 420,160 432,190 460,193 480,192"/>
+<line class="ln dash" x1="426" y1="146" x2="426" y2="204"/>
+<text x="410" y="218" text-anchor="middle" class="sm t-bad">quality drops anyway</text>
+<line class="ln warn" x1="240" y1="90" x2="316" y2="126" marker-end="url(#m15k)"/>
+<text x="250" y="74" class="sm">intent mix,</text><text x="250" y="87" class="sm">new clusters</text>
+<line class="ln warn" x1="580" y1="90" x2="504" y2="126" marker-end="url(#m15k)"/>
+<text x="570" y="74" text-anchor="end" class="mono">response.model</text><text x="570" y="87" text-anchor="end" class="sm">changes</text>
+<line class="ln warn" x1="580" y1="220" x2="504" y2="186" marker-end="url(#m15k)"/>
+<text x="570" y="248" text-anchor="end" class="sm">tool error rate,</text><text x="570" y="262" text-anchor="end" class="sm">steps per task</text>
+<line class="ln warn" x1="240" y1="220" x2="316" y2="186" marker-end="url(#m15k)"/>
+<text x="250" y="248" class="sm">score series notes</text><text x="250" y="262" class="sm">rubric version</text>
+</svg>
+<figcaption><b>Four ways quality moves without a commit.</b> Each source of drift has its own detector, written on its arrow: shifts in the intent mix, a change in the model the provider actually served, rising tool errors, or a rubric update that changes the yardstick. Log all four so a drop can be traced to its cause. Illustrative.</figcaption>
+</figure>
 
 <h2>Dashboards: what to chart</h2>
 <p>A dashboard is where the flywheel becomes visible to the whole team. The most common failure is a wall of numbers nobody acts on. Chart a few things, each with a clear owner and a clear action when it moves.</p>
@@ -991,6 +1075,44 @@ jobs:
 <li><b>Quality control:</b> have two reviewers label an overlapping 10% and track agreement (Cohen's kappa). Low agreement means the rubric is ambiguous, not that reviewers are careless.</li>
 </ul>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Review queue flow: judge failures, unsure or unparseable judge outputs, judge versus user disagreements, a random slice and new-feature traces feed a review queue. A reviewer writes pass or fail, a critique and a failure-mode tag. Labels flow to three places: new dataset cases, judge calibration data, and product bug tickets.">
+<defs><marker id="m15l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="110" y="24" text-anchor="middle" class="sm b t-muted">WHAT GOES IN</text>
+<rect class="box bad" x="20" y="36" width="180" height="36" rx="8"/><text x="110" y="59" text-anchor="middle" class="sm">judge FAIL</text>
+<rect class="box warn" x="20" y="82" width="180" height="36" rx="8"/><text x="110" y="105" text-anchor="middle" class="sm">judge unsure or unparseable</text>
+<rect class="box violet" x="20" y="128" width="180" height="36" rx="8"/><text x="110" y="151" text-anchor="middle" class="sm">judge vs user disagree</text>
+<rect class="box good" x="20" y="174" width="180" height="36" rx="8"/><text x="110" y="197" text-anchor="middle" class="sm">small random slice</text>
+<rect class="box accent" x="20" y="220" width="180" height="36" rx="8"/><text x="110" y="243" text-anchor="middle" class="sm">new-feature traces</text>
+<line class="ln" x1="200" y1="54" x2="246" y2="130" marker-end="url(#m15l)"/>
+<line class="ln" x1="200" y1="100" x2="246" y2="138" marker-end="url(#m15l)"/>
+<line class="ln" x1="200" y1="146" x2="246" y2="146" marker-end="url(#m15l)"/>
+<line class="ln" x1="200" y1="192" x2="246" y2="154" marker-end="url(#m15l)"/>
+<line class="ln" x1="200" y1="238" x2="246" y2="162" marker-end="url(#m15l)"/>
+<rect class="box plain" x="250" y="106" width="120" height="80" rx="10"/>
+<text x="310" y="132" text-anchor="middle" class="b">Review</text>
+<text x="310" y="148" text-anchor="middle" class="b">queue</text>
+<text x="310" y="170" text-anchor="middle" class="sm">~50 to 200 / week</text>
+<line class="ln accent flow" x1="370" y1="146" x2="406" y2="146" marker-end="url(#m15l)"/>
+<rect class="box violet" x="410" y="70" width="180" height="152" rx="10"/>
+<text x="500" y="94" text-anchor="middle" class="b">Reviewer writes</text>
+<text x="426" y="120" class="sm">✓ PASS or FAIL (binary)</text>
+<text x="426" y="142" class="sm">✓ critique: why</text>
+<text x="426" y="164" class="sm">✓ failure-mode tag</text>
+<text x="426" y="186" class="sm">✓ "add to dataset?"</text>
+<text x="426" y="208" class="sm t-muted">2 reviewers on 10%: kappa</text>
+<line class="ln accent flow" x1="590" y1="110" x2="626" y2="68" marker-end="url(#m15l)"/>
+<line class="ln accent flow" x1="590" y1="146" x2="626" y2="146" marker-end="url(#m15l)"/>
+<line class="ln accent flow" x1="590" y1="182" x2="626" y2="224" marker-end="url(#m15l)"/>
+<text x="720" y="24" text-anchor="middle" class="sm b t-muted">WHERE LABELS GO</text>
+<rect class="box good" x="630" y="40" width="180" height="56" rx="8"/><text x="720" y="63" text-anchor="middle" class="b">New test cases</text><text x="720" y="81" text-anchor="middle" class="sm">replayable, in the suite</text>
+<rect class="box violet" x="630" y="118" width="180" height="56" rx="8"/><text x="720" y="141" text-anchor="middle" class="b">Judge calibration</text><text x="720" y="159" text-anchor="middle" class="sm">TPR, TNR vs human</text>
+<rect class="box bad" x="630" y="196" width="180" height="56" rx="8"/><text x="720" y="219" text-anchor="middle" class="b">Product bugs</text><text x="720" y="237" text-anchor="middle" class="sm">broken tool, missing data</text>
+<text x="410" y="288" text-anchor="middle" class="sm t-muted">every human label pays three times: a test, a judge check, and sometimes a bug fix</text>
+</svg>
+<figcaption><b>The review queue as a machine.</b> The inputs are chosen to be informative, not representative; the output is a small set of carefully written labels that feed the dataset, the judge's validation set and the bug tracker at once. Volumes are illustrative.</figcaption>
+</figure>
+
 <details>
 <summary>Worked example: turning a production trace into a regression case</summary>
 <p>The flight-change session from the implicit-signals figure lands in the queue (escalation plus a judge fail). The reviewer writes: "FAIL. Agent booked Thursday when the user said Friday; later added a $75 fee without warning. First failure: date parsing." Tags: <code>wrong_entity</code>, <code>unannounced_cost</code>.</p>
@@ -1008,6 +1130,37 @@ jobs:
 <div class="callout warn"><span class="t">Redaction can break evals</span>
 <p>If you replace every number with <code>[REDACTED]</code>, you can no longer check that the agent refunded the right amount. Prefer consistent pseudonymisation (the same real value always maps to the same fake value within a trace) so that relationships survive, and test your redactor's precision and recall like any other classifier.</p>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 270" role="img" aria-label="A trace's life cycle in five stages: capture, redact, store, judge and dataset. Above each stage is the privacy risk; below it is the control: content capture opt-in, consistent pseudonymisation, role-based access and short retention, a data-processing agreement for the judge provider, and provenance so deletion requests reach datasets.">
+<defs><marker id="m15m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="10" y="44" class="sm b t-bad">risk</text>
+<text x="10" y="189" class="sm b t-good">control</text>
+<text x="102" y="40" text-anchor="middle" class="sm t-bad">raw PII in prompts</text>
+<text x="264" y="40" text-anchor="middle" class="sm t-bad">redact too much,</text><text x="264" y="54" text-anchor="middle" class="sm t-bad">evals break</text>
+<text x="426" y="40" text-anchor="middle" class="sm t-bad">everyone can read</text><text x="426" y="54" text-anchor="middle" class="sm t-bad">everything, forever</text>
+<text x="588" y="40" text-anchor="middle" class="sm t-bad">text leaves to a</text><text x="588" y="54" text-anchor="middle" class="sm t-bad">third-party model</text>
+<text x="750" y="40" text-anchor="middle" class="sm t-bad">escapes deletion</text>
+<rect class="box accent" x="40" y="80" width="124" height="70" rx="10"/><text x="102" y="110" text-anchor="middle" class="b">1. Capture</text><text x="102" y="130" text-anchor="middle" class="sm">SDK / OTel</text>
+<rect class="box warn" x="202" y="80" width="124" height="70" rx="10"/><text x="264" y="110" text-anchor="middle" class="b">2. Redact</text><text x="264" y="130" text-anchor="middle" class="sm">collector hook</text>
+<rect class="box plain" x="364" y="80" width="124" height="70" rx="10"/><text x="426" y="110" text-anchor="middle" class="b">3. Store</text><text x="426" y="130" text-anchor="middle" class="sm">trace DB</text>
+<rect class="box violet" x="526" y="80" width="124" height="70" rx="10"/><text x="588" y="110" text-anchor="middle" class="b">4. Judge</text><text x="588" y="130" text-anchor="middle" class="sm">model API</text>
+<rect class="box good" x="688" y="80" width="124" height="70" rx="10"/><text x="750" y="110" text-anchor="middle" class="b">5. Dataset</text><text x="750" y="130" text-anchor="middle" class="sm">long-lived cases</text>
+<line class="ln accent flow" x1="164" y1="115" x2="198" y2="115" marker-end="url(#m15m)"/>
+<line class="ln accent flow" x1="326" y1="115" x2="360" y2="115" marker-end="url(#m15m)"/>
+<line class="ln accent flow" x1="488" y1="115" x2="522" y2="115" marker-end="url(#m15m)"/>
+<line class="ln accent flow" x1="650" y1="115" x2="684" y2="115" marker-end="url(#m15m)"/>
+<text x="102" y="182" text-anchor="middle" class="sm">content capture</text><text x="102" y="196" text-anchor="middle" class="sm">opt-in; hash user IDs</text>
+<text x="264" y="182" text-anchor="middle" class="sm">consistent</text><text x="264" y="196" text-anchor="middle" class="sm">pseudonyms</text>
+<text x="426" y="182" text-anchor="middle" class="sm">role-based access,</text><text x="426" y="196" text-anchor="middle" class="sm">short raw retention</text>
+<text x="588" y="182" text-anchor="middle" class="sm">DPA covers judge;</text><text x="588" y="196" text-anchor="middle" class="sm">redact if not needed</text>
+<text x="750" y="182" text-anchor="middle" class="sm">record provenance;</text><text x="750" y="196" text-anchor="middle" class="sm">synthesise variants</text>
+<rect class="box dashed" x="186" y="232" width="160" height="30" rx="8"/>
+<text x="266" y="252" text-anchor="middle" class="mono">4471 → ORDER_A</text>
+<text x="360" y="252" class="sm t-muted">same real value, same fake value: amounts and IDs still check out</text>
+</svg>
+<figcaption><b>Follow one trace through its life.</b> Privacy risk appears at every stage, and so does a matching control. Two are easy to miss: the judge call (graded text goes to a model provider) and the eval dataset (a copied trace outlives normal retention).</figcaption>
+</figure>
 
 <h2>Agent-specific operations: loops, caps and cost explosions</h2>
 <p>A chatbot that misbehaves writes one bad paragraph. An agent that misbehaves can call a tool 400 times, spend $80 of tokens on one request, or repeat a write action. Production agents need hard limits that are enforced in code (not requested in the prompt) and monitored like any other SLO.</p>
@@ -1074,6 +1227,34 @@ jobs:
 <li><b>Later:</b> paired statistical gate, nightly full suite, canary automation, A/B tests for big changes, anchor-set monitoring of the judge, a capability suite.</li>
 </ol>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 270" role="img" aria-label="A staircase roadmap: week 1 tracing and hard caps, week 2 first offline suite and smoke CI job, week 3 deterministic checks, implicit signals and a dashboard, week 4 a calibrated judge on a sample and a weekly review queue, later statistical gates, nightly suites, canaries and A/B tests.">
+<rect class="box accent" x="20" y="186" width="150" height="70" rx="8"/>
+<text x="95" y="206" text-anchor="middle" class="sm b t-accent">WEEK 1</text><text x="95" y="224" text-anchor="middle" class="sm">tracing + hard caps</text><text x="95" y="240" text-anchor="middle" class="sm">read 50 traces</text>
+<rect class="box accent" x="180" y="146" width="150" height="110" rx="8"/>
+<text x="255" y="166" text-anchor="middle" class="sm b t-accent">WEEK 2</text><text x="255" y="184" text-anchor="middle" class="sm">error analysis</text><text x="255" y="200" text-anchor="middle" class="sm">30 to 50 cases</text><text x="255" y="216" text-anchor="middle" class="sm">smoke job in CI</text>
+<rect class="box good" x="340" y="106" width="150" height="150" rx="8"/>
+<text x="415" y="126" text-anchor="middle" class="sm b t-good">WEEK 3</text><text x="415" y="144" text-anchor="middle" class="sm">checks on 100%</text><text x="415" y="160" text-anchor="middle" class="sm">implicit signals</text><text x="415" y="176" text-anchor="middle" class="sm">first dashboard</text>
+<rect class="box violet" x="500" y="66" width="150" height="190" rx="8"/>
+<text x="575" y="86" text-anchor="middle" class="sm b t-violet">WEEK 4</text><text x="575" y="104" text-anchor="middle" class="sm">calibrated judge on</text><text x="575" y="120" text-anchor="middle" class="sm">2% + flagged</text><text x="575" y="136" text-anchor="middle" class="sm">weekly review queue</text>
+<rect class="box warn" x="660" y="26" width="150" height="230" rx="8"/>
+<text x="735" y="46" text-anchor="middle" class="sm b t-warn">LATER</text><text x="735" y="64" text-anchor="middle" class="sm">paired stat gate</text><text x="735" y="80" text-anchor="middle" class="sm">nightly full suite</text><text x="735" y="96" text-anchor="middle" class="sm">canaries, A/B tests</text><text x="735" y="112" text-anchor="middle" class="sm">judge anchor set</text><text x="735" y="128" text-anchor="middle" class="sm">capability suite</text>
+<text x="20" y="40" class="b">Build the stack one step at a time</text>
+<text x="20" y="60" class="sm t-muted">each step is useful on its own</text>
+</svg>
+<figcaption><b>A minimum viable production eval stack.</b> The staircase from the list above: observe first, then test, then monitor, then judge, then add statistics and experiments. Timings are a suggested pace for a small team, not a rule.</figcaption>
+</figure>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Production evals are a loop: offline suite, CI gate, staged rollout, tracing, online evals, review, error analysis, and new test cases, then round again.</li>
+<li>Trace everything as sessions, traces and spans (OpenTelemetry GenAI names where possible), including tool calls, tokens, cost, model version and agent version.</li>
+<li>Guardrails act inline and must be fast; online evals measure after the fact and can be slow. Evaluate the guardrails too.</li>
+<li>Judge a uniform random sample for the dashboard number and a flagged stream for discovery, and never average the two together.</li>
+<li>Gate CI with a paired, statistically sound comparison against a baseline, tiered into smoke, nightly and capability suites, with budgets at every level.</li>
+<li>Treat any model or provider change as a migration: compare per slice and by behaviour, read disagreeing transcripts, and pin exact versions.</li>
+<li>Agents need hard limits in code (steps, tokens, dollars, time, repeated calls), and those limits are themselves things to test.</li>
+</ol></div>
+
 <h2>Check yourself</h2>
 <div class="quiz">
 <div class="q" data-answer="1"><p>1. You judge a 2% uniform random sample and also every thumbs-down trace. The dashboard shows "pass rate" as the average over all judged traces. What is wrong?</p>
@@ -1099,7 +1280,7 @@ jobs:
 <div class="q" data-answer="2"><p>5. Your nightly suite drops 5 points overnight with no code change. The traces show <code>gen_ai.response.model</code> changed. What is the best next step?</p>
 <button class="opt">Revert yesterday's commits</button>
 <button class="opt">Retrain the judge</button>
-<button class="opt">Treat it as a provider migration: pin a dated model version, compare old vs new per slice with the paired method, and read the transcripts where they disagree</button>
+<button class="opt">Treat it as a provider migration: pin an exact model version, compare old vs new per slice with the paired method, and read the transcripts where they disagree</button>
 <div class="why">This is model/provider drift. Pinning versions prevents surprises; the migration playbook tells you whether to adopt, adapt or reject the new version.</div></div>
 <div class="q" data-answer="0"><p>6. Which chart best reveals a runaway-loop problem before the invoice arrives?</p>
 <button class="opt">Cost per successful task and step-cap hit rate over time</button>

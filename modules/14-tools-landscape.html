@@ -236,6 +236,49 @@ def simpleqa():
     )</code></pre>
 </div>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Anatomy of an Inspect Task: a Dataset of Samples feeds the input to a Solver, which is the system under test; the Solver's output and the Sample's target go to a Scorer. Results go to an eval log viewed in Inspect View. Swapping the Solver from generate() to react() with tools and a sandbox turns a QA eval into an agent eval.">
+<defs><marker id="m14g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="10" y="20" width="590" height="170" rx="12"/>
+<text x="24" y="180" class="mono t-violet">@task  →  Task(dataset, solver, scorer)</text>
+<rect class="box plain" x="30" y="66" width="150" height="74" rx="8"/>
+<text x="105" y="90" text-anchor="middle" class="b">Dataset</text>
+<text x="105" y="110" text-anchor="middle" class="mono">Sample(input,</text>
+<text x="105" y="126" text-anchor="middle" class="mono">target)</text>
+<rect class="box violet pulse" x="225" y="66" width="160" height="74" rx="8"/>
+<text x="305" y="90" text-anchor="middle" class="b">Solver</text>
+<text x="305" y="110" text-anchor="middle" class="sm">system under test</text>
+<text x="305" y="126" text-anchor="middle" class="sm">model set at run time</text>
+<rect class="box good" x="430" y="66" width="150" height="74" rx="8"/>
+<text x="505" y="90" text-anchor="middle" class="b">Scorer</text>
+<text x="505" y="110" text-anchor="middle" class="mono">model_graded_qa()</text>
+<text x="505" y="126" text-anchor="middle" class="sm">or match, custom</text>
+<line class="ln accent flow" x1="180" y1="103" x2="221" y2="103" marker-end="url(#m14g)"/>
+<text x="200" y="95" text-anchor="middle" class="sm">input</text>
+<line class="ln accent flow" x1="385" y1="103" x2="426" y2="103" marker-end="url(#m14g)"/>
+<text x="406" y="95" text-anchor="middle" class="sm">output</text>
+<path class="ln dash" d="M105,66 C105,34 505,34 505,62" marker-end="url(#m14g)"/>
+<text x="305" y="44" text-anchor="middle" class="sm">target (the expected answer)</text>
+<line class="ln" x1="600" y1="103" x2="636" y2="103" marker-end="url(#m14g)"/>
+<rect class="box accent" x="640" y="70" width="170" height="66" rx="8"/>
+<text x="725" y="96" text-anchor="middle" class="b">eval log</text>
+<text x="725" y="116" text-anchor="middle" class="sm">every message, score</text>
+<line class="ln" x1="725" y1="136" x2="725" y2="168" marker-end="url(#m14g)"/>
+<rect class="box plain" x="640" y="172" width="170" height="46" rx="8"/>
+<text x="725" y="200" text-anchor="middle" class="b">Inspect View</text>
+<line class="ln dash violet" x1="280" y1="140" x2="190" y2="226" marker-end="url(#m14g)"/>
+<line class="ln dash violet" x1="330" y1="140" x2="420" y2="226" marker-end="url(#m14g)"/>
+<rect class="box plain" x="40" y="230" width="250" height="56" rx="8"/>
+<text x="165" y="252" text-anchor="middle" class="mono">generate()</text>
+<text x="165" y="272" text-anchor="middle" class="sm">one model call: a QA eval</text>
+<rect class="box violet" x="330" y="230" width="270" height="56" rx="8"/>
+<text x="465" y="252" text-anchor="middle" class="mono">react(tools=[bash()])</text>
+<text x="465" y="272" text-anchor="middle" class="sm">+ Docker sandbox: an agent eval</text>
+<text x="305" y="220" text-anchor="middle" class="sm t-violet b">swap one line</text>
+</svg>
+<figcaption><b>Inspect in one picture.</b> A Task wires a Dataset, a Solver and a Scorer together. The Solver is the only part that changes when you move from a single-turn question to a full agent with tools in a sandbox, which is why the same scorer and data can be reused.</figcaption>
+</figure>
+
 <div class="card violet" style="margin:16px 0">
 <h4>EleutherAI lm-evaluation-harness</h4>
 <p><b>Maker:</b> EleutherAI. <b>Licence:</b> MIT. <b>Language:</b> Python, with tasks defined in YAML plus Jinja2 prompt templates.</p>
@@ -357,6 +400,40 @@ dataset.evaluate_sync(guess_city).print()</code></pre>
 </div>
 
 <h3>Observability plus eval platforms</h3>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="A trace shown as a waterfall: one user request containing an LLM planning call, a lookup_order tool call, an LLM drafting call and an issue_refund tool call, each drawn as a bar along a time axis. Scores attached to the trace (judge verdict, user feedback, latency, cost) sit on the right, and a failing trace can be added to a dataset.">
+<defs><marker id="m14h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="26" class="b">One trace = one request</text>
+<text x="300" y="26" class="sm t-muted">time →</text>
+<line class="ln dash" x1="260" y1="34" x2="260" y2="236"/>
+<line class="ln dash" x1="560" y1="34" x2="560" y2="236"/>
+<text x="260" y="252" text-anchor="middle" class="sm">0 s</text>
+<text x="560" y="252" text-anchor="middle" class="sm">4.2 s</text>
+<text x="20" y="62" class="mono b">▾ request "refund #4471"</text>
+<rect x="260" y="50" width="300" height="18" rx="4" class="fill-muted"/>
+<text x="38" y="100" class="mono">▸ llm: plan</text>
+<rect x="260" y="88" width="60" height="18" rx="4" class="fill-accent"/>
+<text x="38" y="138" class="mono">▸ tool: lookup_order</text>
+<rect x="320" y="126" width="45" height="18" rx="4" class="fill-warn"/>
+<text x="38" y="176" class="mono">▸ llm: draft reply</text>
+<rect x="365" y="164" width="135" height="18" rx="4" class="fill-accent"/>
+<text x="38" y="214" class="mono">▸ tool: issue_refund</text>
+<rect x="500" y="202" width="45" height="18" rx="4" class="fill-warn"/>
+<text x="20" y="282" class="sm">Each row is a <tspan class="b">span</tspan>; the whole tree is the <tspan class="b">trace</tspan>. Click a span to see its exact input and output.</text>
+<rect class="box plain" x="600" y="40" width="210" height="150" rx="10"/>
+<text x="614" y="62" class="sm b">Scores attached to the trace</text>
+<text x="614" y="86" class="sm">judge: over-promise?</text><text x="796" y="86" text-anchor="end" class="sm b t-bad">FAIL</text>
+<text x="614" y="108" class="sm">user feedback</text><text x="796" y="108" text-anchor="end" class="sm b t-bad">thumbs down</text>
+<text x="614" y="130" class="sm">latency</text><text x="796" y="130" text-anchor="end" class="sm b">4.2 s</text>
+<text x="614" y="152" class="sm">cost</text><text x="796" y="152" text-anchor="end" class="sm b">$0.012</text>
+<text x="614" y="174" class="sm">tools called</text><text x="796" y="174" text-anchor="end" class="sm b">2</text>
+<line class="ln accent flow" x1="705" y1="190" x2="705" y2="218" marker-end="url(#m14h)"/>
+<rect class="box accent" x="610" y="222" width="190" height="40" rx="8"/>
+<text x="705" y="247" text-anchor="middle" class="b">+ add to dataset</text>
+</svg>
+<figcaption><b>What an observability platform stores.</b> Every step of a request is recorded as a timed span inside one trace, and scores from judges, users and code are attached to it. The key eval feature is the button at the bottom right: a failing production trace becomes a regression test in one click. Values are illustrative.</figcaption>
+</figure>
 
 <div class="card accent" style="margin:16px 0">
 <h4>Braintrust</h4>
@@ -600,40 +677,36 @@ eval_result = client.evals.evaluate(
 <p>Tool choice is partly a bet on who will still maintain the tool in two years. The last two years saw acquisitions, handovers and one shutdown.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 250" role="img" aria-label="Timeline from July 2024 to December 2026: Anthropic Console Evaluate tool, simple-evals frozen, Petri and Bloom released, Langfuse joins ClickHouse, OpenAI acquires promptfoo, Vertex AI renamed, OpenAI Evals deprecation announced, read-only in October and shutdown in November 2026.">
-<line class="ln thick" x1="40" y1="140" x2="790" y2="140"/>
-<line class="ln" x1="190" y1="132" x2="190" y2="148"/><text x="190" y="162" text-anchor="middle" class="sm b">2025</text>
-<line class="ln" x1="490" y1="132" x2="490" y2="148"/><text x="490" y="162" text-anchor="middle" class="sm b">2026</text>
-<text x="40" y="162" class="sm">Jul 2024</text>
-
-<line class="ln" x1="40" y1="140" x2="40" y2="78"/><circle cx="40" cy="140" r="5" class="fill-accent"/>
-<text x="46" y="74" class="sm">Anthropic Console Evaluate tool</text>
-
-<line class="ln" x1="340" y1="140" x2="340" y2="182"/><circle cx="340" cy="140" r="5" class="fill-muted"/>
-<text x="340" y="196" text-anchor="middle" class="sm">Jul 2025: simple-evals frozen</text>
-
-<line class="ln" x1="415" y1="140" x2="415" y2="108"/><circle cx="415" cy="140" r="5" class="fill-violet"/>
-<text x="415" y="102" text-anchor="middle" class="sm">Petri</text>
-
-<line class="ln" x1="465" y1="140" x2="465" y2="212"/><circle cx="465" cy="140" r="5" class="fill-violet"/>
-<text x="465" y="226" text-anchor="middle" class="sm">Bloom</text>
-
-<line class="ln" x1="490" y1="140" x2="490" y2="64"/><circle cx="490" cy="140" r="5" class="fill-accent"/>
-<text x="490" y="58" text-anchor="middle" class="sm">Langfuse joins ClickHouse</text>
-
-<line class="ln" x1="540" y1="140" x2="540" y2="182"/><circle cx="540" cy="140" r="5" class="fill-good"/>
-<text x="560" y="196" text-anchor="middle" class="sm">OpenAI to acquire promptfoo</text>
-
-<line class="ln" x1="565" y1="140" x2="565" y2="108"/><circle cx="565" cy="140" r="5" class="fill-muted"/>
-<text x="565" y="102" text-anchor="middle" class="sm">Vertex AI renamed</text>
-
-<line class="ln" x1="615" y1="140" x2="615" y2="212"/><circle cx="615" cy="140" r="5" class="fill-bad"/>
-<text x="640" y="226" text-anchor="middle" class="sm">OpenAI Evals deprecation announced</text>
-
-<line class="ln bad" x1="738" y1="140" x2="738" y2="64"/><circle cx="738" cy="140" r="5" class="fill-bad"/>
-<text x="790" y="58" text-anchor="end" class="sm t-bad">Oct 31: read-only</text>
-<line class="ln bad" x1="763" y1="140" x2="763" y2="108"/><circle cx="763" cy="140" r="5" class="fill-bad"/>
-<text x="790" y="102" text-anchor="end" class="sm t-bad">Nov 30: shutdown</text>
+<svg viewBox="0 0 820 360" role="img" aria-label="Timeline from July 2024 to December 2026 with colour-coded events: Anthropic Console Evaluate tool launched; simple-evals frozen; Petri and Bloom released and later handed to Meridian Labs; Langfuse joins ClickHouse; OpenAI to acquire promptfoo; Vertex AI renamed; OpenAI Evals deprecation announced, read-only on 31 October and shut down on 30 November 2026.">
+<rect x="200" y="158" width="300" height="14" rx="3" class="fill-soft"/>
+<line class="ln thick" x1="30" y1="165" x2="800" y2="165"/>
+<text x="62" y="186" class="sm b t-muted">2024</text><text x="206" y="186" class="sm b t-muted">2025</text><text x="506" y="186" class="sm b t-muted">2026</text>
+<line class="ln" x1="200" y1="155" x2="200" y2="175"/><line class="ln" x1="500" y1="155" x2="500" y2="175"/>
+<line class="ln dash" x1="50" y1="165" x2="100" y2="128"/><circle cx="50" cy="165" r="6" class="fill-good"/>
+<rect class="box good" x="30" y="76" width="140" height="52" rx="8"/><text x="100" y="93" text-anchor="middle" class="sm b">Jul 2024</text><text x="100" y="108" text-anchor="middle" class="sm">Anthropic Console</text><text x="100" y="122" text-anchor="middle" class="sm">Evaluate tool</text>
+<line class="ln dash" x1="350" y1="165" x2="350" y2="196"/><circle cx="350" cy="165" r="6" class="fill-warn"/>
+<rect class="box warn" x="280" y="196" width="140" height="52" rx="8"/><text x="350" y="213" text-anchor="middle" class="sm b">Jul 2025</text><text x="350" y="228" text-anchor="middle" class="sm">simple-evals frozen</text><text x="350" y="242" text-anchor="middle" class="sm">(no new models)</text>
+<line class="ln dash" x1="425" y1="165" x2="425" y2="128"/><circle cx="425" cy="165" r="6" class="fill-violet"/>
+<rect class="box violet" x="355" y="76" width="140" height="52" rx="8"/><text x="425" y="93" text-anchor="middle" class="sm b">Oct 2025</text><text x="425" y="108" text-anchor="middle" class="sm">Petri released</text><text x="425" y="122" text-anchor="middle" class="sm">later to Meridian Labs</text>
+<line class="ln dash" x1="475" y1="165" x2="445" y2="258"/><circle cx="475" cy="165" r="6" class="fill-violet"/>
+<rect class="box violet" x="370" y="258" width="140" height="52" rx="8"/><text x="440" y="275" text-anchor="middle" class="sm b">Dec 2025</text><text x="440" y="290" text-anchor="middle" class="sm">Bloom released</text><text x="440" y="304" text-anchor="middle" class="sm">later to Meridian Labs</text>
+<line class="ln dash" x1="500" y1="165" x2="520" y2="66"/><circle cx="500" cy="165" r="6" class="fill-accent"/>
+<rect class="box accent" x="450" y="14" width="140" height="52" rx="8"/><text x="520" y="31" text-anchor="middle" class="sm b">Jan 2026</text><text x="520" y="46" text-anchor="middle" class="sm">Langfuse becomes</text><text x="520" y="60" text-anchor="middle" class="sm">part of ClickHouse</text>
+<line class="ln dash" x1="550" y1="165" x2="535" y2="196"/><circle cx="550" cy="165" r="6" class="fill-accent"/>
+<rect class="box accent" x="470" y="196" width="130" height="52" rx="8"/><text x="535" y="213" text-anchor="middle" class="sm b">9 Mar 2026</text><text x="535" y="228" text-anchor="middle" class="sm">OpenAI to acquire</text><text x="535" y="242" text-anchor="middle" class="sm">promptfoo</text>
+<line class="ln dash" x1="575" y1="165" x2="640" y2="128"/><circle cx="575" cy="165" r="6" class="fill-warn"/>
+<rect class="box warn" x="562" y="76" width="156" height="52" rx="8"/><text x="640" y="93" text-anchor="middle" class="sm b">Apr 2026</text><text x="640" y="108" text-anchor="middle" class="sm">Vertex AI renamed Gemini</text><text x="640" y="122" text-anchor="middle" class="sm">Enterprise Agent Platform</text>
+<line class="ln dash" x1="625" y1="165" x2="630" y2="258"/><circle cx="625" cy="165" r="6" class="fill-bad"/>
+<rect class="box bad" x="560" y="258" width="140" height="52" rx="8"/><text x="630" y="275" text-anchor="middle" class="sm b">3 Jun 2026</text><text x="630" y="290" text-anchor="middle" class="sm">OpenAI Evals</text><text x="630" y="304" text-anchor="middle" class="sm">deprecation announced</text>
+<line class="ln dash" x1="749" y1="165" x2="735" y2="66"/><circle cx="749" cy="165" r="6" class="fill-bad"/>
+<rect class="box bad" x="665" y="14" width="140" height="52" rx="8"/><text x="735" y="31" text-anchor="middle" class="sm b">31 Oct 2026</text><text x="735" y="46" text-anchor="middle" class="sm">OpenAI Evals</text><text x="735" y="60" text-anchor="middle" class="sm">becomes read-only</text>
+<line class="ln dash" x1="774" y1="165" x2="735" y2="196"/><circle cx="774" cy="165" r="6" class="fill-bad"/>
+<rect class="box bad" x="665" y="196" width="140" height="52" rx="8"/><text x="735" y="213" text-anchor="middle" class="sm b">30 Nov 2026</text><text x="735" y="228" text-anchor="middle" class="sm">OpenAI Evals</text><text x="735" y="242" text-anchor="middle" class="sm">shuts down</text>
+<rect x="40" y="330" width="12" height="12" rx="2" class="fill-good"/><text x="58" y="340" class="sm">new tool</text>
+<rect x="130" y="330" width="12" height="12" rx="2" class="fill-accent"/><text x="148" y="340" class="sm">absorbed by a bigger company</text>
+<rect x="330" y="330" width="12" height="12" rx="2" class="fill-violet"/><text x="348" y="340" class="sm">handed to a neutral maintainer</text>
+<rect x="540" y="330" width="12" height="12" rx="2" class="fill-warn"/><text x="558" y="340" class="sm">frozen or renamed</text>
+<rect x="680" y="330" width="12" height="12" rx="2" class="fill-bad"/><text x="698" y="340" class="sm">shut down</text>
 </svg>
 <figcaption><b>Two years of churn (dates from vendor announcements).</b> July 2024 to November 2026. Notice the pattern: independent tools get absorbed (promptfoo into OpenAI, Langfuse into ClickHouse, TruLens into Snowflake earlier), and lab-built tools move to neutral maintainers (Petri and Bloom to Meridian Labs).</figcaption>
 </figure>
@@ -767,6 +840,49 @@ tests:
 # Run:  npx promptfoo eval     (then:  npx promptfoo view)</code></pre>
 <p>The grid is the point: add a second prompt and a second provider and you get a 2 × 2 × 2 comparison for free. This is why promptfoo is popular for "which model should we switch to?" questions and for CI diffs on pull requests.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="promptfoo multiplies its inputs: 2 prompts times 2 providers times 2 tests gives a grid of 8 cells, each cell one model call checked by its assertions. In this illustrative grid, one cell fails: prompt 1 on model A answered Sydney for Australia.">
+<defs><marker id="m14i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box good" x="20" y="20" width="150" height="74" rx="8"/>
+<text x="95" y="42" text-anchor="middle" class="b">prompts</text>
+<text x="95" y="62" text-anchor="middle" class="sm">P1: terse</text>
+<text x="95" y="78" text-anchor="middle" class="sm">P2: friendly</text>
+<text x="195" y="64" text-anchor="middle" class="lg">×</text>
+<rect class="box accent" x="220" y="20" width="150" height="74" rx="8"/>
+<text x="295" y="42" text-anchor="middle" class="b">providers</text>
+<text x="295" y="62" text-anchor="middle" class="sm">model A</text>
+<text x="295" y="78" text-anchor="middle" class="sm">model B</text>
+<text x="395" y="64" text-anchor="middle" class="lg">×</text>
+<rect class="box warn" x="420" y="20" width="170" height="74" rx="8"/>
+<text x="505" y="42" text-anchor="middle" class="b">tests (+ asserts)</text>
+<text x="505" y="62" text-anchor="middle" class="sm">France → Paris</text>
+<text x="505" y="78" text-anchor="middle" class="sm">Australia → Canberra</text>
+<text x="620" y="64" class="lg">=</text>
+<text x="650" y="54" class="lg t-accent">2 × 2 × 2</text>
+<text x="650" y="76" class="sm">= 8 cells, 8 model calls</text>
+<line class="ln accent" x1="305" y1="94" x2="305" y2="126" marker-end="url(#m14i)"/>
+<rect class="box plain" x="20" y="130" width="160" height="32" rx="4"/>
+<text x="100" y="151" text-anchor="middle" class="sm b">test \ prompt · model</text>
+<rect class="box plain" x="180" y="130" width="157" height="32" rx="4"/><text x="258" y="151" text-anchor="middle" class="sm b">P1 · model A</text>
+<rect class="box plain" x="337" y="130" width="157" height="32" rx="4"/><text x="415" y="151" text-anchor="middle" class="sm b">P1 · model B</text>
+<rect class="box plain" x="494" y="130" width="157" height="32" rx="4"/><text x="572" y="151" text-anchor="middle" class="sm b">P2 · model A</text>
+<rect class="box plain" x="651" y="130" width="157" height="32" rx="4"/><text x="730" y="151" text-anchor="middle" class="sm b">P2 · model B</text>
+<rect class="box plain" x="20" y="162" width="160" height="44" rx="4"/><text x="100" y="189" text-anchor="middle" class="sm b">France</text>
+<rect class="box good" x="180" y="162" width="157" height="44" rx="4"/><text x="258" y="189" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box good" x="337" y="162" width="157" height="44" rx="4"/><text x="415" y="189" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box good" x="494" y="162" width="157" height="44" rx="4"/><text x="572" y="189" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box good" x="651" y="162" width="157" height="44" rx="4"/><text x="730" y="189" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box plain" x="20" y="206" width="160" height="44" rx="4"/><text x="100" y="233" text-anchor="middle" class="sm b">Australia</text>
+<rect class="box bad" x="180" y="206" width="157" height="44" rx="4"/><text x="258" y="226" text-anchor="middle" class="b t-bad">FAIL</text><text x="258" y="242" text-anchor="middle" class="sm">said "Sydney"</text>
+<rect class="box good" x="337" y="206" width="157" height="44" rx="4"/><text x="415" y="233" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box good" x="494" y="206" width="157" height="44" rx="4"/><text x="572" y="233" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box good" x="651" y="206" width="157" height="44" rx="4"/><text x="730" y="233" text-anchor="middle" class="b t-good">PASS</text>
+<text x="258" y="272" text-anchor="middle" class="sm t-bad">↑ the grid points at one combination</text>
+<text x="410" y="300" text-anchor="middle" class="sm t-muted">Illustrative results. Each cell runs every assert for its test: contains "Canberra", then the llm-rubric judge.</text>
+</svg>
+<figcaption><b>The promptfoo grid.</b> Inputs multiply: every prompt runs on every provider for every test. A red cell tells you exactly which prompt and model combination broke on which test, which is what makes promptfoo good at "should we switch models?" questions and at CI diffs.</figcaption>
+</figure>
+
 <h3>3. DeepEval</h3>
 <p>Each sample becomes a pytest test. The judge is a <code>GEval</code> metric (G-Eval: the judge writes evaluation steps from your criteria, then scores). A test fails when the score is below <code>threshold</code>.</p>
 <pre data-lang="python"><code># test_capitals.py
@@ -875,6 +991,32 @@ run = client.evals.runs.create(
 
 <h2>Rosetta stone: the same concepts, different names</h2>
 <p>Every tool has the same five or six concepts under different names. This table is worth bookmarking; it lets you read any tool's docs in minutes.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Every eval tool has the same four stages: one row of data, the system under test, the grader, and the recorded run. The grid shows what seven tools call each stage, from Inspect's Sample, Solver, Scorer and eval log to the OpenAI Evals API's item, Run model and prompt, testing criteria and Run.">
+<defs><marker id="m14j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box warn" x="130" y="14" width="150" height="54" rx="10"/><text x="205" y="38" text-anchor="middle" class="b">1. One row</text><text x="205" y="56" text-anchor="middle" class="sm">input + expected</text>
+<rect class="box violet" x="300" y="14" width="160" height="54" rx="10"/><text x="380" y="38" text-anchor="middle" class="b">2. System</text><text x="380" y="56" text-anchor="middle" class="sm">produces the output</text>
+<rect class="box good" x="480" y="14" width="160" height="54" rx="10"/><text x="560" y="38" text-anchor="middle" class="b">3. Grader</text><text x="560" y="56" text-anchor="middle" class="sm">scores the output</text>
+<rect class="box accent" x="660" y="14" width="150" height="54" rx="10"/><text x="735" y="38" text-anchor="middle" class="b">4. Run record</text><text x="735" y="56" text-anchor="middle" class="sm">stored, compared</text>
+<line class="ln accent" x1="280" y1="41" x2="296" y2="41" marker-end="url(#m14j)"/>
+<line class="ln accent" x1="460" y1="41" x2="476" y2="41" marker-end="url(#m14j)"/>
+<line class="ln accent" x1="640" y1="41" x2="656" y2="41" marker-end="url(#m14j)"/>
+<rect x="10" y="84" width="800" height="30" rx="4" class="fill-soft"/>
+<rect x="10" y="144" width="800" height="30" rx="4" class="fill-soft"/>
+<rect x="10" y="204" width="800" height="30" rx="4" class="fill-soft"/>
+<rect x="10" y="264" width="800" height="30" rx="4" class="fill-soft"/>
+<text x="20" y="104" class="b">Inspect</text><text x="205" y="104" text-anchor="middle" class="mono">Sample</text><text x="380" y="104" text-anchor="middle" class="mono">Solver</text><text x="560" y="104" text-anchor="middle" class="mono">Scorer</text><text x="735" y="104" text-anchor="middle" class="mono">eval log</text>
+<text x="20" y="134" class="b">promptfoo</text><text x="205" y="134" text-anchor="middle" class="mono">test vars</text><text x="380" y="134" text-anchor="middle" class="mono">prompt × provider</text><text x="560" y="134" text-anchor="middle" class="mono">assert</text><text x="735" y="134" text-anchor="middle" class="mono">eval</text>
+<text x="20" y="164" class="b">DeepEval</text><text x="205" y="164" text-anchor="middle" class="mono">LLMTestCase</text><text x="380" y="164" text-anchor="middle" class="mono">your app</text><text x="560" y="164" text-anchor="middle" class="mono">metric (GEval)</text><text x="735" y="164" text-anchor="middle" class="mono">test run</text>
+<text x="20" y="194" class="b">Braintrust</text><text x="205" y="194" text-anchor="middle" class="mono">data row</text><text x="380" y="194" text-anchor="middle" class="mono">task</text><text x="560" y="194" text-anchor="middle" class="mono">scorer</text><text x="735" y="194" text-anchor="middle" class="mono">Experiment</text>
+<text x="20" y="224" class="b">LangSmith</text><text x="205" y="224" text-anchor="middle" class="mono">example</text><text x="380" y="224" text-anchor="middle" class="mono">target function</text><text x="560" y="224" text-anchor="middle" class="mono">evaluator</text><text x="735" y="224" text-anchor="middle" class="mono">experiment</text>
+<text x="20" y="254" class="b">MLflow</text><text x="205" y="254" text-anchor="middle" class="mono">inputs/expectations</text><text x="380" y="254" text-anchor="middle" class="mono">predict_fn</text><text x="560" y="254" text-anchor="middle" class="mono">scorer</text><text x="735" y="254" text-anchor="middle" class="mono">evaluation run</text>
+<text x="20" y="284" class="b">OpenAI Evals</text><text x="205" y="284" text-anchor="middle" class="mono">item</text><text x="380" y="284" text-anchor="middle" class="mono">model + prompt</text><text x="560" y="284" text-anchor="middle" class="mono">testing_criteria</text><text x="735" y="284" text-anchor="middle" class="mono">Run</text>
+<text x="410" y="318" text-anchor="middle" class="sm t-muted">Read down a column: same idea, different word. The full table below adds more tools and the trace column.</text>
+</svg>
+<figcaption><b>The four boxes behind every tool.</b> Whatever the vocabulary, each tool takes a row of data, runs a system on it, grades the output and stores the run so you can compare it with the next one. Once you can map a new tool's nouns onto these four columns, you can read its docs quickly.</figcaption>
+</figure>
 
 <div class="tablewrap"><table>
 <tr><th>Tool</th><th>One row of data</th><th>The eval definition</th><th>System under test</th><th>Grader</th><th>One execution</th><th>Recorded steps</th></tr>
@@ -1193,6 +1335,16 @@ run = client.evals.runs.create(
 <div class="callout bad"><span class="t">Case study: the OpenAI Evals shutdown</span>
 <p>Teams that defined evals on OpenAI's hosted platform in 2025 now have until 2026-11-30 to migrate, with OpenAI's cookbook guide pointing to promptfoo. Their eval <em>logic</em> (schemas, grader prompts) ports; their run history on the platform does not come along automatically. The lesson is not "never use hosted tools". It is: keep datasets and grader definitions in version control you own, whatever tool runs them.</p>
 </div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Eval tools fall into five families (research harnesses, developer test and CI tools, observability plus eval platforms, metric and judge libraries, cloud services), and each answers a different question.</li>
+<li>Every tool is the same four boxes with different names: a row of data, a system under test, a grader, and a stored run. Learn the mapping and any tool's docs become readable.</li>
+<li>Tools from different families usually complement each other. A common stack is one offline harness in CI plus one platform for production traces.</li>
+<li>Pick by the question you need answered and by who reads the results, not by the length of the metric catalogue.</li>
+<li>Licences are a spectrum: permissive open source, open core or source-available (Langfuse, Phoenix), open SDK with a hosted platform, and fully closed services.</li>
+<li>An LLM judge sends graded text to its model provider even when the eval library runs locally. Privacy reviews must cover that path.</li>
+<li>The real lock-in is your datasets, labels and judge prompts. Keep them in version control you own; the OpenAI Evals shutdown shows why.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
