@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eval Playground · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+<div class="kicker">Interactive</div>
+<h1>Eval Playground</h1>
+<p class="lede">Every interactive widget from the course on one page. Drag the sliders until the intuition sticks: most of eval statistics is visible here.</p>
+<div data-toc></div>
+<h2>Noise: the same eval gives different scores</h2>
+<p>Before you celebrate a 3-point gain, see how much a score moves when nothing changed at all. (Module 04)</p>
+<div data-widget="variance"></div>
+<h2>Error bars</h2>
+<p>The confidence interval of an accuracy depends mostly on how many samples you have. (Module 04)</p>
+<div data-widget="ci"></div>
+<h2>Comparing two systems</h2>
+<p>Paired comparisons on the same questions: the right way to ask "is B better than A?". (Module 04)</p>
+<div data-widget="compare"></div>
+<h2>pass@k vs pass^k</h2>
+<p>Capability ("can it ever do this?") vs reliability ("does it do this every time?"). (Modules 04, 05, 06)</p>
+<div data-widget="passk"></div>
+<h2>Long tasks compound errors</h2>
+<p>Why long-horizon agents are hard, and why per-step reliability matters. (Module 11)</p>
+<div data-widget="compound"></div>
+<h2>Judges make mistakes too</h2>
+<p>Correcting an LLM judge's pass rate using its measured error rates. (Module 13)</p>
+<div data-widget="judgefix"></div>
+<h2>Word error rate</h2>
+<p>The classic speech-recognition metric, with a live alignment. (Module 09)</p>
+<div data-widget="wer"></div>
+<h2>Arena ratings</h2>
+<p>How pairwise preference leaderboards turn votes into ratings. (Modules 04, 18)</p>
+<div data-widget="elo"></div>
+</article>
+</main>
+</div>
+</body>
+</html>

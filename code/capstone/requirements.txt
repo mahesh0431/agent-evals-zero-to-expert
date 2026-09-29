@@ -1,0 +1,5 @@
+# Core eval framework (UK AISI / Meridian Labs Inspect). Tested with 0.3.272.
+inspect-ai>=0.3.200
+# Model provider SDKs: install the one(s) you evaluate or judge with.
+anthropic
+openai

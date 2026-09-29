@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · What an eval is · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 01 · Foundations</div>
+<h1>What an eval is, and why it matters</h1>
+<p class="lede">An eval is a repeatable experiment that turns "does my AI system work?" into a number you can trust, compare and improve. Everything else in this course is a refinement of that one idea.</p>
+<div class="meta"><span class="pill level-1">Beginner</span><span class="pill">~25 min</span><span class="pill">No code needed</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Define an eval precisely and say how it differs from a software unit test.</li>
+<li>Explain why "vibe checks" fail as soon as a system is non-deterministic or has more than a handful of users.</li>
+<li>Place any eval on a map: <em>who</em> runs it, <em>when</em>, and <em>what question</em> it answers.</li>
+<li>Use the core vocabulary (task, sample, grader, metric, benchmark, harness, trajectory) correctly.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>The one-sentence definition</h2>
+<p>An <b>evaluation</b> ("eval") is a <b>fixed set of inputs</b>, run through <b>your AI system</b>, whose outputs are <b>scored by a grader</b> and <b>aggregated into metrics</b>, so that two versions of the system can be compared fairly.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 200" role="img" aria-label="An eval is a pipeline: inputs go through the system under test, a grader scores each output, and scores aggregate into a metric used for decisions.">
+<defs><marker id="m1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="10" y="50" width="130" height="90" rx="8"/>
+<text x="75" y="80" text-anchor="middle" class="b">Dataset</text>
+<text x="75" y="100" text-anchor="middle" class="sm">inputs +</text>
+<text x="75" y="115" text-anchor="middle" class="sm">expected behaviour</text>
+<rect class="box accent" x="190" y="50" width="150" height="90" rx="8"/>
+<text x="265" y="80" text-anchor="middle" class="b">System under test</text>
+<text x="265" y="100" text-anchor="middle" class="sm">model + prompt +</text>
+<text x="265" y="115" text-anchor="middle" class="sm">tools + scaffold</text>
+<rect class="box warn" x="390" y="50" width="130" height="90" rx="8"/>
+<text x="455" y="80" text-anchor="middle" class="b">Grader</text>
+<text x="455" y="100" text-anchor="middle" class="sm">code / model /</text>
+<text x="455" y="115" text-anchor="middle" class="sm">human</text>
+<rect class="box good" x="570" y="50" width="110" height="90" rx="8"/>
+<text x="625" y="80" text-anchor="middle" class="b">Metric</text>
+<text x="625" y="102" text-anchor="middle" class="sm">e.g. 73% ± 4%</text>
+<rect class="box plain" x="720" y="60" width="90" height="70" rx="8"/>
+<text x="765" y="92" text-anchor="middle" class="b">Decision</text>
+<text x="765" y="110" text-anchor="middle" class="sm">ship? fix?</text>
+<line class="ln" x1="140" y1="95" x2="186" y2="95" marker-end="url(#m1a)"/>
+<text x="163" y="86" text-anchor="middle" class="sm">each input</text>
+<line class="ln" x1="340" y1="95" x2="386" y2="95" marker-end="url(#m1a)"/>
+<text x="363" y="86" text-anchor="middle" class="sm">output</text>
+<line class="ln" x1="520" y1="95" x2="566" y2="95" marker-end="url(#m1a)"/>
+<text x="543" y="86" text-anchor="middle" class="sm">score</text>
+<line class="ln" x1="680" y1="95" x2="716" y2="95" marker-end="url(#m1a)"/>
+<path class="ln dash" d="M765,130 C765,185 265,185 265,144" marker-end="url(#m1a)"/>
+<text x="515" y="178" text-anchor="middle" class="sm">change the system, re-run the SAME eval, compare</text>
+</svg>
+<figcaption><b>The eval pipeline.</b> The dataset and grader stay fixed; only the system under test changes between runs. That is what makes the comparison fair.</figcaption>
+</figure>
+
+<p>Four words in that definition do the heavy lifting:</p>
+<ul>
+<li><b>Fixed</b>: if the inputs change between runs, you cannot tell whether the score moved because the system improved or because the test got easier.</li>
+<li><b>System</b>: you are rarely evaluating "a model". You are evaluating a model <em>plus</em> a prompt, tools, retrieval, memory, a loop that decides when to stop. Anthropic and others call the non-model part the <b>scaffold</b> or <b>harness</b>. Change the scaffold and the score changes, sometimes by more than a model upgrade.</li>
+<li><b>Grader</b>: something has to decide whether each output is good. It can be a string match, a program that runs unit tests, another LLM, or a human.</li>
+<li><b>Compared</b>: an eval score is almost meaningless on its own. "71%" tells you little; "71% vs 64% last week, on the same 400 tasks, with a 95% confidence interval of ±4%" tells you a lot.</li>
+</ul>
+
+<div class="callout analogy"><span class="t">Analogy: the driving test</span>
+<p>A driving test does not check whether you can recite traffic law (a knowledge benchmark). It puts you in a real car on real roads (an <b>environment</b>), gives you tasks ("parallel park here"), and an examiner (a <b>grader</b>) scores what you actually did, including the path you took, not just whether you ended up at the right address. Agent evals are driving tests for AI.</p>
+</div>
+
+<h2>Evals vs unit tests</h2>
+<p>If you come from software engineering, the closest thing you know is a test suite. Evals borrow the idea but break three assumptions.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="A unit test maps one input to exactly one output and passes or fails. An eval maps one input to a distribution of possible outputs, many of which are acceptable, and reports a rate.">
+<defs><marker id="m1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="200" y="26" text-anchor="middle" class="lg">Unit test</text>
+<text x="610" y="26" text-anchor="middle" class="lg">Eval</text>
+<line class="ln dash" x1="410" y1="10" x2="410" y2="290"/>
+<rect class="box plain" x="30" y="120" width="90" height="46" rx="6"/>
+<text x="75" y="148" text-anchor="middle" class="mono">add(2,3)</text>
+<line class="ln" x1="120" y1="143" x2="196" y2="143" marker-end="url(#m1b)"/>
+<rect class="box good" x="200" y="120" width="70" height="46" rx="6"/>
+<text x="235" y="148" text-anchor="middle" class="mono">5</text>
+<line class="ln" x1="270" y1="143" x2="316" y2="143" marker-end="url(#m1b)"/>
+<text x="360" y="140" text-anchor="middle" class="b t-good">PASS</text>
+<text x="360" y="158" text-anchor="middle" class="sm">every time</text>
+<text x="200" y="220" text-anchor="middle" class="sm">1 input → 1 correct output</text>
+<text x="200" y="238" text-anchor="middle" class="sm">deterministic, binary</text>
+
+<rect class="box plain" x="430" y="120" width="100" height="46" rx="6"/>
+<text x="480" y="140" text-anchor="middle" class="sm">"Refund my</text>
+<text x="480" y="155" text-anchor="middle" class="sm">last order"</text>
+<line class="ln" x1="530" y1="143" x2="600" y2="68" marker-end="url(#m1b)"/>
+<line class="ln" x1="530" y1="143" x2="600" y2="118" marker-end="url(#m1b)"/>
+<line class="ln" x1="530" y1="143" x2="600" y2="168" marker-end="url(#m1b)"/>
+<line class="ln" x1="530" y1="143" x2="600" y2="218" marker-end="url(#m1b)"/>
+<rect class="box good" x="604" y="52" width="150" height="32" rx="6"/><text x="679" y="72" text-anchor="middle" class="sm">asks order ID, refunds ✓</text>
+<rect class="box good" x="604" y="102" width="150" height="32" rx="6"/><text x="679" y="122" text-anchor="middle" class="sm">looks up order, refunds ✓</text>
+<rect class="box warn" x="604" y="152" width="150" height="32" rx="6"/><text x="679" y="172" text-anchor="middle" class="sm">refunds, rude tone ~</text>
+<rect class="box bad" x="604" y="202" width="150" height="32" rx="6"/><text x="679" y="222" text-anchor="middle" class="sm">refunds WRONG order ✗</text>
+<text x="790" y="140" text-anchor="middle" class="b t-accent">p≈0.8</text>
+<text x="610" y="266" text-anchor="middle" class="sm">1 input → a distribution of outputs, many acceptable</text>
+<text x="610" y="284" text-anchor="middle" class="sm">stochastic, graded, reported as a rate</text>
+</svg>
+<figcaption><b>Why evals are statistics, not assertions.</b> Run the same agent on the same request five times and you can get five different trajectories. An eval estimates the <em>probability</em> of good behaviour.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th></th><th>Unit test</th><th>Eval</th></tr>
+<tr><td>Output space</td><td>One correct answer</td><td>Many acceptable answers, many wrong ones, and grey zones</td></tr>
+<tr><td>Determinism</td><td>Same input, same result</td><td>Sampling makes results vary run to run; you need repeats and error bars</td></tr>
+<tr><td>Result</td><td>Pass / fail</td><td>A rate, a score, a distribution, a ranking</td></tr>
+<tr><td>Target</td><td>100% passing, always</td><td>Often well below 100%; you care about the <em>trend</em> and <em>where</em> it fails</td></tr>
+<tr><td>Checker</td><td><code>assert</code></td><td>Code, a model, or a human, each with its own error rate</td></tr>
+<tr><td>Cost per run</td><td>Milliseconds</td><td>Seconds to hours per sample (agents!), real money in API tokens</td></tr>
+</table></div>
+
+<div class="callout tip"><span class="t">Key idea</span>
+<p>Your grader is also a measuring instrument, and it has error too. A test harness that is wrong 10% of the time silently caps how much you can trust any difference smaller than that. Much of expert-level eval work is about <b>measuring the measurer</b> (Module 13).</p>
+</div>
+
+<h2>Why "vibe checks" stop working</h2>
+<p>Almost every AI product starts with a developer typing a few prompts and eyeballing the answers. That is fine on day one. It breaks down for three reasons:</p>
+<div class="grid2">
+<div class="card bad"><h4>1. Whack-a-mole</h4><p>You fix the failure you saw today and silently break two you fixed last month. Without a fixed set of cases, regressions are invisible.</p></div>
+<div class="card bad"><h4>2. Anecdotes are noisy</h4><p>If an agent succeeds 70% of the time, five tries can easily show 5/5 or 2/5. Humans overweight the last few examples they saw.</p></div>
+<div class="card bad"><h4>3. You can't compare</h4><p>Is the new model better? Is the shorter prompt good enough? Without numbers on the same inputs, every change is a debate.</p></div>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 260" role="img" aria-label="Chart: with vibe checks, quality oscillates as fixes cause regressions. With evals, each change is gated by the eval, so quality ratchets upward.">
+<line class="ln" x1="60" y1="220" x2="790" y2="220"/>
+<line class="ln" x1="60" y1="220" x2="60" y2="20"/>
+<text x="30" y="120" text-anchor="middle" class="sm" transform="rotate(-90 30 120)">real quality</text>
+<text x="425" y="248" text-anchor="middle" class="sm">time / number of changes →</text>
+<polyline class="ln bad thick" points="60,170 120,120 170,160 230,100 280,150 340,95 390,165 450,110 500,150 560,105 620,160 680,115 740,140 780,120"/>
+<polyline class="ln good thick" points="60,175 120,160 170,160 230,140 280,140 340,120 390,120 450,100 500,95 560,80 620,78 680,62 740,55 780,48"/>
+<rect x="560" y="186" width="14" height="4" class="fill-bad"/><text x="582" y="192" class="sm">vibe checks: fix one thing, break another</text>
+<rect x="560" y="202" width="14" height="4" class="fill-good"/><text x="582" y="208" class="sm">eval-gated: only ship changes that don't regress</text>
+</svg>
+<figcaption><b>The ratchet effect.</b> An eval suite turns quality into a ratchet: a change ships only if it doesn't make the numbers worse. This illustration is conceptual, not real data.</figcaption>
+</figure>
+
+<p>Feel the second problem for yourself. Below, the system never changes; only the luck of the draw does.</p>
+<div data-widget="variance"></div>
+
+<p>OpenAI's own guidance calls this <b>eval-driven development</b>: write the evals first, like tests in test-driven development, then iterate on prompts, tools and models against them. Practitioners such as Hamel Husain put it bluntly: teams that succeed with LLM products are the ones that invest in evals and in looking at their data.</p>
+
+<h2>A map of the eval world</h2>
+<p>"Evals" means different things to different people. Almost all confusion goes away once you ask three questions: <b>who</b> is evaluating, <b>what question</b> are they answering, and <b>at what stage</b>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 360" role="img" aria-label="Map of eval types: model builders run capability and safety benchmarks; product builders run task-specific offline and online evals; both feed decisions.">
+<rect class="box accent" x="20" y="20" width="380" height="320" rx="10"/>
+<text x="210" y="46" text-anchor="middle" class="lg t-accent">Model builders</text>
+<text x="210" y="64" text-anchor="middle" class="sm">Anthropic, OpenAI, Google DeepMind, Meta, …</text>
+<rect class="box plain" x="40" y="80" width="340" height="70" rx="8"/>
+<text x="56" y="102" class="b">Capability benchmarks</text>
+<text x="56" y="120" class="sm">"How smart / skilled is the model?"</text>
+<text x="56" y="137" class="sm mono">MMLU, GPQA, SWE-bench, OSWorld, τ-bench</text>
+<rect class="box plain" x="40" y="160" width="340" height="70" rx="8"/>
+<text x="56" y="182" class="b">Safety &amp; dangerous-capability evals</text>
+<text x="56" y="200" class="sm">"Could it help with bio/cyber harm? Does it deceive?"</text>
+<text x="56" y="217" class="sm mono">RSP / Preparedness / Frontier Safety evals</text>
+<rect class="box plain" x="40" y="240" width="340" height="80" rx="8"/>
+<text x="56" y="262" class="b">Training signals &amp; human preference</text>
+<text x="56" y="280" class="sm">"Which response is better?" (feeds RLHF / RL)</text>
+<text x="56" y="297" class="sm mono">reward models, graders, LMArena</text>
+
+<rect class="box good" x="420" y="20" width="380" height="320" rx="10"/>
+<text x="610" y="46" text-anchor="middle" class="lg t-good">Product builders</text>
+<text x="610" y="64" text-anchor="middle" class="sm">you, building an agent on top of a model</text>
+<rect class="box plain" x="440" y="80" width="340" height="70" rx="8"/>
+<text x="456" y="102" class="b">Offline evals (before shipping)</text>
+<text x="456" y="120" class="sm">"Does my agent solve MY users' tasks?"</text>
+<text x="456" y="137" class="sm mono">custom datasets, CI regression suites</text>
+<rect class="box plain" x="440" y="160" width="340" height="70" rx="8"/>
+<text x="456" y="182" class="b">Online evals (after shipping)</text>
+<text x="456" y="200" class="sm">"Is it working in production, right now?"</text>
+<text x="456" y="217" class="sm mono">judges on live traces, A/B tests, feedback</text>
+<rect class="box plain" x="440" y="240" width="340" height="80" rx="8"/>
+<text x="456" y="262" class="b">Model selection</text>
+<text x="456" y="280" class="sm">"Which model/provider for my use case?"</text>
+<text x="456" y="297" class="sm mono">your eval × N models, cost, latency</text>
+</svg>
+<figcaption><b>Two worlds, same toolkit.</b> Public benchmarks answer "is this model generally capable?". Your own evals answer "does my system do my job?". A model that tops a leaderboard can still fail your task.</figcaption>
+</figure>
+
+<h3>Three axes you will see everywhere</h3>
+<div class="tablewrap"><table>
+<tr><th>Axis</th><th>One end</th><th>Other end</th><th>Example</th></tr>
+<tr><td><b>Purpose</b></td><td>Capability eval: "what can it do?" Designed to be hard, starts with low scores.</td><td>Regression eval: "did we break anything?" Should stay near 100%.</td><td>A new coding task set where your agent scores 30% vs your "golden 50" that must always pass.</td></tr>
+<tr><td><b>Timing</b></td><td>Offline: fixed dataset, run before release.</td><td>Online: scoring real traffic, after release.</td><td>CI run on every prompt change vs an LLM judge sampling 5% of production conversations.</td></tr>
+<tr><td><b>Scope</b></td><td>Public benchmark: shared, comparable across labs.</td><td>Private / product eval: specific to your users and data.</td><td>SWE-bench Verified vs "our 200 real customer tickets".</td></tr>
+</table></div>
+
+<h2>Where agents come in</h2>
+<p>A classic eval is <b>single turn</b>: one prompt in, one answer out, grade the answer. An <b>agent</b> is a model running in a loop: it reads its situation, picks an action (call a tool, click a button, speak, write a file), observes the result, and repeats until it thinks it is done. That changes what you have to evaluate.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Single-turn eval grades one answer. Agent eval grades a trajectory of many steps inside an environment, and can grade the final state, the path, or both.">
+<defs><marker id="m1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="130" y="24" text-anchor="middle" class="lg">Single-turn</text>
+<rect class="box plain" x="40" y="60" width="80" height="40" rx="6"/><text x="80" y="85" text-anchor="middle">prompt</text>
+<line class="ln" x1="120" y1="80" x2="146" y2="80" marker-end="url(#m1c)"/>
+<rect class="box accent" x="150" y="60" width="80" height="40" rx="6"/><text x="190" y="85" text-anchor="middle">answer</text>
+<text x="190" y="130" text-anchor="middle" class="sm t-warn">grade this ↑</text>
+<line class="ln dash" x1="270" y1="10" x2="270" y2="240"/>
+<text x="545" y="24" text-anchor="middle" class="lg">Agentic</text>
+<rect class="box dashed" x="300" y="44" width="500" height="150" rx="10"/>
+<text x="790" y="62" text-anchor="end" class="sm">environment (files, browser, APIs, OS, a phone call…)</text>
+<rect class="box plain" x="310" y="90" width="60" height="40" rx="6"/><text x="340" y="115" text-anchor="middle">task</text>
+<line class="ln" x1="370" y1="110" x2="386" y2="110" marker-end="url(#m1c)"/>
+<rect class="box accent" x="390" y="90" width="70" height="40" rx="6"/><text x="425" y="108" text-anchor="middle" class="sm">think +</text><text x="425" y="122" text-anchor="middle" class="sm">act 1</text>
+<line class="ln" x1="460" y1="110" x2="476" y2="110" marker-end="url(#m1c)"/>
+<rect class="box plain" x="480" y="90" width="60" height="40" rx="6"/><text x="510" y="115" text-anchor="middle" class="sm">observe</text>
+<line class="ln" x1="540" y1="110" x2="556" y2="110" marker-end="url(#m1c)"/>
+<rect class="box accent" x="560" y="90" width="60" height="40" rx="6"/><text x="590" y="115" text-anchor="middle" class="sm">act 2</text>
+<text x="640" y="115" text-anchor="middle">…</text>
+<line class="ln" x1="660" y1="110" x2="676" y2="110" marker-end="url(#m1c)"/>
+<rect class="box good" x="680" y="90" width="100" height="40" rx="6"/><text x="730" y="108" text-anchor="middle" class="sm">final state +</text><text x="730" y="122" text-anchor="middle" class="sm">final answer</text>
+<path class="ln warn" d="M390,150 L620,150" marker-end="url(#m1c)"/>
+<text x="505" y="172" text-anchor="middle" class="sm t-warn">grade the trajectory (the path)</text>
+<text x="730" y="172" text-anchor="middle" class="sm t-warn">grade the outcome ↑</text>
+<text x="545" y="228" text-anchor="middle" class="sm">plus: cost, latency, number of steps, safety of every action along the way</text>
+</svg>
+<figcaption><b>The agent shift.</b> Agents are graded on what they <em>did</em> (the trajectory) and what they <em>achieved</em> (the end state), inside an environment that has to be rebuilt identically for every run. Module 05 goes deep on this.</figcaption>
+</figure>
+
+<p>This course is about that harder, agentic kind of eval, across every way an agent can act: text and tool calls, code, browsers and desktops, voice, and images and video. We build up the foundations first, because every agent eval is still made of the same four parts: dataset, system, grader, metric.</p>
+
+<h2>Core vocabulary</h2>
+<p>Terms are used loosely across the industry. This course uses them like this (closely matching the UK AI Security Institute's Inspect framework and Anthropic's and OpenAI's docs):</p>
+<div class="tablewrap"><table>
+<tr><th>Term</th><th>Meaning</th></tr>
+<tr><td><b>Task / eval</b></td><td>A complete, runnable evaluation: dataset + how to run the system + how to grade.</td></tr>
+<tr><td><b>Sample / case / item</b></td><td>One row of the dataset: an input plus whatever the grader needs (a reference answer, a rubric, a checker script, a starting environment).</td></tr>
+<tr><td><b>Trial / epoch / run</b></td><td>One attempt at a sample. Agents are often run several times per sample because results vary.</td></tr>
+<tr><td><b>Transcript / trajectory / trace</b></td><td>The full record of an attempt: every message, tool call, observation and intermediate step.</td></tr>
+<tr><td><b>Grader / scorer / judge / evaluator</b></td><td>The thing that assigns a score to an output or trajectory.</td></tr>
+<tr><td><b>Metric</b></td><td>How scores aggregate: accuracy, pass@k, mean rubric score, win rate, latency p95.</td></tr>
+<tr><td><b>Harness</b></td><td>The software that runs evals: loads samples, runs the system, calls graders, records logs. (Inspect, promptfoo, lm-eval-harness…)</td></tr>
+<tr><td><b>Scaffold / agent harness</b></td><td>The code around the model that makes it an agent: tool definitions, the loop, memory, context management.</td></tr>
+<tr><td><b>Environment / sandbox</b></td><td>The world the agent acts in: a Docker container, a browser, a VM, a simulated user.</td></tr>
+<tr><td><b>Benchmark</b></td><td>A public, standardised eval used to compare systems (SWE-bench, OSWorld, τ-bench, MMMU…).</td></tr>
+</table></div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="2"><p>1. Your agent scored 82% on Monday and 78% on Tuesday with no code changes. Most likely explanation?</p>
+<button class="opt">The model provider silently downgraded the model</button>
+<button class="opt">The grader is broken</button>
+<button class="opt">Normal run-to-run variance; you need repeats and confidence intervals before reading anything into it</button>
+<div class="why">Stochastic sampling means scores vary between identical runs. On a few hundred samples, a 4-point swing can easily be noise. Module 04 shows how to compute whether a difference is real.</div></div>
+<div class="q" data-answer="1"><p>2. Which is the best description of what an eval measures?</p>
+<button class="opt">The model's intelligence</button>
+<button class="opt">A specific system (model + prompt + tools + scaffold) on a specific distribution of tasks, as judged by a specific grader</button>
+<button class="opt">Whether the output exactly matches the reference</button>
+<div class="why">Change any of the three (system, data, grader) and the number changes. Always report all three.</div></div>
+<div class="q" data-answer="0"><p>3. A regression eval should usually score…</p>
+<button class="opt">Near 100%: it guards behaviour you already have</button>
+<button class="opt">Around 50%, for maximum statistical power</button>
+<button class="opt">As low as possible, to leave room to improve</button>
+<div class="why">Capability evals are meant to be hard (headroom). Regression evals protect what already works, so any drop is a signal.</div></div>
+</div>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>OpenAI, <a href="https://platform.openai.com/docs/guides/evaluation-best-practices">Evaluation best practices</a> (eval-driven development).</li>
+<li>Anthropic, <a href="https://docs.anthropic.com/en/docs/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
+<li>UK AI Security Institute, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a> (task, dataset, solver, scorer vocabulary).</li>
+<li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a> (workflows vs agents).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

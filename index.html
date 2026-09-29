@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Evals: Zero to Expert</title>
+<meta name="description" content="A free, visual course on evaluating AI agents across every modality: text, tools, code, web, computer use, voice, image and video.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<section class="hero">
+<div class="kicker">A free, visual course</div>
+<h1>Agent Evals: Zero to Expert</h1>
+<p class="lede">Learn how to measure whether an AI agent actually works, from your first "is this answer right?" check to the dangerous-capability evaluations frontier labs run before a launch. Every modality: tool calls, code, browsers and desktops, voice, images and video.</p>
+<p><a class="btn" href="modules/01-what-are-evals.html">Start Module 01 →</a> &nbsp; <a href="playground.html">or open the Eval Playground</a></p>
+</section>
+
+<div class="hero3d" aria-label="Animated 3D view of the agent evaluation loop: tasks flow into the agent, the agent acts on its environment, transcripts go to graders, and scores become metrics that shape the next tasks.">
+<div class="legend3d">Tasks → Agent ⇄ Environment → Graders → Metrics → better Tasks · drag to rotate</div>
+</div>
+<script src="assets/vendor/three.min.js" defer></script>
+<script src="assets/hero3d.js" defer></script>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 250" role="img" aria-label="The course path: four parts from foundations through agent evals by modality, practice, and expert topics.">
+<defs><marker id="h0a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box good" x="10" y="40" width="185" height="170" rx="10"/>
+<text x="102" y="66" text-anchor="middle" class="lg t-good">I · Foundations</text>
+<text x="26" y="96" class="sm">01 What an eval is</text>
+<text x="26" y="116" class="sm">02 Anatomy of an eval</text>
+<text x="26" y="136" class="sm">03 Graders</text>
+<text x="26" y="156" class="sm">04 Metrics &amp; statistics</text>
+<text x="102" y="196" text-anchor="middle" class="sm b">the four parts of every eval</text>
+
+<rect class="box accent" x="220" y="40" width="195" height="170" rx="10"/>
+<text x="317" y="66" text-anchor="middle" class="lg t-accent">II · Agent evals</text>
+<text x="236" y="92" class="sm">05 Why agents differ</text>
+<text x="236" y="109" class="sm">06 Tools, RAG, chat</text>
+<text x="236" y="126" class="sm">07 Coding agents</text>
+<text x="236" y="143" class="sm">08 Web &amp; computer use</text>
+<text x="236" y="160" class="sm">09 Voice</text>
+<text x="236" y="177" class="sm">10 Vision, image, video</text>
+<text x="236" y="194" class="sm">11 Multi-agent, long tasks</text>
+
+<rect class="box warn" x="440" y="40" width="185" height="170" rx="10"/>
+<text x="532" y="66" text-anchor="middle" class="lg t-warn">III · Practice</text>
+<text x="456" y="96" class="sm">12 Error analysis</text>
+<text x="456" y="116" class="sm">13 LLM-as-a-judge</text>
+<text x="456" y="136" class="sm">14 Tools landscape</text>
+<text x="456" y="156" class="sm">15 Production &amp; CI</text>
+<text x="532" y="196" text-anchor="middle" class="sm b">build evals for real products</text>
+
+<rect class="box violet" x="650" y="40" width="180" height="170" rx="10"/>
+<text x="740" y="66" text-anchor="middle" class="lg t-violet">IV · Expert</text>
+<text x="666" y="96" class="sm">16 How labs do evals</text>
+<text x="666" y="116" class="sm">17 Safety evals</text>
+<text x="666" y="136" class="sm">18 Benchmark pitfalls</text>
+<text x="666" y="156" class="sm">19 Capstone</text>
+<text x="666" y="176" class="sm">20 Expert drill</text>
+<line class="ln" x1="195" y1="125" x2="216" y2="125" marker-end="url(#h0a)"/>
+<line class="ln" x1="415" y1="125" x2="436" y2="125" marker-end="url(#h0a)"/>
+<line class="ln" x1="625" y1="125" x2="646" y2="125" marker-end="url(#h0a)"/>
+<text x="420" y="236" text-anchor="middle" class="sm">beginner → intermediate → advanced → expert</text>
+</svg>
+<figcaption><b>The path.</b> Twenty modules in four parts. Each one is built around diagrams, with code you can run and a short self-check at the end.</figcaption>
+</figure>
+
+<h2>How to use this course</h2>
+<div class="grid2">
+<div class="card accent"><h4>Visual first</h4><p>Every concept comes with a diagram of the mechanism: data flow, loops, side-by-side comparisons, real computed charts. Read the picture, then the prose.</p></div>
+<div class="card good"><h4>Then precise</h4><p>Definitions, formulas and runnable Python follow the intuition. Code uses real, current library APIs (Inspect, the Anthropic and OpenAI SDKs, Ragas, and more).</p></div>
+<div class="card violet"><h4>Then expert</h4><p>"Expert corner" callouts cover the debates, failure modes and the way frontier labs and safety institutes actually run evals, with sources.</p></div>
+</div>
+
+<h2>What you'll be able to do</h2>
+<ul>
+<li>Design an eval for any agent: tool-using assistants, coding agents, browser and desktop agents, voice agents, image and video agents, multi-agent systems.</li>
+<li>Choose and validate graders, including LLM judges you can actually trust.</li>
+<li>Report results with honest error bars, and know when a difference is real.</li>
+<li>Read any benchmark paper or model system card critically: what it measures, how it is scored, how it can be gamed.</li>
+<li>Pick the right tool (Inspect, promptfoo, Braintrust, LangSmith, Langfuse, DeepEval, Ragas, OpenAI Evals and others) and explain how they differ.</li>
+<li>Explain how Anthropic, OpenAI, Google DeepMind and independent evaluators like METR and the UK AI Security Institute evaluate frontier models.</li>
+</ul>
+
+<h2>Modules</h2>
+<div class="partgrid" id="modlist"></div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const host = document.getElementById("modlist");
+  const tones = ["good", "accent", "warn", "violet"];
+  host.innerHTML = window.AEZ.PARTS.map((p, i) => `<div class="card ${tones[i]}"><h4>${p.title}</h4><ol start="${+p.mods[0][0]}">` +
+    p.mods.map(m => `<li><a href="modules/${m[0]}-${m[1]}.html">${m[2]}</a></li>`).join("") + `</ol></div>`).join("");
+});
+</script>
+
+<h2>About</h2>
+<p>Written for a motivated beginner with no background in machine learning evaluation. Facts about tools, benchmarks and lab practices were checked against primary sources (papers, official docs, system cards) in September 2026 and are cited at the end of each module. This field moves fast: when a number matters, follow the link and check the current value.</p>
+<p class="sources">Content licensed CC BY 4.0. Code snippets MIT.</p>
+
+</article>
+</main>
+</div>
+</body>
+</html>
