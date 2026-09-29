@@ -42,7 +42,7 @@
 
 <div class="kicker">Module 20 · Expert</div>
 <h1>Expert drill, glossary and map</h1>
-<p class="lede">Everything in the course on one page: a map of the whole field, an atlas of the benchmarks that matter, 48 hard interview questions with model answers, 30 flip cards, a glossary of 100+ terms, the sources experts actually read, and a 30-day plan to turn reading into doing.</p>
+<p class="lede">Everything in the course on one page: a map of the whole field, an atlas of the benchmarks that matter, visual cheat sheets for the choices experts make daily, 48 hard interview questions with model answers, 30 flip cards, a glossary of 100+ terms, the sources experts actually read, and a 30-day plan to turn reading into doing.</p>
 <div class="meta"><span class="pill level-4">Expert</span><span class="pill">~90 min (or keep it open as a reference)</span><span class="pill">Prerequisites: Modules 01 to 19, or dip in anywhere</span></div>
 
 <div class="objectives">
@@ -124,14 +124,14 @@
 <text x="430" y="282" text-anchor="middle" class="sm">+ grader, fixed across runs</text>
 <line class="ln" x1="330" y1="70" x2="222" y2="70" marker-end="url(#m20a)"/>
 <line class="ln" x1="530" y1="70" x2="638" y2="70" marker-end="url(#m20a)"/>
-<line class="ln" x1="150" y1="104" x2="330" y2="214" marker-end="url(#m20a)"/>
+<line class="ln accent flow" x1="150" y1="104" x2="330" y2="214" marker-end="url(#m20a)"/>
 <line class="ln" x1="430" y1="104" x2="430" y2="203" marker-end="url(#m20a)"/>
 <line class="ln" x1="690" y1="104" x2="530" y2="214" marker-end="url(#m20a)"/>
-<line class="ln" x1="330" y1="250" x2="222" y2="250" marker-end="url(#m20a)"/>
+<line class="ln accent flow" x1="330" y1="250" x2="222" y2="250" marker-end="url(#m20a)"/>
 <line class="ln" x1="638" y1="250" x2="532" y2="250" marker-end="url(#m20a)"/>
-<line class="ln" x1="120" y1="284" x2="120" y2="395" marker-end="url(#m20a)"/>
+<line class="ln accent flow" x1="120" y1="284" x2="120" y2="395" marker-end="url(#m20a)"/>
 <line class="ln" x1="120" y1="464" x2="120" y2="565" marker-end="url(#m20a)"/>
-<line class="ln" x1="222" y1="430" x2="328" y2="430" marker-end="url(#m20a)"/>
+<line class="ln accent flow" x1="222" y1="430" x2="328" y2="430" marker-end="url(#m20a)"/>
 <line class="ln" x1="430" y1="298" x2="430" y2="395" marker-end="url(#m20a)"/>
 <line class="ln" x1="430" y1="566" x2="430" y2="465" marker-end="url(#m20a)"/>
 <line class="ln" x1="222" y1="600" x2="328" y2="600" marker-end="url(#m20a)"/>
@@ -178,7 +178,7 @@
 <tr><td>Metrics</td><td>Pick the metric that matches the decision: pass@k for "a verifier picks the best", pass^k for "it must work every time", plus cost and latency.</td><td><a href="04-metrics-and-statistics.html">04</a></td></tr>
 <tr><td>Statistics</td><td>Every number gets a standard error; comparisons use paired tests; eval size comes from a power analysis.</td><td><a href="04-metrics-and-statistics.html">04</a></td></tr>
 <tr><td>Benchmarks</td><td>Useful for comparing systems, useless the day they saturate or leak; always check the harness and date.</td><td><a href="18-benchmark-pitfalls.html">18</a></td></tr>
-<tr><td>Tools</td><td>Five families: benchmark runners, research/safety frameworks, CI test runners, observability platforms, and red-team scanners.</td><td><a href="14-tools-landscape.html">14</a>, <a href="15-production-evals.html">15</a></td></tr>
+<tr><td>Tools</td><td>Five families: research harnesses, developer test and CI tools, observability plus eval platforms, metric and judge libraries, and cloud vendor services.</td><td><a href="14-tools-landscape.html">14</a>, <a href="15-production-evals.html">15</a></td></tr>
 <tr><td>Labs and evaluators</td><td>Labs publish system cards and frontier safety policies; METR, AISI, CAISI, Apollo and Epoch check them from outside.</td><td><a href="16-how-labs-do-evals.html">16</a></td></tr>
 <tr><td>Safety evals</td><td>Threshold ("rule-out") evals for CBRN, cyber, AI R&amp;D and autonomy, plus propensity evals for scheming and sabotage.</td><td><a href="17-safety-evals.html">17</a></td></tr>
 <tr><td>Pitfalls</td><td>Contamination, saturation, label noise, harness dependence, leaderboard gaming, reward hacking and evaluation awareness.</td><td><a href="18-benchmark-pitfalls.html">18</a></td></tr>
@@ -327,7 +327,7 @@
 <tr><td>METR time horizon</td><td>Software/ML tasks with timed human baselines</td><td>Logistic fit of success vs log human time; 50% horizon</td><td>228 tasks (TH 1.1)</td></tr>
 <tr><td>GDPval</td><td>Real professional deliverable, 44 occupations</td><td>Blinded expert pairwise comparison, win-or-tie rate</td><td>1,320 (220 gold)</td></tr>
 <tr><td>HLE</td><td>Frontier-hard expert question</td><td>LLM judge vs answer, plus calibration error</td><td>2,500</td></tr>
-<tr><td>ARC-AGI-3</td><td>Interactive game with no instructions</td><td>Action efficiency vs humans</td><td>Hundreds of environments</td></tr>
+<tr><td>ARC-AGI-3</td><td>Interactive game with no instructions</td><td>Levels solved, compared with human players</td><td>Hundreds of environments</td></tr>
 <tr><td>Audio MultiChallenge</td><td>Multi-turn spoken dialogue</td><td>Instance-specific rubrics, LLM judge</td><td>452 conversations</td></tr>
 </table></div>
 
@@ -382,6 +382,293 @@
 <li><b>Threats.</b> Contamination, noise, harness differences, judge bias, flaky environments, reward hacking, evaluation awareness. Say which you checked and how.</li>
 </ol>
 
+<h2>Visual cheat sheets</h2>
+<p>Most expert questions reduce to five recurring choices: which grader, which metric, how to read pass@k against pass^k, how big the noise is, and what to do when a number moves. Each cheat sheet below is one of those choices drawn as a picture. Learn them well enough to sketch on a whiteboard, and you will have a ready answer for most "how would you measure X?" questions.</p>
+
+<h3>Which grader should I use?</h3>
+<p>Ask three questions in order and stop at the first "yes". The order matters: code graders are the cheapest and most repeatable, so you only move down the ladder when code genuinely cannot see what you need (<a href="03-graders.html">Module 03</a>). Whatever you pick, humans stay in the loop as the source of labels that keep the automatic graders honest.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 452" role="img" aria-label="Decision tree for choosing a grader: if a program can check it, use a code grader; if it is one narrow judgement, use a validated LLM judge; if it is subjective or high stakes, use human graders, whose labels also calibrate the judge; otherwise split the criterion up. Grade outcomes for the headline number and processes for safety and diagnosis.">
+<defs><marker id="m20i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="460" y="20" text-anchor="middle" class="sm">Ask in order and stop at the first yes</text>
+<rect class="box accent" x="80" y="36" width="280" height="62" rx="8"/>
+<text x="220" y="58" text-anchor="middle" class="b">1 · Can a program check it?</text>
+<text x="220" y="75" text-anchor="middle" class="sm">final state, tests pass, exact answer,</text>
+<text x="220" y="89" text-anchor="middle" class="sm">schema, tool name and arguments</text>
+<rect class="box accent" x="80" y="166" width="280" height="62" rx="8"/>
+<text x="220" y="188" text-anchor="middle" class="b">2 · Is it one narrow judgement?</text>
+<text x="220" y="205" text-anchor="middle" class="sm">faithful to sources? followed policy?</text>
+<text x="220" y="219" text-anchor="middle" class="sm">right tone? one failure mode only</text>
+<rect class="box accent" x="80" y="296" width="280" height="62" rx="8"/>
+<text x="220" y="318" text-anchor="middle" class="b">3 · Subjective or high stakes?</text>
+<text x="220" y="335" text-anchor="middle" class="sm">taste, medical or legal, launch calls,</text>
+<text x="220" y="349" text-anchor="middle" class="sm">or no validated judge yet</text>
+<rect class="box good" x="470" y="36" width="370" height="62" rx="8"/>
+<text x="655" y="58" text-anchor="middle" class="b">Code grader</text>
+<text x="655" y="75" text-anchor="middle" class="sm">state checks, unit tests, regex, AST match</text>
+<text x="655" y="89" text-anchor="middle" class="sm">fast, cheap, repeatable: try this first</text>
+<rect class="box warn" x="470" y="166" width="370" height="62" rx="8"/>
+<text x="655" y="188" text-anchor="middle" class="b">LLM judge</text>
+<text x="655" y="205" text-anchor="middle" class="sm">binary pass/fail with reasoning, one per failure</text>
+<text x="655" y="219" text-anchor="middle" class="sm">must be validated: TPR and TNR vs human labels</text>
+<rect class="box violet" x="470" y="296" width="370" height="62" rx="8"/>
+<text x="655" y="318" text-anchor="middle" class="b">Human graders</text>
+<text x="655" y="335" text-anchor="middle" class="sm">written rubric with examples, overlap for kappa</text>
+<text x="655" y="349" text-anchor="middle" class="sm">slow and costly: the gold standard for calibration</text>
+<line class="ln good flow" x1="361" y1="67" x2="468" y2="67" marker-end="url(#m20i)"/>
+<line class="ln" x1="361" y1="197" x2="468" y2="197" marker-end="url(#m20i)"/>
+<line class="ln" x1="361" y1="327" x2="468" y2="327" marker-end="url(#m20i)"/>
+<rect class="fill-soft" x="398" y="59" width="32" height="16" rx="4"/><text x="414" y="71" text-anchor="middle" class="sm">yes</text>
+<rect class="fill-soft" x="398" y="189" width="32" height="16" rx="4"/><text x="414" y="201" text-anchor="middle" class="sm">yes</text>
+<rect class="fill-soft" x="398" y="319" width="32" height="16" rx="4"/><text x="414" y="331" text-anchor="middle" class="sm">yes</text>
+<line class="ln" x1="220" y1="99" x2="220" y2="164" marker-end="url(#m20i)"/>
+<line class="ln" x1="220" y1="229" x2="220" y2="294" marker-end="url(#m20i)"/>
+<rect class="fill-soft" x="206" y="123" width="28" height="16" rx="4"/><text x="220" y="135" text-anchor="middle" class="sm">no</text>
+<rect class="fill-soft" x="206" y="253" width="28" height="16" rx="4"/><text x="220" y="265" text-anchor="middle" class="sm">no</text>
+<path class="ln dash" d="M80,340 C28,340 28,210 78,210" marker-end="url(#m20i)"/>
+<text x="66" y="275" text-anchor="middle" class="sm" transform="rotate(-90 66 275)">no: split it up</text>
+<path class="ln violet dash" d="M800,295 L800,231" marker-end="url(#m20i)"/>
+<rect class="fill-soft" x="700" y="255" width="94" height="16" rx="4"/><text x="747" y="267" text-anchor="middle" class="sm">labels calibrate</text>
+<rect class="box good" x="80" y="384" width="370" height="52" rx="8"/>
+<text x="265" y="405" text-anchor="middle" class="b">Outcome grading</text>
+<text x="265" y="423" text-anchor="middle" class="sm">the final state: use it for the headline number</text>
+<rect class="box accent" x="470" y="384" width="370" height="52" rx="8"/>
+<text x="655" y="405" text-anchor="middle" class="b">Process grading</text>
+<text x="655" y="423" text-anchor="middle" class="sm">the path: safety steps, cost, diagnosis</text>
+</svg>
+<figcaption><b>The grader ladder.</b> Code first, a narrow validated judge where code cannot see, humans for subjective or high-stakes calls and to produce the labels that calibrate the judge. If none fits, the criterion is too broad: split it. Separately, decide whether you are grading the outcome (the end state) or the process (the path).</figcaption>
+</figure>
+
+<h3>Which metric answers my question?</h3>
+<p>A metric is only "right" relative to a decision. The same transcripts can be summarised as pass@k, pass^k, a mean score or a win rate, and each tells a different story (<a href="04-metrics-and-statistics.html">Module 04</a>). Start from the question on the left and read across.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 470" role="img" aria-label="Matching decisions to metrics: best-of-k with a verifier uses pass@k; must work every time uses pass^k; rubric scores use a mean with standard error; preferences use win rate or Bradley-Terry; detectors use precision and recall; cost questions use cost, latency and the Pareto frontier; long tasks use time horizon and milestones. Every metric gets a confidence interval.">
+<defs><marker id="m20j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="200" y="24" text-anchor="middle" class="b">If the decision is…</text>
+<text x="650" y="24" text-anchor="middle" class="b">…report this</text>
+<rect class="box plain" x="20" y="38" width="360" height="44" rx="8"/>
+<text x="200" y="65" text-anchor="middle">A verifier or reviewer picks the best of k tries</text>
+<rect class="box accent" x="460" y="38" width="380" height="44" rx="8"/>
+<text x="476" y="56" class="b">pass@k</text>
+<text x="476" y="73" class="sm">1 − (1 − p)^k: at least one of k attempts succeeds</text>
+<line class="ln" x1="381" y1="60" x2="458" y2="60" marker-end="url(#m20j)"/>
+<rect class="box plain" x="20" y="92" width="360" height="44" rx="8"/>
+<text x="200" y="119" text-anchor="middle">It must work every time a user asks</text>
+<rect class="box good" x="460" y="92" width="380" height="44" rx="8"/>
+<text x="476" y="110" class="b">pass^k</text>
+<text x="476" y="127" class="sm">p^k: all k attempts succeed (the τ-bench reliability metric)</text>
+<line class="ln good flow" x1="381" y1="114" x2="458" y2="114" marker-end="url(#m20j)"/>
+<rect class="box plain" x="20" y="146" width="360" height="44" rx="8"/>
+<text x="200" y="173" text-anchor="middle">Output is scored on a rubric or a scale</text>
+<rect class="box violet" x="460" y="146" width="380" height="44" rx="8"/>
+<text x="476" y="164" class="b">Mean score ± SE, per criterion</text>
+<text x="476" y="181" class="sm">prefer binary checks: 1 to 10 scales compress</text>
+<line class="ln" x1="381" y1="168" x2="458" y2="168" marker-end="url(#m20j)"/>
+<rect class="box plain" x="20" y="200" width="360" height="44" rx="8"/>
+<text x="200" y="227" text-anchor="middle">Which of two outputs do people prefer?</text>
+<rect class="box warn" x="460" y="200" width="380" height="44" rx="8"/>
+<text x="476" y="218" class="b">Win rate or Bradley–Terry rating</text>
+<text x="476" y="235" class="sm">swap positions; control for length and style</text>
+<line class="ln" x1="381" y1="222" x2="458" y2="222" marker-end="url(#m20j)"/>
+<rect class="box plain" x="20" y="254" width="360" height="44" rx="8"/>
+<text x="200" y="281" text-anchor="middle">The system flags things (a judge, a filter)</text>
+<rect class="box bad" x="460" y="254" width="380" height="44" rx="8"/>
+<text x="476" y="272" class="b">Precision and recall (TPR and TNR)</text>
+<text x="476" y="289" class="sm">never raw accuracy when classes are imbalanced</text>
+<line class="ln" x1="381" y1="276" x2="458" y2="276" marker-end="url(#m20j)"/>
+<rect class="box plain" x="20" y="308" width="360" height="44" rx="8"/>
+<text x="200" y="335" text-anchor="middle">Can we afford it, and is it fast enough?</text>
+<rect class="box accent" x="460" y="308" width="380" height="44" rx="8"/>
+<text x="476" y="326" class="b">Cost per task, P50 and P95 latency</text>
+<text x="476" y="343" class="sm">plot quality against cost: the Pareto frontier</text>
+<line class="ln" x1="381" y1="330" x2="458" y2="330" marker-end="url(#m20j)"/>
+<rect class="box plain" x="20" y="362" width="360" height="44" rx="8"/>
+<text x="200" y="389" text-anchor="middle">Tasks take hours: how far can it get?</text>
+<rect class="box violet" x="460" y="362" width="380" height="44" rx="8"/>
+<text x="476" y="380" class="b">Time horizon, milestones</text>
+<text x="476" y="397" class="sm">partial credit; success vs log human task length</text>
+<line class="ln" x1="381" y1="384" x2="458" y2="384" marker-end="url(#m20j)"/>
+<rect class="box good" x="20" y="422" width="820" height="34" rx="8"/>
+<text x="430" y="444" text-anchor="middle" class="b">Whatever you pick: add a 95% CI, the number of trials, the harness and the date</text>
+</svg>
+<figcaption><b>Decision first, metric second.</b> Seven common decisions and the metric that answers each. The two rows people confuse most are the first two: pass@k rewards any single success, pass^k demands every attempt succeed. The bottom bar is the part that makes any of them trustworthy.</figcaption>
+</figure>
+
+<h3>pass@k vs pass^k on one page</h3>
+<p>This is the single most asked metric question in agent interviews. The chart shows exact values for one task with a fixed per-trial success rate p, assuming independent trials: pass@k climbs toward 100% while pass^k decays toward zero. A 95% agent (dashed green) still falls to about 60% when it must succeed ten times in a row.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 350" role="img" aria-label="Chart of pass@k and pass^k against k from 1 to 10. With p equal to 0.8, pass@k rises to nearly 100 percent by k equals 4 while pass^k falls to 33 percent at k equals 5 and 11 percent at k equals 10; with p equal to 0.95, pass^k falls to 60 percent at k equals 10. A side panel gives when to use each metric and the unbiased estimators.">
+<defs><marker id="m20k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="fill-line" x="70" y="105" width="400" height="1"/>
+<rect class="fill-line" x="70" y="170" width="400" height="1"/>
+<rect class="fill-line" x="70" y="235" width="400" height="1"/>
+<line class="ln" x1="70" y1="300" x2="70" y2="36"/>
+<line class="ln" x1="70" y1="300" x2="478" y2="300" marker-end="url(#m20k)"/>
+<text x="62" y="304" text-anchor="end" class="sm">0%</text>
+<text x="62" y="239" text-anchor="end" class="sm">25%</text>
+<text x="62" y="174" text-anchor="end" class="sm">50%</text>
+<text x="62" y="109" text-anchor="end" class="sm">75%</text>
+<text x="62" y="44" text-anchor="end" class="sm">100%</text>
+<text x="70" y="316" text-anchor="middle" class="sm">1</text>
+<text x="114" y="316" text-anchor="middle" class="sm">2</text>
+<text x="203" y="316" text-anchor="middle" class="sm">4</text>
+<text x="292" y="316" text-anchor="middle" class="sm">6</text>
+<text x="381" y="316" text-anchor="middle" class="sm">8</text>
+<text x="470" y="316" text-anchor="middle" class="sm">10</text>
+<text x="270" y="336" text-anchor="middle" class="sm">k (number of attempts)</text>
+<text x="22" y="170" text-anchor="middle" class="sm" transform="rotate(-90 22 170)">success</text>
+<line class="ln dash" x1="248" y1="40" x2="248" y2="300"/>
+<polyline class="ln accent thick" points="70,92 114,50 159,42 203,40 248,40 292,40 337,40 381,40 426,40 470,40"/>
+<polyline class="ln good thick dash" points="70,53 114,65 159,77 203,88 248,99 292,109 337,118 381,128 426,136 470,144"/>
+<polyline class="ln bad thick" points="70,92 114,134 159,167 203,194 248,215 292,232 337,245 381,256 426,265 470,272"/>
+<circle class="fill-accent" cx="248" cy="40" r="4"/>
+<circle class="fill-bad" cx="248" cy="215" r="4"/>
+<text x="256" y="32" class="b t-accent">pass@5 ≈ 99.97%</text>
+<text x="256" y="211" class="b t-bad">pass^5 ≈ 32.8%</text>
+<text x="466" y="58" text-anchor="end" class="t-accent">pass@k, p = 0.8</text>
+<text x="466" y="162" text-anchor="end" class="t-good">pass^k, p = 0.95</text>
+<text x="466" y="292" text-anchor="end" class="t-bad">pass^k, p = 0.8</text>
+<rect class="box accent" x="510" y="28" width="330" height="92" rx="8"/>
+<text x="526" y="50" class="b">pass@k: at least one of k succeeds</text>
+<text x="526" y="68" class="sm">use when tests, a verifier or a human</text>
+<text x="526" y="83" class="sm">picks the best attempt</text>
+<text x="526" y="106" class="mono">1 − C(n−c, k) / C(n, k)</text>
+<rect class="box bad" x="510" y="132" width="330" height="92" rx="8"/>
+<text x="526" y="154" class="b">pass^k: all k succeed</text>
+<text x="526" y="172" class="sm">use when every request must work:</text>
+<text x="526" y="187" class="sm">autonomous, customer-facing agents</text>
+<text x="526" y="210" class="mono">C(c, k) / C(n, k)</text>
+<rect class="box plain" x="510" y="236" width="330" height="64" rx="8"/>
+<text x="526" y="258" class="b">Read the gap</text>
+<text x="526" y="276" class="sm">a wide gap means an inconsistent agent;</text>
+<text x="526" y="291" class="sm">at k = 1 both equal pass@1</text>
+</svg>
+<figcaption><b>Same agent, opposite verdicts.</b> Exact values from 1 − (1 − p)^k and p^k for a single task with independent trials; this is an idealised illustration, not benchmark data. Real suites average over tasks with different p, so real curves bend more gently. The mono lines are the unbiased estimators from n samples with c correct (Chen et al. 2021; Yao et al. 2024).</figcaption>
+</figure>
+
+<h3>How big is the noise?</h3>
+<p>Before arguing about any score difference, know the size of the error bar. For a success rate the 95% half-width is 1.96 × √(p(1 − p)/n), which is largest at p = 0.5. The curve below plots that worst case and marks four well-known benchmark sizes. The shape is the lesson: every halving of the error bar costs four times the tasks (<a href="04-metrics-and-statistics.html">Module 04</a>).</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 330" role="img" aria-label="Chart of 95 percent confidence-interval half-width against number of tasks on a log scale, at a 50 percent success rate: about plus or minus 20 points at 25 tasks, 10 at 100, 5 at 400 and 2.5 at 1,600. Terminal-Bench 2.0 with 89 tasks is about plus or minus 10, GPQA Diamond with 198 about 7, SWE-bench Verified with 500 about 4.4, and HLE with 2,500 about 2.">
+<defs><marker id="m20n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="fill-line" x="80" y="100" width="560" height="1"/>
+<rect class="fill-line" x="80" y="160" width="560" height="1"/>
+<rect class="fill-line" x="80" y="220" width="560" height="1"/>
+<line class="ln" x1="80" y1="280" x2="80" y2="34"/>
+<line class="ln" x1="80" y1="280" x2="648" y2="280" marker-end="url(#m20n)"/>
+<text x="72" y="284" text-anchor="end" class="sm">0</text>
+<text x="72" y="224" text-anchor="end" class="sm">5</text>
+<text x="72" y="164" text-anchor="end" class="sm">10</text>
+<text x="72" y="104" text-anchor="end" class="sm">15</text>
+<text x="72" y="44" text-anchor="end" class="sm">20</text>
+<text x="80" y="296" text-anchor="middle" class="sm">25</text>
+<text x="160" y="296" text-anchor="middle" class="sm">50</text>
+<text x="240" y="296" text-anchor="middle" class="sm">100</text>
+<text x="320" y="296" text-anchor="middle" class="sm">200</text>
+<text x="400" y="296" text-anchor="middle" class="sm">400</text>
+<text x="480" y="296" text-anchor="middle" class="sm">800</text>
+<text x="560" y="296" text-anchor="middle" class="sm">1,600</text>
+<text x="640" y="296" text-anchor="middle" class="sm">3,200</text>
+<text x="360" y="318" text-anchor="middle" class="sm">tasks in the eval (n), log scale</text>
+<text x="30" y="160" text-anchor="middle" class="sm" transform="rotate(-90 30 160)">± points (95% CI)</text>
+<polyline class="ln accent thick" points="80,45 120,82 160,114 200,140 240,162 280,181 320,197 360,210 400,221 440,231 480,238 520,245 560,251 600,255 640,259"/>
+<circle class="fill-warn" cx="227" cy="155" r="4.5"/>
+<text x="236" y="147" class="sm b">Terminal-Bench 2.0 (89): ±10.4</text>
+<circle class="fill-warn" cx="319" cy="196" r="4.5"/>
+<text x="330" y="189" class="sm b">GPQA Diamond (198): ±7.0</text>
+<circle class="fill-warn" cx="426" cy="227" r="4.5"/>
+<text x="436" y="216" class="sm b">SWE-bench Verified (500): ±4.4</text>
+<circle class="fill-warn" cx="612" cy="257" r="4.5"/>
+<text x="600" y="241" text-anchor="end" class="sm b">HLE (2,500): ±2.0</text>
+<rect class="box plain" x="670" y="34" width="170" height="104" rx="8"/>
+<text x="755" y="56" text-anchor="middle" class="b">Rule of thumb</text>
+<text x="755" y="75" text-anchor="middle" class="sm">4x the tasks halves</text>
+<text x="755" y="90" text-anchor="middle" class="sm">the error bar</text>
+<text x="755" y="118" text-anchor="middle" class="mono">1.96·√(p(1−p)/n)</text>
+<rect class="box warn" x="670" y="156" width="170" height="104" rx="8"/>
+<text x="755" y="178" text-anchor="middle" class="b">"Is +3 real?"</text>
+<text x="755" y="197" text-anchor="middle" class="sm">on 500 tasks one score</text>
+<text x="755" y="212" text-anchor="middle" class="sm">is already ±4.4, so use</text>
+<text x="755" y="227" text-anchor="middle" class="sm">a paired test on the</text>
+<text x="755" y="242" text-anchor="middle" class="sm">same tasks</text>
+</svg>
+<figcaption><b>Error bars shrink with the square root of n.</b> Worst-case (p = 0.5) 95% half-widths computed from the formula, not measured results; at higher accuracy the bars are narrower (GPQA Diamond near the frontier is closer to ±5). Clustered tasks make real bars wider, and paired tests make comparisons sharper than two separate intervals suggest.</figcaption>
+</figure>
+
+<h3>"My eval score moved. Why?"</h3>
+<p>This is the everyday debugging question, and the expert answer is an ordered checklist, cheapest check first. Most "regressions" and "breakthroughs" die at step 1 or 2. Only after ruling out noise, measurement changes and infrastructure do you get to the interesting part: which tasks flipped and what the transcripts show (<a href="12-error-analysis.html">Module 12</a>, <a href="15-production-evals.html">Module 15</a>).</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 552" role="img" aria-label="Debugging flowchart for a moved eval score: first check whether the change is outside the noise, then whether anything other than the system changed, then whether infrastructure errors were counted as failures, then which slice moved, then read the transcripts of flipped tasks and decide.">
+<defs><marker id="m20l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box warn pulse" x="40" y="12" width="380" height="42" rx="8"/>
+<text x="230" y="38" text-anchor="middle" class="b">The eval score moved by Δ points</text>
+<line class="ln accent flow" x1="230" y1="55" x2="230" y2="70" marker-end="url(#m20l)"/>
+<rect class="box accent" x="40" y="72" width="380" height="62" rx="8"/>
+<text x="230" y="94" text-anchor="middle" class="b">1 · Is Δ outside the noise?</text>
+<text x="230" y="111" text-anchor="middle" class="sm">paired test on the same tasks,</text>
+<text x="230" y="125" text-anchor="middle" class="sm">95% CI, enough trials per task</text>
+<rect class="box accent" x="40" y="172" width="380" height="62" rx="8"/>
+<text x="230" y="194" text-anchor="middle" class="b">2 · Did anything but the system change?</text>
+<text x="230" y="211" text-anchor="middle" class="sm">harness, prompt template, judge model,</text>
+<text x="230" y="225" text-anchor="middle" class="sm">dataset version, tools, step budget</text>
+<rect class="box accent" x="40" y="272" width="380" height="62" rx="8"/>
+<text x="230" y="294" text-anchor="middle" class="b">3 · Are infrastructure errors counted?</text>
+<text x="230" y="311" text-anchor="middle" class="sm">timeouts, rate limits, crashed containers,</text>
+<text x="230" y="325" text-anchor="middle" class="sm">flaky live sites scored as agent failures</text>
+<rect class="box accent" x="40" y="372" width="380" height="62" rx="8"/>
+<text x="230" y="394" text-anchor="middle" class="b">4 · Where did it move?</text>
+<text x="230" y="411" text-anchor="middle" class="sm">slice by category, repo, difficulty, length;</text>
+<text x="230" y="425" text-anchor="middle" class="sm">list the tasks that flipped (discordant)</text>
+<rect class="box accent" x="40" y="472" width="380" height="62" rx="8"/>
+<text x="230" y="494" text-anchor="middle" class="b">5 · Read the flipped transcripts</text>
+<text x="230" y="511" text-anchor="middle" class="sm">real behaviour change, or a grader bug,</text>
+<text x="230" y="525" text-anchor="middle" class="sm">reward hacking, contamination?</text>
+<line class="ln accent flow" x1="230" y1="135" x2="230" y2="170" marker-end="url(#m20l)"/>
+<line class="ln accent flow" x1="230" y1="235" x2="230" y2="270" marker-end="url(#m20l)"/>
+<line class="ln accent flow" x1="230" y1="335" x2="230" y2="370" marker-end="url(#m20l)"/>
+<line class="ln accent flow" x1="230" y1="435" x2="230" y2="470" marker-end="url(#m20l)"/>
+<rect class="fill-soft" x="213" y="145" width="34" height="16" rx="4"/><text x="230" y="157" text-anchor="middle" class="sm">yes</text>
+<rect class="fill-soft" x="216" y="245" width="28" height="16" rx="4"/><text x="230" y="257" text-anchor="middle" class="sm">no</text>
+<rect class="fill-soft" x="216" y="345" width="28" height="16" rx="4"/><text x="230" y="357" text-anchor="middle" class="sm">no</text>
+<rect class="box plain" x="480" y="72" width="360" height="62" rx="8"/>
+<text x="660" y="94" text-anchor="middle" class="b">It is noise</text>
+<text x="660" y="111" text-anchor="middle" class="sm">do not act on it; add tasks or trials,</text>
+<text x="660" y="125" text-anchor="middle" class="sm">and run a power analysis next time</text>
+<rect class="box warn" x="480" y="172" width="360" height="62" rx="8"/>
+<text x="660" y="194" text-anchor="middle" class="b">It is a measurement change</text>
+<text x="660" y="211" text-anchor="middle" class="sm">re-run the old system on the new setup</text>
+<text x="660" y="225" text-anchor="middle" class="sm">so that exactly one thing differs</text>
+<rect class="box bad" x="480" y="272" width="360" height="62" rx="8"/>
+<text x="660" y="294" text-anchor="middle" class="b">Fix the infrastructure first</text>
+<text x="660" y="311" text-anchor="middle" class="sm">log infra errors separately and re-run,</text>
+<text x="660" y="325" text-anchor="middle" class="sm">or your error bars measure your DevOps</text>
+<rect class="box violet" x="480" y="372" width="360" height="62" rx="8"/>
+<text x="660" y="394" text-anchor="middle" class="b">Name the slice</text>
+<text x="660" y="411" text-anchor="middle" class="sm">a gain on easy tasks can hide a loss</text>
+<text x="660" y="425" text-anchor="middle" class="sm">on the flow that matters most</text>
+<rect class="box good" x="480" y="472" width="360" height="62" rx="8"/>
+<text x="660" y="494" text-anchor="middle" class="b">Decide</text>
+<text x="660" y="511" text-anchor="middle" class="sm">real change: keep, fix or roll back;</text>
+<text x="660" y="525" text-anchor="middle" class="sm">grader bug: fix the grader, re-score</text>
+<line class="ln" x1="421" y1="103" x2="478" y2="103" marker-end="url(#m20l)"/>
+<line class="ln" x1="421" y1="203" x2="478" y2="203" marker-end="url(#m20l)"/>
+<line class="ln" x1="421" y1="303" x2="478" y2="303" marker-end="url(#m20l)"/>
+<line class="ln" x1="421" y1="403" x2="478" y2="403" marker-end="url(#m20l)"/>
+<line class="ln good" x1="421" y1="503" x2="478" y2="503" marker-end="url(#m20l)"/>
+<rect class="fill-soft" x="436" y="95" width="28" height="16" rx="4"/><text x="450" y="107" text-anchor="middle" class="sm">no</text>
+<rect class="fill-soft" x="433" y="195" width="34" height="16" rx="4"/><text x="450" y="207" text-anchor="middle" class="sm">yes</text>
+<rect class="fill-soft" x="433" y="295" width="34" height="16" rx="4"/><text x="450" y="307" text-anchor="middle" class="sm">yes</text>
+<rect class="fill-soft" x="429" y="395" width="42" height="16" rx="4"/><text x="450" y="407" text-anchor="middle" class="sm">shows</text>
+<rect class="fill-soft" x="431" y="495" width="38" height="16" rx="4"/><text x="450" y="507" text-anchor="middle" class="sm">then</text>
+</svg>
+<figcaption><b>Debug a moved score in this order.</b> Noise, then measurement changes (harness, prompts, judge, data), then infrastructure, then slices, then transcripts. Each exit on the right is a complete answer on its own; only a change that survives the first three checks is worth reading transcripts for.</figcaption>
+</figure>
+
 <h2>Expert interview drill</h2>
 <p>Forty-eight questions in nine themes. Each answer is written the way a strong candidate would say it: precise, with numbers where they matter, and honest about what is uncertain. Questions tagged <b>design</b> are open-ended scenarios; use the six-step frame. Try each question yourself before opening it.</p>
 
@@ -412,7 +699,7 @@
 <h3>Statistics</h3>
 
 <details><summary>6. Compare pass@k and pass^k. When does each matter?</summary>
-<p><b>pass@k</b> is the probability that <em>at least one</em> of k attempts succeeds; <b>pass^k</b> is the probability that <em>all</em> k succeed. If each trial succeeds independently with probability p, pass@k = 1 − (1 − p)^k and pass^k = p^k. With p = 0.8 and k = 5, pass@5 ≈ 99.97% but pass^5 ≈ 32.8%: the same agent looks nearly perfect or unreliable depending on the question. From n samples with c correct, the unbiased estimators are pass@k = 1 − C(n−c, k)/C(n, k) (Chen et al. 2021) and pass^k = C(c, k)/C(n, k) (Yao et al. 2024). Use pass@k when something downstream picks the best attempt (a test suite, a human reviewer, best-of-n with a verifier); use pass^k for autonomous, customer-facing agents that run the same kind of task thousands of times. The τ-bench paper reported that even strong function-calling models fell below 25% pass^8 in its retail domain. See <a href="04-metrics-and-statistics.html">Module 04</a>.</p>
+<p><b>pass@k</b> is the probability that <em>at least one</em> of k attempts succeeds; <b>pass^k</b> is the probability that <em>all</em> k succeed. If each trial succeeds independently with probability p, pass@k = 1 − (1 − p)^k and pass^k = p^k. With p = 0.8 and k = 5, pass@5 ≈ 99.97% but pass^5 ≈ 32.8%: the same agent looks nearly perfect or unreliable depending on the question. From n samples with c correct, the unbiased estimators are pass@k = 1 − C(n−c, k)/C(n, k) (Chen et al. 2021) and pass^k = C(c, k)/C(n, k) (Yao et al. 2024). Use pass@k when something downstream picks the best attempt (a test suite, a human reviewer, best-of-n with a verifier); use pass^k for autonomous, customer-facing agents that run the same kind of task thousands of times. The τ-bench paper reported that even a strong function-calling agent (gpt-4o) fell below 25% pass^8 in its retail domain. See <a href="04-metrics-and-statistics.html">Module 04</a>.</p>
 </details>
 
 <details><summary>7. On 200 tasks, model B beats model A by 3 points. Is it real?</summary>
@@ -651,6 +938,78 @@ inspect view   # browse transcripts and scores</code></pre>
 <details><summary>31. How does Anthropic's RSP differ from OpenAI's Preparedness Framework?</summary>
 <p>They share the core logic: capability evals act as <b>rule-out tests</b>, and when a lab cannot rule out a dangerous threshold, stronger safeguards are required before deployment. The structure differs. Anthropic's <b>Responsible Scaling Policy</b> ties safeguard standards (deployment and security) to AI Safety Levels; ASL-3 was first activated in May 2025 for Claude Opus 4 as a precaution, because Anthropic could not rule out CBRN risk. RSP v3.0 (February 2026) specifies only the next level of safeguards rather than a ladder of future levels, adds a non-binding Frontier Safety Roadmap and Risk Reports every 3 to 6 months; the current version (v3.4, July 2026) names CBRN, AI R&amp;D and cyber. OpenAI's <b>Preparedness Framework v2</b> (April 2025) defines Tracked Categories (biological and chemical, cybersecurity, AI self-improvement) plus Research Categories (such as long-range autonomy and sandbagging), each with <b>High</b> and <b>Critical</b> thresholds; Capabilities Reports and Safeguards Reports go to a Safety Advisory Group, which recommends to leadership. Google DeepMind's Frontier Safety Framework uses Critical Capability Levels with early-warning alert thresholds. Frameworks change often, so cite versions and dates. See <a href="16-how-labs-do-evals.html">Module 16</a> and <a href="17-safety-evals.html">Module 17</a>.</p>
 </details>
+<figure class="diagram">
+<svg viewBox="0 0 860 482" role="img" aria-label="Three frontier safety frameworks at a glance: all share the logic of running dangerous-capability evals, asking whether a threshold can be ruled out, and requiring stronger safeguards if not. Anthropic's RSP uses AI Safety Levels; OpenAI's Preparedness Framework uses High and Critical thresholds; Google DeepMind's FSF uses Critical Capability Levels with alert thresholds. External evaluators check them from outside.">
+<defs><marker id="m20m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="12" width="250" height="50" rx="8"/>
+<text x="145" y="33" text-anchor="middle" class="b">Run dangerous-capability evals</text>
+<text x="145" y="51" text-anchor="middle" class="sm">elicit as hard as an attacker would</text>
+<rect class="box warn" x="305" y="12" width="250" height="50" rx="8"/>
+<text x="430" y="33" text-anchor="middle" class="b">Can we rule out the threshold?</text>
+<text x="430" y="51" text-anchor="middle" class="sm">a confident negative, not a high score</text>
+<rect class="box bad" x="590" y="12" width="250" height="50" rx="8"/>
+<text x="715" y="33" text-anchor="middle" class="b">If not: stronger safeguards</text>
+<text x="715" y="51" text-anchor="middle" class="sm">deployment and security, before release</text>
+<line class="ln accent flow" x1="271" y1="37" x2="303" y2="37" marker-end="url(#m20m)"/>
+<line class="ln accent flow" x1="556" y1="37" x2="588" y2="37" marker-end="url(#m20m)"/>
+<text x="430" y="84" text-anchor="middle" class="sm">same logic, three rulebooks</text>
+<rect class="box accent" x="20" y="94" width="260" height="38" rx="8"/>
+<text x="150" y="118" text-anchor="middle" class="b">Anthropic · RSP</text>
+<rect class="box good" x="300" y="94" width="260" height="38" rx="8"/>
+<text x="430" y="118" text-anchor="middle" class="b">OpenAI · Preparedness</text>
+<rect class="box violet" x="580" y="94" width="260" height="38" rx="8"/>
+<text x="710" y="118" text-anchor="middle" class="b">Google DeepMind · FSF</text>
+<rect class="box plain" x="20" y="142" width="260" height="62" rx="8"/>
+<text x="34" y="159" class="sm">LEVELS</text>
+<text x="34" y="177">AI Safety Levels (ASL)</text>
+<text x="34" y="194">ASL-3 first activated May 2025</text>
+<rect class="box plain" x="300" y="142" width="260" height="62" rx="8"/>
+<text x="314" y="159" class="sm">LEVELS</text>
+<text x="314" y="177">High and Critical thresholds</text>
+<text x="314" y="194">per Tracked Category</text>
+<rect class="box plain" x="580" y="142" width="260" height="62" rx="8"/>
+<text x="594" y="159" class="sm">LEVELS</text>
+<text x="594" y="177">Critical Capability Levels</text>
+<text x="594" y="194">plus early-warning alert thresholds</text>
+<rect class="box plain" x="20" y="212" width="260" height="62" rx="8"/>
+<text x="34" y="229" class="sm">RISK AREAS</text>
+<text x="34" y="247">CBRN, AI R&amp;D, cyber</text>
+<rect class="box plain" x="300" y="212" width="260" height="62" rx="8"/>
+<text x="314" y="229" class="sm">TRACKED CATEGORIES</text>
+<text x="314" y="247">bio and chem, cybersecurity,</text>
+<text x="314" y="264">AI self-improvement</text>
+<rect class="box plain" x="580" y="212" width="260" height="62" rx="8"/>
+<text x="594" y="229" class="sm">RISK AREAS</text>
+<text x="594" y="247">CBRN, cyber, harmful manipulation,</text>
+<text x="594" y="264">ML R&amp;D, misalignment (exploratory)</text>
+<rect class="box plain" x="20" y="282" width="260" height="62" rx="8"/>
+<text x="34" y="299" class="sm">REPORTING</text>
+<text x="34" y="317">Risk Reports every 3 to 6 months</text>
+<text x="34" y="334">plus a Frontier Safety Roadmap</text>
+<rect class="box plain" x="300" y="282" width="260" height="62" rx="8"/>
+<text x="314" y="299" class="sm">REPORTING</text>
+<text x="314" y="317">Capabilities + Safeguards Reports</text>
+<text x="314" y="334">to the Safety Advisory Group</text>
+<rect class="box plain" x="580" y="282" width="260" height="62" rx="8"/>
+<text x="594" y="299" class="sm">REPORTING</text>
+<text x="594" y="317">safety case review before launch;</text>
+<text x="594" y="334">FSF report per frontier model</text>
+<rect class="box plain" x="20" y="352" width="260" height="62" rx="8"/>
+<text x="34" y="369" class="sm">VERSION (CHECK THE DATE)</text>
+<text x="34" y="387">v3.4, effective July 2026</text>
+<rect class="box plain" x="300" y="352" width="260" height="62" rx="8"/>
+<text x="314" y="369" class="sm">VERSION (CHECK THE DATE)</text>
+<text x="314" y="387">v2, April 2025</text>
+<rect class="box plain" x="580" y="352" width="260" height="62" rx="8"/>
+<text x="594" y="369" class="sm">VERSION (CHECK THE DATE)</text>
+<text x="594" y="387">v3.1, April 2026</text>
+<text x="594" y="404" class="sm">adds Tracked Capability Levels</text>
+<rect class="box warn" x="20" y="428" width="820" height="40" rx="8"/>
+<text x="40" y="453" class="b">Checked from outside:</text>
+<text x="190" y="453">METR · UK AISI · US CAISI · Apollo Research · Epoch AI</text>
+</svg>
+<figcaption><b>Three frameworks, one logic.</b> Each lab runs threshold ("rule-out") evals and adds safeguards when it cannot rule a threshold out; the names, categories and reporting routes differ. Versions are as of September 2026 from the course research notes: frameworks are revised often, so always cite the version and date you are quoting.</figcaption>
+</figure>
 
 <details><summary>32. What is in a system card, and how do you read one critically?</summary>
 <p>A frontier system card typically covers safeguards and harmlessness, honesty, agentic safety (prompt injection, malicious use), cyber, reward hacking, an alignment assessment, model welfare in Anthropic's case, and the frontier-safety evaluations that decide the safeguard level. Read it critically by asking: which harness and budget, how many trials, are there confidence intervals, which evals were run by third parties, what was the elicitation effort (a weakly elicited model under-reports capability), and what the card says about <b>evaluation awareness</b> (Anthropic's Claude Sonnet 4.5 card reported the model sometimes verbalised that it was being tested, and that probes found internal representations of this). Compare against the previous card for changed definitions. See <a href="16-how-labs-do-evals.html">Module 16</a>.</p>
@@ -877,7 +1236,7 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Clustered standard errors</dt><dd>Standard errors computed at the level of groups of related tasks, so related items are not counted as independent evidence. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Cohen's kappa</dt><dd>Agreement between two raters corrected for agreement expected by chance; 0 is chance, 1 is perfect. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
 <dt>Compounding error</dt><dd>End-to-end success of a multi-step task falls roughly as the product of per-step success rates, so small per-step gains matter a lot. <a class="m" href="11-multi-agent-long-horizon.html">Module 11</a></dd>
-<dt>Confidence interval (CI)</dt><dd>A range that would contain the true value in 95% (say) of repeated experiments; for a rate, roughly p̂ ± 1.96 × SE. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
+<dt>Confidence interval (CI)</dt><dd>A range built by a method that captures the true value in 95% (say) of repeated experiments; for a rate, roughly p̂ ± 1.96 × SE. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Construct validity</dt><dd>Whether an eval measures the capability it claims to, rather than a shortcut or a side effect. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Contamination</dt><dd>Test items or solutions leaking into training data, so scores measure memory rather than ability. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Critical Capability Level (CCL)</dt><dd>Google DeepMind's term for a capability threshold at which severe risk becomes possible without mitigations. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
@@ -923,6 +1282,7 @@ inspect view   # browse transcripts and scores</code></pre>
 <h3 id="gl-h">H</h3>
 <dl>
 <dt>Harbor</dt><dd>The Laude Institute's framework for containerised agent evals; the official harness for Terminal-Bench 2.0. <a class="m" href="14-tools-landscape.html">Module 14</a></dd>
+<dt>Harness (two meanings)</dt><dd>The <em>agent</em> harness is the scaffold around the model; the <em>evaluation</em> harness is the infrastructure that runs trials and graders. Always say which one you mean. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Held-out set</dt><dd>Data never used during development, reserved for the final estimate so it is not biased by iteration. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
 <dt>HLE (Humanity's Last Exam)</dt><dd>2,500 frontier-hard expert questions, reporting accuracy and calibration error. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Human baseline</dt><dd>The score humans achieve on the same tasks under stated conditions; essential for interpreting agent scores (OSWorld: 72.36%). <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
@@ -943,7 +1303,7 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Label noise</dt><dd>Wrong or ambiguous reference answers in a dataset; it caps the achievable score and blurs comparisons near the top. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Latency percentiles</dt><dd>P50, P95 and P99 response times; tails matter more than averages for user experience, especially in voice. <a class="m" href="09-voice-agents.html">Module 09</a></dd>
 <dt>Leaderboard Illusion</dt><dd>A 2025 paper showing how private variant testing, best-of-N publishing and unequal data access distort Arena rankings. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
-<dt>LiveCodeBench</dt><dd>A coding benchmark that keeps collecting new contest problems and scores models only on problems released after their training cutoff. <a class="m" href="07-coding-agents.html">Module 07</a></dd>
+<dt>LiveCodeBench</dt><dd>A coding benchmark that keeps collecting new, dated contest problems, so each model can be scored only on problems released after its training cutoff. <a class="m" href="07-coding-agents.html">Module 07</a></dd>
 </dl>
 <h3 id="gl-m">M</h3>
 <dl>
@@ -993,7 +1353,7 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Sandbagging</dt><dd>A model deliberately underperforming on an evaluation; a research category in OpenAI's Preparedness Framework. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Sandbox</dt><dd>An isolated environment (container, VM) where an agent can act without affecting real systems. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
 <dt>Saturation</dt><dd>When top systems cluster near a benchmark's ceiling, so it no longer separates them. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
-<dt>Scaffold</dt><dd>The non-model part of an agent: prompts, loop, tools, memory and stopping rules. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
+<dt>Scaffold (agent harness)</dt><dd>The non-model part of an agent: prompts, loop, tools, memory and stopping rules. Not the same thing as the evaluation harness that runs the eval. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Scheming</dt><dd>A model covertly pursuing goals its developers did not intend, for example by hiding actions; studied through covert-action proxies. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Self-enhancement bias</dt><dd>A judge favouring outputs from its own model family. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
 <dt>Simulated user</dt><dd>An LLM playing the user with a hidden goal, so conversational agents can be tested at scale. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
@@ -1230,6 +1590,16 @@ inspect view   # browse transcripts and scores</code></pre>
 <div class="callout analogy"><span class="t">Analogy: learning to cook</span>
 <p>Reading every cookbook does not make you a chef. Cooking the same dish three times, tasting carefully and changing one thing each time does. The 30-day plan is three dishes, a calibrated palate (the judge), and a blind tasting (the paired test).</p>
 </div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li><b>One picture holds the field.</b> Datasets, the system and an environment feed an eval run; graders turn transcripts into scores; metrics and statistics turn scores into evidence; evidence drives a decision. Pitfalls are whatever makes that evidence lie.</li>
+<li><b>Answer any design question with the six-step frame:</b> decision, system, data, grader, number with uncertainty, threats. Then say how you would iterate.</li>
+<li><b>Climb the grader ladder in order:</b> code first, a narrow judge validated with TPR and TNR where code cannot see, humans for subjective or high-stakes calls and for calibration labels.</li>
+<li><b>Pick the metric from the decision.</b> pass@k when something picks the best attempt, pass^k when every attempt must work, win rates for preferences, precision and recall for detectors, and always cost and latency beside quality.</li>
+<li><b>Know the size of the noise before you argue.</b> A single score on 500 tasks is about ±4.4 points; quadruple the tasks to halve that, and compare systems with a paired test.</li>
+<li><b>When a number moves, debug in order:</b> noise, measurement changes, infrastructure, slices, then transcripts. Most surprises die in the first two checks.</li>
+<li><b>Every claim needs its conditions:</b> harness, budget, trials, error bars and date. Frameworks, leaderboards and tools change monthly, so read the primary source and cite the version.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

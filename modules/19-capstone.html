@@ -822,7 +822,7 @@ Smoke test passed: the eval is solvable and discriminates.</code></pre>
 <p>An <b>epoch</b> is one complete pass over the dataset. Running several epochs gives several independent <b>trials</b> of each task, which is how you measure reliability. Before the code, here is the whole journey of the data, from a line in <code>tasks.jsonl</code> to the single reliability number your boss asked for.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 860 392" role="img" aria-label="Run pipeline: 12 samples from tasks.jsonl are each run 4 times, giving 48 isolated trials. Each trial resets the database, runs the ReAct loop and applies three scorers. Per-trial scores and Inspect's reducer results go into the .eval log. analyze.py re-reads the per-trial scores, defines success as outcome AND policy, counts c of n per task, and computes pass@k, pass^k and a cluster-bootstrap confidence interval that the CI gate checks.">
+<svg viewBox="0 0 860 392" role="img" aria-label="Run pipeline: 12 samples from tasks.jsonl are each run 4 times, giving 48 isolated trials. Each trial resets the database, runs the ReAct loop and applies three scorers. Per-trial scores and Inspect's reducer results go into the .eval log. analyze.py re-reads the per-trial scores, defines success as outcome AND policy, counts c of n per task, and computes a cluster-bootstrap confidence interval, pass@k and pass^k; the CI gate checks pass^3.">
 <defs><marker id="m19l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="20" y="40" width="130" height="84" rx="8"/>
 <text x="85" y="64" text-anchor="middle" class="b">tasks.jsonl</text>
@@ -881,13 +881,13 @@ Smoke test passed: the eval is solvable and discriminates.</code></pre>
 <text x="116" y="342" text-anchor="middle" class="sm mono">t03: 3 of 4</text>
 <text x="116" y="358" text-anchor="middle" class="sm mono">t10: 1 of 4</text>
 <rect class="box accent" x="250" y="300" width="200" height="76" rx="8"/>
-<text x="350" y="322" text-anchor="middle" class="b">pass@k and pass^k</text>
-<text x="350" y="342" text-anchor="middle" class="sm mono">C(c,k) / C(n,k)</text>
-<text x="350" y="358" text-anchor="middle" class="sm">averaged over tasks</text>
+<text x="350" y="322" text-anchor="middle" class="b">mean + 95% CI</text>
+<text x="350" y="342" text-anchor="middle" class="sm">cluster bootstrap,</text>
+<text x="350" y="358" text-anchor="middle" class="sm">resampling tasks</text>
 <rect class="box accent" x="488" y="300" width="164" height="76" rx="8"/>
-<text x="570" y="322" text-anchor="middle" class="b">95% CI</text>
-<text x="570" y="342" text-anchor="middle" class="sm">cluster bootstrap,</text>
-<text x="570" y="358" text-anchor="middle" class="sm">resampling tasks</text>
+<text x="570" y="322" text-anchor="middle" class="b">pass@k and pass^k</text>
+<text x="570" y="342" text-anchor="middle" class="sm mono">C(c,k) / C(n,k)</text>
+<text x="570" y="358" text-anchor="middle" class="sm">averaged over tasks</text>
 <rect class="box bad" x="690" y="300" width="150" height="76" rx="8"/>
 <text x="765" y="322" text-anchor="middle" class="b">CI gate</text>
 <text x="765" y="342" text-anchor="middle" class="sm mono">pass^3 ≥ 0.80</text>
@@ -896,7 +896,7 @@ Smoke test passed: the eval is solvable and discriminates.</code></pre>
 <line class="ln" x1="450" y1="338" x2="484" y2="338" marker-end="url(#m19l)"/>
 <line class="ln bad flow" x1="652" y1="338" x2="686" y2="338" marker-end="url(#m19l)"/>
 </svg>
-<figcaption><b>From one JSON line to one ship/no-ship number.</b> Each sample is multiplied by the epochs into isolated trials; each trial produces one score per scorer. Inspect's reducers summarise each scorer on its own, but our headline needs "outcome AND policy" in the same trial, so <code>analyze.py</code> goes back to the per-trial scores, counts successes per task, and only then computes pass@k, pass^k and the interval.</figcaption>
+<figcaption><b>From one JSON line to one ship/no-ship number.</b> Each sample is multiplied by the epochs into isolated trials; each trial produces one score per scorer. Inspect's reducers summarise each scorer on its own, but our headline needs "outcome AND policy" in the same trial, so <code>analyze.py</code> goes back to the per-trial scores, counts successes per task, and only then computes the interval, pass@k and pass^k. The CI gate checks pass^3.</figcaption>
 </figure>
 
 <p>In code, the epochs live in the task definition. <code>Epochs</code> takes the count and a list of <b>reducers</b> that turn k trials of one task into a single number:</p>
