@@ -492,7 +492,7 @@ from collections import defaultdict
 import anthropic
 
 # ---- The system under test: ALL of this is part of what you measure ----
-MODEL = "claude-sonnet-4-5"      # pin an exact model id you have access to
+MODEL = "claude-sonnet-5-5"      # pin an exact model id you have access to
 TEMPERATURE = 1.0
 SYSTEM = open("prompts/support_v7.txt").read()   # system prompt, versioned in git
 client = anthropic.Anthropic()   # reads ANTHROPIC_API_KEY from the environment
@@ -607,7 +607,7 @@ def support_qa():
     )</code></pre>
 
 <pre data-lang="bash"><code># the model is chosen at run time, so you can compare models on the same Task
-inspect eval support_qa.py --model anthropic/claude-sonnet-4-5
+inspect eval support_qa.py --model anthropic/claude-sonnet-5-5
 inspect eval support_qa.py --model openai/gpt-4.1 --limit 10   # quick smoke test
 inspect view                                                    # browse logs and transcripts</code></pre>
 

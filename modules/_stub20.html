@@ -1,0 +1,523 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../../../../../home/claude/agent-evals-zero-to-expert/assets/style.css"></head><body><div class="shell"><nav class="sidebar"></nav><main><article class="content"><figure class="diagram"><svg viewBox="0 0 860 660" role="img" aria-label="Concept map of the whole eval field: datasets, agents and benchmarks feed an eval run; graders score transcripts into metrics that need statistics; metrics inform decisions; tools and labs build and run evals; safety evals gate releases; pitfalls can invalidate decisions.">
+<defs><marker id="m20a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="37" width="200" height="66" rx="8"/>
+<text x="120" y="59" text-anchor="middle" class="b">Datasets</text>
+<text x="120" y="76" text-anchor="middle" class="sm">real failures, goldens,</text>
+<text x="120" y="91" text-anchor="middle" class="sm">synthetic, dev/test splits</text>
+<rect class="box accent" x="330" y="37" width="200" height="66" rx="8"/>
+<text x="430" y="59" text-anchor="middle" class="b">Agents and modalities</text>
+<text x="430" y="76" text-anchor="middle" class="sm">tools/chat, code, web, GUI,</text>
+<text x="430" y="91" text-anchor="middle" class="sm">voice, vision, multi-agent</text>
+<rect class="box violet" x="640" y="37" width="200" height="66" rx="8"/>
+<text x="740" y="59" text-anchor="middle" class="b">Benchmarks</text>
+<text x="740" y="76" text-anchor="middle" class="sm">SWE-bench, τ-bench, OSWorld,</text>
+<text x="740" y="91" text-anchor="middle" class="sm">GAIA, HLE, METR horizon</text>
+<rect class="box warn" x="20" y="217" width="200" height="66" rx="8"/>
+<text x="120" y="239" text-anchor="middle" class="b">Graders</text>
+<text x="120" y="256" text-anchor="middle" class="sm">code, model (judge), human;</text>
+<text x="120" y="271" text-anchor="middle" class="sm">outcome vs process</text>
+<rect class="box plain" x="640" y="217" width="200" height="66" rx="8"/>
+<text x="740" y="239" text-anchor="middle" class="b">Tools and harnesses</text>
+<text x="740" y="256" text-anchor="middle" class="sm">Inspect, Harbor, promptfoo,</text>
+<text x="740" y="271" text-anchor="middle" class="sm">Braintrust, LangSmith, Langfuse</text>
+<rect class="box good" x="20" y="397" width="200" height="66" rx="8"/>
+<text x="120" y="419" text-anchor="middle" class="b">Metrics</text>
+<text x="120" y="436" text-anchor="middle" class="sm">success, pass@k, pass^k,</text>
+<text x="120" y="451" text-anchor="middle" class="sm">cost, latency, Elo / BT</text>
+<rect class="box good" x="330" y="397" width="200" height="66" rx="8"/>
+<text x="430" y="419" text-anchor="middle" class="b">Decisions</text>
+<text x="430" y="436" text-anchor="middle" class="sm">ship, fix, block, gate</text>
+<text x="430" y="451" text-anchor="middle" class="sm">a release, pick a model</text>
+<rect class="box violet" x="640" y="397" width="200" height="66" rx="8"/>
+<text x="740" y="419" text-anchor="middle" class="b">Labs and evaluators</text>
+<text x="740" y="436" text-anchor="middle" class="sm">system cards, RSP, PF, FSF;</text>
+<text x="740" y="451" text-anchor="middle" class="sm">METR, AISI, Epoch, Apollo</text>
+<rect class="box good" x="20" y="567" width="200" height="66" rx="8"/>
+<text x="120" y="589" text-anchor="middle" class="b">Statistics</text>
+<text x="120" y="606" text-anchor="middle" class="sm">SE, 95% CI, clustered SE,</text>
+<text x="120" y="621" text-anchor="middle" class="sm">paired tests, power</text>
+<rect class="box bad" x="330" y="567" width="200" height="66" rx="8"/>
+<text x="430" y="589" text-anchor="middle" class="b">Pitfalls</text>
+<text x="430" y="606" text-anchor="middle" class="sm">contamination, saturation,</text>
+<text x="430" y="621" text-anchor="middle" class="sm">harness drift, judge bias</text>
+<rect class="box bad" x="640" y="567" width="200" height="66" rx="8"/>
+<text x="740" y="589" text-anchor="middle" class="b">Safety evals</text>
+<text x="740" y="606" text-anchor="middle" class="sm">CBRN, cyber, AI R&amp;D;</text>
+<text x="740" y="621" text-anchor="middle" class="sm">scheming, eval awareness</text>
+<rect class="box accent" x="330" y="205" width="200" height="92" rx="10" stroke-width="2.4"/>
+<text x="430" y="232" text-anchor="middle" class="lg">An eval run</text>
+<text x="430" y="252" text-anchor="middle" class="sm">task × k trials → transcripts</text>
+<text x="430" y="267" text-anchor="middle" class="sm">system + environment</text>
+<text x="430" y="282" text-anchor="middle" class="sm">+ grader, fixed across runs</text>
+<line class="ln" x1="330" y1="70" x2="222" y2="70" marker-end="url(#m20a)"/>
+<line class="ln" x1="530" y1="70" x2="638" y2="70" marker-end="url(#m20a)"/>
+<line class="ln" x1="150" y1="104" x2="330" y2="214" marker-end="url(#m20a)"/>
+<line class="ln" x1="430" y1="104" x2="430" y2="203" marker-end="url(#m20a)"/>
+<line class="ln" x1="690" y1="104" x2="530" y2="214" marker-end="url(#m20a)"/>
+<line class="ln" x1="330" y1="250" x2="222" y2="250" marker-end="url(#m20a)"/>
+<line class="ln" x1="638" y1="250" x2="532" y2="250" marker-end="url(#m20a)"/>
+<line class="ln" x1="120" y1="284" x2="120" y2="395" marker-end="url(#m20a)"/>
+<line class="ln" x1="120" y1="464" x2="120" y2="565" marker-end="url(#m20a)"/>
+<line class="ln" x1="222" y1="430" x2="328" y2="430" marker-end="url(#m20a)"/>
+<line class="ln" x1="430" y1="298" x2="430" y2="395" marker-end="url(#m20a)"/>
+<line class="ln" x1="430" y1="566" x2="430" y2="465" marker-end="url(#m20a)"/>
+<line class="ln" x1="222" y1="600" x2="328" y2="600" marker-end="url(#m20a)"/>
+<line class="ln" x1="740" y1="397" x2="740" y2="285" marker-end="url(#m20a)"/>
+<line class="ln" x1="740" y1="464" x2="740" y2="565" marker-end="url(#m20a)"/>
+<line class="ln" x1="638" y1="600" x2="532" y2="600" marker-end="url(#m20a)"/>
+<line class="ln" x1="638" y1="430" x2="532" y2="430" marker-end="url(#m20a)"/>
+<line class="ln" x1="790" y1="216" x2="790" y2="104" marker-end="url(#m20a)"/>
+<rect class="fill-soft" x="243" y="62" width="66" height="16" rx="4"/><text x="276" y="74" text-anchor="middle" class="sm">need envs</text>
+<rect class="fill-soft" x="545" y="62" width="78" height="16" rx="4"/><text x="584" y="74" text-anchor="middle" class="sm">measured by</text>
+<rect class="fill-soft" x="190" y="155" width="84" height="16" rx="4"/><text x="232" y="167" text-anchor="middle" class="sm">feed samples</text>
+<rect class="fill-soft" x="373" y="147" width="114" height="16" rx="4"/><text x="430" y="159" text-anchor="middle" class="sm">system under test</text>
+<rect class="fill-soft" x="579" y="155" width="78" height="16" rx="4"/><text x="618" y="167" text-anchor="middle" class="sm">standardise</text>
+<rect class="fill-soft" x="243" y="242" width="66" height="16" rx="4"/><text x="276" y="254" text-anchor="middle" class="sm">scored by</text>
+<rect class="fill-soft" x="552" y="242" width="66" height="16" rx="4"/><text x="585" y="254" text-anchor="middle" class="sm">run + log</text>
+<rect class="fill-soft" x="72" y="333" width="96" height="16" rx="4"/><text x="120" y="345" text-anchor="middle" class="sm">aggregate into</text>
+<rect class="fill-soft" x="69" y="507" width="102" height="16" rx="4"/><text x="120" y="519" text-anchor="middle" class="sm">need error bars</text>
+<rect class="fill-soft" x="251" y="422" width="48" height="16" rx="4"/><text x="275" y="434" text-anchor="middle" class="sm">inform</text>
+<rect class="fill-soft" x="388" y="339" width="84" height="16" rx="4"/><text x="430" y="351" text-anchor="middle" class="sm">evidence for</text>
+<rect class="fill-soft" x="382" y="507" width="96" height="16" rx="4"/><text x="430" y="519" text-anchor="middle" class="sm">can invalidate</text>
+<rect class="fill-soft" x="230" y="592" width="90" height="16" rx="4"/><text x="275" y="604" text-anchor="middle" class="sm">catches noise</text>
+<rect class="fill-soft" x="701" y="333" width="78" height="16" rx="4"/><text x="740" y="345" text-anchor="middle" class="sm">build tools</text>
+<rect class="fill-soft" x="686" y="507" width="108" height="16" rx="4"/><text x="740" y="519" text-anchor="middle" class="sm">gate releases on</text>
+<rect class="fill-soft" x="537" y="592" width="96" height="16" rx="4"/><text x="585" y="604" text-anchor="middle" class="sm">eval awareness</text>
+<rect class="fill-soft" x="561" y="422" width="48" height="16" rx="4"/><text x="585" y="434" text-anchor="middle" class="sm">report</text>
+<rect class="fill-soft" x="757" y="153" width="66" height="16" rx="4"/><text x="790" y="165" text-anchor="middle" class="sm">implement</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 580" role="img" aria-label="Benchmark atlas: about 45 benchmarks placed by modality on the horizontal axis and by task horizon on the vertical axis; long-horizon benchmarks cluster in coding and knowledge work, single-turn benchmarks dominate vision and knowledge, and many older single-turn benchmarks are saturated.">
+<defs><marker id="m20b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="165" y="38" text-anchor="middle" class="b">Knowledge</text>
+<text x="271" y="38" text-anchor="middle" class="b">Coding</text>
+<text x="377" y="38" text-anchor="middle" class="b">Tools / chat</text>
+<text x="483" y="38" text-anchor="middle" class="b">Web</text>
+<text x="589" y="38" text-anchor="middle" class="b">Computer use</text>
+<text x="695" y="38" text-anchor="middle" class="b">Voice</text>
+<text x="801" y="38" text-anchor="middle" class="b">Vision / gen</text>
+<line class="ln dash" x1="8" y1="200" x2="852" y2="200"/>
+<text x="10" y="122" text-anchor="start" class="b">Long horizon</text>
+<text x="10" y="138" text-anchor="start" class="sm">hours of work</text>
+<line class="ln dash" x1="8" y1="360" x2="852" y2="360"/>
+<text x="10" y="276" text-anchor="start" class="b">Multi-step</text>
+<text x="10" y="292" text-anchor="start" class="sm">minutes, tools</text>
+<line class="ln dash" x1="8" y1="545" x2="852" y2="545"/>
+<text x="10" y="448" text-anchor="start" class="b">Single turn</text>
+<text x="10" y="464" text-anchor="start" class="sm">or short task</text>
+<line class="ln dash" x1="8" y1="52" x2="852" y2="52"/>
+<rect class="box violet" x="115" y="62" width="100" height="20" rx="10"/>
+<text x="165" y="76" text-anchor="middle" class="sm">GDPval</text>
+<rect class="box accent" x="115" y="210" width="100" height="20" rx="10"/>
+<text x="165" y="224" text-anchor="middle" class="sm">ARC-AGI-3</text>
+<rect class="box good" x="115" y="370" width="100" height="20" rx="10"/>
+<text x="165" y="384" text-anchor="middle" class="sm">HLE</text>
+<rect class="box good" x="115" y="394" width="100" height="20" rx="10"/>
+<text x="165" y="408" text-anchor="middle" class="sm">ARC-AGI-2</text>
+<rect class="box dashed" x="115" y="418" width="100" height="20" rx="10"/>
+<text x="165" y="432" text-anchor="middle" class="sm t-muted">GPQA Diamond</text>
+<rect class="box dashed" x="115" y="442" width="100" height="20" rx="10"/>
+<text x="165" y="456" text-anchor="middle" class="sm t-muted">MMLU</text>
+<rect class="box violet" x="221" y="62" width="100" height="20" rx="10"/>
+<text x="271" y="76" text-anchor="middle" class="sm">METR horizon</text>
+<rect class="box violet" x="221" y="86" width="100" height="20" rx="10"/>
+<text x="271" y="100" text-anchor="middle" class="sm">RE-Bench</text>
+<rect class="box violet" x="221" y="110" width="100" height="20" rx="10"/>
+<text x="271" y="124" text-anchor="middle" class="sm">PaperBench</text>
+<rect class="box violet" x="221" y="134" width="100" height="20" rx="10"/>
+<text x="271" y="148" text-anchor="middle" class="sm">MLE-bench</text>
+<rect class="box violet" x="221" y="158" width="100" height="20" rx="10"/>
+<text x="271" y="172" text-anchor="middle" class="sm">SWE-bench Pro</text>
+<rect class="box accent" x="221" y="210" width="100" height="20" rx="10"/>
+<text x="271" y="224" text-anchor="middle" class="sm">Terminal-Bench 2</text>
+<rect class="box accent" x="221" y="234" width="100" height="20" rx="10"/>
+<text x="271" y="248" text-anchor="middle" class="sm">SWE-Lancer</text>
+<rect class="box dashed" x="221" y="258" width="100" height="20" rx="10"/>
+<text x="271" y="272" text-anchor="middle" class="sm t-muted">SWE-bench Verif.</text>
+<rect class="box accent" x="221" y="282" width="100" height="20" rx="10"/>
+<text x="271" y="296" text-anchor="middle" class="sm">Aider Polyglot</text>
+<rect class="box good" x="221" y="370" width="100" height="20" rx="10"/>
+<text x="271" y="384" text-anchor="middle" class="sm">LiveCodeBench</text>
+<rect class="box dashed" x="221" y="394" width="100" height="20" rx="10"/>
+<text x="271" y="408" text-anchor="middle" class="sm t-muted">HumanEval</text>
+<rect class="box dashed" x="221" y="418" width="100" height="20" rx="10"/>
+<text x="271" y="432" text-anchor="middle" class="sm t-muted">MBPP</text>
+<rect class="box accent" x="327" y="210" width="100" height="20" rx="10"/>
+<text x="377" y="224" text-anchor="middle" class="sm">τ²-bench</text>
+<rect class="box accent" x="327" y="234" width="100" height="20" rx="10"/>
+<text x="377" y="248" text-anchor="middle" class="sm">AppWorld</text>
+<rect class="box accent" x="327" y="258" width="100" height="20" rx="10"/>
+<text x="377" y="272" text-anchor="middle" class="sm">GAIA</text>
+<rect class="box dashed" x="327" y="282" width="100" height="20" rx="10"/>
+<text x="377" y="296" text-anchor="middle" class="sm t-muted">AgentBench</text>
+<rect class="box good" x="327" y="370" width="100" height="20" rx="10"/>
+<text x="377" y="384" text-anchor="middle" class="sm">BFCL</text>
+<rect class="box good" x="327" y="394" width="100" height="20" rx="10"/>
+<text x="377" y="408" text-anchor="middle" class="sm">ACEBench</text>
+<rect class="box violet" x="433" y="62" width="100" height="20" rx="10"/>
+<text x="483" y="76" text-anchor="middle" class="sm">BrowseComp</text>
+<rect class="box accent" x="433" y="210" width="100" height="20" rx="10"/>
+<text x="483" y="224" text-anchor="middle" class="sm">WebArena</text>
+<rect class="box accent" x="433" y="234" width="100" height="20" rx="10"/>
+<text x="483" y="248" text-anchor="middle" class="sm">VisualWebArena</text>
+<rect class="box accent" x="433" y="258" width="100" height="20" rx="10"/>
+<text x="483" y="272" text-anchor="middle" class="sm">WorkArena++</text>
+<rect class="box accent" x="433" y="282" width="100" height="20" rx="10"/>
+<text x="483" y="296" text-anchor="middle" class="sm">WebVoyager</text>
+<rect class="box good" x="433" y="370" width="100" height="20" rx="10"/>
+<text x="483" y="384" text-anchor="middle" class="sm">Mind2Web</text>
+<rect class="box accent" x="539" y="210" width="100" height="20" rx="10"/>
+<text x="589" y="224" text-anchor="middle" class="sm">OSWorld-Verified</text>
+<rect class="box accent" x="539" y="234" width="100" height="20" rx="10"/>
+<text x="589" y="248" text-anchor="middle" class="sm">AndroidWorld</text>
+<rect class="box accent" x="539" y="258" width="100" height="20" rx="10"/>
+<text x="589" y="272" text-anchor="middle" class="sm">Win. Agent Arena</text>
+<rect class="box good" x="539" y="370" width="100" height="20" rx="10"/>
+<text x="589" y="384" text-anchor="middle" class="sm">ScreenSpot-Pro</text>
+<rect class="box dashed" x="539" y="394" width="100" height="20" rx="10"/>
+<text x="589" y="408" text-anchor="middle" class="sm t-muted">ScreenSpot</text>
+<rect class="box accent" x="645" y="210" width="100" height="20" rx="10"/>
+<text x="695" y="224" text-anchor="middle" class="sm">τ-Voice</text>
+<rect class="box accent" x="645" y="234" width="100" height="20" rx="10"/>
+<text x="695" y="248" text-anchor="middle" class="sm">Audio MC (Scale)</text>
+<rect class="box accent" x="645" y="258" width="100" height="20" rx="10"/>
+<text x="695" y="272" text-anchor="middle" class="sm">Full-Duplex-Bench</text>
+<rect class="box good" x="645" y="370" width="100" height="20" rx="10"/>
+<text x="695" y="384" text-anchor="middle" class="sm">Big Bench Audio</text>
+<rect class="box good" x="645" y="394" width="100" height="20" rx="10"/>
+<text x="695" y="408" text-anchor="middle" class="sm">VoiceBench</text>
+<rect class="box good" x="751" y="370" width="100" height="20" rx="10"/>
+<text x="801" y="384" text-anchor="middle" class="sm">MMMU(-Pro)</text>
+<rect class="box good" x="751" y="394" width="100" height="20" rx="10"/>
+<text x="801" y="408" text-anchor="middle" class="sm">MathVista</text>
+<rect class="box good" x="751" y="418" width="100" height="20" rx="10"/>
+<text x="801" y="432" text-anchor="middle" class="sm">Video-MME</text>
+<rect class="box good" x="751" y="442" width="100" height="20" rx="10"/>
+<text x="801" y="456" text-anchor="middle" class="sm">MVBench</text>
+<rect class="box dashed" x="751" y="466" width="100" height="20" rx="10"/>
+<text x="801" y="480" text-anchor="middle" class="sm t-muted">GenEval</text>
+<rect class="box good" x="751" y="490" width="100" height="20" rx="10"/>
+<text x="801" y="504" text-anchor="middle" class="sm">T2I-CompBench</text>
+<rect class="box good" x="751" y="514" width="100" height="20" rx="10"/>
+<text x="801" y="528" text-anchor="middle" class="sm">VBench</text>
+<rect class="box dashed" x="330" y="556" width="30" height="14" rx="7"/>
+<text x="366" y="567" text-anchor="start" class="sm">saturated, contaminated or dated for frontier comparison (2026)</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 190" role="img" aria-label="A six-step answer frame for eval questions: decision, system, data, grader, number with uncertainty, threats to validity, then iterate back to the data.">
+<defs><marker id="m20c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="15" y="44" width="128" height="72" rx="8"/>
+<text x="79" y="69" text-anchor="middle" class="b">1 · Decision</text>
+<text x="79" y="86" text-anchor="middle" class="sm">what changes if</text>
+<text x="79" y="101" text-anchor="middle" class="sm">the number moves?</text>
+<line class="ln" x1="144" y1="80" x2="155" y2="80" marker-end="url(#m20c)"/>
+<rect class="box accent" x="156" y="44" width="128" height="72" rx="8"/>
+<text x="220" y="69" text-anchor="middle" class="b">2 · System</text>
+<text x="220" y="86" text-anchor="middle" class="sm">model + scaffold</text>
+<text x="220" y="101" text-anchor="middle" class="sm">+ tools + budget</text>
+<line class="ln" x1="285" y1="80" x2="296" y2="80" marker-end="url(#m20c)"/>
+<rect class="box plain" x="297" y="44" width="128" height="72" rx="8"/>
+<text x="361" y="69" text-anchor="middle" class="b">3 · Data</text>
+<text x="361" y="86" text-anchor="middle" class="sm">real distribution,</text>
+<text x="361" y="101" text-anchor="middle" class="sm">edge cases, splits</text>
+<line class="ln" x1="426" y1="80" x2="437" y2="80" marker-end="url(#m20c)"/>
+<rect class="box warn" x="438" y="44" width="128" height="72" rx="8"/>
+<text x="502" y="69" text-anchor="middle" class="b">4 · Grader</text>
+<text x="502" y="86" text-anchor="middle" class="sm">code, then model,</text>
+<text x="502" y="101" text-anchor="middle" class="sm">validated vs humans</text>
+<line class="ln" x1="567" y1="80" x2="578" y2="80" marker-end="url(#m20c)"/>
+<rect class="box good" x="579" y="44" width="128" height="72" rx="8"/>
+<text x="643" y="69" text-anchor="middle" class="b">5 · Number</text>
+<text x="643" y="86" text-anchor="middle" class="sm">metric + 95% CI,</text>
+<text x="643" y="101" text-anchor="middle" class="sm">pass^k, cost, latency</text>
+<line class="ln" x1="708" y1="80" x2="719" y2="80" marker-end="url(#m20c)"/>
+<rect class="box bad" x="720" y="44" width="128" height="72" rx="8"/>
+<text x="784" y="69" text-anchor="middle" class="b">6 · Threats</text>
+<text x="784" y="86" text-anchor="middle" class="sm">contamination, noise,</text>
+<text x="784" y="101" text-anchor="middle" class="sm">harness, judge bias</text>
+<path class="ln dash" d="M784,117 C784,175 361,175 361,120" marker-end="url(#m20c)"/>
+<rect class="fill-soft" x="426" y="151" width="294" height="16" rx="4"/><text x="572" y="163" text-anchor="middle" class="sm">iterate: read transcripts, fix the weakest link</text>
+<text x="430" y="22" text-anchor="middle" class="sm">Say these six things, in this order, for any design question</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 360" role="img" aria-label="Eval design for a voice agent that books doctor appointments: simulated callers varied by intent, accent, noise and interruptions drive the phone pipeline (audio, ASR, LLM with tools, TTS), which is graded at five layers: component, conversation, task outcome in the database, safety, and production.">
+<defs><marker id="m20d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="210" height="300" rx="8"/>
+<text x="125" y="64" text-anchor="middle" class="b">Simulated callers</text>
+<text x="34" y="88" text-anchor="start" class="sm">intents: book, reschedule,</text>
+<text x="34" y="114" text-anchor="start" class="sm">cancel, ask hours, urgent</text>
+<text x="34" y="140" text-anchor="start" class="sm">accents × 5</text>
+<text x="34" y="166" text-anchor="start" class="sm">noise: street, car, TV × 3</text>
+<text x="34" y="192" text-anchor="start" class="sm">speed, volume × 3</text>
+<text x="34" y="218" text-anchor="start" class="sm">interrupts mid-sentence</text>
+<text x="34" y="244" text-anchor="start" class="sm">spells names, changes mind</text>
+<text x="34" y="270" text-anchor="start" class="sm">≈ hundreds of variants</text>
+<text x="34" y="296" text-anchor="start" class="sm">+ replayed real calls</text>
+<rect class="box plain" x="270" y="48" width="150" height="48" rx="8"/>
+<text x="345" y="68" text-anchor="middle" class="b">Phone audio</text>
+<text x="345" y="86" text-anchor="middle" class="sm">8 kHz, packet loss</text>
+<line class="ln" x1="345" y1="97" x2="345" y2="127" marker-end="url(#m20d)"/>
+<rect class="box plain" x="270" y="128" width="150" height="48" rx="8"/>
+<text x="345" y="148" text-anchor="middle" class="b">ASR</text>
+<text x="345" y="166" text-anchor="middle" class="sm">speech → text</text>
+<line class="ln" x1="345" y1="177" x2="345" y2="207" marker-end="url(#m20d)"/>
+<rect class="box accent" x="270" y="208" width="150" height="48" rx="8"/>
+<text x="345" y="228" text-anchor="middle" class="b">LLM + tools</text>
+<text x="345" y="246" text-anchor="middle" class="sm">calendar, patient DB</text>
+<line class="ln" x1="345" y1="257" x2="345" y2="287" marker-end="url(#m20d)"/>
+<rect class="box plain" x="270" y="288" width="150" height="48" rx="8"/>
+<text x="345" y="308" text-anchor="middle" class="b">TTS</text>
+<text x="345" y="326" text-anchor="middle" class="sm">text → speech</text>
+<line class="ln" x1="231" y1="72" x2="268" y2="72" marker-end="url(#m20d)"/>
+<rect class="box plain" x="470" y="30" width="376" height="54" rx="8"/>
+<text x="482" y="52" text-anchor="start" class="b">Component</text>
+<text x="482" y="71" text-anchor="start" class="sm">WER on names, dates, DOB; TTS; P50/P95 latency</text>
+<rect class="box accent" x="470" y="94" width="376" height="54" rx="8"/>
+<text x="482" y="116" text-anchor="start" class="b">Conversation</text>
+<text x="482" y="135" text-anchor="start" class="sm">turn-taking, barge-in, reads back date + time</text>
+<rect class="box good" x="470" y="158" width="376" height="54" rx="8"/>
+<text x="482" y="180" text-anchor="start" class="b">Task outcome</text>
+<text x="482" y="199" text-anchor="start" class="sm">DB state: right patient, doctor, slot, no dupes</text>
+<rect class="box bad" x="470" y="222" width="376" height="54" rx="8"/>
+<text x="482" y="244" text-anchor="start" class="b">Safety</text>
+<text x="482" y="263" text-anchor="start" class="sm">no diagnosis; urgent → human / emergency line</text>
+<rect class="box violet" x="470" y="286" width="376" height="54" rx="8"/>
+<text x="482" y="308" text-anchor="start" class="b">Production</text>
+<text x="482" y="327" text-anchor="start" class="sm">sample real calls, human review, drift alarms</text>
+<path class="ln" d="M421,190 L466,190" marker-end="url(#m20d)"/>
+<rect class="fill-soft" x="422" y="169" width="42" height="16" rx="4"/><text x="443" y="181" text-anchor="middle" class="sm">grade</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 380" role="img" aria-label="Decision tree for when an LLM judge reports a 5 percent gain but users complain: check whether the gain is statistically real, whether the judge is still accurate, whether the eval data still matches traffic, and whether the rubric measures what users care about.">
+<defs><marker id="m20e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box warn" x="230" y="12" width="400" height="48" rx="8"/>
+<text x="430" y="32" text-anchor="middle" class="b">Judge: +5% quality. Users: complaints ↑</text>
+<text x="430" y="50" text-anchor="middle" class="sm">two instruments disagree: find which is wrong</text>
+<line class="ln" x1="430" y1="61" x2="125" y2="102" marker-end="url(#m20e)"/>
+<rect class="box bad" x="30" y="103" width="190" height="38" rx="8"/>
+<text x="125" y="126" text-anchor="middle" class="b">Is +5% real?</text>
+<line class="ln" x1="125" y1="142" x2="125" y2="170" marker-end="url(#m20e)"/>
+<rect class="box plain" x="30" y="171" width="190" height="50" rx="8"/>
+<text x="125" y="185" text-anchor="middle" class="b">Check</text>
+<text x="125" y="202" text-anchor="middle" class="sm">paired test on same items,</text>
+<text x="125" y="217" text-anchor="middle" class="sm">CI, number of trials</text>
+<line class="ln" x1="125" y1="222" x2="125" y2="250" marker-end="url(#m20e)"/>
+<rect class="box plain" x="30" y="251" width="190" height="50" rx="8"/>
+<text x="125" y="265" text-anchor="middle" class="b">Then</text>
+<text x="125" y="282" text-anchor="middle" class="sm">inside noise → no change;</text>
+<text x="125" y="297" text-anchor="middle" class="sm">look for the real regression</text>
+<line class="ln" x1="125" y1="302" x2="125" y2="330" marker-end="url(#m20e)"/>
+<line class="ln" x1="430" y1="61" x2="335" y2="102" marker-end="url(#m20e)"/>
+<rect class="box warn" x="240" y="103" width="190" height="38" rx="8"/>
+<text x="335" y="126" text-anchor="middle" class="b">Is the judge right?</text>
+<line class="ln" x1="335" y1="142" x2="335" y2="170" marker-end="url(#m20e)"/>
+<rect class="box plain" x="240" y="171" width="190" height="50" rx="8"/>
+<text x="335" y="185" text-anchor="middle" class="b">Check</text>
+<text x="335" y="202" text-anchor="middle" class="sm">re-label 150 items by hand;</text>
+<text x="335" y="217" text-anchor="middle" class="sm">TPR/TNR, old vs new outputs</text>
+<line class="ln" x1="335" y1="222" x2="335" y2="250" marker-end="url(#m20e)"/>
+<rect class="box plain" x="240" y="251" width="190" height="50" rx="8"/>
+<text x="335" y="265" text-anchor="middle" class="b">Then</text>
+<text x="335" y="282" text-anchor="middle" class="sm">length, position, self-</text>
+<text x="335" y="297" text-anchor="middle" class="sm">preference bias; recalibrate</text>
+<line class="ln" x1="335" y1="302" x2="335" y2="330" marker-end="url(#m20e)"/>
+<line class="ln" x1="430" y1="61" x2="545" y2="102" marker-end="url(#m20e)"/>
+<rect class="box accent" x="450" y="103" width="190" height="38" rx="8"/>
+<text x="545" y="126" text-anchor="middle" class="b">Is the data right?</text>
+<line class="ln" x1="545" y1="142" x2="545" y2="170" marker-end="url(#m20e)"/>
+<rect class="box plain" x="450" y="171" width="190" height="50" rx="8"/>
+<text x="545" y="185" text-anchor="middle" class="b">Check</text>
+<text x="545" y="202" text-anchor="middle" class="sm">eval set vs this month's</text>
+<text x="545" y="217" text-anchor="middle" class="sm">traffic: drifted intents?</text>
+<line class="ln" x1="545" y1="222" x2="545" y2="250" marker-end="url(#m20e)"/>
+<rect class="box plain" x="450" y="251" width="190" height="50" rx="8"/>
+<text x="545" y="265" text-anchor="middle" class="b">Then</text>
+<text x="545" y="282" text-anchor="middle" class="sm">pull complaints into the</text>
+<text x="545" y="297" text-anchor="middle" class="sm">set via error analysis</text>
+<line class="ln" x1="545" y1="302" x2="545" y2="330" marker-end="url(#m20e)"/>
+<line class="ln" x1="430" y1="61" x2="755" y2="102" marker-end="url(#m20e)"/>
+<rect class="box violet" x="660" y="103" width="190" height="38" rx="8"/>
+<text x="755" y="126" text-anchor="middle" class="b">Right thing measured?</text>
+<line class="ln" x1="755" y1="142" x2="755" y2="170" marker-end="url(#m20e)"/>
+<rect class="box plain" x="660" y="171" width="190" height="50" rx="8"/>
+<text x="755" y="185" text-anchor="middle" class="b">Check</text>
+<text x="755" y="202" text-anchor="middle" class="sm">rubric vs complaint themes:</text>
+<text x="755" y="217" text-anchor="middle" class="sm">tone, latency, wrong action?</text>
+<line class="ln" x1="755" y1="222" x2="755" y2="250" marker-end="url(#m20e)"/>
+<rect class="box plain" x="660" y="251" width="190" height="50" rx="8"/>
+<text x="755" y="265" text-anchor="middle" class="b">Then</text>
+<text x="755" y="282" text-anchor="middle" class="sm">add outcome + user-signal</text>
+<text x="755" y="297" text-anchor="middle" class="sm">metrics beside the judge</text>
+<line class="ln" x1="755" y1="302" x2="755" y2="330" marker-end="url(#m20e)"/>
+<rect class="box good" x="30" y="332" width="820" height="36" rx="8"/>
+<text x="440" y="355" text-anchor="middle" class="b">Ship only when the judge agrees with fresh human labels AND production outcomes agree with the judge</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 310" role="img" aria-label="Vocabulary as a picture: a suite holds tasks; each task is run as k trials; each trial leaves a transcript and outcome; graders score each trial; scores over all tasks aggregate into a metric with a confidence interval.">
+<defs><marker id="m20f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="20" width="220" height="270" rx="10"/>
+<text x="130" y="44" text-anchor="middle" class="lg">Eval suite</text>
+<rect class="box accent" x="38" y="60" width="184" height="38" rx="6"/>
+<text x="130" y="84" text-anchor="middle" class="b">Task 1: input + criteria</text>
+<rect class="box " x="38" y="112" width="184" height="38" rx="6"/>
+<text x="130" y="136" text-anchor="middle">Task 2</text>
+<rect class="box " x="38" y="164" width="184" height="38" rx="6"/>
+<text x="130" y="188" text-anchor="middle">Task 3</text>
+<rect class="box " x="38" y="216" width="184" height="38" rx="6"/>
+<text x="130" y="240" text-anchor="middle">… Task N</text>
+<rect class="box accent" x="300" y="40" width="110" height="40" rx="8"/>
+<text x="355" y="64" text-anchor="middle" class="b">Trial 1</text>
+<line class="ln" x1="222" y1="79" x2="298" y2="60" marker-end="url(#m20f)"/>
+<rect class="box plain" x="440" y="38" width="160" height="44" rx="8"/>
+<text x="520" y="56" text-anchor="middle" class="b">Transcript</text>
+<text x="520" y="74" text-anchor="middle" class="sm">messages, tool calls, state</text>
+<line class="ln" x1="410" y1="60" x2="438" y2="60" marker-end="url(#m20f)"/>
+<line class="ln" x1="600" y1="60" x2="672" y2="95" marker-end="url(#m20f)"/>
+<rect class="box accent" x="300" y="110" width="110" height="40" rx="8"/>
+<text x="355" y="134" text-anchor="middle" class="b">Trial 2</text>
+<line class="ln" x1="222" y1="79" x2="298" y2="130" marker-end="url(#m20f)"/>
+<rect class="box plain" x="440" y="108" width="160" height="44" rx="8"/>
+<text x="520" y="126" text-anchor="middle" class="b">Transcript</text>
+<text x="520" y="144" text-anchor="middle" class="sm">messages, tool calls, state</text>
+<line class="ln" x1="410" y1="130" x2="438" y2="130" marker-end="url(#m20f)"/>
+<line class="ln" x1="600" y1="130" x2="672" y2="95" marker-end="url(#m20f)"/>
+<rect class="box accent" x="300" y="180" width="110" height="40" rx="8"/>
+<text x="355" y="204" text-anchor="middle" class="b">Trial k</text>
+<line class="ln" x1="222" y1="79" x2="298" y2="200" marker-end="url(#m20f)"/>
+<rect class="box plain" x="440" y="178" width="160" height="44" rx="8"/>
+<text x="520" y="196" text-anchor="middle" class="b">Transcript</text>
+<text x="520" y="214" text-anchor="middle" class="sm">messages, tool calls, state</text>
+<line class="ln" x1="410" y1="200" x2="438" y2="200" marker-end="url(#m20f)"/>
+<line class="ln" x1="600" y1="200" x2="672" y2="95" marker-end="url(#m20f)"/>
+<text x="355" y="30" text-anchor="middle" class="sm">each task runs k times</text>
+<rect class="box warn" x="675" y="67" width="170" height="56" rx="8"/>
+<text x="760" y="92" text-anchor="middle" class="b">Grader(s)</text>
+<text x="760" y="108" text-anchor="middle" class="sm">code · model · human</text>
+<line class="ln" x1="760" y1="124" x2="760" y2="158" marker-end="url(#m20f)"/>
+<rect class="box plain" x="675" y="160" width="170" height="44" rx="8"/>
+<text x="760" y="178" text-anchor="middle" class="b">Score per trial</text>
+<text x="760" y="196" text-anchor="middle" class="sm">0/1 or 0–1, + reasons</text>
+<line class="ln" x1="760" y1="205" x2="760" y2="236" marker-end="url(#m20f)"/>
+<rect class="box good" x="675" y="237" width="170" height="50" rx="8"/>
+<text x="760" y="258" text-anchor="middle" class="b">Metric ± CI</text>
+<text x="760" y="276" text-anchor="middle" class="sm">pass@1, pass^k, mean</text>
+<path class="ln dash" d="M240,270 C400,300 560,300 672,268" marker-end="url(#m20f)"/>
+<rect class="fill-soft" x="389" y="269" width="132" height="16" rx="4"/><text x="455" y="281" text-anchor="middle" class="sm">every task, same way</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 290" role="img" aria-label="Where to get signal, in four tiers: lab primary documents, independent evaluators, benchmark sites and papers, and practitioners, with a suggested reading cadence for each and a reminder to prefer methods over headlines.">
+<defs><marker id="m20g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="60" y="22" width="672" height="54" rx="8"/>
+<text x="74" y="44" text-anchor="start" class="b">Labs (primary)</text>
+<text x="74" y="62" text-anchor="start" class="sm">read: every release</text>
+<rect class="box plain" x="248" y="39" width="138" height="20" rx="10"/>
+<text x="317" y="53" text-anchor="middle" class="sm">Anthropic RSP + cards</text>
+<rect class="box plain" x="392" y="39" width="126" height="20" rx="10"/>
+<text x="455" y="53" text-anchor="middle" class="sm">OpenAI Preparedness</text>
+<rect class="box plain" x="524" y="39" width="102" height="20" rx="10"/>
+<text x="575" y="53" text-anchor="middle" class="sm">GDM FSF reports</text>
+<rect class="box plain" x="632" y="39" width="72" height="20" rx="10"/>
+<text x="668" y="53" text-anchor="middle" class="sm">Meta / xAI</text>
+<rect class="box accent" x="60" y="88" width="672" height="54" rx="8"/>
+<text x="74" y="110" text-anchor="start" class="b">Independent evals</text>
+<text x="74" y="128" text-anchor="start" class="sm">read: weekly</text>
+<rect class="box plain" x="248" y="105" width="36" height="20" rx="10"/>
+<text x="266" y="119" text-anchor="middle" class="sm">METR</text>
+<rect class="box plain" x="290" y="105" width="114" height="20" rx="10"/>
+<text x="347" y="119" text-anchor="middle" class="sm">UK AISI + Inspect</text>
+<rect class="box plain" x="410" y="105" width="60" height="20" rx="10"/>
+<text x="440" y="119" text-anchor="middle" class="sm">US CAISI</text>
+<rect class="box plain" x="476" y="105" width="48" height="20" rx="10"/>
+<text x="500" y="119" text-anchor="middle" class="sm">Apollo</text>
+<rect class="box plain" x="530" y="105" width="60" height="20" rx="10"/>
+<text x="560" y="119" text-anchor="middle" class="sm">Epoch AI</text>
+<rect class="box plain" x="596" y="105" width="126" height="20" rx="10"/>
+<text x="659" y="119" text-anchor="middle" class="sm">Artificial Analysis</text>
+<rect class="box good" x="60" y="154" width="672" height="54" rx="8"/>
+<text x="74" y="176" text-anchor="start" class="b">Benchmarks + papers</text>
+<text x="74" y="194" text-anchor="start" class="sm">read: monthly</text>
+<rect class="box plain" x="248" y="171" width="120" height="20" rx="10"/>
+<text x="308" y="185" text-anchor="middle" class="sm">arXiv evals papers</text>
+<rect class="box plain" x="374" y="171" width="66" height="20" rx="10"/>
+<text x="407" y="185" text-anchor="middle" class="sm">SWE-bench</text>
+<rect class="box plain" x="446" y="171" width="54" height="20" rx="10"/>
+<text x="473" y="185" text-anchor="middle" class="sm">τ-bench</text>
+<rect class="box plain" x="506" y="171" width="54" height="20" rx="10"/>
+<text x="533" y="185" text-anchor="middle" class="sm">OSWorld</text>
+<rect class="box plain" x="566" y="171" width="66" height="20" rx="10"/>
+<text x="599" y="185" text-anchor="middle" class="sm">ARC Prize</text>
+<rect class="box plain" x="638" y="171" width="72" height="20" rx="10"/>
+<text x="674" y="185" text-anchor="middle" class="sm">Scale SEAL</text>
+<rect class="box warn" x="60" y="220" width="672" height="54" rx="8"/>
+<text x="74" y="242" text-anchor="start" class="b">Practitioners</text>
+<text x="74" y="260" text-anchor="start" class="sm">read: when building</text>
+<rect class="box plain" x="248" y="237" width="84" height="20" rx="10"/>
+<text x="290" y="251" text-anchor="middle" class="sm">Hamel Husain</text>
+<rect class="box plain" x="338" y="237" width="96" height="20" rx="10"/>
+<text x="386" y="251" text-anchor="middle" class="sm">Shreya Shankar</text>
+<rect class="box plain" x="440" y="237" width="72" height="20" rx="10"/>
+<text x="476" y="251" text-anchor="middle" class="sm">Eugene Yan</text>
+<rect class="box plain" x="518" y="237" width="66" height="20" rx="10"/>
+<text x="551" y="251" text-anchor="middle" class="sm">Jason Wei</text>
+<rect class="box plain" x="590" y="237" width="90" height="20" rx="10"/>
+<text x="635" y="251" text-anchor="middle" class="sm">Meridian Labs</text>
+<line class="ln thick" x1="34" y1="280" x2="34" y2="30" marker-end="url(#m20g)"/>
+<text x="22" y="160" text-anchor="middle" class="sm" transform="rotate(-90 22 160)">closer to the evidence</text>
+<rect class="box plain" x="742" y="37" width="110" height="110" rx="8"/>
+<text x="797" y="74" text-anchor="middle" class="b">Rule</text>
+<text x="797" y="90" text-anchor="middle" class="sm">read the method,</text>
+<text x="797" y="106" text-anchor="middle" class="sm">not the headline;</text>
+<text x="797" y="120" text-anchor="middle" class="sm">note the date</text>
+<rect class="box bad" x="742" y="185" width="110" height="74" rx="8"/>
+<text x="797" y="211" text-anchor="middle" class="b">Discount</text>
+<text x="797" y="228" text-anchor="middle" class="sm">aggregators,</text>
+<text x="797" y="243" text-anchor="middle" class="sm">vendor charts</text>
+</svg><figcaption>x</figcaption></figure><figure class="diagram"><svg viewBox="0 0 860 296" role="img" aria-label="A 30-day practice timeline in four weeks: build a first eval from real traces, then two agent evals in other modalities, then validate a judge and run the statistics, then reproduce a public benchmark with Inspect and write it up.">
+<defs><marker id="m20h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="40" y="146" width="189" height="30" rx="6"/>
+<text x="136" y="166" text-anchor="middle" class="b">Week 1 · first eval</text>
+<rect class="box violet" x="234" y="146" width="181" height="30" rx="6"/>
+<text x="326" y="166" text-anchor="middle" class="b">Week 2 · agents</text>
+<rect class="box warn" x="420" y="146" width="181" height="30" rx="6"/>
+<text x="511" y="166" text-anchor="middle" class="b">Week 3 · judges + stats</text>
+<rect class="box good" x="606" y="146" width="238" height="30" rx="6"/>
+<text x="726" y="166" text-anchor="middle" class="b">Week 4 · benchmarks</text>
+<line class="ln" x1="87" y1="144" x2="87" y2="104"/>
+<circle class="fill-accent" cx="87" cy="104" r="5"/>
+<text x="87" y="70" text-anchor="middle" class="b">30+ real traces</text>
+<text x="87" y="88" text-anchor="middle" class="sm">logged and read</text>
+<text x="87" y="50" text-anchor="middle" class="sm">day 2</text>
+<line class="ln" x1="140" y1="178" x2="140" y2="218"/>
+<circle class="fill-good" cx="140" cy="218" r="5"/>
+<text x="140" y="244" text-anchor="middle" class="b">failure taxonomy</text>
+<text x="140" y="262" text-anchor="middle" class="sm">open + axial coding</text>
+<text x="140" y="280" text-anchor="middle" class="sm">day 4</text>
+<line class="ln" x1="219" y1="144" x2="219" y2="104"/>
+<circle class="fill-accent" cx="219" cy="104" r="5"/>
+<text x="219" y="70" text-anchor="middle" class="b">Eval 1: RAG / chat</text>
+<text x="219" y="88" text-anchor="middle" class="sm">in CI, 50 tasks</text>
+<text x="219" y="50" text-anchor="middle" class="sm">day 7</text>
+<line class="ln" x1="299" y1="178" x2="299" y2="218"/>
+<circle class="fill-good" cx="299" cy="218" r="5"/>
+<text x="299" y="244" text-anchor="middle" class="b">Eval 2: tool agent</text>
+<text x="299" y="262" text-anchor="middle" class="sm">DB-state, pass^k</text>
+<text x="299" y="280" text-anchor="middle" class="sm">day 10</text>
+<line class="ln" x1="405" y1="144" x2="405" y2="104"/>
+<circle class="fill-accent" cx="405" cy="104" r="5"/>
+<text x="405" y="70" text-anchor="middle" class="b">Eval 3: voice or GUI</text>
+<text x="405" y="88" text-anchor="middle" class="sm">simulated users</text>
+<text x="405" y="50" text-anchor="middle" class="sm">day 14</text>
+<line class="ln" x1="485" y1="178" x2="485" y2="218"/>
+<circle class="fill-good" cx="485" cy="218" r="5"/>
+<text x="485" y="244" text-anchor="middle" class="b">judge validated</text>
+<text x="485" y="262" text-anchor="middle" class="sm">TPR/TNR on 150</text>
+<text x="485" y="280" text-anchor="middle" class="sm">day 17</text>
+<line class="ln" x1="564" y1="144" x2="564" y2="104"/>
+<circle class="fill-accent" cx="564" cy="104" r="5"/>
+<text x="564" y="70" text-anchor="middle" class="b">paired test +</text>
+<text x="564" y="88" text-anchor="middle" class="sm">power analysis</text>
+<text x="564" y="50" text-anchor="middle" class="sm">day 20</text>
+<line class="ln" x1="671" y1="178" x2="671" y2="218"/>
+<circle class="fill-good" cx="671" cy="218" r="5"/>
+<text x="671" y="244" text-anchor="middle" class="b">Inspect repro</text>
+<text x="671" y="262" text-anchor="middle" class="sm">public bench, 5 epochs</text>
+<text x="671" y="280" text-anchor="middle" class="sm">day 24</text>
+<line class="ln" x1="750" y1="144" x2="750" y2="104"/>
+<circle class="fill-accent" cx="750" cy="104" r="5"/>
+<text x="750" y="70" text-anchor="middle" class="b">read 2 system</text>
+<text x="750" y="88" text-anchor="middle" class="sm">cards critically</text>
+<text x="750" y="50" text-anchor="middle" class="sm">day 27</text>
+<line class="ln" x1="830" y1="178" x2="830" y2="218"/>
+<circle class="fill-good" cx="830" cy="218" r="5"/>
+<text x="838" y="244" text-anchor="end" class="b">write-up</text>
+<text x="838" y="262" text-anchor="end" class="sm">teach it back</text>
+<text x="838" y="280" text-anchor="end" class="sm">day 30</text>
+</svg><figcaption>x</figcaption></figure></article></main></div></body></html>

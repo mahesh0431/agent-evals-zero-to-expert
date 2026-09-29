@@ -252,3 +252,4 @@ figure.diagram.in-view svg line.ln[marker-end]:not(.dash), figure.diagram.in-vie
 .hero3d .legend3d { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 4px 8px; border-radius: 6px; }
 .hero3d .fallback { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; }
 @media (max-width: 600px) { .hero3d { height: 240px; } }
+p code, li code, td code { overflow-wrap: anywhere; }

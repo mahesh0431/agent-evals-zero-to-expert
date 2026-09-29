@@ -153,7 +153,7 @@
 
 <h2>Elo and Bradley-Terry: how LMArena ranks models</h2>
 <p>Win rates work for two systems. With fifty models you cannot run every pair equally often, and you want one number per model. That is what <b>rating systems</b> do, borrowed from chess.</p>
-<p>Chatbot Arena, now LMArena (Chiang et al. 2024), shows a user two anonymous responses to their prompt and asks which is better (A, B, tie or both bad). From millions of such votes it computes a rating per model. It originally used online <b>Elo</b> and moved to a <b>Bradley-Terry</b> model fitted by maximum likelihood (in practice, logistic regression), with bootstrap confidence intervals.</p>
+<p>Chatbot Arena (later LMArena, and simply "Arena" since January 2026; Chiang et al. 2024), shows a user two anonymous responses to their prompt and asks which is better (A, B, tie or both bad). From millions of such votes it computes a rating per model. It originally used online <b>Elo</b> and moved to a <b>Bradley-Terry</b> model fitted by maximum likelihood (in practice, logistic regression), with bootstrap confidence intervals.</p>
 
 <h3>The idea in one formula</h3>
 <p>Bradley-Terry assumes each model <i>i</i> has a hidden strength β<sub>i</sub>, and the chance that <i>i</i> beats <i>j</i> depends only on the difference:</p>

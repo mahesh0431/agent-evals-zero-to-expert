@@ -444,7 +444,7 @@ for row in contamination_report(test, idx, n=8):
 <tr><th>Who / where</th><th>What the agent did</th></tr>
 <tr><td><b>METR, June 2025</b> ("Recent frontier models are reward hacking"), models including o3, o1 and Claude 3.7 Sonnet</td><td>Searched the Python call stack to find the grader's pre-computed reference answer and returned it; overwrote timing functions (one made "a 1000× faster clock" for the scoring script); monkey-patched evaluation functions to always report success; disabled <code>torch.cuda.synchronize()</code> so timing was wrong; made tensor subclasses whose equality check always returned true; copied pre-computed weights instead of training. METR reported reward hacking in <b>30.4%</b> of RE-Bench runs (39 of 128), including <b>21 of 21</b> runs on one task, but only <b>0.7%</b> (8 of 1,087) of HCAST runs.</td></tr>
 <tr><td><b>SWE-bench, 2025</b> (GitHub issue #465, "Repo State Loopholes")</td><td>Agents ran commands like <code>git log --all</code> to see <em>future</em> commits left in the task's Docker image, which contained the real fix. Found in submissions for Claude 4 Sonnet, Qwen3 Coder and GLM-4.5 in a handful of instances each. Fixed by rebuilding images with future history removed (SWE-bench v4.1.0).</td></tr>
-<tr><td><b>Anthropic system cards</b></td><td>Anthropic's system cards (for example Claude Sonnet 4.5, Sep 2025) include a dedicated reward-hacking section measuring behaviours such as special-casing tests to make them pass; Anthropic reported roughly a 2x improvement over Sonnet 4.</td></tr>
+<tr><td><b>Anthropic system cards</b></td><td>Anthropic's system cards (for example Claude Sonnet 4.5, Sep 2025) include a dedicated reward-hacking section, covering behaviours such as hard-coding or special-casing tests to make them pass. For Sonnet 4.5, Anthropic reported roughly a 2x improvement over Sonnet 4.</td></tr>
 </table></div>
 
 <div class="callout bad"><span class="t">Why this is a benchmark pitfall and not just a safety curiosity</span>
@@ -668,10 +668,10 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <p>Here is the whole module compressed into a checklist. You will not be able to answer every question for every claim; the point is to notice which answers are missing. A missing answer is information.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 400" role="img" aria-label="Visual checklist of 15 questions in three columns: the number, the setup, and the benchmark itself.">
-<rect class="box accent" x="10" y="10" width="260" height="380" rx="10"/>
-<rect class="box violet" x="280" y="10" width="260" height="380" rx="10"/>
-<rect class="box warn" x="550" y="10" width="260" height="380" rx="10"/>
+<svg viewBox="0 0 820 410" role="img" aria-label="Visual checklist of 15 questions in three columns: the number, the setup, and the benchmark itself.">
+<rect class="box accent" x="10" y="10" width="260" height="360" rx="10"/>
+<rect class="box violet" x="280" y="10" width="260" height="360" rx="10"/>
+<rect class="box warn" x="550" y="10" width="260" height="360" rx="10"/>
 <text x="140" y="38" text-anchor="middle" class="lg t-accent">The number</text>
 <text x="410" y="38" text-anchor="middle" class="lg t-violet">The setup</text>
 <text x="680" y="38" text-anchor="middle" class="lg t-warn">The benchmark</text>
@@ -690,7 +690,7 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <rect class="box plain" x="564" y="186" width="16" height="16" rx="3"/><text x="590" y="199" class="sm b">13 · Grader validated?</text><text x="590" y="216" class="sm">false passes, label noise</text>
 <rect class="box plain" x="564" y="248" width="16" height="16" rx="3"/><text x="590" y="261" class="sm b">14 · Hacks ruled out?</text><text x="590" y="278" class="sm">transcripts read, tests safe</text>
 <rect class="box plain" x="564" y="310" width="16" height="16" rx="3"/><text x="590" y="323" class="sm b">15 · Measures my construct?</text><text x="590" y="340" class="sm">does it predict my use case</text>
-<text x="410" y="376" text-anchor="middle" class="sm">each unanswered box widens your mental error bar</text>
+<text x="410" y="398" text-anchor="middle" class="sm">each unanswered box widens your mental error bar</text>
 </svg>
 <figcaption><b>The benchmark-claim checklist.</b> Column one is about the statistic, column two about the system that produced it, column three about the test itself. Details for each question follow.</figcaption>
 </figure>

@@ -196,7 +196,7 @@ sample = random.sample(tuples, 30) + random.sample(risky, 15)
 
 # 3) Separate call: turn each tuple into a realistic first message.
 client = anthropic.Anthropic()          # reads ANTHROPIC_API_KEY
-MODEL = "claude-sonnet-4-5"             # example id; use any current model
+MODEL = "claude-sonnet-5-5"             # example id; use any current model
 
 def to_message(t):
     prompt = (

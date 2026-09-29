@@ -115,8 +115,8 @@
 <rect class="box dashed" x="20" y="14" width="780" height="62" rx="8"/>
 <text x="34" y="34" class="b">Session</text>
 <text x="34" y="52" class="sm mono">gen_ai.conversation.id = c_81f</text>
-<rect class="box plain" x="300" y="28" width="140" height="36" rx="6"/>
-<text x="370" y="51" text-anchor="middle" class="sm">trace 1: "where's my order?"</text>
+<rect class="box plain" x="270" y="28" width="175" height="36" rx="6"/>
+<text x="357" y="51" text-anchor="middle" class="sm">trace 1: "where's my order?"</text>
 <rect class="box accent" x="460" y="28" width="150" height="36" rx="6"/>
 <text x="535" y="51" text-anchor="middle" class="sm b">trace 2: "refund it"</text>
 <rect class="box plain" x="630" y="28" width="150" height="36" rx="6"/>
@@ -134,7 +134,6 @@
 <rect class="fill-violet" x="435" y="198" width="85" height="16" rx="3"/>
 <text x="36" y="238" class="sm mono">execute_tool issue_refund</text>
 <rect class="fill-bad" x="525" y="226" width="175" height="16" rx="3"/>
-<text x="612" y="238" text-anchor="middle" class="sm">timeout</text>
 <text x="36" y="266" class="sm mono">execute_tool issue_refund</text>
 <rect class="fill-good" x="705" y="254" width="42" height="16" rx="3"/>
 <text x="36" y="294" class="sm mono">chat (final answer)</text>
@@ -197,7 +196,7 @@ from langfuse import get_client, observe, propagate_attributes
 
 langfuse = get_client()          # reads LANGFUSE_PUBLIC_KEY / SECRET_KEY / HOST from env
 claude = anthropic.Anthropic()
-MODEL = "claude-sonnet-4-5"
+MODEL = "claude-sonnet-5-5"
 AGENT_VERSION = "support-bot@2026-09-28"
 MAX_STEPS = 20
 
@@ -618,9 +617,9 @@ def judge_trace(t: dict):
 <text x="730" y="36" text-anchor="middle" class="sm b">Sun</text>
 <line class="ln dash" x1="235" y1="44" x2="235" y2="286"/><line class="ln dash" x1="325" y1="44" x2="325" y2="286"/><line class="ln dash" x1="415" y1="44" x2="415" y2="286"/><line class="ln dash" x1="505" y1="44" x2="505" y2="286"/><line class="ln dash" x1="595" y1="44" x2="595" y2="286"/><line class="ln dash" x1="685" y1="44" x2="685" y2="286"/>
 <rect class="box accent" x="10" y="50" width="130" height="70" rx="8"/>
-<text x="20" y="70" class="b">Smoke</text><text x="20" y="88" class="sm">every PR, ~50 cases</text><text x="20" y="106" class="sm">&lt; 10 min, blocks merge</text>
+<text x="20" y="70" class="b">Smoke</text><text x="20" y="88" class="sm">every PR, ~50 cases</text><text x="20" y="106" class="sm">&lt; 10 min, gates</text>
 <rect class="box warn" x="10" y="132" width="130" height="70" rx="8"/>
-<text x="20" y="152" class="b">Full</text><text x="20" y="170" class="sm">nightly on main, 500+</text><text x="20" y="188" class="sm">~1 h, alerts on drop</text>
+<text x="20" y="152" class="b">Full</text><text x="20" y="170" class="sm">nightly, 500+ cases</text><text x="20" y="188" class="sm">~1 h, alerts</text>
 <rect class="box violet" x="10" y="214" width="130" height="70" rx="8"/>
 <text x="20" y="234" class="b">Capability</text><text x="20" y="252" class="sm">weekly / pre-release</text><text x="20" y="270" class="sm">hard tasks, trend</text>
 <rect class="fill-accent" x="160" y="65" width="6" height="40"/><rect class="fill-accent" x="200" y="65" width="6" height="40"/><rect class="fill-accent" x="214" y="65" width="6" height="40"/>
@@ -632,7 +631,7 @@ def judge_trace(t: dict):
 <text x="373" y="124" text-anchor="middle" class="sm t-bad">blocked</text>
 <rect class="fill-warn" x="210" y="147" width="22" height="40"/><rect class="fill-warn" x="300" y="147" width="22" height="40"/><rect class="fill-warn" x="390" y="147" width="22" height="40"/><rect class="fill-warn" x="480" y="147" width="22" height="40"/><rect class="fill-warn" x="570" y="147" width="22" height="40"/><rect class="fill-warn" x="660" y="147" width="22" height="40"/><rect class="fill-warn" x="750" y="147" width="22" height="40"/>
 <rect class="fill-violet" x="610" y="229" width="150" height="40"/>
-<text x="685" y="254" text-anchor="middle" class="sm b">capability run</text>
+<text x="685" y="222" text-anchor="middle" class="sm b t-violet">capability run</text>
 </svg>
 <figcaption><b>Three tiers, three cadences.</b> Smoke runs on every PR and blocks merges (one PR is blocked here). The full suite runs nightly on the main branch and refreshes the baseline. The capability suite is big, slow and hard, and is read as a trend rather than a gate. Sizes and times are typical examples.</figcaption>
 </figure>
@@ -793,7 +792,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          inspect eval evals/smoke.py --model anthropic/claude-sonnet-4-5 \
+          inspect eval evals/smoke.py --model anthropic/claude-sonnet-5-5 \
             --epochs 3 --max-connections 8 --message-limit 40 \
             --log-format json --log-dir logs/candidate
       - name: Paired-bootstrap gate vs baseline (fail if lower CI bound &lt; -1 pt)
@@ -833,7 +832,7 @@ jobs:
       - env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          inspect eval evals/full.py --model anthropic/claude-sonnet-4-5 \
+          inspect eval evals/full.py --model anthropic/claude-sonnet-5-5 \
             --epochs 5 --log-format json --log-dir logs/nightly
           python evals/compare.py --baseline evals/baselines/full.json \
             --candidate logs/nightly --max-drop 0.01   # non-zero exit = alert on-call
@@ -852,7 +851,7 @@ jobs:
       - run: pip install -r evals/requirements.txt
       - env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: inspect eval evals/capability.py --model anthropic/claude-sonnet-4-5 --log-dir logs/cap
+        run: inspect eval evals/capability.py --model anthropic/claude-sonnet-5-5 --log-dir logs/cap
       # no gate: results are uploaded and charted as a trend</code></pre>
 
 <p>A few design notes. The <b>baseline</b> is a committed log that the team refreshes deliberately (for example by a bot PR after a green nightly run on main). That keeps the baseline reviewable, but it means the baseline was produced at a different time from the candidate; if the provider changed the model in between, the difference includes that drift. The more rigorous option is to run baseline and candidate <em>in the same job</em>, which doubles cost but controls for time-varying factors. Many teams do the cheap version per PR and the rigorous version nightly. <code>--message-limit</code> caps each sample's conversation length so a looping agent cannot burn the CI budget (Inspect also supports token and time limits per sample).</p>
@@ -1028,7 +1027,7 @@ jobs:
 <path class="ln good" d="M270,152 C240,175 230,185 214,190" marker-end="url(#m15j)"/>
 <line class="ln bad" x1="330" y1="152" x2="330" y2="206" marker-end="url(#m15j)"/>
 <line class="ln" x1="115" y1="165" x2="115" y2="84" marker-end="url(#m15j)"/>
-<text x="232" y="190" text-anchor="end" class="sm t-good">ok</text>
+<text x="262" y="182" class="sm t-good">ok</text>
 <text x="338" y="186" class="sm t-bad">limit hit</text>
 <text x="20" y="245" class="sm mono">steps ≤ 30</text>
 <text x="20" y="262" class="sm mono">tokens ≤ 300k</text>
@@ -1047,7 +1046,7 @@ jobs:
 <text x="656" y="226" class="sm t-good">normal: done</text>
 <polyline class="ln bad thick" points="480,280 510,264 540,246 570,226 600,202 630,172 660,136 690,96 710,70"/>
 <circle class="fill-bad" cx="710" cy="70" r="6"/>
-<text x="700" y="100" text-anchor="end" class="sm t-bad">runaway: killed</text>
+<text x="660" y="84" text-anchor="end" class="sm t-bad">runaway: killed</text>
 <text x="640" y="44" text-anchor="middle" class="sm t-muted">each step re-sends a growing context</text>
 </svg>
 <figcaption><b>Guard every step.</b> Limits sit between the model's decision and the tool's execution, so a runaway loop is stopped by code, with a graceful message to the user and an alert to you. Runaway runs grow super-linearly in cost because every step re-sends an ever-longer context. Limits shown are examples; set yours from the p99 of healthy runs.</figcaption>

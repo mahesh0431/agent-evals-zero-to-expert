@@ -493,7 +493,7 @@ fi
 
 <pre data-lang="bash"><code># Run Terminal-Bench 2.0 with a given agent harness and model (Harbor README)
 harbor run --dataset terminal-bench@2.0 --agent claude-code \
-           --model anthropic/claude-opus-4-1 --n-concurrent 4
+           --model anthropic/claude-opus-5-5 --n-concurrent 4
 </code></pre>
 
 <p>Because the grader checks the <b>state of the machine</b>, not a diff, Terminal-Bench is a natural bridge to the computer-use evals of <a href="08-web-and-computer-use.html">Module 08</a>. Its known weaknesses: results are sensitive to the harness, some tasks can be flaky (network, timeouts), and 89 tasks gives wide confidence intervals (a single task is more than one percentage point).</p>
