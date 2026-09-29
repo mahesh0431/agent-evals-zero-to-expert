@@ -55,16 +55,16 @@
       <button class="iconbtn navtoggle" aria-label="Toggle course menu">☰</button>
       <a class="brand" href="${root}index.html">Agent Evals <span>Zero → Expert</span></a>
       <div class="spacer"></div>
-      <button class="iconbtn themebtn" aria-label="Toggle dark mode">◐</button>
+      <button class="iconbtn themebtn" aria-label="Switch light or dark theme" title="Light / dark">◐</button>
       <div class="progressbar"></div>`;
     document.body.prepend(bar);
     bar.querySelector(".navtoggle").onclick = () => document.body.classList.toggle("nav-open");
     bar.querySelector(".themebtn").onclick = () => {
-      const cur = document.documentElement.dataset.theme ||
-        (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const cur = document.documentElement.dataset.theme || "light";
       const next = cur === "dark" ? "light" : "dark";
       document.documentElement.dataset.theme = next;
       store.set("aez-theme", next);
+      if (document.querySelector(".hero3d canvas")) location.reload();
     };
     const pb = bar.querySelector(".progressbar");
     addEventListener("scroll", () => {
@@ -126,6 +126,46 @@
       }), { threshold: [0, 0.35, 0.7] });
       els.forEach(el => io.observe(el));
     }
+
+    // big outlined module number beside the title
+    const h1 = document.querySelector(".content h1");
+    if (idx >= 0 && h1) h1.insertAdjacentHTML("beforebegin", `<div class="modnum" aria-hidden="true">${ALL[idx][0]}</div>`);
+
+    // syntax highlighting (vendored highlight.js)
+    const codes = [...document.querySelectorAll("pre > code")];
+    if (codes.length) {
+      const hs = document.createElement("script");
+      hs.src = root + "assets/vendor/highlight.min.js";
+      hs.onload = () => codes.forEach(c => {
+        const lang = (c.parentElement.dataset.lang || "").toLowerCase();
+        const map = { jsonl: "json", sh: "bash", shell: "bash", yml: "yaml", py: "python" };
+        const l = map[lang] || lang;
+        if (!l || l === "text" || l === "csv" || !window.hljs.getLanguage(l)) return;
+        try { c.innerHTML = window.hljs.highlight(c.textContent, { language: l, ignoreIllegals: true }).value; c.classList.add("hljs"); } catch (e) {}
+      });
+      document.body.appendChild(hs);
+    }
+
+    // click any diagram to view it full screen
+    const lb = document.createElement("div");
+    lb.className = "lightbox"; lb.hidden = true;
+    lb.innerHTML = `<button class="iconbtn lbclose" aria-label="Close">✕</button><div class="lbinner diagram"></div><div class="lbcap"></div>`;
+    document.body.appendChild(lb);
+    const closeLb = () => { lb.hidden = true; lb.querySelector(".lbinner").innerHTML = ""; document.body.style.overflow = ""; };
+    lb.addEventListener("click", e => { if (e.target === lb || e.target.classList.contains("lbclose")) closeLb(); });
+    addEventListener("keydown", e => { if (e.key === "Escape" && !lb.hidden) closeLb(); });
+    document.querySelectorAll(".content figure.diagram").forEach(fig => {
+      const svg = fig.querySelector("svg"); if (!svg) return;
+      const b = document.createElement("button");
+      b.className = "iconbtn zoombtn"; b.textContent = "⤢ Enlarge"; b.setAttribute("aria-label", "Enlarge diagram");
+      b.onclick = () => {
+        const clone = svg.cloneNode(true);
+        lb.querySelector(".lbinner").appendChild(clone);
+        lb.querySelector(".lbcap").innerHTML = fig.querySelector("figcaption")?.innerHTML || "";
+        lb.hidden = false; document.body.style.overflow = "hidden";
+      };
+      fig.appendChild(b);
+    });
 
     // interactive widgets
     if (document.querySelector("[data-widget]")) {

@@ -49,7 +49,7 @@
     m.position.set(...n.pos); world.add(m); meshes.push(m); n.mesh = m;
     const halo = new T.Mesh(new T.RingGeometry(n.big ? 1.15 : 0.7, n.big ? 1.22 : 0.75, 48), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, side: T.DoubleSide }));
     halo.rotation.x = -Math.PI / 2; halo.position.set(n.pos[0], n.pos[1] - (n.big ? 0.9 : 0.5), n.pos[2]); world.add(halo);
-    const l = label(n.name, css(n.color)); l.position.set(n.pos[0], n.pos[1] + (n.big ? 1.45 : 1.0), n.pos[2]); world.add(l);
+    const l = label(n.name, css(n.color)); l.position.set(n.pos[0], n.pos[1] + (n.big ? 1.8 : 1.0), n.pos[2]); world.add(l);
   });
 
   // flows (curves with travelling particles)
@@ -83,6 +83,13 @@
   const grid = new T.GridHelper(16, 16, new T.Color(css("--line")), new T.Color(css("--line")));
   grid.position.y = -1.6; grid.material.transparent = true; grid.material.opacity = 0.5; world.add(grid);
 
+  // ambient dust: many small eval "samples" drifting around the loop
+  const dustGeo = new T.BufferGeometry(); const N = 420; const arr = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { const r = 3 + Math.random() * 6, a = Math.random() * Math.PI * 2; arr[i * 3] = Math.cos(a) * r; arr[i * 3 + 1] = -1.2 + Math.random() * 4; arr[i * 3 + 2] = Math.sin(a) * r; }
+  dustGeo.setAttribute("position", new T.BufferAttribute(arr, 3));
+  const dust = new T.Points(dustGeo, new T.PointsMaterial({ color: new T.Color(css("--accent-2")), size: 0.05, transparent: true, opacity: 0.55 }));
+  world.add(dust);
+
   // pointer drag to rotate
   let drag = false, lastX = 0, rotV = reduce ? 0 : 0.0018, targetRot = 0;
   host.addEventListener("pointerdown", e => { drag = true; lastX = e.clientX; host.setPointerCapture(e.pointerId); });
@@ -107,7 +114,7 @@
       world.rotation.y += (targetRot - world.rotation.y) * 0.08;
       if (!reduce) {
         particles.forEach(p => { p.userData.t = (p.userData.t + p.userData.speed * dt) % 1; p.position.copy(p.userData.curve.getPoint(p.userData.t)); });
-        nodes.agent.mesh.rotation.y += dt * 0.4; nodes.agent.mesh.rotation.x += dt * 0.15;
+        nodes.agent.mesh.rotation.y += dt * 0.4; dust.rotation.y -= dt * 0.03; nodes.agent.mesh.rotation.x += dt * 0.15;
         meshes.forEach((m, i) => m.position.y = Object.values(nodes)[i].pos[1] + Math.sin(now / 900 + i) * 0.08);
       } else {
         particles.forEach(p => p.position.copy(p.userData.curve.getPoint(p.userData.t)));
