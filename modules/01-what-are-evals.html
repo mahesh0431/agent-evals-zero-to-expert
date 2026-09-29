@@ -34,35 +34,39 @@
 <p>An <b>evaluation</b> ("eval") is a <b>fixed set of inputs</b>, run through <b>your AI system</b>, whose outputs are <b>scored by a grader</b> and <b>aggregated into metrics</b>, so that two versions of the system can be compared fairly.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 200" role="img" aria-label="An eval is a pipeline: inputs go through the system under test, a grader scores each output, and scores aggregate into a metric used for decisions.">
+<svg viewBox="0 0 860 220" role="img" aria-label="An eval is a pipeline: inputs go through the system under test, a grader scores each output, and scores aggregate into a metric used for decisions. Dataset and grader stay fixed; only the system changes.">
 <defs><marker id="m1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
-<rect class="box plain" x="10" y="50" width="130" height="90" rx="8"/>
-<text x="75" y="80" text-anchor="middle" class="b">Dataset</text>
-<text x="75" y="100" text-anchor="middle" class="sm">inputs +</text>
-<text x="75" y="115" text-anchor="middle" class="sm">expected behaviour</text>
-<rect class="box accent" x="190" y="50" width="150" height="90" rx="8"/>
-<text x="265" y="80" text-anchor="middle" class="b">System under test</text>
-<text x="265" y="100" text-anchor="middle" class="sm">model + prompt +</text>
-<text x="265" y="115" text-anchor="middle" class="sm">tools + scaffold</text>
-<rect class="box warn" x="390" y="50" width="130" height="90" rx="8"/>
-<text x="455" y="80" text-anchor="middle" class="b">Grader</text>
-<text x="455" y="100" text-anchor="middle" class="sm">code / model /</text>
-<text x="455" y="115" text-anchor="middle" class="sm">human</text>
-<rect class="box good" x="570" y="50" width="110" height="90" rx="8"/>
-<text x="625" y="80" text-anchor="middle" class="b">Metric</text>
-<text x="625" y="102" text-anchor="middle" class="sm">e.g. 73% ± 4%</text>
-<rect class="box plain" x="720" y="60" width="90" height="70" rx="8"/>
-<text x="765" y="92" text-anchor="middle" class="b">Decision</text>
-<text x="765" y="110" text-anchor="middle" class="sm">ship? fix?</text>
-<line class="ln" x1="140" y1="95" x2="186" y2="95" marker-end="url(#m1a)"/>
-<text x="163" y="86" text-anchor="middle" class="sm">each input</text>
-<line class="ln" x1="340" y1="95" x2="386" y2="95" marker-end="url(#m1a)"/>
-<text x="363" y="86" text-anchor="middle" class="sm">output</text>
-<line class="ln" x1="520" y1="95" x2="566" y2="95" marker-end="url(#m1a)"/>
-<text x="543" y="86" text-anchor="middle" class="sm">score</text>
-<line class="ln" x1="680" y1="95" x2="716" y2="95" marker-end="url(#m1a)"/>
-<path class="ln dash" d="M765,130 C765,185 265,185 265,144" marker-end="url(#m1a)"/>
-<text x="515" y="178" text-anchor="middle" class="sm">change the system, re-run the SAME eval, compare</text>
+<text x="70" y="38" text-anchor="middle" class="sm b t-muted">HELD FIXED</text>
+<text x="267" y="38" text-anchor="middle" class="sm b t-accent">THE ONLY THING YOU CHANGE</text>
+<text x="464" y="38" text-anchor="middle" class="sm b t-muted">HELD FIXED</text>
+<rect class="box plain" x="10" y="50" width="120" height="90" rx="10"/>
+<text x="70" y="82" text-anchor="middle" class="b">Dataset</text>
+<text x="70" y="102" text-anchor="middle" class="sm">inputs +</text>
+<text x="70" y="117" text-anchor="middle" class="sm">expected behaviour</text>
+<rect class="box accent" x="192" y="50" width="150" height="90" rx="10"/>
+<text x="267" y="82" text-anchor="middle" class="b">System under test</text>
+<text x="267" y="102" text-anchor="middle" class="sm">model + prompt +</text>
+<text x="267" y="117" text-anchor="middle" class="sm">tools + scaffold</text>
+<rect class="box warn" x="404" y="50" width="120" height="90" rx="10"/>
+<text x="464" y="82" text-anchor="middle" class="b">Grader</text>
+<text x="464" y="102" text-anchor="middle" class="sm">code / model /</text>
+<text x="464" y="117" text-anchor="middle" class="sm">human</text>
+<rect class="box good" x="586" y="50" width="110" height="90" rx="10"/>
+<text x="641" y="82" text-anchor="middle" class="b">Metric</text>
+<text x="641" y="104" text-anchor="middle" class="sm">e.g. 73% ± 4%</text>
+<rect class="box plain" x="758" y="58" width="96" height="74" rx="10"/>
+<text x="806" y="90" text-anchor="middle" class="b">Decision</text>
+<text x="806" y="108" text-anchor="middle" class="sm">ship? fix?</text>
+<line class="ln" x1="130" y1="95" x2="188" y2="95" marker-end="url(#m1a)"/>
+<text x="159" y="86" text-anchor="middle" class="sm">input</text>
+<line class="ln" x1="342" y1="95" x2="400" y2="95" marker-end="url(#m1a)"/>
+<text x="371" y="86" text-anchor="middle" class="sm">output</text>
+<line class="ln" x1="524" y1="95" x2="582" y2="95" marker-end="url(#m1a)"/>
+<text x="553" y="86" text-anchor="middle" class="sm">score</text>
+<line class="ln" x1="696" y1="95" x2="754" y2="95" marker-end="url(#m1a)"/>
+<text x="725" y="86" text-anchor="middle" class="sm">report</text>
+<path class="ln dash accent" d="M806,132 C806,200 267,200 267,146" marker-end="url(#m1a)"/>
+<text x="536" y="206" text-anchor="middle" class="sm t-accent">change the system, re-run the SAME eval, compare the two numbers</text>
 </svg>
 <figcaption><b>The eval pipeline.</b> The dataset and grader stay fixed; only the system under test changes between runs. That is what makes the comparison fair.</figcaption>
 </figure>
@@ -110,7 +114,8 @@
 <rect class="box good" x="604" y="102" width="150" height="32" rx="6"/><text x="679" y="122" text-anchor="middle" class="sm">looks up order, refunds ✓</text>
 <rect class="box warn" x="604" y="152" width="150" height="32" rx="6"/><text x="679" y="172" text-anchor="middle" class="sm">refunds, rude tone ~</text>
 <rect class="box bad" x="604" y="202" width="150" height="32" rx="6"/><text x="679" y="222" text-anchor="middle" class="sm">refunds WRONG order ✗</text>
-<text x="790" y="140" text-anchor="middle" class="b t-accent">p≈0.8</text>
+<text x="790" y="136" text-anchor="middle" class="b t-accent">P(good)</text>
+<text x="790" y="152" text-anchor="middle" class="sm">= a rate</text>
 <text x="610" y="266" text-anchor="middle" class="sm">1 input → a distribution of outputs, many acceptable</text>
 <text x="610" y="284" text-anchor="middle" class="sm">stochastic, graded, reported as a rate</text>
 </svg>
@@ -157,6 +162,43 @@
 <div data-widget="variance"></div>
 
 <p>OpenAI's own guidance calls this <b>eval-driven development</b>: write the evals first, like tests in test-driven development, then iterate on prompts, tools and models against them. Practitioners such as Hamel Husain put it bluntly: teams that succeed with LLM products are the ones that invest in evals and in looking at their data.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 290" role="img" aria-label="Eval-driven development loop: write evals from real tasks, run the suite, read the failures, change one thing, gate the change on no regressions, and feed new failures back into the dataset.">
+<defs><marker id="m1d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<ellipse cx="400" cy="150" rx="118" ry="52" class="fill-soft"/>
+<text x="400" y="144" text-anchor="middle" class="lg t-accent">eval-driven</text>
+<text x="400" y="162" text-anchor="middle" class="lg t-accent">development</text>
+<text x="400" y="182" text-anchor="middle" class="sm">test-first, for stochastic systems</text>
+<rect class="box accent" x="310" y="14" width="180" height="50" rx="10"/>
+<text x="400" y="34" text-anchor="middle" class="b">1 · Write evals</text>
+<text x="400" y="52" text-anchor="middle" class="sm">from real tasks and failures</text>
+<rect class="box plain" x="566" y="92" width="200" height="50" rx="10"/>
+<text x="666" y="112" text-anchor="middle" class="b">2 · Run the suite</text>
+<text x="666" y="130" text-anchor="middle" class="sm">same cases, every change</text>
+<rect class="box warn" x="476" y="222" width="190" height="50" rx="10"/>
+<text x="571" y="242" text-anchor="middle" class="b">3 · Read the failures</text>
+<text x="571" y="260" text-anchor="middle" class="sm">cluster them into error types</text>
+<rect class="box plain" x="134" y="222" width="190" height="50" rx="10"/>
+<text x="229" y="242" text-anchor="middle" class="b">4 · Change one thing</text>
+<text x="229" y="260" text-anchor="middle" class="sm">prompt, tool, model or data</text>
+<rect class="box good" x="34" y="92" width="200" height="50" rx="10"/>
+<text x="134" y="112" text-anchor="middle" class="b">5 · Gate the change</text>
+<text x="134" y="130" text-anchor="middle" class="sm">ship only if nothing regresses</text>
+<path class="ln accent flow" d="M492,40 Q640,40 662,88" marker-end="url(#m1d)"/>
+<path class="ln accent flow" d="M666,144 Q666,200 620,218" marker-end="url(#m1d)"/>
+<line class="ln accent flow" x1="474" y1="247" x2="328" y2="247" marker-end="url(#m1d)"/>
+<path class="ln accent flow" d="M180,220 Q134,190 134,146" marker-end="url(#m1d)"/>
+<path class="ln accent flow" d="M138,90 Q160,40 306,40" marker-end="url(#m1d)"/>
+<text x="560" y="36" class="sm">score</text>
+<text x="690" y="186" class="sm">look</text>
+<text x="401" y="238" text-anchor="middle" class="sm">hypothesis</text>
+<text x="92" y="190" class="sm">re-run</text>
+<text x="24" y="34" class="sm">new failures</text>
+<text x="24" y="48" class="sm">become new cases</text>
+</svg>
+<figcaption><b>The eval-driven development loop.</b> Evals come first, like tests in test-driven development. Every change is a hypothesis that the suite accepts or rejects, and every new failure you find in production becomes a new case, so the suite grows with the product.</figcaption>
+</figure>
 
 <h2>A map of the eval world</h2>
 <p>"Evals" means different things to different people. Almost all confusion goes away once you ask three questions: <b>who</b> is evaluating, <b>what question</b> are they answering, and <b>at what stage</b>.</p>
@@ -333,6 +375,47 @@
 
 <p>Result: <b>8 of 10 pass, 80%</b>. You also learned more than a number: failures cluster into "wrong unit" and "ambiguous city". That is the seed of <b>error analysis</b> (<a href="12-error-analysis.html">Module 12</a>), the most valuable habit in this whole field.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 250" role="img" aria-label="Ten samples, eight passes and two fails. The two failures link to two error types. Below, the 80 percent score sits inside a wide 95 percent confidence interval from 49 to 94 percent.">
+<defs><marker id="m1e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<path class="ln bad dash" d="M94,55 V26 H556"/>
+<path class="ln warn dash" d="M226,55 V42 H540 V78 H556"/>
+<g>
+<circle cx="50" cy="70" r="15" class="box good"/><text x="50" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="94" cy="70" r="15" class="box bad"/><text x="94" y="75" text-anchor="middle" class="b t-bad">✗</text>
+<circle cx="138" cy="70" r="15" class="box good"/><text x="138" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="182" cy="70" r="15" class="box good"/><text x="182" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="226" cy="70" r="15" class="box bad"/><text x="226" y="75" text-anchor="middle" class="b t-bad">✗</text>
+<circle cx="270" cy="70" r="15" class="box good"/><text x="270" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="314" cy="70" r="15" class="box good"/><text x="314" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="358" cy="70" r="15" class="box good"/><text x="358" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="402" cy="70" r="15" class="box good"/><text x="402" y="75" text-anchor="middle" class="b t-good">✓</text>
+<circle cx="446" cy="70" r="15" class="box good"/><text x="446" y="75" text-anchor="middle" class="b t-good">✓</text>
+</g>
+<text x="50" y="104" text-anchor="middle" class="sm">#1</text><text x="94" y="104" text-anchor="middle" class="sm">#2</text><text x="138" y="104" text-anchor="middle" class="sm">#3</text><text x="182" y="104" text-anchor="middle" class="sm">#4</text><text x="226" y="104" text-anchor="middle" class="sm">#5</text><text x="270" y="104" text-anchor="middle" class="sm">#6</text><text x="314" y="104" text-anchor="middle" class="sm">#7</text><text x="358" y="104" text-anchor="middle" class="sm">#8</text><text x="402" y="104" text-anchor="middle" class="sm">#9</text><text x="446" y="104" text-anchor="middle" class="sm">#10</text>
+<rect class="box bad" x="558" y="10" width="230" height="32" rx="8"/>
+<text x="673" y="31" text-anchor="middle" class="sm b">error type A: wrong unit (said °F)</text>
+<rect class="box warn" x="558" y="62" width="230" height="32" rx="8"/>
+<text x="673" y="83" text-anchor="middle" class="sm b">error type B: didn't ask which city</text>
+<text x="20" y="146" class="b">What the number says</text>
+<line class="ln" x1="50" y1="200" x2="450" y2="200"/>
+<line class="ln" x1="50" y1="195" x2="50" y2="205"/><line class="ln" x1="150" y1="195" x2="150" y2="205"/><line class="ln" x1="250" y1="195" x2="250" y2="205"/><line class="ln" x1="350" y1="195" x2="350" y2="205"/><line class="ln" x1="450" y1="195" x2="450" y2="205"/>
+<text x="50" y="222" text-anchor="middle" class="sm">0%</text><text x="150" y="222" text-anchor="middle" class="sm">25%</text><text x="250" y="222" text-anchor="middle" class="sm">50%</text><text x="350" y="222" text-anchor="middle" class="sm">75%</text><text x="450" y="222" text-anchor="middle" class="sm">100%</text>
+<rect x="246" y="176" width="180" height="12" rx="6" class="fill-accent" opacity="0.25"/>
+<line class="ln accent thick" x1="246" y1="182" x2="426" y2="182"/>
+<line class="ln accent thick" x1="246" y1="174" x2="246" y2="190"/><line class="ln accent thick" x1="426" y1="174" x2="426" y2="190"/>
+<circle cx="370" cy="182" r="6" class="fill-accent"/>
+<text x="370" y="166" text-anchor="middle" class="sm b t-accent">80%</text>
+<text x="336" y="240" text-anchor="middle" class="sm t-accent">95% interval: about 49% to 94%</text>
+<text x="558" y="146" class="b">What the failures say</text>
+<rect class="box accent" x="558" y="160" width="230" height="72" rx="10"/>
+<text x="572" y="182" class="sm">fix A: force °C in the prompt</text>
+<text x="572" y="202" class="sm">fix B: add a clarify-if-ambiguous rule</text>
+<text x="572" y="222" class="sm">then add 10 more cases of each type</text>
+</svg>
+<figcaption><b>Two outputs from one tiny eval.</b> The score (80%) is very uncertain with only ten samples: the 95% interval (Wilson method, <a href="04-metrics-and-statistics.html">Module 04</a>) runs from about 49% to 94%. The failures, though, are immediately useful: they name two concrete things to fix.</figcaption>
+</figure>
+
 <div class="callout warn"><span class="t">How much should you trust "80%"?</span>
 <p>Very little, with ten samples. The 95% confidence interval for 7 out of 10 is roughly 40% to 89%; for 8 out of 10 it is similar in width. With 100 samples at 70% it tightens to about 60% to 78%, and with 1,000 to about 67% to 73%. The width shrinks with the square root of the sample size: four times the data, half the error bar. <a href="04-metrics-and-statistics.html">Module 04</a> derives this properly, and the widget below lets you feel it.</p>
 </div>
@@ -368,6 +451,50 @@ for c, ok in zip(CASES, results):
 
 <h2>Core vocabulary</h2>
 <p>Terms are used loosely across the industry. This course uses them like this (closely matching the UK AI Security Institute's Inspect framework and Anthropic's and OpenAI's docs):</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 300" role="img" aria-label="How the vocabulary fits together: a suite contains tasks; a task has a dataset of samples; each sample is run for several trials through the system under test inside an environment, producing a transcript and an outcome; a grader scores them and scores aggregate into a metric. The harness runs everything.">
+<defs><marker id="m1f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="6" y="6" width="848" height="288" rx="14"/>
+<text x="20" y="26" class="sm b t-muted">SUITE: several tasks run together (e.g. a nightly regression suite)</text>
+<rect class="box plain" x="20" y="36" width="820" height="30" rx="8"/>
+<text x="430" y="56" text-anchor="middle" class="sm"><tspan class="b">Harness</tspan>: loads samples, runs every trial, calls graders, writes logs (Inspect, promptfoo, lm-eval-harness)</text>
+<rect class="box dashed" x="20" y="76" width="820" height="208" rx="12"/>
+<text x="34" y="96" class="sm b t-muted">TASK (one eval)</text>
+<rect class="box plain" x="34" y="106" width="120" height="166" rx="10"/>
+<text x="94" y="124" text-anchor="middle" class="b">Dataset</text>
+<rect class="box plain" x="44" y="134" width="100" height="38" rx="6"/><text x="94" y="150" text-anchor="middle" class="sm b">sample 1</text><text x="94" y="164" text-anchor="middle" class="sm">input + target</text>
+<rect class="box plain" x="44" y="180" width="100" height="38" rx="6"/><text x="94" y="196" text-anchor="middle" class="sm b">sample 2</text><text x="94" y="210" text-anchor="middle" class="sm">input + rubric</text>
+<rect class="box plain" x="44" y="226" width="100" height="38" rx="6"/><text x="94" y="250" text-anchor="middle" class="sm">…</text>
+<line class="ln" x1="144" y1="153" x2="226" y2="153" marker-end="url(#m1f)"/>
+<text x="186" y="144" text-anchor="middle" class="sm b">3 trials</text>
+<text x="186" y="170" text-anchor="middle" class="sm">(epochs)</text>
+<rect class="box dashed" x="216" y="106" width="178" height="166" rx="10"/>
+<text x="305" y="264" text-anchor="middle" class="sm">environment / sandbox</text>
+<rect class="box accent" x="228" y="116" width="154" height="128" rx="10"/>
+<text x="305" y="136" text-anchor="middle" class="b">System under test</text>
+<rect class="box plain" x="240" y="148" width="130" height="34" rx="6"/><text x="305" y="170" text-anchor="middle">model</text>
+<rect class="box plain" x="240" y="192" width="130" height="42" rx="6"/><text x="305" y="210" text-anchor="middle">scaffold</text><text x="305" y="226" text-anchor="middle" class="sm">loop, tools, memory</text>
+<line class="ln" x1="394" y1="147" x2="432" y2="147" marker-end="url(#m1f)"/>
+<line class="ln" x1="394" y1="215" x2="432" y2="215" marker-end="url(#m1f)"/>
+<rect class="box plain" x="436" y="122" width="130" height="50" rx="8"/>
+<text x="501" y="142" text-anchor="middle" class="b">Transcript</text><text x="501" y="160" text-anchor="middle" class="sm">messages, tool calls</text>
+<rect class="box plain" x="436" y="190" width="130" height="50" rx="8"/>
+<text x="501" y="210" text-anchor="middle" class="b">Outcome</text><text x="501" y="228" text-anchor="middle" class="sm">final env state</text>
+<line class="ln" x1="566" y1="147" x2="608" y2="170" marker-end="url(#m1f)"/>
+<line class="ln" x1="566" y1="215" x2="608" y2="192" marker-end="url(#m1f)"/>
+<rect class="box warn" x="612" y="146" width="100" height="70" rx="10"/>
+<text x="662" y="172" text-anchor="middle" class="b">Grader</text><text x="662" y="189" text-anchor="middle" class="sm">code, model</text><text x="662" y="203" text-anchor="middle" class="sm">or human</text>
+<line class="ln" x1="712" y1="181" x2="740" y2="181" marker-end="url(#m1f)"/>
+<rect class="box good" x="744" y="122" width="86" height="118" rx="10"/>
+<text x="787" y="142" text-anchor="middle" class="sm b">scores</text>
+<text x="787" y="160" text-anchor="middle" class="mono">1 0 1</text>
+<line class="ln" x1="760" y1="172" x2="814" y2="172"/>
+<text x="787" y="192" text-anchor="middle" class="b">Metric</text>
+<text x="787" y="218" text-anchor="middle" class="lg t-good">67%</text>
+</svg>
+<figcaption><b>The vocabulary as one picture.</b> A suite holds tasks. A task is a dataset plus how to run and grade it. Each sample is attempted over several trials by the system under test (model plus scaffold) inside an environment; each trial leaves a transcript and an outcome, a grader scores them, and the scores aggregate into a metric. The harness is the machinery that runs all of it.</figcaption>
+</figure>
 <div class="tablewrap"><table>
 <tr><th>Term</th><th>Meaning</th></tr>
 <tr><td><b>Task / eval</b></td><td>A complete, runnable evaluation: dataset + how to run the system + how to grade.</td></tr>
@@ -383,6 +510,16 @@ for c, ok in zip(CASES, results):
 <tr><td><b>Suite</b></td><td>A collection of evals run together, e.g. a regression suite on every change and a capability suite weekly.</td></tr>
 <tr><td><b>Benchmark</b></td><td>A public, standardised eval used to compare systems (SWE-bench, OSWorld, τ-bench, MMMU…).</td></tr>
 </table></div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>An eval is a <b>fixed dataset</b> run through a <b>system under test</b>, scored by a <b>grader</b> and aggregated into a <b>metric</b>. Only the system should change between runs.</li>
+<li>AI systems are stochastic, so an eval estimates a <b>probability</b> of good behaviour. Numbers need repeats and error bars before you trust a difference.</li>
+<li>The grader is a measuring instrument with its own error rate. Measure it before you believe it.</li>
+<li>Capability evals should be hard (headroom to improve); regression evals should sit near 100% (any drop is a signal).</li>
+<li>Agent evals grade the <b>trajectory</b> (what it did) and the <b>outcome</b> (the final state of the environment), plus cost, latency and safety.</li>
+<li>Benchmarks have a life cycle: launch, climb, saturate or get found flawed, retire. Know where each one is.</li>
+<li>The score tells you where you are; the failures tell you what to fix. Always read them.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
@@ -401,12 +538,22 @@ for c, ok in zip(CASES, results):
 <button class="opt">Around 50%, for maximum statistical power</button>
 <button class="opt">As low as possible, to leave room to improve</button>
 <div class="why">Capability evals are meant to be hard (headroom). Regression evals protect what already works, so any drop is a signal.</div></div>
+<div class="q" data-answer="1"><p>4. Every model you are considering scores between 96% and 98% on a public benchmark. What can you conclude about which is best for you?</p>
+<button class="opt">The 98% model is clearly the best</button>
+<button class="opt">Very little: the benchmark is saturated, the gaps are likely noise, and it may not match your task anyway</button>
+<button class="opt">They are all equally good at everything</button>
+<div class="why">A saturated eval cannot discriminate between systems. You need an eval with headroom, ideally built from your own tasks.</div></div>
+<div class="q" data-answer="2"><p>5. Your support agent says "Refund done!" but the order database shows no refund. Which part of an agent eval catches this?</p>
+<button class="opt">The metric</button>
+<button class="opt">The transcript's final message</button>
+<button class="opt">An outcome check on the final state of the environment</button>
+<div class="why">The transcript records what the agent <em>said</em>. The outcome is what actually happened. Agent evals should check the outcome directly whenever they can.</div></div>
 </div>
 
 <h2>Sources and further reading</h2>
 <ul class="sources">
 <li>OpenAI, <a href="https://platform.openai.com/docs/guides/evaluation-best-practices">Evaluation best practices</a> (eval-driven development).</li>
-<li>Anthropic, <a href="https://docs.anthropic.com/en/docs/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
+<li>Anthropic, <a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
 <li>UK AI Security Institute, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a> (task, dataset, solver, scorer vocabulary).</li>
 <li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a>.</li>
 <li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (Jan 2026): task, trial, grader, transcript, outcome; capability vs regression evals.</li>

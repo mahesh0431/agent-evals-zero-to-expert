@@ -41,6 +41,44 @@
     ...</code></pre>
 <p>The system under test gets most of the attention, but the grader deserves at least as much. Here is why: your metric can only be as accurate as your grader. If the grader wrongly passes 8% of bad outputs and wrongly fails 5% of good ones, then a 3-point "improvement" in your agent could be pure grader noise. And unlike the agent, nobody is watching the grader. It fails silently.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 262" role="img" aria-label="1,000 outputs, 700 truly good and 300 truly bad, pass through a grader with a 5 percent false-fail rate and an 8 percent false-pass rate. The measured pass rate is 68.9 percent against a true 70 percent.">
+<defs><marker id="m3j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="100" width="130" height="62" rx="10"/>
+<text x="85" y="126" text-anchor="middle" class="b">1,000</text>
+<text x="85" y="144" text-anchor="middle" class="sm">agent outputs</text>
+<rect class="box good" x="196" y="42" width="150" height="56" rx="10"/>
+<text x="271" y="66" text-anchor="middle" class="b">700 truly good</text>
+<text x="271" y="84" text-anchor="middle" class="sm">(true rate 70%)</text>
+<rect class="box bad" x="196" y="166" width="150" height="56" rx="10"/>
+<text x="271" y="190" text-anchor="middle" class="b">300 truly bad</text>
+<text x="271" y="208" text-anchor="middle" class="sm">what humans would fail</text>
+<line class="ln" x1="150" y1="122" x2="192" y2="76" marker-end="url(#m3j)"/>
+<line class="ln" x1="150" y1="140" x2="192" y2="190" marker-end="url(#m3j)"/>
+<rect class="box good" x="410" y="14" width="180" height="44" rx="8"/>
+<text x="424" y="34" class="b">665 graded PASS</text><text x="424" y="50" class="sm">correct</text>
+<rect class="box warn" x="410" y="70" width="180" height="44" rx="8"/>
+<text x="424" y="90" class="b">35 graded FAIL</text><text x="424" y="106" class="sm">false fail: 5% of good</text>
+<rect class="box bad" x="410" y="150" width="180" height="44" rx="8"/>
+<text x="424" y="170" class="b">24 graded PASS</text><text x="424" y="186" class="sm">false pass: 8% of bad</text>
+<rect class="box plain" x="410" y="206" width="180" height="44" rx="8"/>
+<text x="424" y="226" class="b">276 graded FAIL</text><text x="424" y="242" class="sm">correct</text>
+<line class="ln" x1="346" y1="62" x2="406" y2="38" marker-end="url(#m3j)"/>
+<line class="ln" x1="346" y1="78" x2="406" y2="92" marker-end="url(#m3j)"/>
+<line class="ln" x1="346" y1="186" x2="406" y2="172" marker-end="url(#m3j)"/>
+<line class="ln" x1="346" y1="202" x2="406" y2="226" marker-end="url(#m3j)"/>
+<rect class="box accent" x="640" y="70" width="160" height="124" rx="12"/>
+<text x="720" y="94" text-anchor="middle" class="b">Measured pass rate</text>
+<text x="720" y="114" text-anchor="middle" class="sm">(665 + 24) / 1,000</text>
+<text x="720" y="144" text-anchor="middle" class="lg t-accent">68.9%</text>
+<text x="720" y="166" text-anchor="middle" class="sm">truth: 70.0%</text>
+<text x="720" y="182" text-anchor="middle" class="sm">59 of 1,000 grades wrong</text>
+<line class="ln accent" x1="590" y1="36" x2="660" y2="68" marker-end="url(#m3j)"/>
+<line class="ln accent" x1="590" y1="172" x2="636" y2="160" marker-end="url(#m3j)"/>
+</svg>
+<figcaption><b>The grader sits between reality and your number.</b> Illustrative error rates. The two kinds of error partly cancel, so the headline looks almost right, yet 59 individual verdicts are wrong. If your next agent version happens to trigger more false passes, it can look better than it is. That is why you measure a grader's TPR and TNR (later in this module).</figcaption>
+</figure>
+
 <div class="callout analogy"><span class="t">Analogy: the exam marker</span>
 <p>Imagine a maths exam. A multiple-choice section can be marked by a machine with an answer key: fast, cheap, perfectly consistent. An essay question needs a teacher with a marking scheme. A PhD thesis needs a panel of experts. Nobody would mark a thesis with an answer key, and nobody would pay a panel of professors to mark multiple-choice. Graders work the same way: match the marker to the kind of answer.</p>
 </div>
@@ -229,6 +267,48 @@ def grade_refund_json(output: str, expected: dict) -&gt; dict:
         wrong.append("amount")
     return {"passed": not wrong, "stage": "values", "errors": wrong}</code></pre>
 <p>Notice the grader reports <em>which stage</em> failed. That tiny detail pays off during error analysis (<a href="12-error-analysis.html">Module 12</a>): "30% of failures are schema errors" points to a completely different fix than "30% have the wrong amount".</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 222" role="img" aria-label="A structured-output grader as three gates: parse the JSON, validate it against the schema, then compare values with the expected record. Each gate has an example output that fails there.">
+<defs><marker id="m3k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="10" y="36" width="110" height="64" rx="10"/>
+<text x="65" y="64" text-anchor="middle" class="b">output</text>
+<text x="65" y="82" text-anchor="middle" class="sm">a string</text>
+<rect class="box accent" x="150" y="36" width="170" height="64" rx="10"/>
+<text x="235" y="62" text-anchor="middle" class="b">1 · Parse</text>
+<text x="235" y="82" text-anchor="middle" class="sm">is it JSON at all?</text>
+<rect class="box accent" x="350" y="36" width="170" height="64" rx="10"/>
+<text x="435" y="62" text-anchor="middle" class="b">2 · Schema</text>
+<text x="435" y="82" text-anchor="middle" class="sm">right keys, types, enums?</text>
+<rect class="box accent" x="550" y="36" width="170" height="64" rx="10"/>
+<text x="635" y="62" text-anchor="middle" class="b">3 · Values</text>
+<text x="635" y="82" text-anchor="middle" class="sm">right content?</text>
+<rect class="box good" x="750" y="36" width="60" height="64" rx="10"/>
+<text x="780" y="73" text-anchor="middle" class="b t-good">PASS</text>
+<line class="ln" x1="120" y1="68" x2="146" y2="68" marker-end="url(#m3k)"/>
+<line class="ln" x1="320" y1="68" x2="346" y2="68" marker-end="url(#m3k)"/>
+<line class="ln" x1="520" y1="68" x2="546" y2="68" marker-end="url(#m3k)"/>
+<line class="ln" x1="720" y1="68" x2="746" y2="68" marker-end="url(#m3k)"/>
+<line class="ln bad dash" x1="235" y1="100" x2="235" y2="130" marker-end="url(#m3k)"/>
+<line class="ln bad dash" x1="435" y1="100" x2="435" y2="130" marker-end="url(#m3k)"/>
+<line class="ln bad dash" x1="635" y1="100" x2="635" y2="130" marker-end="url(#m3k)"/>
+<rect class="box bad" x="150" y="134" width="170" height="72" rx="10"/>
+<text x="164" y="154" class="sm b">stage = "parse"</text>
+<text x="164" y="176" class="mono">{order_id: 104233}</text>
+<text x="164" y="196" class="sm">unquoted key</text>
+<rect class="box bad" x="350" y="134" width="170" height="72" rx="10"/>
+<text x="364" y="154" class="sm b">stage = "schema"</text>
+<text x="364" y="176" class="mono">"order_id": "104233"</text>
+<text x="364" y="196" class="sm">misses ^ORD-[0-9]{6}$</text>
+<rect class="box bad" x="550" y="134" width="170" height="72" rx="10"/>
+<text x="564" y="154" class="sm b">stage = "values"</text>
+<text x="564" y="176" class="mono">"amount": 81.0</text>
+<text x="564" y="196" class="sm">expected 18.00</text>
+<text x="65" y="176" text-anchor="middle" class="sm">each failure</text>
+<text x="65" y="192" text-anchor="middle" class="sm">names its stage</text>
+</svg>
+<figcaption><b>Three gates, three different fixes.</b> Parse failures point to output formatting (use structured outputs), schema failures to the tool or prompt definition, and value failures to actual reasoning errors. A single "failed" flag would hide which of the three you have.</figcaption>
+</figure>
 
 <h3>Execution-based graders: unit tests and state checks</h3>
 <p>For many agent tasks, the most trustworthy grader does not read the output at all. It <b>runs</b> it, or inspects the world after the agent has acted.</p>
@@ -493,6 +573,46 @@ print(result["verdict"], result["failed_checks"])</code></pre>
 <div class="card violet"><h4>Preference / Elo</h4><p>People see two anonymous outputs and pick the better one. Votes are aggregated into a ranking with an Elo or <b>Bradley–Terry</b> model. Chatbot Arena (now LMArena) does this at scale with crowdsourced votes, fitting a Bradley–Terry model with bootstrap confidence intervals.</p></div>
 </div>
 <p><b>Elo</b> and <b>Bradley–Terry</b> both model the probability that A beats B as a function of the difference between their hidden "strength" scores: P(A beats B) = 1 / (1 + 10<sup>(R<sub>B</sub> − R<sub>A</sub>)/400</sup>) in Elo's chess notation. Elo updates ratings one game at a time (so the order of games matters); Bradley–Terry fits all ratings at once to all votes, which is more stable. Arena-style preference ranking is powerful for "which model do people like more?", but preference is not correctness: raters can reward confident, long, nicely formatted answers. LMArena added "style control" to adjust for length and markdown for exactly this reason, and critics such as "The Leaderboard Illusion" (Singh et al., 2025) have questioned how private testing affects the rankings. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Human labelling workflow: write guidelines, have raters label blind with overlap, measure agreement, adjudicate disagreements, and produce gold labels. Low agreement loops back to rewriting the guidelines.">
+<defs><marker id="m3n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="16" y="30" width="136" height="72" rx="10"/>
+<text x="84" y="56" text-anchor="middle" class="b">1 · Guidelines</text>
+<text x="84" y="74" text-anchor="middle" class="sm">binary checks,</text>
+<text x="84" y="88" text-anchor="middle" class="sm">pass/fail examples</text>
+<rect class="box violet" x="176" y="30" width="136" height="72" rx="10"/>
+<text x="244" y="56" text-anchor="middle" class="b">2 · Label blind</text>
+<text x="244" y="74" text-anchor="middle" class="sm">2 to 3 raters per item,</text>
+<text x="244" y="88" text-anchor="middle" class="sm">no grader verdict shown</text>
+<rect class="box accent" x="336" y="30" width="136" height="72" rx="10"/>
+<text x="404" y="56" text-anchor="middle" class="b">3 · Agreement</text>
+<text x="404" y="74" text-anchor="middle" class="sm">% agree, Cohen's κ</text>
+<text x="404" y="88" text-anchor="middle" class="sm">on the overlap</text>
+<rect class="box warn" x="496" y="30" width="136" height="72" rx="10"/>
+<text x="564" y="56" text-anchor="middle" class="b">4 · Adjudicate</text>
+<text x="564" y="74" text-anchor="middle" class="sm">an expert settles</text>
+<text x="564" y="88" text-anchor="middle" class="sm">each disagreement</text>
+<rect class="box good" x="656" y="30" width="148" height="72" rx="10"/>
+<text x="730" y="56" text-anchor="middle" class="b">5 · Gold labels</text>
+<text x="730" y="74" text-anchor="middle" class="sm">used to validate</text>
+<text x="730" y="88" text-anchor="middle" class="sm">judges and graders</text>
+<line class="ln" x1="152" y1="66" x2="172" y2="66" marker-end="url(#m3n)"/>
+<line class="ln" x1="312" y1="66" x2="332" y2="66" marker-end="url(#m3n)"/>
+<line class="ln" x1="472" y1="66" x2="492" y2="66" marker-end="url(#m3n)"/>
+<line class="ln" x1="632" y1="66" x2="652" y2="66" marker-end="url(#m3n)"/>
+<path class="ln bad dash" d="M404,102 C404,176 84,176 84,106" marker-end="url(#m3n)"/>
+<text x="244" y="192" text-anchor="middle" class="sm b">low agreement? the criterion is ambiguous:</text>
+<text x="244" y="208" text-anchor="middle" class="sm b">rewrite it before labelling more</text>
+<rect class="box plain" x="496" y="128" width="308" height="108" rx="10"/>
+<text x="510" y="148" class="sm b t-muted">EXAMPLE · ITEM 17</text>
+<text x="510" y="170" class="sm">rater A: PASS · rater B: PASS · rater C: FAIL</text>
+<text x="510" y="190" class="sm">C noticed the refund amount was $81, not $18</text>
+<text x="510" y="214" class="b">adjudicated: FAIL</text>
+<text x="510" y="230" class="sm">and the guideline gains an "amount matches" check</text>
+</svg>
+<figcaption><b>How human labels become ground truth.</b> Overlap (several people per item) is what lets you measure agreement at all. Disagreements are not noise to average away: each one either reveals a rater mistake or an ambiguous criterion, and both are worth fixing before the labels are used to judge anything else.</figcaption>
+</figure>
 
 <div class="callout tip"><span class="t">Humans need rubrics too</span>
 <p>Two humans with no rubric disagree a lot. The same care you put into a judge prompt (binary criteria, definitions, examples) goes into human grading guidelines. Measure <b>inter-annotator agreement</b> on an overlapping subset; if humans cannot agree, the criterion is ambiguous, and no judge will fix that.</p>
@@ -896,6 +1016,51 @@ eval_obj = client.evals.create(
 </table></div>
 <p>The key principle carries over: whenever there is a machine-checkable state (a database row, a file, a DOM element), grade that. Use multimodal judges for what is genuinely perceptual (does the voice sound impatient? is the chart legible?), and validate them against humans exactly as you would a text judge. They are newer and generally less reliable.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 256" role="img" aria-label="Three multimodal grading routes: voice calls become transcripts and timestamps for text graders plus state checks; generated images go through detectors or yes/no questions to a vision judge; GUI agents are graded on application state rather than pixels.">
+<defs><marker id="m3l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="95" y="18" text-anchor="middle" class="sm b t-muted">RAW OUTPUT</text>
+<text x="370" y="18" text-anchor="middle" class="sm b t-muted">TURN IT INTO SOMETHING GRADABLE</text>
+<text x="665" y="18" text-anchor="middle" class="sm b t-muted">GRADE</text>
+<rect class="box violet" x="20" y="28" width="150" height="62" rx="10"/>
+<polyline class="ln violet" points="34,59 40,50 46,68 52,44 58,72 64,52 70,64 76,56 82,59"/>
+<text x="96" y="55" class="b">Voice call</text><text x="96" y="73" class="sm">audio</text>
+<rect class="box plain" x="230" y="28" width="280" height="62" rx="10"/>
+<text x="246" y="52" class="b">speech recognition + timestamps</text>
+<text x="246" y="72" class="sm">transcript, who spoke when, interruptions</text>
+<rect class="box good" x="570" y="28" width="230" height="62" rx="10"/>
+<text x="584" y="52" class="sm b">text graders, WER, latency</text>
+<text x="584" y="72" class="sm">+ DB state if it took actions</text>
+<rect class="box violet" x="20" y="106" width="150" height="62" rx="10"/>
+<rect class="box plain" x="34" y="122" width="44" height="30" rx="3"/>
+<polyline class="ln violet" points="36,150 50,134 60,144 66,138 76,150"/>
+<text x="90" y="133" class="b">Image</text><text x="90" y="151" class="sm">generated</text>
+<rect class="box plain" x="230" y="106" width="280" height="62" rx="10"/>
+<text x="246" y="130" class="b">detector or targeted questions</text>
+<text x="246" y="150" class="sm">"how many cubes?" "are they red?"</text>
+<rect class="box accent" x="570" y="106" width="230" height="62" rx="10"/>
+<text x="584" y="130" class="sm b">count / colour / position checks</text>
+<text x="584" y="150" class="sm">vision judge, validated vs humans</text>
+<rect class="box violet" x="20" y="184" width="150" height="62" rx="10"/>
+<rect class="box plain" x="34" y="200" width="44" height="30" rx="3"/>
+<line class="ln violet" x1="34" y1="208" x2="78" y2="208"/>
+<text x="90" y="211" class="b">GUI run</text><text x="90" y="229" class="sm">screenshots</text>
+<rect class="box plain" x="230" y="184" width="280" height="62" rx="10"/>
+<text x="246" y="208" class="b">read the state, not the pixels</text>
+<text x="246" y="228" class="sm">DOM, accessibility tree, app DB, files</text>
+<rect class="box good" x="570" y="184" width="230" height="62" rx="10"/>
+<text x="584" y="208" class="sm b">code checkers</text>
+<text x="584" y="228" class="sm">OSWorld / WebArena style</text>
+<line class="ln" x1="170" y1="59" x2="226" y2="59" marker-end="url(#m3l)"/>
+<line class="ln" x1="510" y1="59" x2="566" y2="59" marker-end="url(#m3l)"/>
+<line class="ln" x1="170" y1="137" x2="226" y2="137" marker-end="url(#m3l)"/>
+<line class="ln" x1="510" y1="137" x2="566" y2="137" marker-end="url(#m3l)"/>
+<line class="ln" x1="170" y1="215" x2="226" y2="215" marker-end="url(#m3l)"/>
+<line class="ln" x1="510" y1="215" x2="566" y2="215" marker-end="url(#m3l)"/>
+</svg>
+<figcaption><b>From pixels and waveforms to verdicts.</b> The trick in every modality is the middle column: convert the raw output into something a reliable grader can check. Green boxes are mostly deterministic; the blue one relies on a model judge and needs human validation.</figcaption>
+</figure>
+
 <h2>Putting it together: a grading stack</h2>
 <p>A realistic grading setup for the support agent in this module might look like this:</p>
 <ol>
@@ -906,6 +1071,58 @@ eval_obj = client.evals.create(
 <li><b>Calibration (humans, a sample each release)</b>: an expert labels 100 fresh samples; you recompute TPR/TNR for each judge check and read every disagreement.</li>
 </ol>
 <p>Cheap checks run first and short-circuit: there is no point paying a judge to assess the tone of a reply whose refund amount is wrong. Every check logs its verdict separately so that error analysis can slice by check.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="A layered grading stack: gate checks, outcome check, process rules and LLM quality checks run in order; any failure stops the pipeline and records which check failed; a human calibration sample each release keeps the judge honest.">
+<defs><marker id="m3m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="16" width="500" height="48" rx="10"/>
+<text x="36" y="37" class="b">1 · Gate checks</text><text x="36" y="54" class="sm">no errors, schemas valid, no forbidden tool, no leaks</text>
+<text x="506" y="45" text-anchor="end" class="sm b">code · ms</text>
+<rect class="box plain" x="20" y="80" width="500" height="48" rx="10"/>
+<text x="36" y="101" class="b">2 · Outcome check</text><text x="36" y="118" class="sm">DB matches the goal state, no collateral changes</text>
+<text x="506" y="109" text-anchor="end" class="sm b">code · ms</text>
+<rect class="box plain" x="20" y="144" width="500" height="48" rx="10"/>
+<text x="36" y="165" class="b">3 · Process rules</text><text x="36" y="182" class="sm">identity verified before refund; under 15 tool calls</text>
+<text x="506" y="173" text-anchor="end" class="sm b">code · ms</text>
+<rect class="box accent" x="20" y="208" width="500" height="48" rx="10"/>
+<text x="36" y="229" class="b">4 · Quality checks</text><text x="36" y="246" class="sm">rubric R2 to R6, binary, reasoning first, pinned judge</text>
+<text x="506" y="237" text-anchor="end" class="sm b">LLM · seconds</text>
+<line class="ln accent flow" x1="270" y1="64" x2="270" y2="78" marker-end="url(#m3m)"/>
+<line class="ln accent flow" x1="270" y1="128" x2="270" y2="142" marker-end="url(#m3m)"/>
+<line class="ln accent flow" x1="270" y1="192" x2="270" y2="206" marker-end="url(#m3m)"/>
+<line class="ln accent flow" x1="270" y1="256" x2="270" y2="274" marker-end="url(#m3m)"/>
+<rect class="box good" x="200" y="276" width="140" height="28" rx="8"/>
+<text x="270" y="295" text-anchor="middle" class="b t-good">PASS</text>
+<rect class="box bad" x="600" y="16" width="200" height="176" rx="12"/>
+<text x="700" y="44" text-anchor="middle" class="b t-bad">FAIL: stop here</text>
+<text x="700" y="68" text-anchor="middle" class="sm">log WHICH check failed</text>
+<text x="700" y="86" text-anchor="middle" class="sm">and skip the costlier ones</text>
+<text x="700" y="120" text-anchor="middle" class="sm">"R5 fails 40% of the time"</text>
+<text x="700" y="136" text-anchor="middle" class="sm">is a to-do item;</text>
+<text x="700" y="152" text-anchor="middle" class="sm">"71% overall" is not</text>
+<line class="ln bad" x1="520" y1="40" x2="596" y2="40" marker-end="url(#m3m)"/>
+<line class="ln bad" x1="520" y1="104" x2="596" y2="104" marker-end="url(#m3m)"/>
+<line class="ln bad" x1="520" y1="168" x2="596" y2="168" marker-end="url(#m3m)"/>
+<path class="ln bad" d="M520,224 L560,224 L560,180 L596,180" marker-end="url(#m3m)"/>
+<rect class="box violet" x="600" y="214" width="200" height="90" rx="12"/>
+<text x="700" y="238" text-anchor="middle" class="b">5 · Human calibration</text>
+<text x="700" y="258" text-anchor="middle" class="sm">100 fresh samples per release</text>
+<text x="700" y="274" text-anchor="middle" class="sm">re-measure judge TPR / TNR</text>
+<text x="700" y="290" text-anchor="middle" class="sm">read every disagreement</text>
+<path class="ln violet dash" d="M600,248 L560,248 L560,240 L524,240" marker-end="url(#m3m)"/>
+</svg>
+<figcaption><b>A grading stack with short-circuits.</b> Cheap deterministic checks run first; the paid judge only sees samples that already got the facts right. Humans sit beside the pipeline rather than inside it, keeping the judge calibrated.</figcaption>
+</figure>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Your metric can only be as accurate as your grader. Treat every grader as a measuring instrument with a false-pass and a false-fail rate.</li>
+<li>Use the cheapest grader that is reliable for the question: code for formats, facts, tests and end states; an LLM judge for what code cannot see; humans for ground truth and rubric design.</li>
+<li>Similarity metrics (BLEU, ROUGE, embeddings) measure resemblance to one reference, not correctness. One "not" can flip meaning and barely move the score.</li>
+<li>Good judge prompts use binary checks with definitions, reasoning before verdict, structured output, a tie-break rule and a pinned judge model.</li>
+<li>Grade outcomes by default; add process rules only for constraints that matter (safety steps, forbidden actions, budgets).</li>
+<li>Watch for reward hacking and judge biases (position, verbosity, self-preference). Swap orders in pairwise tests and keep graders outside the agent's reach.</li>
+<li>Validate every non-trivial grader against blind expert labels: confusion matrix, TPR and TNR separately, kappa, and re-check every release.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
@@ -957,7 +1174,7 @@ eval_obj = client.evals.create(
 <h2>Sources and further reading</h2>
 <ul class="sources">
 <li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (Jan 2026): code, model and human graders; outcomes over paths; partial credit; resisting hacks; calibrating judges.</li>
-<li>Anthropic, <a href="https://docs.anthropic.com/en/docs/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
+<li>Anthropic, <a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a>.</li>
 <li>Zheng et al., <a href="https://arxiv.org/abs/2306.05685">Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</a> (NeurIPS 2023 Datasets and Benchmarks): position, verbosity and self-enhancement bias; over 80% agreement with humans.</li>
 <li>Chiang, Zheng et al., <a href="https://arxiv.org/abs/2403.04132">Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference</a> (2024): pairwise votes and Bradley–Terry ratings.</li>
 <li>Singh et al., <a href="https://arxiv.org/abs/2504.20879">The Leaderboard Illusion</a> (2025): critique of arena-style rankings.</li>

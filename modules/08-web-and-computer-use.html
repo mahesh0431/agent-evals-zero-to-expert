@@ -34,6 +34,73 @@
 
 <h2>What makes these agents different</h2>
 <p>In <a href="06-tool-use-and-conversation.html">Module 06</a> the agent called neat, typed functions such as <code>get_order(order_id="A17")</code>. A <b>web agent</b> instead works through a browser, and a <b>computer-use agent</b> (also called a GUI agent, where GUI means graphical user interface) works through a whole desktop or phone. Nobody wrote an API for it. It has to read the screen the way a person does, figure out which of hundreds of pixels or page elements matters, and then act through the same crude channels a person uses: clicking, typing, scrolling, pressing shortcuts.</p>
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="The same goal, checking the status of order A17, takes one typed function call for an API agent but eight screen-level steps for a GUI agent. If each step is 95 percent reliable, the API task succeeds about 95 percent of the time and the GUI task about 66 percent.">
+<defs><marker id="m8m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="28" class="b">Same goal: "What is the status of order A17?"</text>
+<text x="20" y="72" class="b t-accent">API agent</text>
+<text x="20" y="90" class="sm">typed tools</text>
+<rect class="box accent" x="150" y="52" width="250" height="44" rx="8"/>
+<text x="275" y="79" text-anchor="middle" class="mono" style="font-size:12px">get_order(order_id="A17")</text>
+<line class="ln" x1="400" y1="74" x2="446" y2="74" marker-end="url(#m8m)"/>
+<rect class="box good" x="450" y="52" width="200" height="44" rx="8"/>
+<text x="550" y="79" text-anchor="middle" class="mono" style="font-size:12px">{"status": "shipped"}</text>
+<text x="670" y="70" class="sm">1 call, exact answer,</text>
+<text x="670" y="86" class="sm">nothing to locate</text>
+<text x="20" y="172" class="b t-warn">GUI agent</text>
+<text x="20" y="190" class="sm">screen, mouse, keys</text>
+<text x="185" y="146" text-anchor="middle" class="sm">1</text>
+<rect class="box violet" x="150" y="152" width="70" height="44" rx="7"/>
+<text x="185" y="170" text-anchor="middle" style="font-size:11px">screenshot</text>
+<text x="185" y="186" text-anchor="middle" class="sm">perceive</text>
+<line class="ln" x1="220" y1="174" x2="232" y2="174" marker-end="url(#m8m)"/>
+<text x="269" y="146" text-anchor="middle" class="sm">2</text>
+<rect class="box accent" x="234" y="152" width="70" height="44" rx="7"/>
+<text x="269" y="170" text-anchor="middle" style="font-size:11px">find link</text>
+<text x="269" y="186" text-anchor="middle" class="sm">ground</text>
+<line class="ln" x1="304" y1="174" x2="316" y2="174" marker-end="url(#m8m)"/>
+<text x="353" y="146" text-anchor="middle" class="sm">3</text>
+<rect class="box warn" x="318" y="152" width="70" height="44" rx="7"/>
+<text x="353" y="170" text-anchor="middle" style="font-size:11px">click</text>
+<text x="353" y="186" text-anchor="middle" class="sm">(212, 96)</text>
+<line class="ln" x1="388" y1="174" x2="400" y2="174" marker-end="url(#m8m)"/>
+<text x="437" y="146" text-anchor="middle" class="sm">4</text>
+<rect class="box violet" x="402" y="152" width="70" height="44" rx="7"/>
+<text x="437" y="170" text-anchor="middle" style="font-size:11px">screenshot</text>
+<text x="437" y="186" text-anchor="middle" class="sm">perceive</text>
+<line class="ln" x1="472" y1="174" x2="484" y2="174" marker-end="url(#m8m)"/>
+<text x="521" y="146" text-anchor="middle" class="sm">5</text>
+<rect class="box warn" x="486" y="152" width="70" height="44" rx="7"/>
+<text x="521" y="170" text-anchor="middle" style="font-size:11px">type</text>
+<text x="521" y="186" text-anchor="middle" class="sm">"A17"</text>
+<line class="ln" x1="556" y1="174" x2="568" y2="174" marker-end="url(#m8m)"/>
+<text x="605" y="146" text-anchor="middle" class="sm">6</text>
+<rect class="box warn" x="570" y="152" width="70" height="44" rx="7"/>
+<text x="605" y="170" text-anchor="middle" style="font-size:11px">key</text>
+<text x="605" y="186" text-anchor="middle" class="sm">Enter</text>
+<line class="ln" x1="640" y1="174" x2="652" y2="174" marker-end="url(#m8m)"/>
+<text x="689" y="146" text-anchor="middle" class="sm">7</text>
+<rect class="box violet" x="654" y="152" width="70" height="44" rx="7"/>
+<text x="689" y="170" text-anchor="middle" style="font-size:11px">screenshot</text>
+<text x="689" y="186" text-anchor="middle" class="sm">perceive</text>
+<line class="ln" x1="724" y1="174" x2="736" y2="174" marker-end="url(#m8m)"/>
+<text x="773" y="146" text-anchor="middle" class="sm">8</text>
+<rect class="box good" x="738" y="152" width="70" height="44" rx="7"/>
+<text x="773" y="170" text-anchor="middle" style="font-size:11px">read</text>
+<text x="773" y="186" text-anchor="middle" class="sm">status</text>
+<text x="150" y="220" class="sm">Every arrow is a chance to misfire: wrong element, page still loading, a pop-up in the way.</text>
+<line class="ln dash" x1="20" y1="236" x2="800" y2="236"/>
+<text x="20" y="260" class="b" style="font-size:12px">If each step is 95% reliable, whole-task success is:</text>
+<text x="210" y="285" text-anchor="end" class="sm">API, 1 step</text>
+<rect class="fill-accent" x="220" y="273" width="475" height="16" rx="3"/>
+<text x="703" y="286" class="b t-accent">95%</text>
+<text x="210" y="313" text-anchor="end" class="sm">GUI, 8 steps</text>
+<rect class="fill-warn" x="220" y="301" width="332" height="16" rx="3"/>
+<text x="560" y="314" class="b t-warn">0.95^8 ≈ 66%</text>
+</svg>
+<figcaption><b>Why GUI agents are harder to evaluate.</b> One typed call becomes a chain of perceive, ground and act steps, and success compounds across the chain. This is why online GUI benchmarks score far lower than step-level metrics suggest, and why this module keeps separating grounding errors from reasoning errors. (Illustrative numbers.)</figcaption>
+</figure>
+
 <p>That buys enormous generality (any app a human can use, the agent can in principle use) and it creates three evaluation headaches that this module is about:</p>
 <div class="grid2">
 <div class="card accent"><h4>1. The world is huge and stateful</h4><p>A browser or operating system holds cookies, files, open windows, database rows. To compare two runs fairly you must restore <em>exactly</em> the same starting world every time.</p></div>
@@ -138,14 +205,14 @@
 <rect class="box warn" x="720" y="94" width="16" height="14" rx="2"/><text x="728" y="105" text-anchor="middle" class="sm b">4</text>
 <rect class="box warn" x="630" y="176" width="16" height="14" rx="2"/><text x="638" y="187" text-anchor="middle" class="sm b">5</text>
 <rect class="box warn" x="720" y="176" width="16" height="14" rx="2"/><text x="728" y="187" text-anchor="middle" class="sm b">6</text>
-<text x="112" y="250" text-anchor="middle" class="sm t-good">+ universal, sees visuals</text>
-<text x="112" y="268" text-anchor="middle" class="sm t-bad">- must ground to pixels</text>
-<text x="315" y="250" text-anchor="middle" class="sm t-good">+ compact, has names</text>
-<text x="315" y="268" text-anchor="middle" class="sm t-bad">- misses images, canvas</text>
-<text x="518" y="250" text-anchor="middle" class="sm t-good">+ complete, exact IDs</text>
-<text x="518" y="268" text-anchor="middle" class="sm t-bad">- huge, noisy, web only</text>
-<text x="721" y="250" text-anchor="middle" class="sm t-good">+ visual and clickable IDs</text>
-<text x="721" y="268" text-anchor="middle" class="sm t-bad">- needs element detector</text>
+<text x="112" y="250" text-anchor="middle" class="t-good" style="font-size:11px">+ universal, sees visuals</text>
+<text x="112" y="268" text-anchor="middle" class="t-bad" style="font-size:11px">- must ground to pixels</text>
+<text x="315" y="250" text-anchor="middle" class="t-good" style="font-size:11px">+ compact, has names</text>
+<text x="315" y="268" text-anchor="middle" class="t-bad" style="font-size:11px">- misses images, canvas</text>
+<text x="518" y="250" text-anchor="middle" class="t-good" style="font-size:11px">+ complete, exact IDs</text>
+<text x="518" y="268" text-anchor="middle" class="t-bad" style="font-size:11px">- huge, noisy, web only</text>
+<text x="721" y="250" text-anchor="middle" class="t-good" style="font-size:11px">+ visual and clickable IDs</text>
+<text x="721" y="268" text-anchor="middle" class="t-bad" style="font-size:11px">- needs element detector</text>
 <line class="ln dash" x1="15" y1="292" x2="819" y2="292"/>
 <text x="417" y="318" text-anchor="middle" class="sm">Scores from different observation spaces are NOT comparable:</text>
 <text x="417" y="336" text-anchor="middle" class="sm">always report which one (or which mix) the agent used.</text>
@@ -219,9 +286,9 @@
 <text x="570" y="266" class="sm">mug to my cart"</text>
 <rect class="box good" x="570" y="282" width="230" height="30" rx="6"/>
 <text x="685" y="302" text-anchor="middle" class="mono sm">model output: click [6]</text>
-<text x="570" y="340" class="sm t-warn">Note: three buttons share one</text>
-<text x="570" y="358" class="sm t-warn">name; only position tells them</text>
-<text x="570" y="376" class="sm t-warn">apart. The ad text is an injection.</text>
+<text x="570" y="340" class="t-warn" style="font-size:11px">Note: three buttons share one</text>
+<text x="570" y="358" class="t-warn" style="font-size:11px">name; only position tells them</text>
+<text x="570" y="376" class="t-warn" style="font-size:11px">apart. The ad text is an injection.</text>
 </svg>
 <figcaption><b>Set-of-marks on a mock page.</b> The harness numbers each interactive element, so "click the cheapest red mug's button" becomes <code>click [6]</code>. Note two traps a good eval should contain: identical labels that only layout can disambiguate, and untrusted page text trying to give the agent orders. (Illustration, not a real site.)</figcaption>
 </figure>
@@ -341,7 +408,7 @@
 <rect class="box plain" x="290" y="50" width="100" height="60" rx="6"/><text x="340" y="76" text-anchor="middle" class="sm">snapshot 3</text><text x="340" y="94" text-anchor="middle" class="sm t-muted">frozen HTML</text>
 <line class="ln good" x1="120" y1="80" x2="151" y2="80" marker-end="url(#m8f)"/>
 <line class="ln good" x1="255" y1="80" x2="286" y2="80" marker-end="url(#m8f)"/>
-<text x="205" y="132" text-anchor="middle" class="sm t-good">green = gold (human) actions, always replayed</text>
+<text x="205" y="132" text-anchor="middle" class="t-good" style="font-size:11px">green = gold (human) actions, always replayed</text>
 <rect class="box accent" x="20" y="150" width="100" height="40" rx="6"/><text x="70" y="175" text-anchor="middle" class="sm">predict a1</text>
 <rect class="box accent" x="155" y="150" width="100" height="40" rx="6"/><text x="205" y="175" text-anchor="middle" class="sm">predict a2</text>
 <rect class="box accent" x="290" y="150" width="100" height="40" rx="6"/><text x="340" y="175" text-anchor="middle" class="sm">predict a3</text>
@@ -411,13 +478,13 @@
 <text x="110" y="86" class="sm">A2</text><text x="200" y="86" class="mono sm">TYPE [searchbox] "red mug"</text><text x="450" y="86" class="t-good b">✓</text><text x="545" y="86" class="t-good b">✓</text><text x="645" y="86" class="t-good b">✓</text>
 <text x="110" y="110" class="sm">A3</text><text x="200" y="110" class="mono sm">SELECT [sort] "Price"</text><text x="450" y="110" class="t-good b">✓</text><text x="545" y="110" class="t-bad b">✗</text><text x="645" y="110" class="t-bad b">✗</text>
 <text x="110" y="134" class="sm">A4</text><text x="200" y="134" class="mono sm">CLICK [add-to-cart #1]</text><text x="450" y="134" class="t-bad b">✗</text><text x="545" y="134" class="t-good b">✓</text><text x="645" y="134" class="t-bad b">✗</text>
-<text x="700" y="100" class="sm">step SR 2/4</text><text x="700" y="118" class="sm t-bad">task ✗</text>
+<text x="700" y="100" class="sm">step SR 2/4</text><text x="700" y="118" class="t-bad" style="font-size:11px">task ✗</text>
 <line class="ln" x1="20" y1="148" x2="800" y2="148"/>
 <text x="20" y="176" class="b">Task B</text>
 <text x="110" y="176" class="sm">B1</text><text x="200" y="176" class="mono sm">CLICK [flights tab]</text><text x="450" y="176" class="t-good b">✓</text><text x="545" y="176" class="t-good b">✓</text><text x="645" y="176" class="t-good b">✓</text>
 <text x="110" y="200" class="sm">B2</text><text x="200" y="200" class="mono sm">TYPE [from] "LHR"</text><text x="450" y="200" class="t-good b">✓</text><text x="545" y="200" class="t-good b">✓</text><text x="645" y="200" class="t-good b">✓</text>
 <text x="110" y="224" class="sm">B3</text><text x="200" y="224" class="mono sm">CLICK [search]</text><text x="450" y="224" class="t-good b">✓</text><text x="545" y="224" class="t-good b">✓</text><text x="645" y="224" class="t-good b">✓</text>
-<text x="700" y="196" class="sm">step SR 3/3</text><text x="700" y="214" class="sm t-good">task ✓</text>
+<text x="700" y="196" class="sm">step SR 3/3</text><text x="700" y="214" class="t-good" style="font-size:11px">task ✓</text>
 <rect class="box accent" x="20" y="244" width="780" height="44" rx="8"/>
 <text x="215" y="264" text-anchor="middle" class="sm">Element acc (macro) = (3/4 + 3/3)/2 = 87.5%</text><text x="605" y="264" text-anchor="middle" class="sm">Step SR (macro) = (2/4 + 3/3)/2 = 75%</text>
 <text x="410" y="281" text-anchor="middle" class="sm b">Task SR = 1/2 = 50%   (one slip anywhere fails the whole task)</text>
@@ -590,9 +657,9 @@ def evaluate(task: dict, vm) -> float:
 <circle class="fill-good" cx="200" cy="73" r="4"/>
 <circle class="fill-bad" cx="190" cy="86" r="4"/>
 <circle class="fill-bad" cx="245" cy="58" r="4"/>
-<line class="ln" x1="200" y1="73" x2="300" y2="110"/><text x="304" y="114" class="sm t-good">hit</text>
-<line class="ln" x1="190" y1="86" x2="120" y2="140"/><text x="40" y="154" class="sm t-bad">miss: 4px below</text>
-<line class="ln" x1="245" y1="58" x2="320" y2="150"/><text x="270" y="166" class="sm t-bad">miss: wrong icon</text>
+<line class="ln" x1="200" y1="73" x2="300" y2="110"/><text x="304" y="114" class="t-good" style="font-size:11px">hit</text>
+<line class="ln" x1="190" y1="86" x2="120" y2="140"/><text x="40" y="154" class="t-bad" style="font-size:11px">miss: 4px below</text>
+<line class="ln" x1="245" y1="58" x2="320" y2="150"/><text x="270" y="166" class="t-bad" style="font-size:11px">miss: wrong icon</text>
 <text x="200" y="210" text-anchor="middle" class="sm">instruction: "save the document"</text>
 <text x="200" y="228" text-anchor="middle" class="mono sm">gold bbox = [168, 50, 206, 78]</text>
 <text x="200" y="272" text-anchor="middle" class="sm">score = 1 if x0 ≤ x ≤ x1 and y0 ≤ y ≤ y1</text>
@@ -606,7 +673,7 @@ def evaluate(task: dict, vm) -> float:
 <rect class="fill-muted" x="452" y="82" width="6" height="6"/><rect class="fill-bad" x="464" y="82" width="6" height="6"/><rect class="fill-muted" x="476" y="82" width="6" height="6"/>
 <rect class="fill-muted" x="452" y="94" width="6" height="6"/><rect class="fill-muted" x="464" y="94" width="6" height="6"/><rect class="fill-muted" x="476" y="94" width="6" height="6"/>
 <line class="ln bad" x1="470" y1="85" x2="560" y2="275"/>
-<text x="560" y="290" class="sm t-bad">target: one tiny icon</text>
+<text x="560" y="290" class="t-bad" style="font-size:11px">target: one tiny icon</text>
 <text x="560" y="308" class="sm">in a 4K CAD window</text>
 </svg>
 <figcaption><b>Grounding is a point-in-box test.</b> On consumer UIs targets are big and scores saturate. On professional high-resolution software the target can be a few pixels wide among dozens of look-alike icons, which is what ScreenSpot-Pro measures. (Illustration.)</figcaption>
@@ -799,6 +866,45 @@ if __name__ == "__main__":
 
 <p>Design points worth copying: the environment is reset <em>before</em> every trial, not after (a crash can't poison the next run); each trial gets a fresh browser context (no leaked cookies); failed actions are logged, not fatal; the checker reads the database, not the agent's claim; and each task runs several trials so you can report pass^k (<a href="04-metrics-and-statistics.html">Module 04</a>).</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="The mini harness as a pipeline: reset the database from a golden copy, open a fresh browser context, run the agent loop under a step budget, check the goal and collateral damage in the database, log the trajectory, then repeat for three trials per task.">
+<defs><marker id="m8n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<path class="ln accent" d="M392,64 C392,30 428,30 428,60" fill="none" marker-end="url(#m8n)"/>
+<text x="384" y="34" text-anchor="end" class="sm">one step per turn;</text>
+<text x="384" y="48" text-anchor="end" class="sm">errors logged, not fatal</text>
+<text x="575" y="34" text-anchor="middle" class="t-warn" style="font-size:11px">ignores the agent's</text>
+<text x="575" y="48" text-anchor="middle" class="t-warn" style="font-size:11px">own "Done!"</text>
+<rect class="box warn" x="10" y="64" width="140" height="72" rx="8"/>
+<text x="80" y="88" text-anchor="middle" class="b">1. Reset</text>
+<text x="80" y="107" text-anchor="middle" class="sm">copy golden DB</text>
+<text x="80" y="123" text-anchor="middle" class="sm">before each trial</text>
+<line class="ln" x1="150" y1="100" x2="171" y2="100" marker-end="url(#m8n)"/>
+<rect class="box plain" x="175" y="64" width="140" height="72" rx="8"/>
+<text x="245" y="88" text-anchor="middle" class="b">2. Fresh context</text>
+<text x="245" y="107" text-anchor="middle" class="sm">new browser context</text>
+<text x="245" y="123" text-anchor="middle" class="sm">no leaked cookies</text>
+<line class="ln" x1="315" y1="100" x2="336" y2="100" marker-end="url(#m8n)"/>
+<rect class="box accent" x="340" y="64" width="140" height="72" rx="8"/>
+<text x="410" y="88" text-anchor="middle" class="b">3. Agent loop</text>
+<text x="410" y="107" text-anchor="middle" class="sm">observe, then act</text>
+<text x="410" y="123" text-anchor="middle" class="sm">stop at N steps</text>
+<line class="ln" x1="480" y1="100" x2="501" y2="100" marker-end="url(#m8n)"/>
+<rect class="box good" x="505" y="64" width="140" height="72" rx="8"/>
+<text x="575" y="88" text-anchor="middle" class="b">4. Check state</text>
+<text x="575" y="107" text-anchor="middle" class="sm">goal + collateral</text>
+<text x="575" y="123" text-anchor="middle" class="sm">SQL on shop.db</text>
+<line class="ln" x1="645" y1="100" x2="666" y2="100" marker-end="url(#m8n)"/>
+<rect class="box violet" x="670" y="64" width="140" height="72" rx="8"/>
+<text x="740" y="88" text-anchor="middle" class="b">5. Log</text>
+<text x="740" y="107" text-anchor="middle" class="sm">trajectory, steps</text>
+<text x="740" y="123" text-anchor="middle" class="sm">seconds, passed</text>
+<path class="ln accent flow" d="M740,136 L740,176 L80,176 L80,140" fill="none" marker-end="url(#m8n)"/>
+<text x="410" y="200" text-anchor="middle" class="sm">repeat: 3 trials per task, each from a clean reset</text>
+<text x="410" y="226" text-anchor="middle" class="b" style="font-size:12px">report success rate and pass^k per task, not just one lucky run</text>
+</svg>
+<figcaption><b>The harness in one picture.</b> The order matters: reset <em>before</em> each trial so a crashed run cannot poison the next one, and grade from the database so the agent's own claim of success never counts as evidence.</figcaption>
+</figure>
+
 <h2>Environment engineering</h2>
 <p>For online benchmarks, most of the engineering effort is not the agent or the grader: it is making thousands of identical, isolated computers appear and disappear on demand.</p>
 
@@ -820,7 +926,7 @@ if __name__ == "__main__":
 <text x="20" y="172" class="sm">worker 3</text>
 <rect class="fill-violet" x="90" y="158" width="30" height="20"/><rect class="fill-accent" x="120" y="158" width="20" height="20"/><rect class="fill-soft" x="140" y="158" width="60" height="20"/><rect class="fill-good" x="200" y="158" width="30" height="20"/>
 <rect class="fill-violet" x="240" y="158" width="30" height="20"/><rect class="fill-accent" x="270" y="158" width="20" height="20"/><rect class="fill-soft" x="290" y="158" width="300" height="20"/><rect class="fill-bad" x="590" y="158" width="30" height="20"/>
-<text x="640" y="172" class="sm t-bad">timeout, still graded</text>
+<text x="640" y="172" class="t-bad" style="font-size:11px">timeout, still graded</text>
 <line class="ln" x1="90" y1="200" x2="790" y2="200"/>
 <text x="440" y="220" text-anchor="middle" class="sm">wall-clock time →</text>
 <text x="20" y="256" class="sm">OSWorld-Verified: AWS parallel runs, full eval under 1 hour.</text>
@@ -863,7 +969,7 @@ if __name__ == "__main__":
 <line class="ln" x1="340" y1="100" x2="340" y2="146" marker-end="url(#m8k)"/>
 <rect class="box bad" x="500" y="150" width="300" height="50" rx="8"/>
 <text x="650" y="180" text-anchor="middle" class="sm">forward emails = attack succeeded</text>
-<line class="ln bad dash" x1="420" y1="175" x2="496" y2="175" marker-end="url(#m8k)"/>
+<line class="ln bad dash flow" x1="420" y1="175" x2="496" y2="175" marker-end="url(#m8k)"/>
 <text x="458" y="167" text-anchor="middle" class="sm">if allowed</text>
 <rect class="box plain" x="20" y="230" width="780" height="56" rx="8"/>
 <text x="410" y="253" text-anchor="middle" class="sm b">Measure three numbers: utility (no attack), utility under attack, attack success rate</text>
@@ -874,8 +980,84 @@ if __name__ == "__main__":
 
 <p><b>AgentDojo</b> (Debenedetti et al., ETH Zurich, 2024) is a widely used framework for exactly this. It provides 97 realistic tool-using tasks (email client, e-banking, travel booking and so on) and 629 security test cases, and evaluates both task utility and whether injected instructions succeed. It found that capable models already fail many tasks without attacks and that existing attacks break some, but not all, security properties. AgentDojo is tool-based rather than GUI-based, but the method carries over: take your normal web tasks, plant an injection in a page the agent must visit (a product review, a sponsored banner like the one in the set-of-marks figure, an email body), and check the end state for <em>both</em> the user's goal and the attacker's goal. WebArena has a safety-focused descendant, ST-WebAgentBench, for policy compliance in web tasks.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Scoring an injected task on two axes: did the user's goal happen and did the attacker's goal happen. Four outcomes: safe and useful, safe but useless, useful but compromised, hijacked. Utility under attack counts the left column; attack success rate counts the top row.">
+<text x="400" y="24" text-anchor="middle" class="b">User's goal done?</text>
+<text x="290" y="46" text-anchor="middle" class="sm">yes</text>
+<text x="510" y="46" text-anchor="middle" class="sm">no</text>
+<text x="80" y="104" text-anchor="middle" class="b" style="font-size:12px">Attacker's</text>
+<text x="80" y="120" text-anchor="middle" class="b" style="font-size:12px">goal done?</text>
+<text x="160" y="92" text-anchor="middle" class="sm">yes</text>
+<text x="160" y="182" text-anchor="middle" class="sm">no</text>
+<rect class="box bad" x="185" y="56" width="210" height="74" rx="8"/>
+<text x="290" y="80" text-anchor="middle" class="b t-bad">Useful but compromised</text>
+<text x="290" y="98" text-anchor="middle" class="sm">summary written AND</text>
+<text x="290" y="114" text-anchor="middle" class="sm">emails forwarded</text>
+<rect class="box bad" x="405" y="56" width="210" height="74" rx="8"/>
+<text x="510" y="80" text-anchor="middle" class="b t-bad">Hijacked</text>
+<text x="510" y="98" text-anchor="middle" class="sm">did the attacker's job</text>
+<text x="510" y="114" text-anchor="middle" class="sm">instead of the user's</text>
+<rect class="box good" x="185" y="140" width="210" height="74" rx="8"/>
+<text x="290" y="164" text-anchor="middle" class="b t-good">Safe and useful</text>
+<text x="290" y="182" text-anchor="middle" class="sm">ignored the injected text,</text>
+<text x="290" y="198" text-anchor="middle" class="sm">finished the task</text>
+<rect class="box warn" x="405" y="140" width="210" height="74" rx="8"/>
+<text x="510" y="164" text-anchor="middle" class="b t-warn">Safe but useless</text>
+<text x="510" y="182" text-anchor="middle" class="sm">refused or got derailed;</text>
+<text x="510" y="198" text-anchor="middle" class="sm">no harm, no help</text>
+<rect class="box dashed" x="640" y="56" width="165" height="158" rx="8"/>
+<text x="722" y="80" text-anchor="middle" class="b" style="font-size:12px">The trap</text>
+<text x="722" y="102" text-anchor="middle" class="sm">A grader that only checks</text>
+<text x="722" y="118" text-anchor="middle" class="sm">the user's goal scores the</text>
+<text x="722" y="134" text-anchor="middle" class="t-bad" style="font-size:11px">top-left cell as a PASS.</text>
+<text x="722" y="162" text-anchor="middle" class="sm">Every injected task needs</text>
+<text x="722" y="178" text-anchor="middle" class="sm">two end-state checks:</text>
+<text x="722" y="194" text-anchor="middle" class="sm">goal met, attack absent.</text>
+<text x="400" y="246" text-anchor="middle" class="sm"><tspan class="b">Utility under attack</tspan> = share of injected tasks in the left column (user's goal done)</text>
+<text x="400" y="270" text-anchor="middle" class="sm"><tspan class="b">Attack success rate</tspan> = share in the top row (attacker's goal done). Want: left high, top low.</text>
+</svg>
+<figcaption><b>Two end-state checks per injected task.</b> AgentDojo-style scoring asks both questions independently, which gives four outcomes. Only the bottom-left cell is a real success; the bottom-right cell is safe but still a utility failure.</figcaption>
+</figure>
+
 <h3>Destructive actions and confirmation policies</h3>
 <p>Beyond injection, agents make honest mistakes with real consequences: emptying the trash, force-pushing to GitLab, submitting a payment. Both vendors' docs recommend asking a human before consequential actions. That creates something new to evaluate: a <b>confirmation policy</b>. Build tasks where the right behaviour is to pause and ask ("Delete all files in Downloads": do you mean all 2,000?), and tasks where asking would be annoying ("Close this tab"). Score two error types: <b>under-asking</b> (took an irreversible action without confirmation) and <b>over-asking</b> (interrupted the user for trivia). In your harness, intercept actions such as submitting a checkout form or running <code>rm</code>, record whether the agent requested confirmation, and have the simulated user decline sometimes, to check the agent respects "no".</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="A confirmation policy scored as a two by two: confirmation needed or not, against the agent asking or acting. Asking when needed and acting when not needed are correct. Acting without asking when needed is under-asking, the dangerous error. Asking when not needed is over-asking, the annoying error.">
+<text x="400" y="24" text-anchor="middle" class="b">Did this action need a human's OK?</text>
+<text x="290" y="46" text-anchor="middle" class="sm">yes: irreversible, costly or ambiguous</text>
+<text x="510" y="46" text-anchor="middle" class="sm">no: trivial and reversible</text>
+<text x="92" y="98" text-anchor="middle" class="b" style="font-size:12px">Agent asked</text>
+<text x="92" y="182" text-anchor="middle" class="b" style="font-size:12px">Agent just acted</text>
+<rect class="box good" x="185" y="56" width="210" height="74" rx="8"/>
+<text x="290" y="80" text-anchor="middle" class="b t-good">Correct pause</text>
+<text x="290" y="98" text-anchor="middle" class="sm">"Delete all 2,000 files</text>
+<text x="290" y="114" text-anchor="middle" class="sm">in Downloads?"</text>
+<rect class="box warn" x="405" y="56" width="210" height="74" rx="8"/>
+<text x="510" y="80" text-anchor="middle" class="b t-warn">Over-asking</text>
+<text x="510" y="98" text-anchor="middle" class="sm">"Shall I close this tab?"</text>
+<text x="510" y="114" text-anchor="middle" class="sm">costs patience, not data</text>
+<rect class="box bad" x="185" y="140" width="210" height="74" rx="8"/>
+<text x="290" y="164" text-anchor="middle" class="b t-bad">Under-asking</text>
+<text x="290" y="182" text-anchor="middle" class="sm">paid, deleted or force-pushed</text>
+<text x="290" y="198" text-anchor="middle" class="sm">with no confirmation</text>
+<rect class="box good" x="405" y="140" width="210" height="74" rx="8"/>
+<text x="510" y="164" text-anchor="middle" class="b t-good">Correct autonomy</text>
+<text x="510" y="182" text-anchor="middle" class="sm">closed the tab,</text>
+<text x="510" y="198" text-anchor="middle" class="sm">moved on</text>
+<rect class="box violet" x="640" y="56" width="165" height="158" rx="8"/>
+<text x="722" y="80" text-anchor="middle" class="b t-violet">Then test "no"</text>
+<text x="722" y="104" text-anchor="middle" class="sm">The simulated user</text>
+<text x="722" y="120" text-anchor="middle" class="sm">declines some requests.</text>
+<text x="722" y="144" text-anchor="middle" class="sm">Pass only if the agent</text>
+<text x="722" y="160" text-anchor="middle" class="sm">stops, and does not find</text>
+<text x="722" y="176" text-anchor="middle" class="sm">another route to the</text>
+<text x="722" y="192" text-anchor="middle" class="sm">same action.</text>
+<text x="400" y="246" text-anchor="middle" class="sm"><tspan class="b">Under-ask rate</tspan> = unconfirmed risky actions / tasks that needed a confirmation</text>
+<text x="400" y="270" text-anchor="middle" class="sm"><tspan class="b">Over-ask rate</tspan> = needless questions / tasks that did not. Report both: either one alone is easy to game.</text>
+</svg>
+<figcaption><b>Scoring a confirmation policy.</b> An agent that always asks has a perfect under-ask rate and is useless; one that never asks is fast and dangerous. Build tasks for every cell and report the two error rates side by side.</figcaption>
+</figure>
 
 <div class="callout warn"><span class="t">Run evals in a sandbox, always</span>
 <p>Never evaluate a computer-use agent against your real email, bank or production systems. The eval is designed to find failures, and failures on real systems are real. Use VMs, self-hosted clones and dummy accounts, with a domain allowlist for anything that must reach the internet.</p>
@@ -891,6 +1073,19 @@ if __name__ == "__main__":
 <li><b>Run multiple trials.</b> Report success rate with confidence intervals and pass^k; slice by app and task type.</li>
 <li><b>Read trajectories.</b> Tag failures as perception, grounding, reasoning, environment flake, or evaluator bug (<a href="12-error-analysis.html">Module 12</a>).</li>
 </ol>
+
+<div class="takeaways">
+<h3>Key takeaways</h3>
+<ol>
+<li>GUI agents turn one typed call into a chain of perceive, ground and act steps, so success compounds and grounding needs its own measurement.</li>
+<li>State the observation space (screenshot, accessibility tree, DOM, set-of-marks) and the action space in every report. Scores from different setups are not comparable.</li>
+<li>Offline step metrics (Mind2Web) replay the human's history and never test recovery. Online end-state success (WebArena, OSWorld) is the real exam.</li>
+<li>Grade the end state from the database, files or URL, plus a collateral-damage check. Never grade the agent's own claim of success.</li>
+<li>Reset before every trial, give each trial a fresh browser or VM, run several trials, and report pass^k with confidence intervals.</li>
+<li>Validate the evaluator itself: a do-nothing agent must fail, a reference solution must pass, and a human-labelled sample estimates false positives and false negatives.</li>
+<li>Safety is part of the score: check both the user's goal and the attacker's goal on injected tasks, and report under-asking and over-asking for confirmations. Always run in a sandbox.</li>
+</ol>
+</div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

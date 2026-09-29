@@ -40,31 +40,30 @@
 </ol>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 230" role="img" aria-label="Per-item scores flow into an aggregate metric; resampling the eval shows that the metric itself has a spread, summarised as a confidence interval.">
+<svg viewBox="0 0 820 214" role="img" aria-label="Per-item scores flow into an aggregate metric; resampling the eval shows that the metric itself has a spread, summarised as a confidence interval.">
 <defs><marker id="m4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="110" y="24" text-anchor="middle" class="b">500 graded items</text>
-<g>
-<rect x="30" y="40" width="16" height="16" class="fill-good"/><rect x="50" y="40" width="16" height="16" class="fill-good"/><rect x="70" y="40" width="16" height="16" class="fill-bad"/><rect x="90" y="40" width="16" height="16" class="fill-good"/><rect x="110" y="40" width="16" height="16" class="fill-good"/><rect x="130" y="40" width="16" height="16" class="fill-bad"/><rect x="150" y="40" width="16" height="16" class="fill-good"/><rect x="170" y="40" width="16" height="16" class="fill-good"/>
-<rect x="30" y="60" width="16" height="16" class="fill-bad"/><rect x="50" y="60" width="16" height="16" class="fill-good"/><rect x="70" y="60" width="16" height="16" class="fill-good"/><rect x="90" y="60" width="16" height="16" class="fill-good"/><rect x="110" y="60" width="16" height="16" class="fill-bad"/><rect x="130" y="60" width="16" height="16" class="fill-good"/><rect x="150" y="60" width="16" height="16" class="fill-good"/><rect x="170" y="60" width="16" height="16" class="fill-bad"/>
-<rect x="30" y="80" width="16" height="16" class="fill-good"/><rect x="50" y="80" width="16" height="16" class="fill-bad"/><rect x="70" y="80" width="16" height="16" class="fill-good"/><rect x="90" y="80" width="16" height="16" class="fill-good"/><rect x="110" y="80" width="16" height="16" class="fill-good"/><rect x="130" y="80" width="16" height="16" class="fill-good"/><rect x="150" y="80" width="16" height="16" class="fill-bad"/><rect x="170" y="80" width="16" height="16" class="fill-good"/>
-</g>
-<text x="110" y="118" text-anchor="middle" class="sm">… (green = pass, red = fail)</text>
-<line class="ln" x1="200" y1="70" x2="286" y2="70" marker-end="url(#m4a)"/>
-<text x="243" y="60" text-anchor="middle" class="sm">aggregate</text>
-<rect class="box accent" x="290" y="40" width="160" height="60" rx="8"/>
-<text x="370" y="64" text-anchor="middle" class="b">Metric</text>
-<text x="370" y="84" text-anchor="middle" class="sm">"62.4% success"</text>
-<text x="370" y="130" text-anchor="middle" class="sm t-accent">Q1: which number?</text>
-<line class="ln" x1="450" y1="70" x2="526" y2="70" marker-end="url(#m4a)"/>
-<text x="488" y="60" text-anchor="middle" class="sm">"rerun?"</text>
-<rect class="box violet" x="530" y="30" width="270" height="130" rx="8"/>
-<text x="665" y="52" text-anchor="middle" class="b">Uncertainty</text>
-<line class="ln" x1="560" y1="120" x2="770" y2="120"/>
-<rect x="608" y="112" width="4" height="8" class="fill-violet"/><rect x="630" y="104" width="4" height="16" class="fill-violet"/><rect x="652" y="92" width="4" height="28" class="fill-violet"/><rect x="674" y="86" width="4" height="34" class="fill-violet"/><rect x="696" y="96" width="4" height="24" class="fill-violet"/><rect x="718" y="108" width="4" height="12" class="fill-violet"/>
-<text x="665" y="74" text-anchor="middle" class="sm">score on many imaginary reruns</text>
-<text x="665" y="142" text-anchor="middle" class="sm">"58.1% to 66.5% (95% CI)"</text>
-<text x="665" y="190" text-anchor="middle" class="sm t-violet">Q2: how sure are we?</text>
-<text x="410" y="220" text-anchor="middle" class="sm">a result without Q2 answered is an anecdote with a decimal point</text>
+<rect x="336" y="10" width="148" height="24" rx="12" class="fill-soft"/>
+<text x="410" y="27" text-anchor="middle" class="sm b">Q1 · which number?</text>
+<rect x="582" y="10" width="164" height="24" rx="12" class="fill-soft"/>
+<text x="664" y="27" text-anchor="middle" class="sm b">Q2 · how sure are we?</text>
+<rect x="30" y="56" width="16" height="16" rx="3" class="fill-good"/><rect x="50" y="56" width="16" height="16" rx="3" class="fill-good"/><rect x="70" y="56" width="16" height="16" rx="3" class="fill-bad"/><rect x="90" y="56" width="16" height="16" rx="3" class="fill-good"/><rect x="110" y="56" width="16" height="16" rx="3" class="fill-good"/><rect x="130" y="56" width="16" height="16" rx="3" class="fill-bad"/><rect x="150" y="56" width="16" height="16" rx="3" class="fill-good"/><rect x="170" y="56" width="16" height="16" rx="3" class="fill-good"/><rect x="30" y="76" width="16" height="16" rx="3" class="fill-bad"/><rect x="50" y="76" width="16" height="16" rx="3" class="fill-good"/><rect x="70" y="76" width="16" height="16" rx="3" class="fill-good"/><rect x="90" y="76" width="16" height="16" rx="3" class="fill-good"/><rect x="110" y="76" width="16" height="16" rx="3" class="fill-bad"/><rect x="130" y="76" width="16" height="16" rx="3" class="fill-good"/><rect x="150" y="76" width="16" height="16" rx="3" class="fill-good"/><rect x="170" y="76" width="16" height="16" rx="3" class="fill-bad"/><rect x="30" y="96" width="16" height="16" rx="3" class="fill-good"/><rect x="50" y="96" width="16" height="16" rx="3" class="fill-bad"/><rect x="70" y="96" width="16" height="16" rx="3" class="fill-good"/><rect x="90" y="96" width="16" height="16" rx="3" class="fill-good"/><rect x="110" y="96" width="16" height="16" rx="3" class="fill-good"/><rect x="130" y="96" width="16" height="16" rx="3" class="fill-good"/><rect x="150" y="96" width="16" height="16" rx="3" class="fill-bad"/><rect x="170" y="96" width="16" height="16" rx="3" class="fill-good"/>
+<text x="110" y="134" text-anchor="middle" class="sm">… green = pass, red = fail</text>
+<line class="ln" x1="200" y1="86" x2="316" y2="86" marker-end="url(#m4a)"/>
+<text x="258" y="76" text-anchor="middle" class="sm">aggregate</text>
+<rect class="box accent" x="320" y="50" width="180" height="72" rx="12"/>
+<text x="410" y="78" text-anchor="middle" class="b">Metric</text>
+<text x="410" y="102" text-anchor="middle" class="lg t-accent">62.4%</text>
+<line class="ln" x1="500" y1="86" x2="546" y2="86" marker-end="url(#m4a)"/>
+<text x="523" y="76" text-anchor="middle" class="sm">rerun?</text>
+<rect class="box violet" x="550" y="44" width="230" height="140" rx="12"/>
+<text x="665" y="66" text-anchor="middle" class="sm">score on many imaginary reruns</text>
+<rect x="600" y="128" width="12" height="12" rx="2" class="fill-violet"/><rect x="618" y="112" width="12" height="28" rx="2" class="fill-violet"/><rect x="636" y="88" width="12" height="52" rx="2" class="fill-violet"/><rect x="654" y="72" width="12" height="68" rx="2" class="fill-violet"/><rect x="672" y="92" width="12" height="48" rx="2" class="fill-violet"/><rect x="690" y="116" width="12" height="24" rx="2" class="fill-violet"/><rect x="708" y="130" width="12" height="10" rx="2" class="fill-violet"/>
+<line class="ln" x1="590" y1="140" x2="740" y2="140"/>
+<line class="ln violet thick" x1="618" y1="156" x2="714" y2="156"/>
+<line class="ln violet thick" x1="618" y1="150" x2="618" y2="162"/><line class="ln violet thick" x1="714" y1="150" x2="714" y2="162"/>
+<text x="665" y="176" text-anchor="middle" class="sm b">95% CI: 58.1% to 66.5%</text>
+<text x="330" y="204" text-anchor="middle" class="sm">a result without Q2 answered is an anecdote with a decimal point</text>
 </svg>
 <figcaption><b>Metric, then uncertainty.</b> The first half of this module is about choosing the aggregate. The second half is about the spread you would see if you could rerun the whole eval many times.</figcaption>
 </figure>
@@ -79,6 +78,37 @@
 <li><b>Macro vs micro averaging.</b> If your eval has 400 easy "billing" tasks and 50 hard "refund" tasks, the plain average (micro) is dominated by billing. The macro average first computes the rate per category, then averages the categories equally. Report both when categories are unbalanced; they answer different questions ("how often does a random ticket succeed?" vs "how good are we across the kinds of work?").</li>
 <li><b>Partial credit.</b> Many agent tasks have several checks (the right row changed, the user was told, nothing else changed). You can score "all checks pass" (strict, usual for τ-bench style database checks) or "fraction of checks passed" (lenient). Strict success is what the user experiences; partial credit is a useful diagnostic for where it fails.</li>
 </ul>
+
+
+<figure class="diagram">
+<svg viewBox="0 0 800 250" role="img" aria-label="Micro versus macro averaging: 400 billing tasks at 90 percent and 50 refund tasks at 40 percent give a micro average of 84.4 percent but a macro average of 65 percent.">
+<defs><marker id="m4m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="26" class="b">Two categories, very different sizes</text>
+<rect class="box good" x="20" y="40" width="400" height="44" rx="8"/>
+<rect x="20" y="40" width="360" height="44" rx="8" class="fill-good" opacity="0.28"/>
+<text x="34" y="60" class="b">Billing: 400 tasks</text><text x="34" y="76" class="sm">360 pass = 90%</text>
+<rect class="box bad" x="20" y="96" width="50" height="44" rx="8"/>
+<rect x="20" y="96" width="20" height="44" rx="6" class="fill-bad" opacity="0.28"/>
+<text x="80" y="116" class="b">Refunds: 50 tasks</text><text x="80" y="132" class="sm">20 pass = 40%</text>
+<text x="20" y="166" class="sm">box width = number of tasks · shaded part = passes</text>
+<rect class="box accent" x="470" y="36" width="310" height="92" rx="12"/>
+<text x="486" y="60" class="b">Micro average (pool every task)</text>
+<text x="486" y="82" class="mono">(360 + 20) / 450</text>
+<text x="766" y="116" text-anchor="end" class="lg t-accent">84.4%</text>
+<text x="486" y="116" class="sm">"a random ticket succeeds"</text>
+<rect class="box violet" x="470" y="144" width="310" height="92" rx="12"/>
+<text x="486" y="168" class="b">Macro average (each category equal)</text>
+<text x="486" y="190" class="mono">(90% + 40%) / 2</text>
+<text x="766" y="224" text-anchor="end" class="lg t-violet">65.0%</text>
+<text x="486" y="224" class="sm">"good across kinds of work"</text>
+<path class="ln" d="M426,40 H440 V140 H426"/>
+<line class="ln" x1="440" y1="78" x2="466" y2="82" marker-end="url(#m4m)"/>
+<line class="ln" x1="440" y1="112" x2="466" y2="186" marker-end="url(#m4m)"/>
+<text x="20" y="206" class="sm b">Same results, a 19-point gap.</text>
+<text x="20" y="224" class="sm">The small, hard refund category is invisible in the micro number.</text>
+</svg>
+<figcaption><b>Micro vs macro.</b> Illustrative counts, exact arithmetic. Neither number is wrong; they answer different questions. Report both whenever category sizes are unbalanced, and always show the per-category rates underneath.</figcaption>
+</figure>
 
 <div class="callout tip"><span class="t">Key idea</span>
 <p>A success rate is a mean. Everything this module says about the uncertainty of a mean (standard errors, confidence intervals, bootstrap, paired tests) applies to it directly. Any score that is an average of per-item numbers, including rubric scores and judge scores, gets the same treatment.</p>
@@ -145,6 +175,23 @@
 <li><b>Scale points are not evenly spaced in meaning.</b> Is the gap from 4 to 5 the same as from 1 to 2? Usually not. Treat means of rubric scores as a convenient summary, and prefer binary criteria ("did it cite the policy? yes/no") where you can. Binary checks are easier to grade consistently and easier to reason about statistically.</li>
 <li><b>Judges drift.</b> If you change the judge model or prompt, the scale shifts. Never compare rubric means produced by different judge setups.</li>
 </ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 250" role="img" aria-label="Two rubric score distributions with the same mean of 3.5: one where every answer scores 3 or 4, and one where half score 1 and half score 5.">
+<text x="190" y="24" text-anchor="middle" class="b">Product A: mean 3.5</text>
+<text x="190" y="42" text-anchor="middle" class="sm">consistently decent</text>
+<rect x="60" y="170" width="40" height="0" rx="4" class="fill-accent"/><text x="80" y="188" text-anchor="middle" class="sm">1</text><text x="80" y="164" text-anchor="middle" class="sm b">0%</text><rect x="116" y="170" width="40" height="0" rx="4" class="fill-accent"/><text x="136" y="188" text-anchor="middle" class="sm">2</text><text x="136" y="164" text-anchor="middle" class="sm b">0%</text><rect x="172" y="60" width="40" height="110" rx="4" class="fill-accent"/><text x="192" y="188" text-anchor="middle" class="sm">3</text><text x="192" y="54" text-anchor="middle" class="sm b">50%</text><rect x="228" y="60" width="40" height="110" rx="4" class="fill-accent"/><text x="248" y="188" text-anchor="middle" class="sm">4</text><text x="248" y="54" text-anchor="middle" class="sm b">50%</text><rect x="284" y="170" width="40" height="0" rx="4" class="fill-accent"/><text x="304" y="188" text-anchor="middle" class="sm">5</text><text x="304" y="164" text-anchor="middle" class="sm b">0%</text>
+<line class="ln" x1="50" y1="170" x2="336" y2="170"/>
+<text x="610" y="24" text-anchor="middle" class="b">Product B: mean 3.5</text>
+<text x="610" y="42" text-anchor="middle" class="sm">half great, half terrible</text>
+<rect x="480" y="60" width="40" height="110" rx="4" class="fill-bad"/><text x="500" y="188" text-anchor="middle" class="sm">1</text><text x="500" y="54" text-anchor="middle" class="sm b">50%</text><rect x="536" y="170" width="40" height="0" rx="4" class="fill-bad"/><text x="556" y="188" text-anchor="middle" class="sm">2</text><text x="556" y="164" text-anchor="middle" class="sm b">0%</text><rect x="592" y="170" width="40" height="0" rx="4" class="fill-bad"/><text x="612" y="188" text-anchor="middle" class="sm">3</text><text x="612" y="164" text-anchor="middle" class="sm b">0%</text><rect x="648" y="170" width="40" height="0" rx="4" class="fill-bad"/><text x="668" y="188" text-anchor="middle" class="sm">4</text><text x="668" y="164" text-anchor="middle" class="sm b">0%</text><rect x="704" y="60" width="40" height="110" rx="4" class="fill-bad"/><text x="724" y="188" text-anchor="middle" class="sm">5</text><text x="724" y="54" text-anchor="middle" class="sm b">50%</text>
+<line class="ln" x1="470" y1="170" x2="756" y2="170"/>
+<line class="ln dash" x1="400" y1="20" x2="400" y2="200"/>
+<text x="400" y="224" text-anchor="middle" class="sm">rubric score (1 to 5) · share of answers</text>
+<text x="400" y="242" text-anchor="middle" class="sm b">same mean, opposite products: report "% scored 1 or 2" too</text>
+</svg>
+<figcaption><b>A mean hides the shape.</b> Illustrative distributions. Both products average 3.5, but B fails half its users badly. The share of scores at the bottom of the scale is often the number that matters most.</figcaption>
+</figure>
 
 <h3>Win rate</h3>
 <p>Instead of an absolute score, you can ask a judge (human or model) "which of these two responses is better?". Pairwise judgments are often more reliable than absolute scores, because comparing is easier than calibrating. The metric is the <b>win rate</b>:</p>
@@ -667,6 +714,24 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <p>This is the <b>Wald interval</b> (also "normal approximation" or "CLT interval"). For a success rate: <code>p̂ ± 1.96 √(p̂(1−p̂)/n)</code>.</p>
 <p><b>What does "95% confidence" mean?</b> Not "95% chance the true value is in this particular interval". It means: if you repeated the whole eval many times and built an interval each time, 95% of those intervals would contain the true rate. In practice, read it as "values inside the interval are all plausible; values far outside are not".</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 290" role="img" aria-label="Twenty simulated reruns of a 500-question eval for an agent whose true rate is 70 percent. Each run gives a 95 percent interval; 19 of the 20 contain 70 percent and one misses.">
+<line class="ln" x1="80" y1="230" x2="690" y2="230"/>
+<line class="ln" x1="80" y1="230" x2="80" y2="30"/>
+<text x="72" y="234" text-anchor="end" class="sm">60%</text>
+<text x="72" y="182" text-anchor="end" class="sm">65%</text>
+<text x="72" y="134" text-anchor="end" class="sm">70%</text>
+<text x="72" y="87" text-anchor="end" class="sm">75%</text>
+<text x="72" y="39" text-anchor="end" class="sm">80%</text>
+<line class="ln good dash" x1="80" y1="135.0" x2="690" y2="135.0"/>
+<text x="696" y="139" class="sm b t-good">true rate 70%</text>
+<line class="ln accent thick" x1="100" y1="149.4" x2="100" y2="75.0"/><circle cx="100" cy="112.2" r="4" class="fill-accent"/><line class="ln accent thick" x1="130" y1="165.3" x2="130" y2="89.5"/><circle cx="130" cy="127.4" r="4" class="fill-accent"/><line class="ln accent thick" x1="160" y1="181.0" x2="160" y2="104.2"/><circle cx="160" cy="142.6" r="4" class="fill-accent"/><line class="ln accent thick" x1="190" y1="200.7" x2="190" y2="122.5"/><circle cx="190" cy="161.6" r="4" class="fill-accent"/><line class="ln accent thick" x1="220" y1="147.4" x2="220" y2="73.2"/><circle cx="220" cy="110.3" r="4" class="fill-accent"/><line class="ln accent thick" x1="250" y1="151.4" x2="250" y2="76.8"/><circle cx="250" cy="114.1" r="4" class="fill-accent"/><line class="ln accent thick" x1="280" y1="175.1" x2="280" y2="98.7"/><circle cx="280" cy="136.9" r="4" class="fill-accent"/><line class="ln accent thick" x1="310" y1="212.4" x2="310" y2="133.6"/><circle cx="310" cy="173.0" r="4" class="fill-accent"/><line class="ln accent thick" x1="340" y1="141.5" x2="340" y2="67.7"/><circle cx="340" cy="104.6" r="4" class="fill-accent"/><line class="ln bad thick" x1="370" y1="226.1" x2="370" y2="146.5"/><circle cx="370" cy="186.3" r="4" class="fill-bad"/><line class="ln accent thick" x1="400" y1="137.5" x2="400" y2="64.1"/><circle cx="400" cy="100.8" r="4" class="fill-accent"/><line class="ln accent thick" x1="430" y1="165.3" x2="430" y2="89.5"/><circle cx="430" cy="127.4" r="4" class="fill-accent"/><line class="ln accent thick" x1="460" y1="206.6" x2="460" y2="128.0"/><circle cx="460" cy="167.3" r="4" class="fill-accent"/><line class="ln accent thick" x1="490" y1="177.1" x2="490" y2="100.5"/><circle cx="490" cy="138.8" r="4" class="fill-accent"/><line class="ln accent thick" x1="520" y1="173.2" x2="520" y2="96.8"/><circle cx="520" cy="135.0" r="4" class="fill-accent"/><line class="ln accent thick" x1="550" y1="141.5" x2="550" y2="67.7"/><circle cx="550" cy="104.6" r="4" class="fill-accent"/><line class="ln accent thick" x1="580" y1="185.0" x2="580" y2="107.8"/><circle cx="580" cy="146.4" r="4" class="fill-accent"/><line class="ln accent thick" x1="610" y1="181.0" x2="610" y2="104.2"/><circle cx="610" cy="142.6" r="4" class="fill-accent"/><line class="ln accent thick" x1="640" y1="186.9" x2="640" y2="109.7"/><circle cx="640" cy="148.3" r="4" class="fill-accent"/><line class="ln accent thick" x1="670" y1="173.2" x2="670" y2="96.8"/><circle cx="670" cy="135.0" r="4" class="fill-accent"/>
+<text x="400" y="254" text-anchor="middle" class="sm">20 independent reruns of the same eval (n = 500 each)</text>
+<text x="400" y="274" text-anchor="middle" class="sm b">19 of 20 intervals contain the truth (red misses): that is what "95% confidence" means</text>
+</svg>
+<figcaption><b>What "95% confidence" promises.</b> A real simulation (seeded, binomial draws, Wald intervals). The procedure is right 95% of the time in the long run; any single interval either contains the truth or it does not, and you cannot tell which from inside one run.</figcaption>
+</figure>
+
 <h3>Worked example</h3>
 <p>Your agent passes 312 of 500 tasks.</p>
 <ul>
@@ -969,9 +1034,37 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 </ul>
 <p>Two lessons. First, detecting small improvements needs far more questions than most teams have; a 100-item eval can only reliably detect differences of roughly 19 to 20 points or more unpaired (80% power). Second, the disagreement rate between models drives paired power, so you can estimate it from a pilot run and plan from there. If the math says you need 4,000 questions and you have 200, the honest move is to say "this eval can only detect large changes" rather than to read tea leaves in small ones.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 760 290" role="img" aria-label="Questions needed for 80 percent power at the 5 percent level versus the smallest improvement you want to detect, on a log scale: unpaired about 8,900 questions for 2 points and 360 for 10 points; paired about 2,350 for 2 points and 90 for 10 points.">
+<line class="ln" x1="90" y1="230" x2="650" y2="230"/><line class="ln" x1="90" y1="230" x2="90" y2="40"/>
+<line class="ln" x1="90" y1="230" x2="90" y2="235"/><text x="90" y="249" text-anchor="middle" class="sm">2 pts</text><line class="ln" x1="230" y1="230" x2="230" y2="235"/><text x="230" y="249" text-anchor="middle" class="sm">4 pts</text><line class="ln" x1="370" y1="230" x2="370" y2="235"/><text x="370" y="249" text-anchor="middle" class="sm">6 pts</text><line class="ln" x1="510" y1="230" x2="510" y2="235"/><text x="510" y="249" text-anchor="middle" class="sm">8 pts</text><line class="ln" x1="650" y1="230" x2="650" y2="235"/><text x="650" y="249" text-anchor="middle" class="sm">10 pts</text><text x="82" y="234" text-anchor="end" class="sm">10</text><line class="ln dash" x1="90" y1="230" x2="650" y2="230" opacity="0.25"/><text x="82" y="174" text-anchor="end" class="sm">100</text><line class="ln dash" x1="90" y1="170" x2="650" y2="170" opacity="0.25"/><text x="82" y="114" text-anchor="end" class="sm">1,000</text><line class="ln dash" x1="90" y1="110" x2="650" y2="110" opacity="0.25"/><text x="82" y="54" text-anchor="end" class="sm">10,000</text><line class="ln dash" x1="90" y1="50" x2="650" y2="50" opacity="0.25"/>
+<polyline class="ln bad thick" points="90,53 160,74 230,89 300,101 370,110 510,125 650,137"/>
+<polyline class="ln accent thick" points="90,88 160,109 230,124 300,135 370,145 510,160 650,172"/>
+<circle cx="90" cy="53" r="4" class="fill-bad"/><text x="96" y="45" class="sm b">8,920</text><circle cx="160" cy="74" r="4" class="fill-bad"/><text x="166" y="66" class="sm b">3,960</text><circle cx="300" cy="101" r="4" class="fill-bad"/><text x="306" y="93" class="sm b">1,430</text><circle cx="650" cy="137" r="4" class="fill-bad"/><text x="656" y="129" class="sm b">360</text><circle cx="90" cy="88" r="4" class="fill-accent"/><text x="100" y="110" class="sm b">2,350</text><circle cx="160" cy="109" r="4" class="fill-accent"/><text x="170" y="131" class="sm b">1,050</text><circle cx="300" cy="135" r="4" class="fill-accent"/><text x="310" y="157" class="sm b">380</text><circle cx="650" cy="172" r="4" class="fill-accent"/><text x="660" y="194" class="sm b">90</text>
+<text x="370" y="272" text-anchor="middle" class="sm">smallest improvement you want to detect (minimum detectable effect)</text>
+<text x="30" y="135" text-anchor="middle" class="sm" transform="rotate(-90 30 135)">questions needed (log scale)</text>
+<rect x="470" y="46" width="14" height="4" class="fill-bad"/><text x="490" y="52" class="sm">unpaired, scores near 65%</text>
+<rect x="470" y="64" width="14" height="4" class="fill-accent"/><text x="490" y="70" class="sm">paired, models disagree on 12%</text>
+</svg>
+<figcaption><b>The price of detecting small effects.</b> Computed from the formula above (80% power, two-sided α = 0.05). Halving the effect you want to detect quadruples the questions you need, and pairing cuts the requirement by roughly 4× here.</figcaption>
+</figure>
+
 <h2>Multiple comparisons and p-hacking</h2>
 <p>A 95% confidence level means that when there is truly no difference, you will still see a "significant" result 5% of the time. That is fine for one test. It is not fine when you run twenty.</p>
 <p>Suppose you try 20 prompt variants, none actually better than the baseline. The chance that at least one looks significantly better at p &lt; 0.05 is <code>1 − 0.95^20 = 64%</code>. Pick the best of 20 and you have probably selected noise. This is the <b>winner's curse</b>, and it is exactly the leaderboard problem "The Leaderboard Illusion" raises about private testing of many variants.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 720 280" role="img" aria-label="Probability of at least one false positive when every variant is truly no better: 5 percent for one test, 23 percent for 5, 40 percent for 10, 64 percent for 20 and 92 percent for 50.">
+<line class="ln" x1="90" y1="220" x2="690" y2="220"/><line class="ln" x1="90" y1="220" x2="90" y2="40"/>
+<text x="82" y="224" text-anchor="end" class="sm">0%</text><text x="82" y="139" text-anchor="end" class="sm">50%</text><text x="82" y="54" text-anchor="end" class="sm">100%</text>
+<line class="ln dash" x1="90" y1="135" x2="690" y2="135" opacity="0.3"/>
+<rect x="110" y="212" width="56" height="9" rx="4" class="fill-warn"/><text x="138" y="206" text-anchor="middle" class="sm b">5%</text><text x="138" y="238" text-anchor="middle" class="sm">1</text><rect x="205" y="203" width="56" height="17" rx="4" class="fill-warn"/><text x="233" y="197" text-anchor="middle" class="sm b">10%</text><text x="233" y="238" text-anchor="middle" class="sm">2</text><rect x="300" y="182" width="56" height="38" rx="4" class="fill-warn"/><text x="328" y="176" text-anchor="middle" class="sm b">23%</text><text x="328" y="238" text-anchor="middle" class="sm">5</text><rect x="395" y="152" width="56" height="68" rx="4" class="fill-bad"/><text x="423" y="146" text-anchor="middle" class="sm b">40%</text><text x="423" y="238" text-anchor="middle" class="sm">10</text><rect x="490" y="111" width="56" height="109" rx="4" class="fill-bad"/><text x="518" y="105" text-anchor="middle" class="sm b">64%</text><text x="518" y="238" text-anchor="middle" class="sm">20</text><rect x="585" y="63" width="56" height="157" rx="4" class="fill-bad"/><text x="613" y="57" text-anchor="middle" class="sm b">92%</text><text x="613" y="238" text-anchor="middle" class="sm">50</text>
+<text x="390" y="260" text-anchor="middle" class="sm">number of variants tested against the baseline (none truly better)</text>
+<text x="30" y="130" text-anchor="middle" class="sm" transform="rotate(-90 30 130)">P(at least one "win")</text>
+<text x="120" y="30" class="sm b">1 − 0.95^k: the chance that pure noise hands you a "significant" winner</text>
+</svg>
+<figcaption><b>More tests, more false wins.</b> Exact values of 1 − 0.95<sup>k</sup>, assuming independent tests at p &lt; 0.05. Real prompt variants are correlated, so the true rate is somewhat lower, but the lesson holds: search over many variants, then confirm the winner on fresh data.</figcaption>
+</figure>
 <p>Common forms in eval work, and what to do about each:</p>
 <div class="tablewrap"><table>
 <tr><th>Pattern</th><th>Why it misleads</th><th>Fix</th></tr>
@@ -1025,7 +1118,7 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 </figure>
 
 <ul>
-<li><b>Model sampling.</b> At temperature above zero, each token is sampled. Even at temperature 0, many hosted APIs are not bit-for-bit deterministic because of batching and floating-point effects, so do not assume two temperature-0 runs match. Evaluate at the temperature you will deploy with, and use epochs.</li>
+<li><b>Model sampling.</b> At temperature above zero, each token is sampled. Even at temperature 0, many hosted APIs are not bit-for-bit deterministic because of batching and floating-point effects, so do not assume two temperature-0 runs match. Evaluate with the sampling settings you will deploy with (temperature, or the effort level on newer models that fix temperature), and use epochs.</li>
 <li><b>Environment nondeterminism.</b> Live websites change (a reason WebVoyager-style evals drift), clocks and dates change, random IDs differ. Prefer containerised, snapshotted environments; Module 05 covers this.</li>
 <li><b>Tool and infrastructure flakiness.</b> A network timeout is not the agent's fault. Track infra errors separately, retry them (the run, not the agent's decision), and never let them silently count as agent failures or be silently dropped.</li>
 <li><b>Simulated users.</b> τ-bench style evals use an LLM to play the customer. The research notes for this course record that its user simulator is itself noisy (sometimes hallucinating or ending early). That noise lands in your score.</li>
@@ -1166,6 +1259,16 @@ diff = other - per_q
 boot_diff = diff[idx].mean(axis=1)
 print("paired diff CI:", np.percentile(boot_diff, [2.5, 97.5]).round(3))</code></pre>
 <p>If you have scipy, <code>scipy.stats.binomtest(k, n).proportion_ci(method="wilson")</code> gives the Wilson interval and <code>scipy.stats.bootstrap</code> does percentile or BCa bootstraps. For regression-style analyses with clustered errors, statsmodels supports cluster-robust covariance. The pure-Python versions above are there so you understand what those calls do.</p>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Every score is two answers: the metric (which number) and its uncertainty (how much it would move on a rerun). Never report one without the other.</li>
+<li>Pick the metric for the decision: success rate for "how often", precision and recall for detectors, pass@k when a verifier picks among tries, pass^k when the agent must succeed every time.</li>
+<li>Cost, latency percentiles (p50, p95), tokens and steps are metrics too. Compare systems on a Pareto frontier at matched budgets.</li>
+<li>Error bars shrink with √n: four times the data for half the width. With 50 to 200 items, differences of a few points are usually noise.</li>
+<li>Follow the error-bars recipe: CLT standard errors, clustered SEs for grouped tasks, epochs to cut within-task noise, paired differences for comparisons, power analysis before you build.</li>
+<li>The bootstrap gives intervals for any statistic; resample the independent unit (question or cluster), and resample pairs when comparing.</li>
+<li>Many comparisons manufacture false wins. Select on a dev split, confirm once on held-out data, and report every run.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

@@ -168,11 +168,11 @@ for block in resp.content:
 <text x="672" y="168" class="sm">✗ no hand-off to</text>
 <text x="684" y="184" class="sm">a human when due</text>
 
-<text x="89" y="272" text-anchor="middle" class="sm t-good">relevance tests</text>
-<text x="251" y="272" text-anchor="middle" class="sm t-good">name + order checks</text>
-<text x="413" y="272" text-anchor="middle" class="sm t-good">AST / schema checks</text>
-<text x="575" y="272" text-anchor="middle" class="sm t-good">end-state + judge</text>
-<text x="737" y="272" text-anchor="middle" class="sm t-good">step caps, pass^k</text>
+<text x="89" y="272" text-anchor="middle" class="t-good" style="font-size:11px">relevance tests</text>
+<text x="251" y="272" text-anchor="middle" class="t-good" style="font-size:11px">name + order checks</text>
+<text x="413" y="272" text-anchor="middle" class="t-good" style="font-size:11px">AST / schema checks</text>
+<text x="575" y="272" text-anchor="middle" class="t-good" style="font-size:11px">end-state + judge</text>
+<text x="737" y="272" text-anchor="middle" class="t-good" style="font-size:11px">step caps, pass^k</text>
 <text x="410" y="294" text-anchor="middle" class="sm">green: the kind of check that usually catches each column</text>
 </svg>
 <figcaption><b>A failure map for tool use.</b> Each step fails in its own ways, and each family needs a different kind of check. An eval that only looks at the final answer lumps all of these together and can't tell you what to fix.</figcaption>
@@ -199,22 +199,28 @@ for block in resp.content:
 <text x="114" y="240" text-anchor="middle" class="b">1 · Single call</text>
 <text x="114" y="257" text-anchor="middle" class="sm">one request, one call</text>
 <text x="114" y="273" text-anchor="middle" class="sm">grade: name + args (AST)</text>
-<text x="114" y="289" text-anchor="middle" class="sm t-accent">BFCL, ACEBench Normal</text>
+<text x="114" y="289" text-anchor="middle" class="t-accent" style="font-size:11px">BFCL, ACEBench Normal</text>
 <rect class="box accent" x="218" y="170" width="188" height="130" rx="8"/>
 <text x="312" y="190" text-anchor="middle" class="b">2 · Multi-step chain</text>
 <text x="312" y="207" text-anchor="middle" class="sm">output of call A feeds B</text>
 <text x="312" y="223" text-anchor="middle" class="sm">grade: sequence / subset</text>
-<text x="312" y="239" text-anchor="middle" class="sm t-accent">BFCL multi-turn</text>
+<text x="312" y="239" text-anchor="middle" class="t-accent" style="font-size:11px">BFCL multi-turn</text>
+<text x="312" y="286" text-anchor="middle" class="sm">cheap, deterministic, CI</text>
 <rect class="box warn" x="416" y="120" width="188" height="180" rx="8"/>
 <text x="510" y="140" text-anchor="middle" class="b">3 · Stateful task</text>
 <text x="510" y="157" text-anchor="middle" class="sm">many calls, side effects</text>
 <text x="510" y="173" text-anchor="middle" class="sm">grade: end-state DB diff</text>
-<text x="510" y="189" text-anchor="middle" class="sm t-accent">τ-bench, AppWorld</text>
+<text x="510" y="189" text-anchor="middle" class="t-accent" style="font-size:11px">τ-bench, AppWorld</text>
+<text x="510" y="270" text-anchor="middle" class="sm">needs a sandbox DB</text>
+<text x="510" y="286" text-anchor="middle" class="sm">+ a simulated user</text>
 <rect class="box good" x="614" y="70" width="188" height="230" rx="8"/>
 <text x="708" y="90" text-anchor="middle" class="b">4 · Open-ended assistant</text>
 <text x="708" y="107" text-anchor="middle" class="sm">talks to users, open web</text>
 <text x="708" y="123" text-anchor="middle" class="sm">grade: goal + policy + answer</text>
-<text x="708" y="139" text-anchor="middle" class="sm t-accent">τ²-bench, GAIA, BrowseComp</text>
+<text x="708" y="139" text-anchor="middle" class="t-accent" style="font-size:11px">τ²-bench, GAIA, BrowseComp</text>
+<text x="708" y="254" text-anchor="middle" class="sm">needs verifiable answers</text>
+<text x="708" y="270" text-anchor="middle" class="sm">or a validated judge;</text>
+<text x="708" y="286" text-anchor="middle" class="sm">many trials per task</text>
 </svg>
 <figcaption><b>Zoom levels.</b> Each step up the stairs tests more of the real system, at higher cost per test case. Most bugs are found cheaply on the lower steps; most surprises are found on the higher ones.</figcaption>
 </figure>
@@ -409,6 +415,50 @@ def test_irrelevance():
 <li><b>State-based</b>: after the calls, compare the backend's state (files created, a watchlist changed) with the expected state.</li>
 <li><b>Response-based, subset-matched</b>: the model's calls are correct if they <em>contain</em> the ground-truth calls as a subset, even with extra exploratory steps. This allows for exploring and recovering from errors, which a strict sequence match would reject.</li>
 </ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 296" role="img" aria-label="Gold chain of three calls (find user, list orders, refund item) compared with the agent's chain of four calls, which adds an extra get_order read. Exact sequence match fails, while subset-in-order, end-state and forbidden-call checks all pass.">
+<defs><marker id="m6k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="66" class="b">Gold calls</text>
+<text x="20" y="82" class="sm">annotated</text>
+<rect class="box plain" x="150" y="44" width="130" height="48" rx="8"/>
+<text x="215" y="65" text-anchor="middle" class="mono">find_user(email)</text><text x="215" y="83" text-anchor="middle" class="sm">returns U9</text>
+<rect class="box plain" x="310" y="44" width="130" height="48" rx="8"/>
+<text x="375" y="65" text-anchor="middle" class="mono">list_orders(U9)</text><text x="375" y="83" text-anchor="middle" class="sm">returns A17, B02</text>
+<rect class="box plain" x="630" y="44" width="130" height="48" rx="8"/>
+<text x="695" y="65" text-anchor="middle" class="mono">refund_item(A17)</text><text x="695" y="83" text-anchor="middle" class="sm">the one write</text>
+<line class="ln" x1="280" y1="68" x2="307" y2="68" marker-end="url(#m6k)"/>
+<line class="ln" x1="440" y1="68" x2="627" y2="68" marker-end="url(#m6k)"/>
+<text x="535" y="60" text-anchor="middle" class="sm">output feeds input</text>
+<text x="20" y="176" class="b">Agent's run</text>
+<text x="20" y="192" class="sm">one trial</text>
+<rect class="box good" x="150" y="154" width="130" height="48" rx="8"/>
+<text x="215" y="175" text-anchor="middle" class="mono">find_user(email)</text><text x="215" y="193" text-anchor="middle" class="sm">U9 ✓</text>
+<rect class="box good" x="310" y="154" width="130" height="48" rx="8"/>
+<text x="375" y="175" text-anchor="middle" class="mono">list_orders(U9)</text><text x="375" y="193" text-anchor="middle" class="sm">A17, B02 ✓</text>
+<rect class="box warn" x="470" y="154" width="130" height="48" rx="8"/>
+<text x="535" y="175" text-anchor="middle" class="mono">get_order(A17)</text><text x="535" y="193" text-anchor="middle" class="sm">extra read: harmless</text>
+<rect class="box good" x="630" y="154" width="130" height="48" rx="8"/>
+<text x="695" y="175" text-anchor="middle" class="mono">refund_item(A17)</text><text x="695" y="193" text-anchor="middle" class="sm">✓ after confirming</text>
+<line class="ln" x1="280" y1="178" x2="307" y2="178" marker-end="url(#m6k)"/>
+<line class="ln" x1="440" y1="178" x2="467" y2="178" marker-end="url(#m6k)"/>
+<line class="ln" x1="600" y1="178" x2="627" y2="178" marker-end="url(#m6k)"/>
+<line class="ln good dash" x1="215" y1="92" x2="215" y2="154"/>
+<line class="ln good dash" x1="375" y1="92" x2="375" y2="154"/>
+<line class="ln good dash" x1="695" y1="92" x2="695" y2="154"/>
+<text x="223" y="127" class="sm">match</text><text x="383" y="127" class="sm">match</text><text x="703" y="127" class="sm">match</text>
+<text x="535" y="127" text-anchor="middle" class="sm">no gold call here</text>
+<rect class="box bad" x="20" y="226" width="190" height="54" rx="8"/>
+<text x="115" y="248" text-anchor="middle" class="b">Exact sequence</text><text x="115" y="267" text-anchor="middle" class="b t-bad">FAIL: 4 calls ≠ 3</text>
+<rect class="box good" x="225" y="226" width="190" height="54" rx="8"/>
+<text x="320" y="248" text-anchor="middle" class="b">Subset, in order</text><text x="320" y="267" text-anchor="middle" class="sm">PASS: all gold calls present</text>
+<rect class="box good" x="430" y="226" width="190" height="54" rx="8"/>
+<text x="525" y="248" text-anchor="middle" class="b">End state</text><text x="525" y="267" text-anchor="middle" class="sm">PASS: A17 refunded once</text>
+<rect class="box good" x="635" y="226" width="190" height="54" rx="8"/>
+<text x="730" y="248" text-anchor="middle" class="b">Forbidden calls</text><text x="730" y="267" text-anchor="middle" class="sm">PASS: no delete, no 2nd refund</text>
+</svg>
+<figcaption><b>Grading a chain.</b> The agent added one exploratory read. An exact-sequence grader fails a correct run; the three-tier rubric (end state, essential calls as an ordered subset, no forbidden calls) passes it while still catching a wrong or extra <em>write</em>.</figcaption>
+</figure>
 <p>For your own chains, a useful three-tier rubric is: (1) did the end state come out right; (2) were all <em>essential</em> calls made (a subset check, possibly with ordering constraints for steps that must precede others, like verify-before-refund); (3) were there any <em>forbidden</em> calls (a delete that should never happen, a write before authentication). Tier 3 is often the most important in production and the most often forgotten.</p>
 
 <h2>Level 3: whole tasks in stateful environments (τ-bench)</h2>
@@ -446,8 +496,8 @@ def test_irrelevance():
 <text x="110" y="229" text-anchor="middle" class="b t-violet">τ²: user has tools too</text>
 <text x="110" y="246" text-anchor="middle" class="sm">e.g. toggle phone settings</text>
 <line class="ln" x1="110" y1="190" x2="110" y2="206" marker-end="url(#m6e)"/>
-<path class="ln violet dash" d="M205,233 L760,233 L760,194" marker-end="url(#m6e)"/>
-<text x="480" y="226" text-anchor="middle" class="sm t-violet">both sides act on one shared world (dual control)</text>
+<path class="ln violet flow" d="M205,233 L760,233 L760,194" marker-end="url(#m6e)"/>
+<text x="480" y="226" text-anchor="middle" class="t-violet" style="font-size:11px">both sides act on one shared world (dual control)</text>
 
 <rect class="box good" x="15" y="276" width="790" height="110" rx="10"/>
 <text x="30" y="298" class="b">Grader (runs after the conversation ends)</text>
@@ -541,10 +591,10 @@ def grade_episode(initial_db, gold_actions, tools, agent_final_db,
 <svg viewBox="0 0 820 310" role="img" aria-label="Line chart for a toy five-task example: pass@k rises from 0.675 at k=1 to 1.0 at k=7, while pass^k falls from 0.675 to 0.20 at k=8.">
 <line class="ln" x1="80" y1="260" x2="800" y2="260"/>
 <line class="ln" x1="80" y1="260" x2="80" y2="30"/>
-<line class="ln dash" x1="80" y1="205" x2="800" y2="205"/>
-<line class="ln dash" x1="80" y1="150" x2="800" y2="150"/>
-<line class="ln dash" x1="80" y1="95" x2="800" y2="95"/>
-<line class="ln dash" x1="80" y1="40" x2="800" y2="40"/>
+<line class="ln dash" x1="80" y1="205" x2="800" y2="205" style="opacity:.3"/>
+<line class="ln dash" x1="80" y1="150" x2="800" y2="150" style="opacity:.3"/>
+<line class="ln dash" x1="80" y1="95" x2="800" y2="95" style="opacity:.3"/>
+<line class="ln dash" x1="80" y1="40" x2="800" y2="40" style="opacity:.3"/>
 <text x="72" y="264" text-anchor="end" class="sm">0</text>
 <text x="72" y="209" text-anchor="end" class="sm">0.25</text>
 <text x="72" y="154" text-anchor="end" class="sm">0.5</text>
@@ -567,7 +617,7 @@ def grade_episode(initial_db, gold_actions, tools, agent_final_db,
 <text x="300" y="84" class="b t-good">pass@k: at least one of k succeeds</text>
 <text x="330" y="238" class="b t-bad">pass^k: all k succeed</text>
 <text x="780" y="130" text-anchor="end" class="sm">gap = inconsistency</text>
-<text x="780" y="232" text-anchor="end" class="sm t-bad">0.20</text>
+<text x="780" y="232" text-anchor="end" class="t-bad" style="font-size:11px">0.20</text>
 </svg>
 <figcaption><b>pass@k versus pass^k on a toy example</b> (5 tasks, 8 trials each, with 8, 7, 6, 4 and 2 successes; computed, not real benchmark data). The same agent looks "nearly perfect" under pass@8 and "fails 80% of the time" under pass^8. Which is right depends on whether you get one attempt or many.</figcaption>
 </figure>
@@ -626,6 +676,38 @@ for k in (1, 2, 4, 8):
 <li><b>BrowseComp</b> (OpenAI, April 2025): 1,266 questions that are "hard to find but easy to verify", built by starting from a fact and writing a question with many intertwined constraints. At launch, OpenAI's Deep Research scored 51.5%, GPT-4o with browsing 1.9%, and human trainers solved 29.2% within two hours. It is the hard end of <b>agentic search</b>. BrowseComp-Plus fixes the document corpus so that results are reproducible and retrieval can be studied separately.</li>
 </ul>
 <p>These are also where <b>agentic RAG</b> lives: instead of retrieving once and answering, a <b>search agent</b> decides what to search, reads, reformulates and searches again. Evaluating it combines everything in this module: tool-call quality (were the queries sensible?), retrieval quality (did it find the evidence?), faithfulness (does the answer stick to what it found?), and end-task accuracy. Web agents are covered further in <a href="08-web-and-computer-use.html">Module 08</a>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="Left: a search agent loops through many steps (search, read pages, refine query, search again, read, candidate answer). Right: checking the candidate is a single comparison with a short reference answer. Bottom: four things to grade along the way: query quality, evidence found, faithfulness and final answer.">
+<defs><marker id="m6l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="20" y="20" width="500" height="190" rx="12"/>
+<text x="36" y="42" class="b">Finding it: hard (many steps, open web)</text>
+<rect class="box accent" x="40" y="60" width="130" height="42" rx="8"/><text x="105" y="80" text-anchor="middle">search "q1"</text><text x="105" y="95" text-anchor="middle" class="sm">10 results</text>
+<rect class="box plain" x="200" y="60" width="130" height="42" rx="8"/><text x="265" y="80" text-anchor="middle">read 3 pages</text><text x="265" y="95" text-anchor="middle" class="sm">dead end</text>
+<rect class="box violet" x="360" y="60" width="140" height="42" rx="8"/><text x="430" y="80" text-anchor="middle">refine query</text><text x="430" y="95" text-anchor="middle" class="sm">add a constraint</text>
+<rect class="box accent" x="360" y="140" width="140" height="42" rx="8"/><text x="430" y="160" text-anchor="middle">search "q2"</text><text x="430" y="175" text-anchor="middle" class="sm">new angle</text>
+<rect class="box plain" x="200" y="140" width="130" height="42" rx="8"/><text x="265" y="160" text-anchor="middle">read, cross-check</text><text x="265" y="175" text-anchor="middle" class="sm">2 sources agree</text>
+<rect class="box good" x="40" y="140" width="130" height="42" rx="8"/><text x="105" y="160" text-anchor="middle" class="b">candidate</text><text x="105" y="175" text-anchor="middle" class="sm">"Ljubljana"</text>
+<line class="ln accent flow" x1="170" y1="81" x2="197" y2="81" marker-end="url(#m6l)"/>
+<line class="ln accent flow" x1="330" y1="81" x2="357" y2="81" marker-end="url(#m6l)"/>
+<line class="ln accent flow" x1="430" y1="102" x2="430" y2="137" marker-end="url(#m6l)"/>
+<line class="ln accent flow" x1="360" y1="161" x2="333" y2="161" marker-end="url(#m6l)"/>
+<line class="ln accent flow" x1="200" y1="161" x2="173" y2="161" marker-end="url(#m6l)"/>
+<text x="330" y="125" text-anchor="middle" class="sm t-muted">can run to dozens of steps</text>
+<rect class="box dashed" x="560" y="20" width="260" height="190" rx="12"/>
+<text x="576" y="42" class="b">Checking it: easy (one step)</text>
+<rect class="box plain" x="580" y="60" width="220" height="36" rx="8"/><text x="690" y="83" text-anchor="middle">agent: "Ljubljana"</text>
+<rect class="box plain" x="580" y="104" width="220" height="36" rx="8"/><text x="690" y="127" text-anchor="middle">reference: "Ljubljana"</text>
+<rect class="box good" x="580" y="152" width="220" height="40" rx="8"/><text x="690" y="177" text-anchor="middle" class="b t-good">match → correct</text>
+<path class="ln good" d="M105,182 L105,200 L540,200 L540,78 L577,78" marker-end="url(#m6l)"/>
+<text x="20" y="236" class="sm">grade along the way too:</text>
+<rect class="box accent" x="20" y="246" width="190" height="42" rx="8"/><text x="115" y="264" text-anchor="middle" class="b">query quality</text><text x="115" y="280" text-anchor="middle" class="sm">sensible, not repetitive?</text>
+<rect class="box accent" x="225" y="246" width="190" height="42" rx="8"/><text x="320" y="264" text-anchor="middle" class="b">evidence found</text><text x="320" y="280" text-anchor="middle" class="sm">retrieval recall</text>
+<rect class="box violet" x="430" y="246" width="190" height="42" rx="8"/><text x="525" y="264" text-anchor="middle" class="b">sticks to evidence</text><text x="525" y="280" text-anchor="middle" class="sm">faithfulness, citations</text>
+<rect class="box good" x="635" y="246" width="185" height="42" rx="8"/><text x="727" y="264" text-anchor="middle" class="b">final answer</text><text x="727" y="280" text-anchor="middle" class="sm">(quasi-)exact match</text>
+</svg>
+<figcaption><b>Hard to find, easy to verify.</b> GAIA and BrowseComp keep grading cheap and objective by choosing questions whose answers are short, even though finding them takes a long, open-ended search. The final-answer check is the headline; the step checks along the bottom tell you <em>why</em> a run failed. (Illustrative trajectory, not a real benchmark item.)</figcaption>
+</figure>
 
 <h2>Evaluating the tools themselves</h2>
 <p>So far we held the tools fixed and graded the agent. But for many teams the biggest lever is the tools: their names, descriptions, parameters and what they return. Anthropic's engineering post <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">"Writing effective tools for agents, with agents"</a> (September 2025) describes an eval-driven loop for this.</p>
@@ -703,7 +785,7 @@ for k in (1, 2, 4, 8):
 <text x="540" y="226">answer relevancy: on the question?</text>
 <text x="540" y="248">correctness: matches reference?</text>
 <text x="540" y="270">citations: support what they cite?</text>
-<text x="410" y="320" text-anchor="middle" class="sm t-warn">end-to-end accuracy alone says the answer is wrong, not WHERE it broke</text>
+<text x="410" y="320" text-anchor="middle" class="t-warn" style="font-size:11px">end-to-end accuracy alone says the answer is wrong, not WHERE it broke</text>
 </svg>
 <figcaption><b>Where each RAG metric attaches.</b> Retrieval metrics judge the ranked list of chunks; generation metrics judge what the LLM did with them. Measure both so a wrong answer can be traced to the stage that caused it.</figcaption>
 </figure>
@@ -730,7 +812,7 @@ for k in (1, 2, 4, 8):
 <text x="42" y="188">#4  refunds need a receipt</text><text x="338" y="188" text-anchor="end" class="b t-good">✓</text>
 <rect class="box plain" x="30" y="208" width="320" height="34" rx="6"/>
 <text x="42" y="230">#5  store opening hours</text><text x="338" y="230" text-anchor="end" class="t-muted">not relevant</text>
-<text x="30" y="266" class="sm t-bad">missed: "refunds go to the original card" (never retrieved)</text>
+<text x="30" y="266" class="t-bad" style="font-size:11px">missed: "refunds go to the original card" (never retrieved)</text>
 <rect class="box accent" x="390" y="40" width="415" height="236" rx="10"/>
 <text x="406" y="68" class="mono" xml:space="preserve">recall@5     = 2/3                 = 0.67</text>
 <text x="406" y="94" class="mono" xml:space="preserve">precision@5  = 2/5                 = 0.40</text>
@@ -917,6 +999,38 @@ print(faithfulness("You can get a refund within 30 days if you have a receipt, "
 <div class="callout expert"><span class="t">Expert nuance: RAG metrics are judges, with judge problems</span>
 <p>Faithfulness, context precision and context recall in Ragas are LLM-judged, so they inherit judge variance and bias. Claim splitting is itself a source of noise: one judge splits an answer into 3 claims, another into 5, and the ratio changes. Keep the judge model and prompt fixed between runs you compare, and spot-check the claims list. For high-stakes use, a dedicated hallucination classifier (Ragas offers <code>FaithfulnesswithHHEM</code>, which uses Vectara's HHEM-2.1-Open model) or a validated custom judge can be more stable. And remember: high faithfulness plus low correctness means your <em>retriever or corpus</em> is feeding the model wrong facts.</p>
 </div>
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="Two by two diagnosis grid. Horizontal axis context recall, vertical axis faithfulness. High recall and high faithfulness: healthy pipeline. High recall and low faithfulness: generator problem. Low recall and high faithfulness: retriever problem. Low recall and low faithfulness: both, or the model answers from memory.">
+<defs><marker id="m6m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="120" y="20" width="340" height="125" rx="10"/>
+<text x="136" y="46" class="b">Retriever problem</text>
+<text x="136" y="68" class="sm">faithful to context that is missing the facts</text>
+<text x="136" y="86" class="sm">symptom: incomplete or "I don't know" answers</text>
+<text x="136" y="116" class="b t-accent">fix: chunking, embeddings, k, reranker</text>
+<rect class="box good" x="480" y="20" width="340" height="125" rx="10"/>
+<text x="496" y="46" class="b">Healthy pipeline</text>
+<text x="496" y="68" class="sm">evidence retrieved and used</text>
+<text x="496" y="86" class="sm">still wrong? suspect the corpus or the reference</text>
+<text x="496" y="116" class="b t-good">fix: audit documents and labels</text>
+<rect class="box bad" x="120" y="160" width="340" height="125" rx="10"/>
+<text x="136" y="186" class="b">Both broken</text>
+<text x="136" y="208" class="sm">evidence missing, and the model fills gaps</text>
+<text x="136" y="226" class="sm">from its own memory (hallucination)</text>
+<text x="136" y="256" class="b t-bad">fix: retrieval first, then grounding prompt</text>
+<rect class="box warn" x="480" y="160" width="340" height="125" rx="10"/>
+<text x="496" y="186" class="b">Generator problem</text>
+<text x="496" y="208" class="sm">had the evidence, ignored or twisted it</text>
+<text x="496" y="226" class="sm">(the gift-card example above)</text>
+<text x="496" y="256" class="b t-warn">fix: prompt, model, citation rules</text>
+<line class="ln thick" x1="100" y1="300" x2="100" y2="24" marker-end="url(#m6m)"/>
+<text x="84" y="160" text-anchor="middle" class="b" transform="rotate(-90 84 160)">faithfulness</text>
+<text x="90" y="290" text-anchor="end" class="sm">low</text><text x="90" y="34" text-anchor="end" class="sm">high</text>
+<line class="ln thick" x1="100" y1="300" x2="826" y2="300" marker-end="url(#m6m)"/>
+<text x="470" y="322" text-anchor="middle" class="b">context recall (did retrieval find the evidence?)</text>
+<text x="130" y="318" class="sm">low</text><text x="800" y="318" text-anchor="end" class="sm">high</text>
+</svg>
+<figcaption><b>Diagnosing a wrong RAG answer with two numbers.</b> Context recall tells you whether the evidence reached the prompt; faithfulness tells you whether the answer stayed inside it. Together they point at the stage to fix, which end-to-end accuracy alone never can.</figcaption>
+</figure>
 
 <h2>Evaluating conversational agents</h2>
 <p>A conversational agent is judged not by one reply but by a whole dialogue. That brings failure modes that no single-turn test can see.</p>
@@ -1043,6 +1157,52 @@ def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict
 <li><b>Stateful scenarios (Level 3)</b>: 50 to 100 τ-bench-style tasks with a sandbox database, hidden-scenario user simulator, end-state grading, and a conversation-level checklist (policy, constraints, escalation). Run 4 to 8 trials each and report pass^1 and pass^k with confidence intervals before every release.</li>
 <li><b>Error analysis loop</b>: read failing transcripts weekly, tag them with the failure map from the start of this module, and turn each new failure type into new test cases (<a href="12-error-analysis.html">Module 12</a>).</li>
 </ol>
+<figure class="diagram">
+<svg viewBox="0 0 840 350" role="img" aria-label="Eval pyramid for a support agent. Bottom, widest: tool-call unit tests on every commit. Then retrieval tests on index changes, a faithfulness monitor running continuously, and at the narrow top stateful scenarios before every release. A weekly error-analysis loop feeds new test cases back into every layer.">
+<defs><marker id="m6n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="644" y="22" class="sm">when it runs</text>
+<polygon class="box warn" points="250,30 410,30 460,90 200,90"/>
+<text x="330" y="57" text-anchor="middle" class="b">Stateful scenarios</text>
+<text x="330" y="75" text-anchor="middle" class="sm">50-100 tasks × 4-8 trials, pass^k</text>
+<line class="ln dash" x1="443" y1="60" x2="636" y2="60" style="opacity:.5"/>
+<text x="644" y="64" class="sm b">before every release · hours</text>
+<polygon class="box violet" points="200,90 460,90 510,150 150,150"/>
+<text x="330" y="117" text-anchor="middle" class="b">Faithfulness monitor</text>
+<text x="330" y="135" text-anchor="middle" class="sm">judge on offline set + sampled traffic</text>
+<line class="ln dash" x1="493" y1="120" x2="636" y2="120" style="opacity:.5"/>
+<text x="644" y="124" class="sm b">continuous · sampled</text>
+<polygon class="box accent" points="150,150 510,150 560,210 100,210"/>
+<text x="330" y="177" text-anchor="middle" class="b">Retrieval tests</text>
+<text x="330" y="195" text-anchor="middle" class="sm">100+ labelled queries · recall@5, nDCG@5</text>
+<line class="ln dash" x1="543" y1="180" x2="636" y2="180" style="opacity:.5"/>
+<text x="644" y="184" class="sm b">on index or chunking changes</text>
+<polygon class="box good" points="100,210 560,210 610,270 50,270"/>
+<text x="330" y="237" text-anchor="middle" class="b">Tool-call unit tests</text>
+<text x="330" y="255" text-anchor="middle" class="sm">150-300 cases, 20%+ "no call" or "ask"</text>
+<line class="ln dash" x1="593" y1="240" x2="636" y2="240" style="opacity:.5"/>
+<text x="644" y="244" class="sm b">every commit · minutes</text>
+<line class="ln accent thick" x1="30" y1="266" x2="30" y2="36" marker-end="url(#m6n)"/>
+<text x="22" y="150" text-anchor="middle" class="t-accent" style="font-size:11px" transform="rotate(-90 22 150)">cost and realism per case rise</text>
+<rect class="box plain" x="90" y="292" width="480" height="46" rx="10"/>
+<text x="330" y="312" text-anchor="middle" class="b">Weekly error analysis</text>
+<text x="330" y="328" text-anchor="middle" class="sm">read failing transcripts, tag with the failure map, write new cases</text>
+<line class="ln good thick" x1="200" y1="292" x2="200" y2="273" marker-end="url(#m6n)"/>
+<line class="ln good thick" x1="460" y1="292" x2="460" y2="273" marker-end="url(#m6n)"/>
+<text x="580" y="312" class="t-good b" style="font-size:11px">new cases feed</text>
+<text x="580" y="327" class="t-good b" style="font-size:11px">every layer</text>
+</svg>
+<figcaption><b>The layered plan as a pyramid.</b> Many cheap, deterministic tests at the bottom run constantly; a few expensive, realistic ones at the top gate releases. The error-analysis loop keeps every layer growing from real failures instead of guesses. Case counts are the suggestions from the list above, not fixed rules.</figcaption>
+</figure>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>The model only <em>requests</em> tool calls; your harness runs them. Each decision point (call or not, which tool, which arguments, reading the result, stopping) fails in its own way and needs its own check.</li>
+<li>Grade single calls by structure, BFCL style: name, required arguments, no invented arguments, types, and values from an allowed list. Always include cases where the right answer is "no call".</li>
+<li>Grade chains and whole tasks by end state plus constraints (essential calls as an ordered subset, no forbidden writes), never by an exact call sequence.</li>
+<li>τ-bench's recipe: replay gold actions to get a goal database, compare it with the agent's database, check required information was told to the user, and canonicalize volatile fields first.</li>
+<li>pass^k measures consistency; the gap between pass@k and pass^k is a direct picture of how unreliable an agent is.</li>
+<li>For RAG, measure retrieval (recall@k, nDCG, context recall) and generation (faithfulness, relevancy) separately; together they tell you which stage to fix.</li>
+<li>Conversations need conversation-level checks, and a user simulator is part of your measuring instrument: pin it, audit it and include adversarial personas.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">

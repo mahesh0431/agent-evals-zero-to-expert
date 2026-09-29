@@ -337,6 +337,45 @@ print(float(score))   # e.g. ~3.8; compare TTS voices / versions on the SAME sen
 </table></div>
 <p>A neat, automatic way to test this is a <b>round trip</b>: synthesise the agent's sentence, transcribe it with a strong ASR model, and check that the entities survive (compute WER or exact entity match between the text you fed in and what came back). It does not measure beauty, but it does catch mispronounced and garbled content at scale. Keep a hand-curated "pronunciation set" of your hardest real names, product terms and number formats, and run it on every TTS or voice change.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 800 260" role="img" aria-label="Round-trip check: the agent's text goes through the TTS voice under test, a strong ASR model transcribes the audio back, both texts are normalised, and each entity is matched. The code and amount survive; the name comes back as see oh ban, so it was mispronounced.">
+<defs><marker id="m9m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="24" width="200" height="72" rx="10"/>
+<text x="120" y="46" text-anchor="middle" class="b">Text fed to TTS</text>
+<text x="120" y="68" text-anchor="middle" class="mono">Hi Siobhan, code A7X-22,</text>
+<text x="120" y="84" text-anchor="middle" class="mono">total $1,250.00</text>
+<rect class="box violet" x="260" y="36" width="110" height="48" rx="10"/>
+<text x="315" y="57" text-anchor="middle" class="b">TTS</text><text x="315" y="74" text-anchor="middle" class="sm">voice under test</text>
+<rect class="box plain" x="410" y="36" width="110" height="48" rx="10"/>
+<text x="465" y="57" text-anchor="middle" class="b">Strong ASR</text><text x="465" y="74" text-anchor="middle" class="sm">fixed reference</text>
+<rect class="box plain" x="560" y="24" width="220" height="72" rx="10"/>
+<text x="670" y="46" text-anchor="middle" class="b">Text heard back</text>
+<text x="670" y="68" text-anchor="middle" class="mono">hi see oh ban code a 7 x 22</text>
+<text x="670" y="84" text-anchor="middle" class="mono">total 1250 dollars</text>
+<line class="ln" x1="220" y1="60" x2="256" y2="60" marker-end="url(#m9m)"/>
+<line class="ln" x1="370" y1="60" x2="406" y2="60" marker-end="url(#m9m)"/>
+<line class="ln" x1="520" y1="60" x2="556" y2="60" marker-end="url(#m9m)"/>
+<path class="ln" d="M120,96 L120,150 L266,150" marker-end="url(#m9m)"/>
+<path class="ln" d="M670,96 L670,150 L534,150" marker-end="url(#m9m)"/>
+<rect class="box warn" x="270" y="128" width="260" height="44" rx="10"/>
+<text x="400" y="155" text-anchor="middle" class="b">Normalise, then match entities</text>
+<path class="ln" d="M400,172 L400,184 M130,184 L670,184"/>
+<line class="ln" x1="130" y1="184" x2="130" y2="196" marker-end="url(#m9m)"/>
+<line class="ln" x1="400" y1="184" x2="400" y2="196" marker-end="url(#m9m)"/>
+<line class="ln" x1="670" y1="184" x2="670" y2="196" marker-end="url(#m9m)"/>
+<rect class="box good" x="20" y="200" width="220" height="50" rx="10"/>
+<text x="130" y="221" text-anchor="middle" class="mono">A7X-22 → a 7 x 22</text>
+<text x="130" y="239" text-anchor="middle" class="sm t-good">code survived ✓</text>
+<rect class="box good" x="290" y="200" width="220" height="50" rx="10"/>
+<text x="400" y="221" text-anchor="middle" class="mono">$1,250.00 → 1250 dollars</text>
+<text x="400" y="239" text-anchor="middle" class="sm t-good">amount survived ✓</text>
+<rect class="box bad" x="560" y="200" width="220" height="50" rx="10"/>
+<text x="670" y="221" text-anchor="middle" class="mono">Siobhan → see oh ban</text>
+<text x="670" y="239" text-anchor="middle" class="sm t-bad">name mispronounced ✗</text>
+</svg>
+<figcaption><b>The TTS round trip.</b> Speak the agent's sentence with the voice under test, transcribe it with a strong, fixed ASR model, normalise both sides, and check every entity. It cannot judge beauty, but it flags garbled codes, amounts and names automatically. Keep the ASR fixed so a change in the result means the voice changed, not the checker.</figcaption>
+</figure>
+
 <h2>Component level: latency</h2>
 <p>Latency in voice is not one number. It is a chain of delays, and the user only feels the total. The key user-facing metric is the <b>voice-to-voice response latency</b>: the time from when the caller <em>stops speaking</em> to when they <em>hear</em> the first sound of the reply. A closely related server-side measure is <b>time to first audio</b> (TTFA, sometimes "time to first byte", TTFB): the time from when the system decided the turn ended to when the first audio byte leaves the TTS.</p>
 
@@ -460,9 +499,10 @@ def report(turns: list[TurnTimer]):
 <text x="700" y="36" text-anchor="middle" class="sm t-warn">④ barge-in</text>
 <line class="ln" x1="80" y1="212" x2="800" y2="212"/>
 <text x="800" y="228" text-anchor="end" class="sm">time →</text>
-<text x="80" y="252" class="sm">① 600 ms from caller's last word to agent's first: good, near human pace</text>
-<text x="80" y="268" class="sm">② caller says "mm-hm" mid-answer: agent correctly keeps talking   ③ caller paused, agent jumped in early: overlap</text>
-<text x="80" y="284" class="sm">④ caller interrupts: agent stops after 400 ms of overlap (yield time); did it then address the new request?</text>
+<text x="80" y="254" class="sm">① 600 ms gap after the caller's last word: near human pace</text>
+<text x="450" y="254" class="sm">② caller's "mm-hm": agent correctly keeps talking</text>
+<text x="80" y="276" class="sm">③ caller only paused; agent jumped in early (overlap)</text>
+<text x="450" y="276" class="sm">④ caller interrupts; agent yields after 400 ms of overlap</text>
 </svg>
 <figcaption><b>A call as two waveforms.</b> Grey shading is a gap, red is an overlap the agent caused, orange is an overlap the caller caused. Every turn-taking metric is a measurement on a timeline like this, which is why you need timestamps (or the stereo audio itself), not just a transcript. Illustrative, not real data.</figcaption>
 </figure>
@@ -758,8 +798,39 @@ Respond with JSON only:
 <tr><td><b>VoiceBench</b><br>(Chen et al., Oct 2024)</td><td>LLM-based voice assistants on real and synthetic spoken instructions. Subsets include AlpacaEval, CommonEval, SD-QA, MMSU, OpenBookQA, IFEval, AdvBench and BBH, plus speaker, environment and content variations (accents, noise, disfluency).</td><td>GPT-judged scores for open-ended answers, accuracy for multiple choice, refusal rate for the safety subset. Leaderboard on GitHub.</td></tr>
 <tr><td><b>Full-Duplex-Bench</b><br>(Lin et al., Mar 2025)</td><td>Turn-taking in full-duplex spoken dialogue models: pause handling, backchanneling, smooth turn-taking, user interruption.</td><td>Automatic metrics: takeover rate (TOR, did the model grab the turn when it should or should not have), backchannel frequency and Jensen-Shannon divergence against human distributions, response latency, and GPT-judged relevance of the response after an interruption. Follow-up versions extend to overlapping speech and multi-turn.</td></tr>
 <tr><td><b>Audio MultiChallenge</b><br>(Scale AI, Dec 2025; ACL 2026)</td><td>Multi-turn natural spoken dialogue with end-to-end systems: inference memory, instruction retention, self coherence, and a new <b>voice editing</b> axis (mid-utterance repairs, background audio cues). 452 conversations from 47 speakers, 1,712 instance-specific rubrics.</td><td>Pass rate under a rubric-based LLM judge. Best at paper time: Gemini 3 Pro Preview (Thinking) at 54.65%; performance fell with longer audio context.</td></tr>
-<tr><td><b>τ-Voice</b><br>(Sierra / Princeton, Mar 2026; ICML 2026)</td><td>Full-duplex voice agents on τ-bench's grounded customer-service tasks: 278 tasks with realistic audio, including accents and noise. Integrated into the τ-bench (τ²/τ³) repo with realtime providers.</td><td>Task completion (pass@1) by database-state checks, clean and noisy. Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% clean and 26-38% with noise and accents, keeping roughly 30-45% of text capability.</td></tr>
+<tr><td><b>τ-Voice</b><br>(Sierra / Princeton, Mar 2026; ICML 2026)</td><td>Full-duplex voice agents on τ-bench's grounded customer-service tasks: 278 tasks with realistic audio, including accents and noise. Integrated into the τ-bench (τ²/τ³) repo with realtime providers.</td><td>Task completion (pass@1) by database-state checks, clean and noisy. Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% clean and 26-38% with noise and accents (about 30-45% of text capability under realistic conditions). 79-90% of failures came from agent behaviour.</td></tr>
 </table></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 250" role="img" aria-label="Bar chart from the tau-Voice paper: a text agent, GPT-5 with reasoning, completes 85 percent of tasks. Voice agents complete 31 to 51 percent on clean audio and 26 to 38 percent with noise and accents.">
+<text x="20" y="24" class="b">τ-Voice: grounded task completion (pass@1), text vs voice</text>
+<line class="ln dash" x1="200" y1="40" x2="200" y2="190" opacity="0.3"/>
+<line class="ln dash" x1="340" y1="40" x2="340" y2="190" opacity="0.3"/>
+<line class="ln dash" x1="480" y1="40" x2="480" y2="190" opacity="0.3"/>
+<line class="ln dash" x1="620" y1="40" x2="620" y2="190" opacity="0.3"/>
+<line class="ln dash" x1="760" y1="40" x2="760" y2="190" opacity="0.3"/>
+<text x="188" y="64" text-anchor="end" class="b">Text agent</text>
+<text x="188" y="80" text-anchor="end" class="sm">GPT-5 (reasoning)</text>
+<rect class="fill-accent" x="200" y="54" width="476" height="28" rx="5"/>
+<text x="686" y="73" class="b t-accent">85%</text>
+<text x="188" y="114" text-anchor="end" class="b">Voice, clean</text>
+<text x="188" y="130" text-anchor="end" class="sm">range across agents</text>
+<rect class="fill-line" x="200" y="104" width="174" height="28" rx="5"/>
+<rect class="fill-good" x="374" y="104" width="112" height="28" rx="5"/>
+<text x="496" y="123" class="b t-good">31 to 51%</text>
+<text x="188" y="164" text-anchor="end" class="b">Voice, realistic</text>
+<text x="188" y="180" text-anchor="end" class="sm">noise + accents</text>
+<rect class="fill-line" x="200" y="154" width="146" height="28" rx="5"/>
+<rect class="fill-warn" x="346" y="154" width="67" height="28" rx="5"/>
+<text x="423" y="173" class="b t-warn">26 to 38%</text>
+<line class="ln" x1="200" y1="194" x2="760" y2="194"/>
+<text x="200" y="210" text-anchor="middle" class="sm">0</text><text x="340" y="210" text-anchor="middle" class="sm">25%</text>
+<text x="480" y="210" text-anchor="middle" class="sm">50%</text><text x="620" y="210" text-anchor="middle" class="sm">75%</text>
+<text x="760" y="210" text-anchor="middle" class="sm">100%</text>
+<text x="20" y="238" class="sm">Coloured segment = spread between the weakest and strongest voice agent tested. Under realistic audio, voice keeps only about 30 to 45% of text capability.</text>
+</svg>
+<figcaption><b>The voice gap, in real numbers.</b> Data from the τ-Voice paper (Ray et al., March 2026), 278 grounded customer-service tasks graded by final database state. The same kind of task that a text agent completes 85% of the time drops to roughly a third in realistic voice conditions. The authors attribute 79 to 90% of failures to agent behaviour, not to the audio plumbing.</figcaption>
+</figure>
 
 <div class="callout tip"><span class="t">The headline finding across benchmarks</span>
 <p>Spoken interaction is still much harder than text for the same underlying intelligence. Big Bench Audio shows a reasoning gap from speech input; τ-Voice shows grounded task success falling by roughly half or more in voice, and further with noise and accents. If your text agent passes 90% of your tasks, do not assume the voice version will. Measure it.</p>
@@ -771,7 +842,7 @@ Respond with JSON only:
 <p>A voice agent that works in a quiet office on a laptop microphone can fall apart on a real phone line. Robustness testing means deliberately degrading the audio in controlled, repeatable ways and watching which metrics move.</p>
 
 <figure class="diagram">
-<svg viewBox="0 25 820 205" role="img" aria-label="Degradation ladder: clean 16 kHz audio, then added background noise at a set SNR, then 8 kHz telephone band with mu-law codec, then packet loss. At each rung you rerun the same eval and chart WER and task success.">
+<svg viewBox="0 25 820 330" role="img" aria-label="Degradation ladder: clean 16 kHz audio, then added background noise at a set SNR, then 8 kHz telephone band with mu-law codec, then packet loss. At each rung you rerun the same eval and chart WER and task success.">
 <defs><marker id="m9k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box good" x="20" y="40" width="165" height="70" rx="8"/>
 <text x="102" y="66" text-anchor="middle" class="b">Clean</text>
@@ -792,12 +863,31 @@ Respond with JSON only:
 <line class="ln" x1="185" y1="75" x2="221" y2="75" marker-end="url(#m9k)"/>
 <line class="ln" x1="390" y1="75" x2="426" y2="75" marker-end="url(#m9k)"/>
 <line class="ln" x1="595" y1="75" x2="631" y2="75" marker-end="url(#m9k)"/>
-<line class="ln accent" x1="20" y1="140" x2="800" y2="140"/>
-<text x="410" y="164" text-anchor="middle" class="sm">at every rung, rerun the SAME calls and record: WER, entity accuracy, false interruptions,</text>
-<text x="410" y="182" text-anchor="middle" class="sm">endpoint errors, task success. Cross with accents and speaking styles.</text>
-<text x="410" y="212" text-anchor="middle" class="b t-accent">Report the curve, not just the clean number.</text>
+<text x="60" y="146" class="b">Same calls, rerun at every rung</text>
+<text x="780" y="146" text-anchor="end" class="sm">illustrative numbers</text>
+<line class="ln dash" x1="60" y1="170" x2="780" y2="170" opacity="0.3"/>
+<line class="ln dash" x1="60" y1="235" x2="780" y2="235" opacity="0.3"/>
+<line class="ln" x1="60" y1="300" x2="780" y2="300"/>
+<text x="52" y="174" text-anchor="end" class="sm">100%</text>
+<text x="52" y="239" text-anchor="end" class="sm">50%</text>
+<text x="52" y="304" text-anchor="end" class="sm">0%</text>
+<line class="ln dash" x1="102" y1="160" x2="102" y2="300" opacity="0.25"/>
+<line class="ln dash" x1="307" y1="160" x2="307" y2="300" opacity="0.25"/>
+<line class="ln dash" x1="512" y1="160" x2="512" y2="300" opacity="0.25"/>
+<line class="ln dash" x1="717" y1="160" x2="717" y2="300" opacity="0.25"/>
+<polyline class="ln good thick" points="102,186 307,196 512,217 717,232"/>
+<polyline class="ln bad thick" points="102,292 307,286 512,278 717,269"/>
+<circle class="fill-good" cx="102" cy="186" r="4.5"/><circle class="fill-good" cx="307" cy="196" r="4.5"/><circle class="fill-good" cx="512" cy="217" r="4.5"/><circle class="fill-good" cx="717" cy="232" r="4.5"/>
+<circle class="fill-bad" cx="102" cy="292" r="4.5"/><circle class="fill-bad" cx="307" cy="286" r="4.5"/><circle class="fill-bad" cx="512" cy="278" r="4.5"/><circle class="fill-bad" cx="717" cy="269" r="4.5"/>
+<text x="102" y="178" text-anchor="middle" class="sm t-good">88%</text><text x="307" y="188" text-anchor="middle" class="sm t-good">80%</text>
+<text x="512" y="209" text-anchor="middle" class="sm t-good">64%</text><text x="717" y="224" text-anchor="middle" class="sm t-good">52%</text>
+<text x="727" y="236" class="sm b t-good">task success</text>
+<text x="102" y="284" text-anchor="middle" class="sm t-bad">6%</text><text x="307" y="278" text-anchor="middle" class="sm t-bad">11%</text>
+<text x="512" y="270" text-anchor="middle" class="sm t-bad">17%</text><text x="717" y="261" text-anchor="middle" class="sm t-bad">24%</text>
+<text x="727" y="273" class="sm b t-bad">WER</text>
+<text x="410" y="338" text-anchor="middle" class="b t-accent">Report the curve, not just the clean number.</text>
 </svg>
-<figcaption><b>A degradation ladder.</b> Each rung stacks on the previous one, so you can see which impairment breaks what. Noise tends to hit the VAD (false interruptions) as much as the ASR; codecs hit names and numbers; packet loss creates gaps that look like the caller stopped talking.</figcaption>
+<figcaption><b>A degradation ladder.</b> Each rung stacks on the previous one; at every rung you rerun the same calls and record WER, entity accuracy, false interruptions, endpoint errors and task success (the chart shows two of them, with invented numbers). The slope tells you which impairment breaks what. Noise tends to hit the VAD (false interruptions) as much as the ASR; codecs hit names and numbers; packet loss creates gaps that look like the caller stopped talking.</figcaption>
 </figure>
 
 <p>You can generate most of these conditions offline from clean recordings, which makes them repeatable (the same noisy clip every run):</p>
@@ -855,9 +945,96 @@ def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
 <li><b>Production monitoring:</b> containment, true resolution, escalation precision and recall, CSAT, latency percentiles and turn-taking rates on live calls, with judges sampling a share of calls. Every production failure you find becomes a new simulated scenario.</li>
 </ol>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Voice eval plan as a pipeline of five stages: real calls and error analysis, component suite on every change, simulated calls nightly, release gates for robustness and safety, and production monitoring. A loop turns every production failure into a new simulated scenario.">
+<defs><marker id="m9n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="140" height="112" rx="12"/>
+<text x="90" y="64" text-anchor="middle" class="b">1 · Real calls</text>
+<text x="90" y="86" text-anchor="middle" class="sm">50-100 consented calls</text>
+<text x="90" y="102" text-anchor="middle" class="sm">listen, tag failures,</text>
+<text x="90" y="118" text-anchor="middle" class="sm">pick metrics</text>
+<text x="90" y="140" text-anchor="middle" class="sm b t-accent">first, once</text>
+<rect class="box warn" x="180" y="40" width="140" height="112" rx="12"/>
+<text x="250" y="64" text-anchor="middle" class="b">2 · Components</text>
+<text x="250" y="86" text-anchor="middle" class="sm">WER, entity accuracy</text>
+<text x="250" y="102" text-anchor="middle" class="sm">MOS, round trips</text>
+<text x="250" y="118" text-anchor="middle" class="sm">latency percentiles</text>
+<text x="250" y="140" text-anchor="middle" class="sm b t-accent">every change · minutes</text>
+<rect class="box accent" x="340" y="40" width="140" height="112" rx="12"/>
+<text x="410" y="64" text-anchor="middle" class="b">3 · Simulated calls</text>
+<text x="410" y="86" text-anchor="middle" class="sm">scenarios × personas</text>
+<text x="410" y="102" text-anchor="middle" class="sm">× several runs</text>
+<text x="410" y="118" text-anchor="middle" class="sm">code + judges + audio</text>
+<text x="410" y="140" text-anchor="middle" class="sm b t-accent">nightly · hours</text>
+<rect class="box bad" x="500" y="40" width="140" height="112" rx="12"/>
+<text x="570" y="64" text-anchor="middle" class="b">4 · Release gates</text>
+<text x="570" y="86" text-anchor="middle" class="sm">degradation ladder</text>
+<text x="570" y="102" text-anchor="middle" class="sm">spoken red-team set</text>
+<text x="570" y="118" text-anchor="middle" class="sm">hard thresholds</text>
+<text x="570" y="140" text-anchor="middle" class="sm b t-accent">before release</text>
+<rect class="box good" x="660" y="40" width="140" height="112" rx="12"/>
+<text x="730" y="64" text-anchor="middle" class="b">5 · Production</text>
+<text x="730" y="86" text-anchor="middle" class="sm">true resolution, CSAT</text>
+<text x="730" y="102" text-anchor="middle" class="sm">latency, turn-taking</text>
+<text x="730" y="118" text-anchor="middle" class="sm">judge samples calls</text>
+<text x="730" y="140" text-anchor="middle" class="sm b t-accent">always on</text>
+<line class="ln" x1="160" y1="96" x2="176" y2="96" marker-end="url(#m9n)"/>
+<line class="ln" x1="320" y1="96" x2="336" y2="96" marker-end="url(#m9n)"/>
+<line class="ln" x1="480" y1="96" x2="496" y2="96" marker-end="url(#m9n)"/>
+<line class="ln" x1="640" y1="96" x2="656" y2="96" marker-end="url(#m9n)"/>
+<path class="ln accent thick flow" d="M730,152 L730,210 L410,210 L410,158" marker-end="url(#m9n)"/>
+<text x="570" y="230" text-anchor="middle" class="sm b t-accent">every production failure becomes a new scenario</text>
+<path class="ln violet dash" d="M370,152 L370,250 L90,250 L90,158" marker-end="url(#m9n)"/>
+<text x="230" y="270" text-anchor="middle" class="sm t-violet">tag the first failure by layer, update the taxonomy</text>
+</svg>
+<figcaption><b>A voice eval plan as a pipeline with feedback.</b> Cheap, fast checks run most often; expensive simulated and live checks run less often but catch what components miss. The blue loop is what makes the suite grow smarter: production failures are replayed as simulated scenarios, so the same bug cannot ship twice.</figcaption>
+</figure>
+
 <div class="callout expert"><span class="t">Expert nuance: attribute failures to layers</span>
 <p>When a simulated call fails, tag the <em>first</em> failure with its layer: ASR misheard, endpoint too early, LLM reasoning, wrong tool call, TTS mispronounced, latency caused the caller to repeat themselves. Counting failures by layer tells you where to invest. In a cascade you can confirm the tag by replay: feed the <em>human</em> transcript into the LLM stage. If the call now succeeds, the ASR was the culprit. That "oracle transcript" replay is one of the most useful debugging tricks in voice evals, and it is only possible because a cascade has text boundaries.</p>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 800 250" role="img" aria-label="Oracle transcript replay: take a failed call, feed the human transcript into the same LLM stage with the same tools and state. If the call now succeeds, the ASR was the cause; if it still fails, the fault is downstream in the LLM, tools or policy.">
+<defs><marker id="m9o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box bad" x="20" y="92" width="150" height="66" rx="10"/>
+<text x="95" y="118" text-anchor="middle" class="b">Failed call</text>
+<text x="95" y="138" text-anchor="middle" class="sm">ASR transcript in logs</text>
+<rect class="box accent" x="210" y="80" width="200" height="90" rx="10"/>
+<text x="310" y="106" text-anchor="middle" class="b">Oracle replay</text>
+<text x="310" y="126" text-anchor="middle" class="sm">swap in the HUMAN transcript</text>
+<text x="310" y="142" text-anchor="middle" class="sm">same LLM, prompt, tools</text>
+<text x="310" y="158" text-anchor="middle" class="sm">same starting DB state</text>
+<polygon class="box warn" points="510,77 580,125 510,173 440,125"/>
+<text x="510" y="122" text-anchor="middle" class="b">Passes</text>
+<text x="510" y="138" text-anchor="middle" class="b">now?</text>
+<line class="ln" x1="170" y1="125" x2="206" y2="125" marker-end="url(#m9o)"/>
+<line class="ln" x1="410" y1="125" x2="436" y2="125" marker-end="url(#m9o)"/>
+<path class="ln good" d="M545,101 L580,56 L606,56" marker-end="url(#m9o)"/>
+<path class="ln bad" d="M545,149 L580,194 L606,194" marker-end="url(#m9o)"/>
+<text x="593" y="48" text-anchor="middle" class="sm b t-good">yes</text>
+<text x="593" y="210" text-anchor="middle" class="sm b t-bad">no</text>
+<rect class="box warn" x="610" y="20" width="170" height="72" rx="10"/>
+<text x="695" y="44" text-anchor="middle" class="b">The ear failed</text>
+<text x="695" y="62" text-anchor="middle" class="sm">fix ASR: model, custom</text>
+<text x="695" y="78" text-anchor="middle" class="sm">vocab, confirm entities</text>
+<rect class="box violet" x="610" y="158" width="170" height="72" rx="10"/>
+<text x="695" y="182" text-anchor="middle" class="b">Look downstream</text>
+<text x="695" y="200" text-anchor="middle" class="sm">LLM reasoning, tool</text>
+<text x="695" y="216" text-anchor="middle" class="sm">calls, policy, prompt</text>
+</svg>
+<figcaption><b>Oracle-transcript replay, the key cascade debugging move.</b> Replace the ASR's transcript with a human one and rerun only the text part of the pipeline. If the call now passes, hearing was the cause. Run it on a batch of failures and you get the share of failures caused by the ASR, a number no end-to-end metric gives you.</figcaption>
+</figure>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>A voice agent is a text agent plus four new jobs: hearing, timing, turn-taking and speaking. Each one needs its own metric.</li>
+<li>Cascades (VAD, ASR, LLM, TTS) are easy to diagnose because every boundary is text or a timestamp; speech-to-speech models must be graded end to end.</li>
+<li>WER counts every word equally. Always add entity accuracy, state your normaliser, and use oracle-transcript replay to prove whether the ASR caused a failure.</li>
+<li>Measure latency from the caller's side (last word to first audible reply) and report p50/p90/p95/p99, never just the mean.</li>
+<li>Turn-taking is a confusion matrix: missed interruptions versus false interruptions. Tuning one moves errors into the other, so report both.</li>
+<li>Simulated callers with a persona matrix and a degraded channel are the workhorse of voice evals, but the simulator is part of the instrument, so check its fidelity.</li>
+<li>Containment is not resolution. Real benchmarks (τ-Voice) show voice agents keep only about a third of text capability in realistic audio, so measure your own voice gap.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
@@ -889,10 +1066,10 @@ def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
 <button class="opt">The agent sounded curt and talked over the caller for two seconds</button>
 <div class="why">Plain transcripts lose prosody and serialise overlapping speech. Add timestamps and overlap markers to catch the talking-over, and use an audio-capable judge or human review for tone.</div></div>
 <div class="q" data-answer="0"><p>6. According to τ-Voice (2026), how do voice agents compare with a strong text agent on the same grounded tasks?</p>
-<button class="opt">They retain only about 30-45% of text capability, and do worse with noise and accents</button>
+<button class="opt">They reach only 31-51% on clean audio versus 85% for text, and drop further (26-38%) with noise and accents</button>
 <button class="opt">They match text agents on clean audio</button>
 <button class="opt">They beat text agents because they hear tone</button>
-<div class="why">Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% on clean audio and 26-38% with noise and accents.</div></div>
+<div class="why">Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% on clean audio and 26-38% with noise and accents, which the authors describe as retaining only 30-45% of text capability.</div></div>
 </div>
 
 <details><summary>Interview questions (with model answers)</summary>

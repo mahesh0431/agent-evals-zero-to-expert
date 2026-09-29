@@ -212,6 +212,50 @@
 <li><b>Non-success exits are data.</b> Tag each trial with its exit reason (finished, max steps, timeout, token limit, tool crash, harness crash). A spike in "max steps" after a prompt change is a loop bug; a spike in "harness crash" is an infrastructure bug that should not count against the model at all.</li>
 </ol>
 
+<figure class="diagram">
+<svg viewBox="0 0 840 262" role="img" aria-label="Two stacked bars of 100 trials each, split by exit reason. Prompt v1: 58 finished correctly, 22 finished wrong, 8 hit max steps, 4 timed out, 8 harness crashes. Prompt v2: 60 correct, 12 wrong, 22 max steps, 2 timeouts, 4 crashes. The headline moved two points but the max-steps share nearly tripled.">
+<defs><marker id="m5m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="150" y="32" class="sm">each bar = 100 trials of the same task set, split by how the run ended</text>
+<text x="20" y="68" class="b">Prompt v1</text>
+<text x="20" y="84" class="sm">baseline</text>
+<rect class="box good" x="150" y="48" width="290" height="42" rx="4"/>
+<rect class="box warn" x="440" y="48" width="110" height="42" rx="0"/>
+<rect class="box bad" x="550" y="48" width="40" height="42" rx="0"/>
+<rect class="box violet" x="590" y="48" width="20" height="42" rx="0"/>
+<rect class="box plain" x="610" y="48" width="40" height="42" rx="4"/>
+<text x="295" y="74" text-anchor="middle" class="b">58%</text>
+<text x="495" y="74" text-anchor="middle" class="b">22%</text>
+<text x="570" y="74" text-anchor="middle" class="b">8%</text>
+<text x="630" y="74" text-anchor="middle" class="b">8%</text>
+<text x="20" y="138" class="b">Prompt v2</text>
+<text x="20" y="154" class="sm">"be thorough"</text>
+<rect class="box good" x="150" y="118" width="300" height="42" rx="4"/>
+<rect class="box warn" x="450" y="118" width="60" height="42" rx="0"/>
+<rect class="box bad pulse" x="510" y="118" width="110" height="42" rx="0"/>
+<rect class="box violet" x="620" y="118" width="10" height="42" rx="0"/>
+<rect class="box plain" x="630" y="118" width="20" height="42" rx="4"/>
+<text x="300" y="144" text-anchor="middle" class="b">60%</text>
+<text x="480" y="144" text-anchor="middle" class="b">12%</text>
+<text x="565" y="144" text-anchor="middle" class="b">22%</text>
+<text x="672" y="66" class="b">success 58%</text>
+<text x="672" y="84" class="sm">crashes hide 8 trials</text>
+<text x="672" y="136" class="b t-good">success 60%</text>
+<text x="672" y="154" class="sm">looks like +2 pts</text>
+<line class="ln bad" x1="565" y1="162" x2="565" y2="186" marker-end="url(#m5m)"/>
+<text x="565" y="202" text-anchor="middle" class="b t-bad">max steps 8% → 22%</text>
+<text x="565" y="218" text-anchor="middle" class="sm">the new prompt makes it loop</text>
+<line class="ln warn" x1="480" y1="162" x2="420" y2="186" marker-end="url(#m5m)"/>
+<text x="400" y="202" text-anchor="end" class="b t-warn">false "done" 22% → 12%</text>
+<text x="400" y="218" text-anchor="end" class="sm">fewer premature finishes</text>
+<rect class="box good" x="150" y="236" width="14" height="14" rx="3"/><text x="170" y="248" class="sm">finished, correct</text>
+<rect class="box warn" x="290" y="236" width="14" height="14" rx="3"/><text x="310" y="248" class="sm">finished, wrong</text>
+<rect class="box bad" x="420" y="236" width="14" height="14" rx="3"/><text x="440" y="248" class="sm">max steps</text>
+<rect class="box violet" x="530" y="236" width="14" height="14" rx="3"/><text x="550" y="248" class="sm">timeout</text>
+<rect class="box plain" x="630" y="236" width="14" height="14" rx="3"/><text x="650" y="248" class="sm">harness crash</text>
+</svg>
+<figcaption><b>Exit reasons tell you what the headline hides.</b> Illustrative numbers, not real data. The success rate moved two points, but underneath it the change fixed one failure (premature "done" claims) and created another (looping until the step cap). Without exit tags both stories vanish into "+2".</figcaption>
+</figure>
+
 <h2>Anatomy of an agent eval</h2>
 <p>Module 02 dissected a plain eval into dataset, system, grader and metric. An agent eval has the same skeleton, but several parts grow new organs. Using the vocabulary from Anthropic's post (which matches Inspect, tau-bench and most frameworks):</p>
 <ul>
@@ -324,15 +368,15 @@ task = {
 <rect class="box good" x="20" y="20" width="400" height="84" rx="8"/>
 <text x="36" y="44" class="b">1. Outcome: did the world end up right?</text>
 <text x="36" y="66" class="sm">DB row changed, tests pass, file exists, money moved once</text>
-<text x="36" y="86" class="sm t-good">most robust; make it your default</text>
+<text x="36" y="86" class="t-good" style="font-size:11px">most robust; make it your default</text>
 <rect class="box warn" x="20" y="114" width="400" height="84" rx="8"/>
 <text x="36" y="138" class="b">2. Process: was the path acceptable?</text>
 <text x="36" y="160" class="sm">no forbidden calls, valid args, confirmed first, no loops</text>
-<text x="36" y="180" class="sm t-warn">use for safety, policy, cost; avoid exact paths</text>
+<text x="36" y="180" class="t-warn" style="font-size:11px">use for safety, policy, cost; avoid exact paths</text>
 <rect class="box accent" x="20" y="208" width="400" height="84" rx="8"/>
 <text x="36" y="232" class="b">3. Response: did it tell the user right?</text>
 <text x="36" y="254" class="sm">accurate, grounded in the end state, clear, polite</text>
-<text x="36" y="274" class="sm t-accent">rubric or LLM judge (Module 13)</text>
+<text x="36" y="274" class="t-accent" style="font-size:11px">rubric or LLM judge (Module 13)</text>
 <circle class="box plain" cx="470" cy="170" r="18"/>
 <text x="470" y="175" text-anchor="middle" class="b">s0</text>
 <circle class="box good" cx="810" cy="170" r="24"/>
@@ -353,8 +397,8 @@ task = {
 <line class="ln warn" x1="482" y1="183" x2="530" y2="238" marker-end="url(#m5e)"/>
 <line class="ln warn" x1="650" y1="245" x2="667" y2="245" marker-end="url(#m5e)"/>
 <line class="ln warn" x1="775" y1="238" x2="798" y2="192" marker-end="url(#m5e)"/>
-<text x="640" y="306" text-anchor="middle" class="sm b t-bad">exact path match: FAIL</text>
-<text x="640" y="323" text-anchor="middle" class="sm b t-good">end-state check: PASS</text>
+<text x="640" y="306" text-anchor="middle" class="b t-bad" style="font-size:11px">exact path match: FAIL</text>
+<text x="640" y="323" text-anchor="middle" class="b t-good" style="font-size:11px">end-state check: PASS</text>
 </svg>
 <figcaption><b>Three layers, and the over-constraint trap.</b> Left: what each layer grades. Right: an agent that reaches the right end state by a different route. A grader that demands the reference sequence of tool calls marks a correct solution as wrong.</figcaption>
 </figure>
@@ -420,7 +464,7 @@ task = {
 <text x="420" y="186" text-anchor="middle" class="sm">frozen clock · seeded randomness · network allowlist</text>
 <text x="420" y="203" text-anchor="middle" class="sm">mocked or recorded APIs · fixed tool versions</text>
 <line class="ln dash" x1="420" y1="143" x2="420" y2="113" marker-end="url(#m5g)"/>
-<path class="ln dash" d="M750,110 L750,235 L90,235 L90,113" marker-end="url(#m5g)"/>
+<path class="ln accent flow" d="M750,110 L750,235 L90,235 L90,113" marker-end="url(#m5g)"/>
 <text x="420" y="255" text-anchor="middle" class="sm">next trial starts from the identical s0</text>
 </svg>
 <figcaption><b>The per-trial environment lifecycle.</b> Build from a pinned snapshot, run inside a fresh sandbox under determinism controls, grade the end state, destroy the sandbox. Anything that survives from one trial to the next is a potential source of correlated, misleading results.</figcaption>
@@ -525,9 +569,9 @@ task = {
 <polyline class="ln good thick" points="70,30.0 94,32.2 118,34.4 142,36.5 166,38.7 190,40.8 214,42.9 238,44.9 262,47.0 286,49.0 310,51.0 334,53.0 358,55.0 382,56.9 406,58.9 430,60.8 454,62.7 478,64.6 502,66.4 526,68.2 550,70.1 574,71.9 598,73.6 622,75.4 646,77.2 670,78.9 694,80.6 718,82.3 742,84.0 766,85.6 790,87.3"/>
 <polyline class="ln accent thick" points="70,30.0 94,41.0 118,51.5 142,61.4 166,70.8 190,79.8 214,88.3 238,96.4 262,104.0 286,111.3 310,118.3 334,124.9 358,131.1 382,137.1 406,142.7 430,148.1 454,153.2 478,158.0 502,162.6 526,167.0 550,171.1 574,175.1 598,178.8 622,182.4 646,185.8 670,189.0 694,192.0 718,194.9 742,197.7 766,200.3 790,202.8"/>
 <polyline class="ln bad thick" points="70,30.0 94,52.0 118,71.8 142,89.6 166,105.7 190,120.1 214,133.1 238,144.8 262,155.3 286,164.8 310,173.3 334,181.0 358,187.9 382,194.1 406,199.7 430,204.7 454,209.2 478,213.3 502,217.0 526,220.3 550,223.3 574,225.9 598,228.3 622,230.5 646,232.5 670,234.2 694,235.8 718,237.2 742,238.5 766,239.6 790,240.7"/>
-<text x="796" y="91" class="sm b t-good">0.99</text>
-<text x="796" y="207" class="sm b t-accent">0.95</text>
-<text x="796" y="244" class="sm b t-bad">0.90</text>
+<text x="796" y="91" class="b t-good" style="font-size:11px">0.99</text>
+<text x="796" y="207" class="b t-accent" style="font-size:11px">0.95</text>
+<text x="796" y="244" class="b t-bad" style="font-size:11px">0.90</text>
 <line class="ln dash" x1="550" y1="250" x2="550" y2="62"/>
 <circle class="fill-good" cx="550" cy="70.1" r="4"/>
 <circle class="fill-accent" cx="550" cy="171.1" r="5"/>
@@ -541,13 +585,100 @@ task = {
 
 <p>The independence assumption is a simplification, and it cuts both ways. Real agents can <b>recover</b>: they notice a failed tool call and retry, which makes long tasks more survivable than p<sup>n</sup> predicts. They can also <b>cascade</b>: one wrong early assumption (the wrong booking id) poisons every later step, and errors are correlated. Both effects are why agent evals must run full end-to-end trajectories rather than multiplying per-step accuracies measured in isolation. The lesson that survives is qualitative and important: <em>long-horizon success is extremely sensitive to per-step reliability</em>. METR's time-horizon work (<a href="11-multi-agent-long-horizon.html">Module 11</a>) is built on this relationship between task length and success.</p>
 
+<figure class="diagram">
+<svg viewBox="0 0 840 276" role="img" aria-label="Two trajectories. Recovery: a search call fails with a timeout, the agent reads the error, retries and the task passes. Cascade: the agent misreads the booking id at step one, every later step is sensible given that wrong premise, and the task fails with collateral damage.">
+<defs><marker id="m5n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="62" class="b t-good">Recovery</text>
+<text x="20" y="80" class="sm">error seen, fixed</text>
+<rect class="box plain" x="150" y="44" width="120" height="48" rx="8"/>
+<text x="210" y="65" text-anchor="middle">get booking</text><text x="210" y="82" text-anchor="middle" class="sm">id R7K2 ✓</text>
+<rect class="box bad" x="290" y="44" width="120" height="48" rx="8"/>
+<text x="350" y="65" text-anchor="middle">search flights</text><text x="350" y="82" text-anchor="middle" class="sm">503 timeout ✗</text>
+<rect class="box good" x="430" y="44" width="120" height="48" rx="8"/>
+<text x="490" y="65" text-anchor="middle">retry search</text><text x="490" y="82" text-anchor="middle" class="sm">reads error ✓</text>
+<rect class="box plain" x="570" y="44" width="120" height="48" rx="8"/>
+<text x="630" y="65" text-anchor="middle">update booking</text><text x="630" y="82" text-anchor="middle" class="sm">after consent ✓</text>
+<rect class="box good" x="710" y="44" width="120" height="48" rx="8"/>
+<text x="770" y="65" text-anchor="middle" class="b">end state</text><text x="770" y="82" text-anchor="middle" class="b t-good">PASS</text>
+<line class="ln" x1="270" y1="68" x2="288" y2="68" marker-end="url(#m5n)"/>
+<line class="ln good" x1="410" y1="68" x2="428" y2="68" marker-end="url(#m5n)"/>
+<line class="ln" x1="550" y1="68" x2="568" y2="68" marker-end="url(#m5n)"/>
+<line class="ln" x1="690" y1="68" x2="708" y2="68" marker-end="url(#m5n)"/>
+<text x="420" y="30" text-anchor="middle" class="sm">p<tspan dy="-4" style="font-size:9px">n</tspan><tspan dy="4"> would count this trial as lost at step 2</tspan></text>
+<text x="20" y="152" class="b t-bad">Cascade</text>
+<text x="20" y="170" class="sm">one early slip</text>
+<text x="20" y="184" class="sm">poisons the rest</text>
+<rect class="box bad" x="150" y="134" width="120" height="48" rx="8"/>
+<text x="210" y="155" text-anchor="middle">get booking</text><text x="210" y="172" text-anchor="middle" class="sm">misreads R7K3 ✗</text>
+<rect class="box warn" x="290" y="134" width="120" height="48" rx="8"/>
+<text x="350" y="155" text-anchor="middle">search flights</text><text x="350" y="172" text-anchor="middle" class="sm">R7K3's route</text>
+<rect class="box warn" x="430" y="134" width="120" height="48" rx="8"/>
+<text x="490" y="155" text-anchor="middle">update booking</text><text x="490" y="172" text-anchor="middle" class="sm">changes R7K3</text>
+<rect class="box warn" x="570" y="134" width="120" height="48" rx="8"/>
+<text x="630" y="155" text-anchor="middle">reply to user</text><text x="630" y="172" text-anchor="middle" class="sm">"All done!"</text>
+<rect class="box bad" x="710" y="134" width="120" height="48" rx="8"/>
+<text x="770" y="155" text-anchor="middle" class="b">end state</text><text x="770" y="172" text-anchor="middle" class="b t-bad">FAIL</text>
+<line class="ln bad" x1="270" y1="158" x2="288" y2="158" marker-end="url(#m5n)"/>
+<line class="ln bad" x1="410" y1="158" x2="428" y2="158" marker-end="url(#m5n)"/>
+<line class="ln bad" x1="550" y1="158" x2="568" y2="158" marker-end="url(#m5n)"/>
+<line class="ln bad" x1="690" y1="158" x2="708" y2="158" marker-end="url(#m5n)"/>
+<path class="ln warn" d="M292,196 L292,204 L688,204 L688,196"/>
+<text x="490" y="222" text-anchor="middle" class="sm">each step is sensible given the wrong premise,</text>
+<text x="490" y="236" text-anchor="middle" class="sm">so a per-step grader would pass all three</text>
+<text x="770" y="204" text-anchor="middle" class="sm">wrong customer</text>
+<text x="770" y="218" text-anchor="middle" class="sm">changed</text>
+<text x="420" y="264" text-anchor="middle" class="sm t-muted">errors are neither independent nor final: only an end-to-end run shows which way a trajectory bends</text>
+</svg>
+<figcaption><b>Recovery and cascade.</b> Two ways real trajectories break the independence assumption behind p<sup>n</sup>. Top: a failed step is noticed and repaired, so the task still passes. Bottom: a single early mistake makes every later step "correct" in isolation but wrong overall, which is why per-step accuracy cannot be multiplied into task success.</figcaption>
+</figure>
+
 <h3>Reliability across repeated trials: pass@k vs pass^k</h3>
 <p>Non-determinism also shows up <em>across</em> trials of the same task. <a href="04-metrics-and-statistics.html">Module 04</a> covered the two metrics in depth; the short version:</p>
 <ul>
 <li><b>pass@k</b>: probability that <em>at least one</em> of k trials succeeds. Right when something downstream picks the winner (a human reviews candidates, tests select a patch). It rises with k.</li>
-<li><b>pass^k</b> (from tau-bench): probability that <em>all</em> k trials succeed. Right for an autonomous agent serving thousands of customers, where every run must work. It falls with k. The tau-bench abstract reports that even gpt-4o, the strongest model it tested, was below 25% pass^8 in the retail domain.</li>
+<li><b>pass^k</b> (from tau-bench): probability that <em>all</em> k trials succeed. Right for an autonomous agent serving thousands of customers, where every run must work. It falls with k. The tau-bench abstract reports that even state-of-the-art function-calling agents of the time (like gpt-4o) succeeded on fewer than half the tasks and scored below 25% pass^8 in the retail domain.</li>
 </ul>
 <p>If your agent succeeds 70% of the time on a task, independently each time, then pass@3 = 1 − 0.3<sup>3</sup> ≈ 0.973 while pass^3 = 0.7<sup>3</sup> ≈ 0.343. Same agent, same data, a factor of almost three between the two numbers. Always say which one you report.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 290" role="img" aria-label="Chart for a task the agent solves 70% of the time. pass@k rises from 0.70 at k=1 to almost 1.0 by k=4. pass^k falls from 0.70 to about 0.06 at k=8. At k=3 the two metrics are 0.97 and 0.34.">
+<line class="ln dash" x1="80" y1="190" x2="760" y2="190" style="opacity:.25"/>
+<line class="ln dash" x1="80" y1="140" x2="760" y2="140" style="opacity:.25"/>
+<line class="ln dash" x1="80" y1="90" x2="760" y2="90" style="opacity:.25"/>
+<line class="ln dash" x1="80" y1="40" x2="760" y2="40" style="opacity:.25"/>
+<line class="ln" x1="80" y1="240" x2="760" y2="240"/>
+<line class="ln" x1="80" y1="40" x2="80" y2="240"/>
+<text x="70" y="244" text-anchor="end" class="sm">0</text>
+<text x="70" y="194" text-anchor="end" class="sm">0.25</text>
+<text x="70" y="144" text-anchor="end" class="sm">0.5</text>
+<text x="70" y="94" text-anchor="end" class="sm">0.75</text>
+<text x="70" y="44" text-anchor="end" class="sm">1.0</text>
+<text x="80" y="258" text-anchor="middle" class="sm">1</text>
+<text x="177.1" y="258" text-anchor="middle" class="sm">2</text>
+<text x="274.3" y="258" text-anchor="middle" class="sm">3</text>
+<text x="371.4" y="258" text-anchor="middle" class="sm">4</text>
+<text x="468.6" y="258" text-anchor="middle" class="sm">5</text>
+<text x="565.7" y="258" text-anchor="middle" class="sm">6</text>
+<text x="662.9" y="258" text-anchor="middle" class="sm">7</text>
+<text x="760" y="258" text-anchor="middle" class="sm">8</text>
+<text x="420" y="280" text-anchor="middle" class="sm">k = number of trials of the same task</text>
+<text x="20" y="140" text-anchor="middle" class="sm" transform="rotate(-90 20 140)">probability</text>
+<line class="ln dash" x1="274.3" y1="45.4" x2="274.3" y2="171.4"/>
+<polyline class="ln good thick" points="80.0,100.0 177.1,58.0 274.3,45.4 371.4,41.6 468.6,40.5 565.7,40.1 662.9,40.0 760.0,40.0"/>
+<polyline class="ln bad thick" points="80.0,100.0 177.1,142.0 274.3,171.4 371.4,192.0 468.6,206.4 565.7,216.5 662.9,223.5 760.0,228.5"/>
+<circle class="fill-good" cx="80" cy="100" r="4"/><circle class="fill-good" cx="177.1" cy="58" r="4"/><circle class="fill-good" cx="274.3" cy="45.4" r="5"/><circle class="fill-good" cx="371.4" cy="41.6" r="4"/><circle class="fill-good" cx="468.6" cy="40.5" r="4"/><circle class="fill-good" cx="565.7" cy="40.1" r="4"/><circle class="fill-good" cx="662.9" cy="40" r="4"/><circle class="fill-good" cx="760" cy="40" r="4"/>
+<circle class="fill-bad" cx="177.1" cy="142" r="4"/><circle class="fill-bad" cx="274.3" cy="171.4" r="5"/><circle class="fill-bad" cx="371.4" cy="192" r="4"/><circle class="fill-bad" cx="468.6" cy="206.4" r="4"/><circle class="fill-bad" cx="565.7" cy="216.5" r="4"/><circle class="fill-bad" cx="662.9" cy="223.5" r="4"/><circle class="fill-bad" cx="760" cy="228.5" r="4"/>
+<circle class="fill-accent" cx="80" cy="100" r="5"/>
+<text x="92" y="162" class="sm">both start at 0.70</text>
+<text x="286" y="66" class="b t-good">pass@3 ≈ 0.97</text>
+<text x="286" y="168" class="b t-bad">pass^3 ≈ 0.34</text>
+<text x="660" y="30" class="b t-good">pass@k = 1 − 0.3ᵏ</text>
+<text x="600" y="200" class="b t-bad">pass^k = 0.7ᵏ</text>
+<text x="600" y="186" class="sm">"works every time"</text>
+<text x="490" y="62" class="sm">"works at least once"</text>
+</svg>
+<figcaption><b>Same agent, opposite stories.</b> Exact curves for a task the agent solves with probability 0.7 on each independent trial (a calculation, not measured data). pass@k climbs toward 1 because you only need one success; pass^k collapses toward 0 because you need every run to succeed.</figcaption>
+</figure>
 
 <div data-widget="compound"></div>
 
@@ -563,6 +694,48 @@ task = {
 <div class="callout tip"><span class="t">Report the frontier, not a point</span>
 <p>Plot success rate against cost (or steps) for each configuration and look at the <b>Pareto frontier</b>: the set of configurations that no other configuration beats on both axes at once. "Agent A: 62% at $0.40/task; agent B: 64% at $3.10/task" is a product decision, not an obvious win for B.</p>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 292" role="img" aria-label="Scatter of six agent configurations by cost per task and success rate. D, A and B form the Pareto frontier. C, E and G are dominated because A is both cheaper and more successful than each. B gains two points over A at almost eight times the cost.">
+<line class="ln dash" x1="90" y1="173.3" x2="770" y2="173.3" style="opacity:.25"/>
+<line class="ln dash" x1="90" y1="106.7" x2="770" y2="106.7" style="opacity:.25"/>
+<line class="ln dash" x1="90" y1="40" x2="770" y2="40" style="opacity:.25"/>
+<line class="ln" x1="90" y1="240" x2="770" y2="240"/>
+<line class="ln" x1="90" y1="40" x2="90" y2="240"/>
+<text x="80" y="244" text-anchor="end" class="sm">40%</text>
+<text x="80" y="177" text-anchor="end" class="sm">50%</text>
+<text x="80" y="111" text-anchor="end" class="sm">60%</text>
+<text x="80" y="44" text-anchor="end" class="sm">70%</text>
+<text x="90" y="258" text-anchor="middle" class="sm">$0</text>
+<text x="187.1" y="258" text-anchor="middle" class="sm">$0.50</text>
+<text x="284.3" y="258" text-anchor="middle" class="sm">$1.00</text>
+<text x="381.4" y="258" text-anchor="middle" class="sm">$1.50</text>
+<text x="478.6" y="258" text-anchor="middle" class="sm">$2.00</text>
+<text x="575.7" y="258" text-anchor="middle" class="sm">$2.50</text>
+<text x="672.9" y="258" text-anchor="middle" class="sm">$3.00</text>
+<text x="770" y="258" text-anchor="middle" class="sm">$3.50</text>
+<text x="430" y="282" text-anchor="middle" class="sm">cost per task (lower is better)</text>
+<text x="24" y="140" text-anchor="middle" class="sm" transform="rotate(-90 24 140)">task success (higher is better)</text>
+<polyline class="ln accent thick" points="109.4,213.3 167.7,213.3 167.7,93.3 692.3,93.3 692.3,80"/>
+<circle class="fill-muted" cx="323.1" cy="140" r="6"/>
+<circle class="fill-muted" cx="517.4" cy="120" r="6"/>
+<circle class="fill-muted" cx="245.4" cy="173.3" r="6"/>
+<circle class="fill-accent" cx="109.4" cy="213.3" r="7"/>
+<circle class="fill-accent" cx="167.7" cy="93.3" r="7"/>
+<circle class="fill-accent" cx="692.3" cy="80" r="7"/>
+<text x="120" y="232" class="sm">D: 44% at $0.10</text>
+<text x="176" y="78" class="b">A: 62% at $0.40</text>
+<text x="692" y="64" text-anchor="middle" class="b">B: 64% at $3.10</text>
+<text x="334" y="144" class="sm">C: 55% at $1.20</text>
+<text x="528" y="124" class="sm">E: 58% at $2.20</text>
+<text x="256" y="177" class="sm">G: 50% at $0.80</text>
+<text x="430" y="86" text-anchor="middle" class="b t-accent">+2 points for 7.75× the cost</text>
+<text x="560" y="200" class="sm">grey points are dominated:</text>
+<text x="560" y="215" class="sm">A is cheaper and better than each</text>
+<text x="176" y="160" class="sm t-muted">frontier</text>
+</svg>
+<figcaption><b>Reading a cost-success frontier.</b> Illustrative configurations, not real data. The blue staircase is the Pareto frontier: to move along it you must trade money for success. Anything below or right of it is strictly worse than some other option, and a leaderboard that ranks by success alone would put B first without mentioning its price.</figcaption>
+</figure>
 
 <h2>Evaluating the scaffold vs the model</h2>
 <p>Here is a fact that surprises many beginners: <b>an agent benchmark score belongs to a model <em>and</em> a scaffold <em>and</em> a budget</b>, never to a model alone. Change the tools, the prompts, the retry logic or the context management, and the same model gets a different score.</p>
@@ -743,28 +916,28 @@ task = {
 <text x="610" y="40" class="sm t-muted">task starts; goal partly hidden</text>
 <rect class="box accent" x="40" y="66" width="70" height="30" rx="6"/><text x="75" y="86" text-anchor="middle" class="sm b">AGENT</text>
 <text x="125" y="86" class="mono">get_reservation(id="R7K2")</text>
-<text x="610" y="86" class="sm t-good">✓ right tool, id from user</text>
+<text x="610" y="86" class="t-good" style="font-size:11px">✓ right tool, id from user</text>
 <rect class="box good" x="40" y="112" width="70" height="30" rx="6"/><text x="75" y="132" text-anchor="middle" class="sm b">TOOL</text>
 <text x="125" y="132" class="mono">{flight:"AF123", date:"2026-10-07", cabin:"economy"}</text>
 <text x="610" y="132" class="sm t-muted">observation</text>
 <rect class="box accent" x="40" y="158" width="70" height="30" rx="6"/><text x="75" y="178" text-anchor="middle" class="sm b">AGENT</text>
 <text x="125" y="178" class="mono">search_flights(origin="JFK", dest="CDG", date="2026-10-09")</text>
-<text x="610" y="178" class="sm t-good">✓ args correct (Friday resolved)</text>
+<text x="610" y="178" class="t-good" style="font-size:11px">✓ args correct (Friday resolved)</text>
 <rect class="box accent" x="40" y="204" width="70" height="30" rx="6"/><text x="75" y="224" text-anchor="middle" class="sm b">AGENT</text>
 <text x="125" y="224" class="mono">search_flights(origin="JFK", dest="CDG", date="2026-10-09")</text>
-<text x="610" y="224" class="sm t-warn">~ redundant repeat: cost, not failure</text>
+<text x="610" y="224" class="t-warn" style="font-size:11px">~ redundant repeat: cost, not failure</text>
 <rect class="box accent" x="40" y="250" width="70" height="30" rx="6"/><text x="75" y="270" text-anchor="middle" class="sm b">AGENT</text>
 <text x="125" y="270">"AF125, Fri 19:05, economy. Fare difference $80. Proceed?"</text>
-<text x="610" y="270" class="sm t-good">✓ policy: confirm before charging</text>
+<text x="610" y="270" class="t-good" style="font-size:11px">✓ policy: confirm before charging</text>
 <rect class="box violet" x="40" y="296" width="70" height="30" rx="6"/><text x="75" y="316" text-anchor="middle" class="sm b">USER</text>
 <text x="125" y="316">"Yes, go ahead."</text>
-<text x="610" y="316" class="sm t-good">✓ explicit consent recorded</text>
+<text x="610" y="316" class="t-good" style="font-size:11px">✓ explicit consent recorded</text>
 <rect class="box accent" x="40" y="342" width="70" height="30" rx="6"/><text x="75" y="362" text-anchor="middle" class="sm b">AGENT</text>
 <text x="125" y="362" class="mono">update_reservation(id="R7K2", flight="AF125")</text>
-<text x="610" y="362" class="sm t-good">✓ irreversible write after consent</text>
+<text x="610" y="362" class="t-good" style="font-size:11px">✓ irreversible write after consent</text>
 <rect class="box accent" x="40" y="388" width="70" height="30" rx="6"/><text x="75" y="408" text-anchor="middle" class="sm b">AGENT</text>
 <text x="125" y="408">"Done: R7K2 is now AF125 on Friday; $80 charged."</text>
-<text x="610" y="408" class="sm t-good">✓ response matches end state</text>
+<text x="610" y="408" class="t-good" style="font-size:11px">✓ response matches end state</text>
 <line class="ln dash" x1="20" y1="20" x2="20" y2="418"/>
 <text x="16" y="220" text-anchor="middle" class="sm t-muted" transform="rotate(-90 16 220)">time</text>
 <rect class="box good" x="40" y="440" width="800" height="66" rx="8"/>
@@ -885,6 +1058,16 @@ print(end_state_check(s0, final, {"R7K2.flight": "AF125", "payments": (80,)}))
 <li><b>Run k trials per task</b>, report success with intervals, pass^k, cost, steps and exit reasons.</li>
 <li><b>Read transcripts.</b> Every number above is a summary of trajectories; the trajectories are where the truth is.</li>
 </ol>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>An agent is a model in a loop with tools, an environment and memory. Its score belongs to the model, the scaffold and the budget together, never to the model alone.</li>
+<li>Grade outcomes for correctness with a full end-state diff ("what should change did, and nothing else changed"); grade the process only for constraints such as policy, consent and loops.</li>
+<li>Exact path matching punishes valid routes you did not anticipate, and it gets worse as agents get smarter.</li>
+<li>Every trial needs a fresh, isolated, deterministic environment reset to the same s0. Measure the environment's own flakiness before blaming the agent.</li>
+<li>Per-step errors compound (0.95<sup>20</sup> ≈ 0.36), while recovery and cascades bend that curve both ways, so always measure end to end.</li>
+<li>For autonomous agents report pass^k, not just pass@k, and tag every trial with its exit reason and its cost.</li>
+<li>A simulated user is part of your measuring instrument: pin it, audit its transcripts and vary its personas.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
