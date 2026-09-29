@@ -630,7 +630,7 @@
 <p>Inspect's building blocks are a <code>Dataset</code> of samples (input and target), a <code>Solver</code> (from a single <code>generate()</code> to a full agent such as the built-in <code>react()</code>), a <code>Scorer</code>, and a <code>Task</code> that ties them together. Most public benchmarks already exist in the <code>inspect_evals</code> collection (200+ evals), so you install it and run from the CLI, pinning the model and running several epochs (repeats) per sample. Agentic tasks run inside sandboxes (Docker, Kubernetes and others). Then open the logs in Inspect View, read a sample of transcripts to confirm the scorer is doing what you think, compute the mean with a standard error, and compare with the published number under the same settings. If you differ by more than the error bars, look for prompt, harness or version differences before blaming the model. See <a href="02-anatomy-of-an-eval.html">Module 02</a> and <a href="14-tools-landscape.html">Module 14</a>.</p>
 <pre data-lang="bash"><code># install the framework and the evals collection, then run a benchmark
 pip install inspect-ai inspect-evals
-inspect eval inspect_evals/gpqa_diamond --model anthropic/claude-sonnet-4-5 --epochs 5
+inspect eval inspect_evals/gpqa_diamond --model anthropic/claude-sonnet-5-5 --epochs 5
 inspect view   # browse transcripts and scores</code></pre>
 </details>
 
