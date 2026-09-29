@@ -364,7 +364,7 @@ for row in contamination_report(test, idx, n=8):
 <p>The general lesson extends to every leaderboard, not only Arena: <b>whoever gets more tries, more data, or more say in which results are shown will look better than they are</b>. Defences that exist in practice include private, held-out test sets and "first submission only" rules (Scale AI's SEAL leaderboards were designed this way), and independent re-runs by third parties (Epoch AI, Artificial Analysis) rather than self-reported numbers.</p>
 
 <div class="callout expert"><span class="t">Why the max of noisy scores is biased (winner's curse)</span>
-<p>If each variant's measured score is its true skill plus independent noise with standard deviation σ, the expected maximum of N such measurements is roughly true skill + σ·√(2 ln N) for large N. With N = 27 that is about +2.6σ. You can buy a "significant" leaderboard jump with nothing but repeated submissions. Statisticians call this the <b>winner's curse</b>; the fix is to re-measure the selected variant on fresh data.</p>
+<p>If each variant's measured score is its true skill plus independent noise with standard deviation σ, the expected maximum of N such measurements sits above the true skill by about 1.2σ for N = 5, 1.5σ for N = 10, 2.0σ for N = 27 and 2.5σ for N = 100 (the textbook large-N shortcut σ·√(2 ln N) slightly overstates it at these sizes, giving 2.6σ for N = 27). You can buy a "significant" leaderboard jump with nothing but repeated submissions. Statisticians call this the <b>winner's curse</b>; the fix is to re-measure the selected variant on fresh data.</p>
 </div>
 
 <h2>Harness dependence: apples to oranges</h2>
@@ -576,7 +576,7 @@ if __name__ == "__main__":
 <p>The last family of pitfalls is arithmetic. Most benchmark claims are made without error bars, on small test sets, from a single run. Here are the classic sins and what they cost you.</p>
 <div class="tablewrap"><table>
 <tr><th>Sin</th><th>Example</th><th>Remedy (see <a href="04-metrics-and-statistics.html">Module 04</a>)</th></tr>
-<tr><td><b>Tiny test sets</b></td><td>τ-bench airline has 50 tasks; Terminal-Bench 2.0 has 89; GPQA Diamond 198 (95% CI roughly ±5 points); RE-Bench 7 environments.</td><td>Report the CI; use power analysis to size the set.</td></tr>
+<tr><td><b>Tiny test sets</b></td><td>τ-bench airline has 50 tasks; Terminal-Bench 2.0 has 89; GPQA Diamond 198 (95% CI roughly ±5 to ±7 points, depending on the score); RE-Bench 7 environments.</td><td>Report the CI; use power analysis to size the set.</td></tr>
 <tr><td><b>No confidence intervals</b></td><td>"72% vs 70%" with no ± at all.</td><td>Standard error, paired tests, bootstrap (below).</td></tr>
 <tr><td><b>Single run</b></td><td>Agents are stochastic; one run per task mixes skill with luck.</td><td>Several runs per task; report mean ± SE, and pass^k for reliability.</td></tr>
 <tr><td><b>Cherry-picked seeds or runs</b></td><td>Run five times, report the best.</td><td>Pre-register the number of runs; report all of them.</td></tr>
@@ -619,12 +619,12 @@ if __name__ == "__main__":
 <text x="590" y="248" text-anchor="middle" class="sm">+10</text>
 <text x="760" y="248" text-anchor="middle" class="sm">+20</text>
 <text x="420" y="272" text-anchor="middle" class="sm">score gap in points (model A − model B), both truly 70%</text>
-<text x="560" y="54" class="b t-warn">|gap| ≥ 2 points in 79% of runs</text>
+<text x="560" y="54" class="b t-warn">|gap| ≥ 2 points in 82% of runs</text>
 <text x="560" y="72" class="sm">standard deviation of the gap ≈ 6.5 points</text>
 <text x="100" y="54" class="sm">grey: the two central bins</text>
-<text x="100" y="70" class="sm">(gaps from −2 to +1)</text>
+<text x="100" y="70" class="sm">(gaps of −2, −1, 0 and +1)</text>
 </svg>
-<figcaption><b>Identical models, different scores.</b> Result of 50,000 simulated pairs of runs (real simulation output, produced by the code below). With 100 items and a true rate of 70%, one model's score alone has a standard error of about 4.6 points, and the gap between two independent runs spreads with a standard deviation of about 6.5 points.</figcaption>
+<figcaption><b>Identical models, different scores.</b> Result of 20,000 simulated pairs of runs (real simulation output, produced by the code below; bar heights match the exact binomial calculation). With 100 items and a true rate of 70%, one model's score alone has a standard error of about 4.6 points, and the gap between two independent runs spreads with a standard deviation of about 6.5 points.</figcaption>
 </figure>
 
 <p>Now a realistic claim: "Model A scores 72%, Model B 70%, on the same 100 items." Because both models answer the same items, the right tool is a <b>paired bootstrap</b>: resample items with replacement (keeping each item's A and B results together), recompute the gap each time, and read off the middle 95%. The key quantity is the <b>discordant items</b>, where exactly one model is right. Here A alone is right on 6 items and B alone on 4.</p>
@@ -637,7 +637,8 @@ N = 100                                   # benchmark items
 # How often does the "leaderboard" show a gap of 2+ points anyway?
 a = rng.random((20_000, N)) &lt; 0.70
 b = rng.random((20_000, N)) &lt; 0.70
-gap = (a.mean(axis=1) - b.mean(axis=1)) * 100
+# with 100 items, 1 item = 1 point; count in integers to avoid float rounding
+gap = a.sum(axis=1) - b.sum(axis=1)
 print(f"P(|gap| &gt;= 2 points) for identical models: {np.mean(abs(gap) &gt;= 2):.0%}")
 print(f"std of the gap: {gap.std():.1f} points")
 
@@ -648,13 +649,13 @@ B = np.array([1]*66 + [0]*6 + [1]*4 + [0]*24)
 
 # Paired bootstrap: resample ITEMS, keeping each item's A/B pair together.
 idx = rng.integers(0, N, size=(10_000, N))
-diffs = (A[idx].mean(axis=1) - B[idx].mean(axis=1)) * 100
+diffs = A[idx].sum(axis=1) - B[idx].sum(axis=1)     # gap in points (N = 100)
 lo, hi = np.percentile(diffs, [2.5, 97.5])
-print(f"observed gap: {100*(A.mean()-B.mean()):.0f} points, 95% CI [{lo:.0f}, {hi:.0f}]")
+print(f"observed gap: {A.sum() - B.sum()} points, 95% CI [{lo:.0f}, {hi:.0f}]")
 print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 
 # Output:
-# P(|gap| &gt;= 2 points) for identical models: 79%
+# P(|gap| &gt;= 2 points) for identical models: 82%
 # std of the gap: 6.5 points
 # observed gap: 2 points, 95% CI [-4, 8]
 # share of resamples where A is NOT ahead: 32%</code></pre>
@@ -777,7 +778,7 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <button class="opt">Ship the 72% model; it is better</button>
 <button class="opt">Treat them as indistinguishable on this evidence, and collect more items or runs if the decision matters</button>
 <button class="opt">Conclude the benchmark is broken</button>
-<div class="why">The interval includes zero comfortably. Identical models show gaps of 2+ points about 79% of the time at this size.</div></div>
+<div class="why">The interval includes zero comfortably. Identical models show gaps of 2+ points about 82% of the time at this size.</div></div>
 <div class="q" data-answer="2"><p>5. In METR's June 2025 report, which setting had by far the highest reward-hacking rate?</p>
 <button class="opt">HCAST tasks (0.7%)</button>
 <button class="opt">It was the same everywhere</button>
