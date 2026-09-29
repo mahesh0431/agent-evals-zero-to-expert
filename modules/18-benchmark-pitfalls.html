@@ -144,10 +144,10 @@
 <rect class="box plain" x="230" y="62" width="170" height="32" rx="6"/><text x="315" y="83" text-anchor="middle" class="sm">merged fix commits</text>
 <rect class="box plain" x="230" y="104" width="170" height="32" rx="6"/><text x="315" y="125" text-anchor="middle" class="sm">papers, blogs, tutorials</text>
 <rect class="box plain" x="230" y="146" width="170" height="32" rx="6"/><text x="315" y="167" text-anchor="middle" class="sm">forums discussing answers</text>
-<line class="ln" x1="170" y1="100" x2="226" y2="36" marker-end="url(#m18b)"/>
-<line class="ln" x1="170" y1="105" x2="226" y2="78" marker-end="url(#m18b)"/>
-<line class="ln" x1="170" y1="112" x2="226" y2="120" marker-end="url(#m18b)"/>
-<line class="ln" x1="170" y1="120" x2="226" y2="160" marker-end="url(#m18b)"/>
+<line class="ln warn flow" x1="170" y1="100" x2="226" y2="36" marker-end="url(#m18b)"/>
+<line class="ln warn flow" x1="170" y1="105" x2="226" y2="78" marker-end="url(#m18b)"/>
+<line class="ln warn flow" x1="170" y1="112" x2="226" y2="120" marker-end="url(#m18b)"/>
+<line class="ln warn flow" x1="170" y1="120" x2="226" y2="160" marker-end="url(#m18b)"/>
 <rect class="box warn" x="460" y="70" width="140" height="80" rx="8"/>
 <text x="530" y="100" text-anchor="middle" class="b">Training data</text>
 <text x="530" y="118" text-anchor="middle" class="sm">web crawl, code,</text>
@@ -161,7 +161,7 @@
 <text x="725" y="100" text-anchor="middle" class="b">Model</text>
 <text x="725" y="118" text-anchor="middle" class="sm">recalls the answer,</text>
 <text x="725" y="133" text-anchor="middle" class="sm">score inflated</text>
-<line class="ln" x1="600" y1="110" x2="646" y2="110" marker-end="url(#m18b)"/>
+<line class="ln warn flow" x1="600" y1="110" x2="646" y2="110" marker-end="url(#m18b)"/>
 <text x="623" y="100" text-anchor="middle" class="sm">trains</text>
 <line class="ln dash" x1="20" y1="215" x2="800" y2="215"/>
 <text x="410" y="236" text-anchor="middle" class="b">Detection toolbox</text>
@@ -314,8 +314,103 @@ for row in contamination_report(test, idx, n=8):
 <p>If a fraction <i>e</i> of items are mislabelled, a perfect model scores at most about 1 − <i>e</i> on them, and a model that happens to share the label author's mistakes can score <em>higher</em> than a better model. Near saturation, a leaderboard can literally reward agreeing with the answer key's errors. This is why careful teams report accuracy on a re-verified subset (MMLU-Redux, OSWorld-Verified) alongside the original.</p>
 </div>
 
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Ten-item illustrative example of label noise: the answer key is wrong on items 4 and 9. Model A answers every item truly correctly but is graded 80 percent; Model B makes one real mistake and copies the two key errors, and is graded 90 percent while truly getting 70 percent.">
+<text x="150" y="40" text-anchor="end" class="sm">item</text>
+<text x="191" y="40" text-anchor="middle" class="sm">1</text>
+<text x="241" y="40" text-anchor="middle" class="sm">2</text>
+<text x="291" y="40" text-anchor="middle" class="sm">3</text>
+<text x="341" y="40" text-anchor="middle" class="sm">4</text>
+<text x="391" y="40" text-anchor="middle" class="sm">5</text>
+<text x="441" y="40" text-anchor="middle" class="sm">6</text>
+<text x="491" y="40" text-anchor="middle" class="sm">7</text>
+<text x="541" y="40" text-anchor="middle" class="sm">8</text>
+<text x="591" y="40" text-anchor="middle" class="sm">9</text>
+<text x="641" y="40" text-anchor="middle" class="sm">10</text>
+<text x="705" y="40" text-anchor="middle" class="sm b">graded</text>
+<text x="775" y="40" text-anchor="middle" class="sm b">truly right</text>
+<rect class="box dashed" x="315" y="47" width="52" height="170" rx="6"/>
+<rect class="box dashed" x="565" y="47" width="52" height="170" rx="6"/>
+<text x="150" y="73" text-anchor="end" class="b">True answer</text>
+<rect class="box plain" x="170" y="52" width="42" height="32" rx="5"/><text x="191" y="73" text-anchor="middle" class="b">B</text>
+<rect class="box plain" x="220" y="52" width="42" height="32" rx="5"/><text x="241" y="73" text-anchor="middle" class="b">D</text>
+<rect class="box plain" x="270" y="52" width="42" height="32" rx="5"/><text x="291" y="73" text-anchor="middle" class="b">A</text>
+<rect class="box plain" x="320" y="52" width="42" height="32" rx="5"/><text x="341" y="73" text-anchor="middle" class="b">C</text>
+<rect class="box plain" x="370" y="52" width="42" height="32" rx="5"/><text x="391" y="73" text-anchor="middle" class="b">A</text>
+<rect class="box plain" x="420" y="52" width="42" height="32" rx="5"/><text x="441" y="73" text-anchor="middle" class="b">B</text>
+<rect class="box plain" x="470" y="52" width="42" height="32" rx="5"/><text x="491" y="73" text-anchor="middle" class="b">D</text>
+<rect class="box plain" x="520" y="52" width="42" height="32" rx="5"/><text x="541" y="73" text-anchor="middle" class="b">C</text>
+<rect class="box plain" x="570" y="52" width="42" height="32" rx="5"/><text x="591" y="73" text-anchor="middle" class="b">A</text>
+<rect class="box plain" x="620" y="52" width="42" height="32" rx="5"/><text x="641" y="73" text-anchor="middle" class="b">B</text>
+<text x="150" y="115" text-anchor="end" class="b">Answer key</text>
+<rect class="box plain" x="170" y="94" width="42" height="32" rx="5"/><text x="191" y="115" text-anchor="middle" class="b">B</text>
+<rect class="box plain" x="220" y="94" width="42" height="32" rx="5"/><text x="241" y="115" text-anchor="middle" class="b">D</text>
+<rect class="box plain" x="270" y="94" width="42" height="32" rx="5"/><text x="291" y="115" text-anchor="middle" class="b">A</text>
+<rect class="box warn" x="320" y="94" width="42" height="32" rx="5"/><text x="341" y="115" text-anchor="middle" class="b">A</text>
+<rect class="box plain" x="370" y="94" width="42" height="32" rx="5"/><text x="391" y="115" text-anchor="middle" class="b">A</text>
+<rect class="box plain" x="420" y="94" width="42" height="32" rx="5"/><text x="441" y="115" text-anchor="middle" class="b">B</text>
+<rect class="box plain" x="470" y="94" width="42" height="32" rx="5"/><text x="491" y="115" text-anchor="middle" class="b">D</text>
+<rect class="box plain" x="520" y="94" width="42" height="32" rx="5"/><text x="541" y="115" text-anchor="middle" class="b">C</text>
+<rect class="box warn" x="570" y="94" width="42" height="32" rx="5"/><text x="591" y="115" text-anchor="middle" class="b">C</text>
+<rect class="box plain" x="620" y="94" width="42" height="32" rx="5"/><text x="641" y="115" text-anchor="middle" class="b">B</text>
+<text x="150" y="157" text-anchor="end" class="b">Model A</text>
+<rect class="box good" x="170" y="136" width="42" height="32" rx="5"/><text x="191" y="157" text-anchor="middle" class="b">B</text>
+<rect class="box good" x="220" y="136" width="42" height="32" rx="5"/><text x="241" y="157" text-anchor="middle" class="b">D</text>
+<rect class="box good" x="270" y="136" width="42" height="32" rx="5"/><text x="291" y="157" text-anchor="middle" class="b">A</text>
+<rect class="box bad" x="320" y="136" width="42" height="32" rx="5"/><text x="341" y="157" text-anchor="middle" class="b">C</text>
+<rect class="box good" x="370" y="136" width="42" height="32" rx="5"/><text x="391" y="157" text-anchor="middle" class="b">A</text>
+<rect class="box good" x="420" y="136" width="42" height="32" rx="5"/><text x="441" y="157" text-anchor="middle" class="b">B</text>
+<rect class="box good" x="470" y="136" width="42" height="32" rx="5"/><text x="491" y="157" text-anchor="middle" class="b">D</text>
+<rect class="box good" x="520" y="136" width="42" height="32" rx="5"/><text x="541" y="157" text-anchor="middle" class="b">C</text>
+<rect class="box bad" x="570" y="136" width="42" height="32" rx="5"/><text x="591" y="157" text-anchor="middle" class="b">A</text>
+<rect class="box good" x="620" y="136" width="42" height="32" rx="5"/><text x="641" y="157" text-anchor="middle" class="b">B</text>
+<text x="705" y="157" text-anchor="middle" class="b t-bad">80%</text>
+<text x="775" y="157" text-anchor="middle" class="b t-good">100%</text>
+<text x="150" y="199" text-anchor="end" class="b">Model B</text>
+<rect class="box good" x="170" y="178" width="42" height="32" rx="5"/><text x="191" y="199" text-anchor="middle" class="b">B</text>
+<rect class="box bad" x="220" y="178" width="42" height="32" rx="5"/><text x="241" y="199" text-anchor="middle" class="b">A</text>
+<rect class="box good" x="270" y="178" width="42" height="32" rx="5"/><text x="291" y="199" text-anchor="middle" class="b">A</text>
+<rect class="box good" x="320" y="178" width="42" height="32" rx="5"/><text x="341" y="199" text-anchor="middle" class="b">A</text>
+<rect class="box good" x="370" y="178" width="42" height="32" rx="5"/><text x="391" y="199" text-anchor="middle" class="b">A</text>
+<rect class="box good" x="420" y="178" width="42" height="32" rx="5"/><text x="441" y="199" text-anchor="middle" class="b">B</text>
+<rect class="box good" x="470" y="178" width="42" height="32" rx="5"/><text x="491" y="199" text-anchor="middle" class="b">D</text>
+<rect class="box good" x="520" y="178" width="42" height="32" rx="5"/><text x="541" y="199" text-anchor="middle" class="b">C</text>
+<rect class="box good" x="570" y="178" width="42" height="32" rx="5"/><text x="591" y="199" text-anchor="middle" class="b">C</text>
+<rect class="box good" x="620" y="178" width="42" height="32" rx="5"/><text x="641" y="199" text-anchor="middle" class="b">B</text>
+<text x="705" y="199" text-anchor="middle" class="b t-good">90%</text>
+<text x="775" y="199" text-anchor="middle" class="b t-bad">70%</text>
+<text x="341" y="234" text-anchor="middle" class="sm t-warn">key wrong</text>
+<text x="591" y="234" text-anchor="middle" class="sm t-warn">key wrong</text>
+<text x="410" y="264" text-anchor="middle" class="b t-bad">Model B outscores Model A by sharing the key's two mistakes</text>
+<text x="410" y="286" text-anchor="middle" class="sm">with 2 of 10 labels wrong, even a perfect model is capped at 80% against this key</text>
+</svg>
+<figcaption><b>How label errors reward the wrong model.</b> A made-up 10-item example. Green cells are graded correct against the answer key, red cells graded wrong. Model A is truly perfect but loses 20 points on the two broken items; Model B is truly worse but wins, because it gives the same wrong answers as the key (for example because it memorised a flawed public answer sheet).</figcaption>
+</figure>
+
 <h2>Goodhart's law and overfitting to benchmarks</h2>
 <p><b>Goodhart's law</b>, in its common phrasing: "When a measure becomes a target, it ceases to be a good measure." A benchmark is a <em>proxy</em>: a small, cheap sample standing in for a big, expensive thing you actually care about (general coding skill, helpfulness to real users). While nobody optimises for the proxy, it tracks the real thing. Once the whole field optimises for it, the proxy and the target drift apart.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Illustrative chart of Goodhart's law: while nobody optimises for a benchmark its score and the real skill rise together; once the field targets the benchmark, the score keeps climbing while real skill flattens, opening a gap.">
+<defs><marker id="m18f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="80" y1="240" x2="770" y2="240" marker-end="url(#m18f)"/>
+<line class="ln" x1="80" y1="240" x2="80" y2="30" marker-end="url(#m18f)"/>
+<text x="42" y="140" text-anchor="middle" class="sm" transform="rotate(-90 42 140)">capability, as measured</text>
+<line class="ln dash" x1="330" y1="44" x2="330" y2="240"/>
+<text x="330" y="36" text-anchor="middle" class="sm b">the field starts optimising for it</text>
+<path class="ln accent thick" d="M80,217 C250,150 420,80 760,64"/>
+<path class="ln good thick" d="M80,219 C200,178 300,150 380,142 C500,132 620,142 760,156"/>
+<line class="ln accent thick" x1="100" y1="58" x2="124" y2="58"/><text x="132" y="62" class="sm">benchmark score (the proxy)</text>
+<line class="ln good thick" x1="100" y1="78" x2="124" y2="78"/><text x="132" y="82" class="sm">real-world skill (the target)</text>
+<line class="ln bad" x1="735" y1="72" x2="735" y2="148" marker-start="url(#m18f)" marker-end="url(#m18f)"/>
+<text x="722" y="108" text-anchor="end" class="b t-bad">Goodhart gap</text>
+<text x="722" y="124" text-anchor="end" class="sm">score up, skill flat</text>
+<text x="205" y="258" text-anchor="middle" class="sm t-good">proxy tracks the target</text>
+<text x="550" y="258" text-anchor="middle" class="sm t-bad">proxy and target drift apart</text>
+<text x="425" y="284" text-anchor="middle" class="sm">optimisation pressure on the benchmark (papers, tuned scaffolds, prompts) →</text>
+</svg>
+<figcaption><b>When a measure becomes a target.</b> Illustrative shape only, not real data. Early on, a higher benchmark score really does mean more skill. Once everyone optimises against the same test, extra points increasingly come from fitting that test's quirks, so the score keeps rising while the skill you care about levels off.</figcaption>
+</figure>
 
 <div class="grid2">
 <div class="card warn"><h4>Benchmark-specific tuning</h4><p>Scaffolds, prompts and tool descriptions get tuned to one benchmark's quirks (its repo layout, its test runner, its answer format). The score rises; performance on your codebase does not.</p></div>
@@ -366,6 +461,42 @@ for row in contamination_report(test, idx, n=8):
 <div class="callout expert"><span class="t">Why the max of noisy scores is biased (winner's curse)</span>
 <p>If each variant's measured score is its true skill plus independent noise with standard deviation σ, the expected maximum of N such measurements sits above the true skill by about 1.2σ for N = 5, 1.5σ for N = 10, 2.0σ for N = 27 and 2.5σ for N = 100 (the textbook large-N shortcut σ·√(2 ln N) slightly overstates it at these sizes, giving 2.6σ for N = 27). You can buy a "significant" leaderboard jump with nothing but repeated submissions. Statisticians call this the <b>winner's curse</b>; the fix is to re-measure the selected variant on fresh data.</p>
 </div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Bar chart: if every variant is equally good and only the best measured score is published, the expected inflation grows with the number of variants: 0 sigma for 1, 1.2 for 5, 1.5 for 10, 2.0 for 27 and 2.5 for 100.">
+<line class="ln" x1="80" y1="220" x2="760" y2="220"/>
+<line class="ln" x1="80" y1="220" x2="80" y2="40"/>
+<text x="40" y="130" text-anchor="middle" class="sm" transform="rotate(-90 40 130)">expected inflation of published score</text>
+<text x="72" y="224" text-anchor="end" class="sm">+0σ</text>
+<text x="72" y="169" text-anchor="end" class="sm">+1σ</text>
+<line class="ln dash" x1="80" y1="165" x2="760" y2="165"/>
+<text x="72" y="114" text-anchor="end" class="sm">+2σ</text>
+<line class="ln dash" x1="80" y1="110" x2="760" y2="110"/>
+<text x="72" y="59" text-anchor="end" class="sm">+3σ</text>
+<line class="ln dash" x1="80" y1="55" x2="760" y2="55"/>
+<circle class="fill-good" cx="100" cy="220" r="6"/>
+<text x="114" y="210" class="b t-good">+0σ (honest)</text>
+<text x="100" y="238" text-anchor="middle" class="sm">1</text>
+<rect class="fill-accent" x="288" y="156.2" width="44" height="63.8" rx="3"/>
+<text x="310" y="147" text-anchor="middle" class="b">+1.2σ</text>
+<text x="310" y="238" text-anchor="middle" class="sm">5</text>
+<rect class="fill-accent" x="378" y="135.3" width="44" height="84.7" rx="3"/>
+<text x="400" y="126" text-anchor="middle" class="b">+1.5σ</text>
+<text x="400" y="238" text-anchor="middle" class="sm">10</text>
+<rect class="fill-bad" x="507" y="110.0" width="44" height="110.0" rx="3"/>
+<text x="529" y="101" text-anchor="middle" class="b t-bad">+2.0σ</text>
+<text x="529" y="238" text-anchor="middle" class="sm">27</text>
+<rect class="fill-accent" x="678" y="82.0" width="44" height="138.0" rx="3"/>
+<text x="700" y="73" text-anchor="middle" class="b">+2.5σ</text>
+<text x="700" y="238" text-anchor="middle" class="sm">100</text>
+<text x="529" y="254" text-anchor="middle" class="sm t-bad">27 = the Arena example</text>
+<text x="420" y="280" text-anchor="middle" class="sm">number of equally good variants tested before publishing the best one (log scale)</text>
+<rect class="box warn" x="110" y="44" width="300" height="50" rx="8"/>
+<text x="124" y="64" class="sm b">If one measurement has noise σ = 1.5 points,</text>
+<text x="124" y="82" class="sm">27 tries buys about +3 points of pure luck</text>
+</svg>
+<figcaption><b>The winner's curse, in numbers.</b> Expected maximum of N independent noisy measurements of the same true skill, in units of the measurement noise σ (computed by simulating normal noise; the σ = 1.5 example is illustrative). The bias grows quickly at first and then slowly, but it never goes away unless the chosen variant is re-measured on fresh data.</figcaption>
+</figure>
 
 <h2>Harness dependence: apples to oranges</h2>
 <p>For an agent, the score belongs to a <b>(model × harness × budget × grader × dataset version)</b> combination, not to the model. The <b>harness</b> (or scaffold) is the code around the model: tool definitions, the agent loop, the system prompt, context management, retry logic. The <b>budget</b> is how many steps, tokens, minutes or attempts it gets. Change any of these and the number moves, sometimes more than a model upgrade would move it.</p>
@@ -418,9 +549,9 @@ for row in contamination_report(test, idx, n=8):
 <rect class="box plain" x="260" y="60" width="150" height="60" rx="8"/><text x="335" y="86" text-anchor="middle" class="b">Source code</text><text x="335" y="104" text-anchor="middle" class="sm">real fix goes here</text>
 <rect class="box warn" x="500" y="60" width="130" height="60" rx="8"/><text x="565" y="86" text-anchor="middle" class="b">Tests</text><text x="565" y="104" text-anchor="middle" class="sm">run by grader</text>
 <rect class="box good" x="680" y="60" width="110" height="60" rx="8"/><text x="735" y="86" text-anchor="middle" class="b">Score</text><text x="735" y="104" text-anchor="middle" class="sm">PASS</text>
-<line class="ln good thick" x1="170" y1="90" x2="256" y2="90" marker-end="url(#m18d)"/><text x="213" y="80" text-anchor="middle" class="sm t-good">edits</text>
-<line class="ln good thick" x1="410" y1="90" x2="496" y2="90" marker-end="url(#m18d)"/><text x="453" y="80" text-anchor="middle" class="sm t-good">tested by</text>
-<line class="ln good thick" x1="630" y1="90" x2="676" y2="90" marker-end="url(#m18d)"/>
+<line class="ln good thick flow" x1="170" y1="90" x2="256" y2="90" marker-end="url(#m18d)"/><text x="213" y="80" text-anchor="middle" class="sm t-good">edits</text>
+<line class="ln good thick flow" x1="410" y1="90" x2="496" y2="90" marker-end="url(#m18d)"/><text x="453" y="80" text-anchor="middle" class="sm t-good">tested by</text>
+<line class="ln good thick flow" x1="630" y1="90" x2="676" y2="90" marker-end="url(#m18d)"/>
 <text x="400" y="146" text-anchor="middle" class="sm t-good">intended path</text>
 <path class="ln bad dash" d="M105,120 L105,200 L695,200"/>
 <text x="400" y="192" text-anchor="middle" class="sm t-bad">shortcuts</text>
@@ -628,6 +759,134 @@ if __name__ == "__main__":
 </figure>
 
 <p>Now a realistic claim: "Model A scores 72%, Model B 70%, on the same 100 items." Because both models answer the same items, the right tool is a <b>paired bootstrap</b>: resample items with replacement (keeping each item's A and B results together), recompute the gap each time, and read off the middle 95%. The key quantity is the <b>discordant items</b>, where exactly one model is right. Here A alone is right on 6 items and B alone on 4.</p>
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Grid of 100 benchmark items coloured by outcome: 66 both models right, 24 both wrong, 6 only model A right, 4 only model B right. Only the 10 discordant items carry information about which model is better, and a 6 to 4 split is what a fair coin produces.">
+<defs><marker id="m18i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="149" y="30" text-anchor="middle" class="sm b">100 items, same for both models</text>
+<rect class="fill-good" x="40" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="172" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="194" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="216" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="238" y="42" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="40" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="172" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="194" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="216" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="238" y="64" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="40" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="172" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="194" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="216" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="238" y="86" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="40" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="172" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="194" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="216" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="238" y="108" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="40" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="172" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="194" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="216" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="238" y="130" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="40" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="172" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="194" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="216" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="238" y="152" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="40" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="62" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="84" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="106" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="128" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="150" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-accent" x="172" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-accent" x="194" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-accent" x="216" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-accent" x="238" y="174" width="20" height="20" rx="3"/>
+<rect class="fill-accent" x="40" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-accent" x="62" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-violet" x="84" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-violet" x="106" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-violet" x="128" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-violet" x="150" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="172" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="194" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="216" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="238" y="196" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="40" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="62" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="84" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="106" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="128" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="150" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="172" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="194" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="216" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="238" y="218" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="40" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="62" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="84" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="106" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="128" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="150" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="172" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="194" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="216" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-line" x="238" y="240" width="20" height="20" rx="3"/>
+<rect class="fill-good" x="300" y="48" width="16" height="16" rx="3"/>
+<text x="326" y="61" class="b">66 both right</text>
+<text x="326" y="77" class="sm">same result for A and B: no information</text>
+<rect class="fill-line" x="300" y="94" width="16" height="16" rx="3"/>
+<text x="326" y="107" class="b">24 both wrong</text>
+<text x="326" y="123" class="sm">same result again: no information</text>
+<rect class="fill-accent" x="300" y="148" width="16" height="16" rx="3"/>
+<text x="326" y="161" class="b">6 only A right</text>
+<text x="326" y="177" class="sm">discordant</text>
+<rect class="fill-violet" x="300" y="188" width="16" height="16" rx="3"/>
+<text x="326" y="201" class="b">4 only B right</text>
+<text x="326" y="217" class="sm">discordant</text>
+<path class="ln accent" d="M460,150 L470,150 L470,216 L460,216"/>
+<line class="ln accent flow" x1="470" y1="183" x2="526" y2="183" marker-end="url(#m18i)"/>
+<rect class="box accent" x="530" y="140" width="270" height="86" rx="10"/>
+<text x="665" y="164" text-anchor="middle" class="b">10 items decide A vs B</text>
+<text x="665" y="184" text-anchor="middle" class="sm">6 vs 4 is an ordinary coin-flip split</text>
+<text x="665" y="200" text-anchor="middle" class="sm">McNemar p ≈ 0.75</text>
+<text x="665" y="216" text-anchor="middle" class="sm">paired SE of the gap ≈ 3.2 points</text>
+<text x="410" y="282" text-anchor="middle" class="sm">"72% vs 70%" sounds like 200 data points; for the comparison it is really 10</text>
+</svg>
+<figcaption><b>Where the evidence actually lives.</b> The worked example below as a picture: each square is one benchmark item. Items both models get right (green) or both get wrong (grey) cancel out in a paired comparison. Only the discordant items, where exactly one model is right, say anything about which model is better, and here there are just 10.</figcaption>
+</figure>
+
 <pre data-lang="python"><code>import numpy as np
 
 rng = np.random.default_rng(0)
@@ -667,6 +926,39 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 
 <h2>How to read a benchmark claim: 15 questions</h2>
 <p>Here is the whole module compressed into a checklist. You will not be able to answer every question for every claim; the point is to notice which answers are missing. A missing answer is information.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="A made-up headline claim, Model X scores 81.3 percent on SWE-bench Verified, annotated with the checklist questions it fails: no error bar or run count, a saturated and contaminated benchmark, a small gain on 500 items, best-of-n selection in a footnote, and missing harness, budget, cost and who ran it.">
+<defs><marker id="m18j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="190" y="112" width="440" height="100" rx="10"/>
+<text x="330" y="146" text-anchor="end" class="lg">Model X scores</text>
+<text x="338" y="146" class="lg t-accent">81.3%</text>
+<text x="392" y="146" class="lg">on SWE-bench Verified*</text>
+<text x="262" y="174" class="sm">+2.1 points over the previous best, state of the art</text>
+<text x="262" y="196" class="sm">* several attempts sampled, a scoring model picks one</text>
+<rect class="box warn" x="20" y="16" width="230" height="50" rx="8"/>
+<text x="135" y="37" text-anchor="middle" class="sm b">No ± and no run count</text>
+<text x="135" y="55" text-anchor="middle" class="sm">Q1, Q2: ask for the CI</text>
+<rect class="box warn" x="570" y="16" width="230" height="50" rx="8"/>
+<text x="685" y="37" text-anchor="middle" class="sm b">Saturated and contaminated</text>
+<text x="685" y="55" text-anchor="middle" class="sm">Q11, Q12: retired by OpenAI, Feb 2026</text>
+<rect class="box warn" x="20" y="252" width="230" height="50" rx="8"/>
+<text x="135" y="273" text-anchor="middle" class="sm b">+2.1 on 500 items</text>
+<text x="135" y="291" text-anchor="middle" class="sm">Q1: probably inside the noise</text>
+<rect class="box bad dashed" x="270" y="252" width="280" height="50" rx="8"/>
+<text x="410" y="273" text-anchor="middle" class="sm b">Missing entirely</text>
+<text x="410" y="291" text-anchor="middle" class="sm">harness, budget, cost, who ran it</text>
+<rect class="box warn" x="570" y="252" width="230" height="50" rx="8"/>
+<text x="685" y="273" text-anchor="middle" class="sm b">Best-of-n, not pass@1</text>
+<text x="685" y="291" text-anchor="middle" class="sm">Q3: compare like with like</text>
+<line class="ln warn" x1="150" y1="66" x2="352" y2="128" marker-end="url(#m18j)"/>
+<line class="ln warn" x1="670" y1="66" x2="500" y2="128" marker-end="url(#m18j)"/>
+<line class="ln warn" x1="135" y1="252" x2="256" y2="174" marker-end="url(#m18j)"/>
+<line class="ln bad dash" x1="410" y1="252" x2="410" y2="216" marker-end="url(#m18j)"/>
+<line class="ln warn" x1="685" y1="252" x2="566" y2="198" marker-end="url(#m18j)"/>
+</svg>
+<figcaption><b>Reading a headline with the checklist.</b> A made-up claim of the kind that appears in launch posts, with each weak spot tagged by its checklist question. Nothing in it is false; the problem is what it leaves out and what it quietly changes (a selection step) compared with other rows on the same leaderboard.</figcaption>
+</figure>
 
 <figure class="diagram">
 <svg viewBox="0 0 820 410" role="img" aria-label="Visual checklist of 15 questions in three columns: the number, the setup, and the benchmark itself.">
@@ -756,6 +1048,16 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <div class="callout tip"><span class="t">For your own product evals</span>
 <p>All of this applies to the private eval suite you built in <a href="12-error-analysis.html">Module 12</a>. Keep a held-out slice you never tune against, version the dataset when you fix labels, refresh it from new production failures, validate your grader with reference outputs, and re-read transcripts for hacks whenever a score jumps suspiciously. Your suite will go through the same life cycle as SWE-bench, only faster.</p>
 </div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li><b>Place the benchmark on its life cycle first.</b> A few points mean a lot on a fresh benchmark and very little on a saturated one, where label errors and noise dominate the top of the table.</li>
+<li><b>Contamination means remembering, not solving.</b> Canaries and n-gram search need the training data; behavioural probes (verbatim reproduction, task-ID recall) and time-windowed or private test sets work from outside.</li>
+<li><b>Every benchmark has label noise.</b> Even a human-screened set like SWE-bench Verified had flawed tests in 59.4% of the audited hard problems, and a noisy key can rank a worse model above a better one.</li>
+<li><b>A score belongs to a whole setup, not a model.</b> Harness, budget, attempts, selection step, tools, grader and dataset version all move the number, sometimes more than a model upgrade does.</li>
+<li><b>Agents hack graders when they can reach them.</b> Grade with files the agent cannot touch, keep the scorer outside the sandbox, sanitise images and read transcripts.</li>
+<li><b>Small gaps on small sets are noise.</b> Two identical models on 100 items differ by 2+ points 82% of the time; use paired tests, confidence intervals, several runs, and beware best-of-N disclosure (the winner's curse).</li>
+<li><b>Benchmarks are not the real world.</b> Construct validity limits what any score predicts; confirm important claims with your own evals and, where possible, field studies.</li>
+</ol></div>
 
 <h2>Check yourself</h2>
 <div class="quiz">
