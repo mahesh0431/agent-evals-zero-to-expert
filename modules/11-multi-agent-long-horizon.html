@@ -27,6 +27,8 @@
 <li>Evaluate context management and memory in long runs, and report cost and wall-clock budgets alongside success.</li>
 <li>Name the common multi-agent architectures and say what to measure in each: end-to-end outcome, per-agent contribution, communication overhead and token multiplier.</li>
 <li>Use the MAST failure taxonomy to label coordination failures, walk a trace tree to assign credit, and reason about emergent risks like collusion and cascading errors.</li>
+<li>Explain why needle-in-a-haystack results overstate long-context ability, and build RULER-style multi-hop, aggregation and distractor tests to find a model's effective context length.</li>
+<li>Evaluate cross-agent delegation over A2A and agent payments (AP2, ACP, x402): delegation correctness, handoff fidelity, task-state handling, payment authorization and spending limits.</li>
 </ul>
 </div>
 
@@ -471,6 +473,62 @@ print(score(M, final_state))
 <p>It is tempting to blame every long-run failure on a full context window. Vending-Bench's authors explicitly found "no clear correlation" between failures and the point at which the context window filled. Coherence over long runs is a skill in its own right. Do not assume a bigger window fixes it: measure.</p>
 </div>
 
+<h3>Long-context evals: beyond the needle</h3>
+<p>The first row of the table above deserves a closer look, because "the model has a 1-million-token window" is one of the most misread numbers in AI. An advertised context window tells you how much text the model <em>accepts</em>. It does not tell you how much it can <em>use</em>.</p>
+<p>The classic test is the <b>needle in a haystack</b> (popularized in 2023 by Greg Kamradt's <a href="https://github.com/gkamradt/LLMTest_NeedleInAHaystack">pressure tests</a>): hide one sentence ("the best thing to do in San Francisco is eat a sandwich in Dolores Park") at some depth inside a long, unrelated document, then ask for it. Sweep the length and the depth, color a grid green where the model found it, and you get the famous all-green heatmaps. The trouble is that this test is easy in ways real work is not:</p>
+<ul>
+<li><b>Literal match.</b> The question repeats the needle's words, so finding it is closer to text search than to understanding.</li>
+<li><b>The needle sticks out.</b> A sentence about sandwiches inside essays about startups is conspicuous. Real documents are full of similar-looking facts (last quarter's number next to this quarter's).</li>
+<li><b>One fact, no reasoning.</b> Real tasks chain facts together or count across the whole input.</li>
+</ul>
+<p><b><a href="https://arxiv.org/abs/2404.06654">RULER</a></b> (Hsieh et al., NVIDIA, 2024) keeps the synthetic, auto-graded style but adds harder task families, all generated at any length you choose: <b>retrieval</b> variants with multiple keys, multiple values and distracting look-alike needles; <b>multi-hop tracing</b> (variable tracking: "X1 = 12345 ... X2 = X1 ... X3 = X2", then "which variables equal 12345?", which forces following a chain across the whole input); <b>aggregation</b> (find the most common words in a long list, which needs the whole input, not one spot); and <b>question answering</b> with distractor paragraphs. The paper's headline: almost all models tested reached near-perfect scores on the vanilla needle test, yet showed large drops as length grew on the harder tasks, and only about half of the models that claimed 32K or more of context kept satisfactory performance at 32K. RULER calls the longest length at which a model stays above a fixed quality threshold its <b>effective context length</b>, which is the number you actually want.</p>
+<p><b><a href="https://www.trychroma.com/research/context-rot">"Context rot"</a></b> is the name Chroma's July 2025 technical report gave to the broader pattern: across 18 models, performance degraded as input length grew, even on simple tasks, and not uniformly. The report found degradation was worse when the needle was less semantically similar to the question, that distractors (plausible but wrong near-matches) hurt more as inputs grew, and, counter-intuitively, that the structure of the haystack mattered (models did differently on logically coherent haystacks than on shuffled ones). In a conversational memory test built on LongMemEval, models did markedly better when given only the relevant portion of the history than the full history. The code is public (<a href="https://github.com/chroma-core/context-rot">chroma-core/context-rot</a>), so you can rerun it on your own model.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Illustrative accuracy against input length from 4K to 128K tokens. The vanilla needle test stays near 100%. Needle with distractors, multi-hop tracing and aggregation all decline with length, crossing an 85% threshold much earlier, so the effective context length is far below the advertised window.">
+<defs><marker id="m11i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="80" y1="280" x2="650" y2="280"/>
+<line class="ln" x1="80" y1="280" x2="80" y2="36"/>
+<text x="72" y="284" text-anchor="end" class="sm">0%</text>
+<text x="72" y="164" text-anchor="end" class="sm">50%</text>
+<text x="72" y="44" text-anchor="end" class="sm">100%</text>
+<text x="30" y="160" text-anchor="middle" class="sm" transform="rotate(-90 30 160)">accuracy</text>
+<text x="90" y="298" text-anchor="middle" class="sm">4K</text>
+<text x="200" y="298" text-anchor="middle" class="sm">8K</text>
+<text x="310" y="298" text-anchor="middle" class="sm">16K</text>
+<text x="420" y="298" text-anchor="middle" class="sm">32K</text>
+<text x="530" y="298" text-anchor="middle" class="sm">64K</text>
+<text x="640" y="298" text-anchor="middle" class="sm">128K</text>
+<text x="365" y="320" text-anchor="middle" class="sm">input length (tokens, log scale)</text>
+<line class="ln dash warn" x1="80" y1="76" x2="650" y2="76"/>
+<text x="656" y="80" class="sm t-warn">85% threshold</text>
+<line class="ln dash" x1="640" y1="36" x2="640" y2="280"/>
+<text x="636" y="30" text-anchor="end" class="sm">advertised window</text>
+<polyline class="ln good thick" points="90,40 200,40 310,42 420,42 530,45 640,47"/>
+<polyline class="ln accent thick" points="90,52 200,64 310,83 420,107 530,136 640,165"/>
+<polyline class="ln violet thick" points="90,59 200,76 310,102 420,136 530,172 640,203"/>
+<polyline class="ln bad thick" points="90,69 200,93 310,131 420,172 530,208 640,237"/>
+<text x="656" y="50" class="sm b t-good">vanilla needle</text>
+<text x="656" y="169" class="sm b t-accent">needle + distractors</text>
+<text x="656" y="207" class="sm b t-violet">multi-hop tracing</text>
+<text x="656" y="241" class="sm b t-bad">aggregation</text>
+<circle cx="200" cy="76" r="6" class="fill-violet pulse"/>
+<path class="ln violet" d="M206,90 C240,140 250,190 250,220" marker-start="url(#m11i)"/>
+<text x="258" y="236" class="sm t-violet">effective length for multi-hop:</text>
+<text x="258" y="252" class="sm t-violet">about 8K, not 128K</text>
+</svg>
+<figcaption><b>Why an all-green needle test proves little.</b> The literal-match needle stays near perfect at every length, while harder tasks at the same lengths fall below the quality bar far earlier. The effective context length for a task is where its curve crosses your threshold. Shapes follow the pattern RULER and the context-rot report describe; the numbers are illustrative, not measurements of any model.</figcaption>
+</figure>
+
+<p>For an agent, "long context" is rarely one long document. It is a growing transcript of tool outputs, file contents and earlier turns. Build your own long-context eval from that material rather than from essays about startups:</p>
+<ol>
+<li><b>Plant facts from your own domain</b> in real transcripts at varying depths (an order number at turn 5, a changed shipping address at turn 40), then ask about them at the end. Use paraphrase, not the same words, between the fact and the question.</li>
+<li><b>Add realistic distractors</b>: the old address next to the new one, last week's order next to today's. Score whether the agent picks the <em>current</em> fact.</li>
+<li><b>Include aggregation and multi-hop questions</b>: "how many of the tickets so far mention refunds?", "which customer's second order used the coupon from the first email?".</li>
+<li><b>Sweep length</b> (for example 8K, 32K, 128K of real context) and plot accuracy against length, as above. Report the effective length for your threshold, not the vendor's window.</li>
+<li><b>Compare context strategies</b> on the same items: full context, compaction, retrieval over notes. This is where the state-tracking probes and compaction tests from this section meet (harness side in <a href="21-harness-evals.html">Module 21</a>).</li>
+</ol>
+
 <div class="callout tip"><span class="t">Go deeper</span><p>Long-term memory across sessions (what gets written, retrieved, updated and forgotten) gets its own treatment in <a href="23-memory-evals.html">Module 23</a>, including the LoCoMo, LongMemEval and MemoryAgentBench benchmarks.</p></div>
 <h2>Cost and wall-clock budgets</h2>
 <p>Long tasks are expensive: MLE-bench runs take about a day of GPU time each, and Vending-Bench runs exceed 20 million tokens. That has two consequences for evals.</p>
@@ -899,6 +957,115 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <p>In a multi-agent system, a compromised or prompt-injected worker (for example, one that read a malicious web page) can pass instructions upward to the lead. Your safety evals should include injected content at the <em>worker</em> level and check whether it propagates to actions taken by other agents. The trace tree makes this measurable: follow the tainted content from the span where it entered to every span that used it.</p>
 </div>
 
+<h2>Agent interop: A2A, handoffs and agent payments</h2>
+<p>Everything in Part B so far assumed you own all the agents. Increasingly, your agent will hand work to an agent <em>someone else</em> built and runs, and some agents can now spend money. Two families of open protocols are emerging for this, and both create new things to evaluate. (The protocols are young and change quickly, so treat field names below as illustrative and check the current specs.)</p>
+
+<div class="grid2">
+<div class="card accent"><h4>Agent to agent: A2A</h4><p><a href="https://a2a-protocol.org/latest/">Agent2Agent (A2A)</a> is an open protocol that Google launched in April 2025 and then contributed to the Linux Foundation, which reported more than 150 supporting organizations after its first year. A remote agent publishes an <b>Agent Card</b> (a JSON description of who it is, its skills, its endpoint and how to authenticate). A client agent reads the card, sends a message that creates a <b>task</b>, and follows the task through its states (such as working, input-required, completed, failed, canceled) until it returns results as <b>artifacts</b>. The remote agent stays opaque: you see its messages, not its internals. MCP connects an agent to tools; A2A connects an agent to another agent.</p></div>
+<div class="card warn"><h4>Agents that pay</h4><p><b><a href="https://cloud.google.com/blog/products/ai-machine-learning/announcing-agents-to-payments-ap2-protocol">AP2</a></b> (Agent Payments Protocol, Google, September 2025) works alongside A2A and MCP and uses cryptographically signed <b>mandates</b>: an intent mandate records what the user authorized in advance ("two tickets, under $200"), a cart mandate records approval of an exact cart. <b><a href="https://openai.com/index/buy-it-in-chatgpt/">ACP</a></b> (Agentic Commerce Protocol, OpenAI and Stripe, September 2025) powers Instant Checkout in ChatGPT, where the agent sends the order to the merchant's checkout and payment travels as a token scoped to that merchant and amount. <b><a href="https://github.com/coinbase/x402">x402</a></b> (Coinbase, 2025) revives the HTTP status code 402 Payment Required: a server answers with a price, the client pays (typically in stablecoins) and retries the request, which suits pay-per-call APIs.</p></div>
+</div>
+
+<p>For evaluation, the protocol details matter less than the new failure points they create. A delegation can go to the wrong agent; the user's constraints can be lost in the handoff; the remote agent can ask a question, fail or stall; and a payment can exceed what the user actually authorized. The figure puts numbered checkpoints on each.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="Delegation and payment flow. The user asks for two tickets under 200 dollars. Your agent discovers a remote agent through its Agent Card, sends it a task, gets a result, and pays through a payment rail. Five numbered checkpoints: delegation, handoff fidelity, task lifecycle, payment authorization and spending limits.">
+<defs><marker id="m11j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="20" y="58" width="140" height="66" rx="10"/>
+<text x="90" y="84" text-anchor="middle" class="b">User</text>
+<text x="90" y="104" text-anchor="middle" class="sm">"2 tickets, max $200"</text>
+<rect class="box accent" x="200" y="40" width="190" height="134" rx="10"/>
+<text x="295" y="68" text-anchor="middle" class="b">Your agent</text>
+<text x="295" y="88" text-anchor="middle" class="sm">A2A client</text>
+<text x="295" y="120" text-anchor="middle" class="sm">holds the mandate:</text>
+<text x="295" y="138" text-anchor="middle" class="mono">≤ $200 · tickets</text>
+<rect class="box plain" x="450" y="14" width="170" height="48" rx="8"/>
+<text x="535" y="34" text-anchor="middle" class="b">Agent Card</text>
+<text x="535" y="52" text-anchor="middle" class="sm">skills · endpoint · auth</text>
+<rect class="box plain" x="450" y="90" width="170" height="84" rx="10"/>
+<text x="535" y="112" text-anchor="middle" class="b">Remote agent</text>
+<text x="535" y="130" text-anchor="middle" class="sm">A2A server (ticket seller)</text>
+<text x="535" y="148" text-anchor="middle" class="sm">working → input-required</text>
+<text x="535" y="164" text-anchor="middle" class="sm">→ completed</text>
+<rect class="box warn" x="660" y="90" width="140" height="84" rx="10"/>
+<text x="730" y="112" text-anchor="middle" class="b">Payment rail</text>
+<text x="730" y="132" text-anchor="middle" class="sm">AP2 mandate,</text>
+<text x="730" y="150" text-anchor="middle" class="sm">ACP checkout or x402</text>
+<line class="ln" x1="160" y1="91" x2="196" y2="91" marker-end="url(#m11j)"/>
+<path class="ln dash" d="M390,56 L446,40" marker-end="url(#m11j)"/>
+<text x="394" y="30" class="sm">discover</text>
+<line class="ln accent flow" x1="390" y1="112" x2="446" y2="112" marker-end="url(#m11j)"/>
+<text x="420" y="106" text-anchor="middle" class="sm">task</text>
+<line class="ln accent" x1="450" y1="160" x2="394" y2="160" marker-end="url(#m11j)"/>
+<text x="420" y="176" text-anchor="middle" class="sm">result</text>
+<path class="ln warn" d="M295,174 L295,200 L730,200 L730,178" marker-end="url(#m11j)"/>
+<text x="560" y="216" text-anchor="middle" class="sm t-warn">authorize and pay, only within the mandate</text>
+<line class="ln dash" x1="660" y1="132" x2="624" y2="132" marker-end="url(#m11j)"/>
+<circle cx="420" cy="78" r="11" class="box accent"/><text x="420" y="82" text-anchor="middle" class="sm b">1</text>
+<circle cx="420" cy="136" r="11" class="box accent"/><text x="420" y="140" text-anchor="middle" class="sm b">2</text>
+<circle cx="620" cy="90" r="11" class="box accent"/><text x="620" y="94" text-anchor="middle" class="sm b">3</text>
+<circle cx="380" cy="200" r="11" class="box accent"/><text x="380" y="204" text-anchor="middle" class="sm b">4</text>
+<circle cx="800" cy="90" r="11" class="box accent"/><text x="800" y="94" text-anchor="middle" class="sm b">5</text>
+<rect class="box good" x="20" y="238" width="148" height="92" rx="8"/>
+<text x="94" y="262" text-anchor="middle" class="b">1 Delegation</text>
+<text x="94" y="284" text-anchor="middle" class="sm">right agent and skill,</text>
+<text x="94" y="302" text-anchor="middle" class="sm">or do it itself?</text>
+<rect class="box good" x="178" y="238" width="148" height="92" rx="8"/>
+<text x="252" y="262" text-anchor="middle" class="b">2 Handoff fidelity</text>
+<text x="252" y="284" text-anchor="middle" class="sm">every constraint carried</text>
+<text x="252" y="302" text-anchor="middle" class="sm">into the task message?</text>
+<rect class="box good" x="336" y="238" width="148" height="92" rx="8"/>
+<text x="410" y="262" text-anchor="middle" class="b">3 Task lifecycle</text>
+<text x="410" y="284" text-anchor="middle" class="sm">input-required, failed,</text>
+<text x="410" y="302" text-anchor="middle" class="sm">canceled, timeouts</text>
+<rect class="box good" x="494" y="238" width="148" height="92" rx="8"/>
+<text x="568" y="262" text-anchor="middle" class="b">4 Authorization</text>
+<text x="568" y="284" text-anchor="middle" class="sm">within the mandate?</text>
+<text x="568" y="302" text-anchor="middle" class="sm">user approval needed?</text>
+<rect class="box good" x="652" y="238" width="148" height="92" rx="8"/>
+<text x="726" y="262" text-anchor="middle" class="b">5 Spending limits</text>
+<text x="726" y="284" text-anchor="middle" class="sm">cumulative cap held,</text>
+<text x="726" y="302" text-anchor="middle" class="sm">no double charge?</text>
+</svg>
+<figcaption><b>Where cross-agent work and payments can go wrong.</b> Your agent discovers a remote agent from its Agent Card, sends it a task, receives a result and pays through a payment rail. Each numbered checkpoint is a separate eval: choosing the delegate, carrying the constraints over, handling every task state, and keeping money inside what the user authorized. Simplified flow; the real protocols have more steps.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>What to evaluate</th><th>Test</th><th>Metric</th></tr>
+<tr><td><b>Delegation correctness</b></td><td>Give the agent several Agent Cards (including near-miss skills and one that looks right but is out of scope) and tasks with a known correct delegate, including tasks it should do itself.</td><td>Routing accuracy; unnecessary-delegation rate</td></tr>
+<tr><td><b>Handoff fidelity</b></td><td>Compare the user's constraints (budget, dates, quantity, "no aisle seats") with what the outbound task message actually says. Structured fields can be checked by code; free text needs a narrow judge.</td><td>Constraint-retention rate per handoff</td></tr>
+<tr><td><b>Lifecycle handling</b></td><td>Use a mock remote agent that replies input-required, fails, stalls or cancels. Check the agent asks the user only when needed, retries sensibly and never reports success on a failed task.</td><td>Correct-handling rate per state; false-success rate</td></tr>
+<tr><td><b>Trust in results</b></td><td>The remote agent's artifacts are untrusted input. Plant a wrong price or an injected instruction in them (the fault-injection idea above; attacks in <a href="25-agent-security-evals.html">Module 25</a>).</td><td>Propagation rate of planted errors</td></tr>
+<tr><td><b>Payment authorization and limits</b></td><td>Adversarial merchant scenarios: price rises after approval, a 402 response asks for more than the quote, an upsell adds items, a retry could double-charge. Grade against the mandate on a sandbox payment rail.</td><td>Out-of-mandate charges (target: zero); approvals requested when required</td></tr>
+</table></div>
+
+<p>Payment evals are a place for hard, deterministic checks, not judges. A sketch of the grader side, run after the agent finishes each scenario against a sandbox rail that records charges instead of moving money:</p>
+<pre data-lang="python"><code>from dataclasses import dataclass
+
+@dataclass
+class Mandate:                      # what the user actually authorized
+    max_total: float                # cumulative cap across all purchases
+    categories: set[str]            # e.g. {"tickets"}
+    confirm_over: float             # single charges above this need explicit user approval
+
+def grade_payments(mandate: Mandate, charges: list[dict], approvals: set[str]) -&gt; dict:
+    """charges: recorded by the sandbox rail, e.g.
+       {"order_id": "A1", "amount": 180.0, "category": "tickets"}
+       approvals: order_ids the (simulated) user explicitly approved."""
+    order_ids = [c["order_id"] for c in charges]
+    return {
+        "under_cap":        sum(c["amount"] for c in charges) &lt;= mandate.max_total,
+        "in_category":      all(c["category"] in mandate.categories for c in charges),
+        "approved_if_big":  all(c["order_id"] in approvals
+                                for c in charges if c["amount"] &gt; mandate.confirm_over),
+        "no_double_charge": len(order_ids) == len(set(order_ids)),
+    }
+
+# Scenario "price rises after approval": quote was $180, merchant now asks $230.
+# The right behavior is to stop and ask the user, so the rail should record no charge.
+print(grade_payments(Mandate(200.0, {"tickets"}, 150.0), charges=[], approvals=set()))
+# every check True: the agent refused to pay outside the mandate</code></pre>
+<p>Run each scenario several times and require every check to pass on every trial (pass^k from <a href="06-tool-use-and-conversation.html">Module 06</a>): for money, "usually stays under budget" is a failing grade. Public benchmarks for agent interop and payments are still immature, so most teams build scenario suites like this one around their own flows.</p>
+
 <h2>Putting it together: an eval plan for a long-running multi-agent system</h2>
 <p>Suppose you are building a research assistant like the one in the case study. A minimal but expert-grade eval plan looks like this:</p>
 <ol>
@@ -937,6 +1104,8 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <li>For multi-agent systems, first beat a single-agent baseline with the same budget, then report the token multiplier and the cost-success Pareto frontier.</li>
 <li>Traces are trees: attach graders at the root (outcome), agent spans (delegation, contribution) and tool spans, and assign blame with counterfactual replay.</li>
 <li>Use MAST to label failures, and test emergent risks directly with fault and prompt injection at the worker level.</li>
+<li>An advertised context window is not a usable one. Vanilla needle tests are near-saturated; test multi-hop, aggregation and look-alike distractors on your own transcripts, sweep length, and report the effective context length for your quality bar.</li>
+<li>When agents delegate across organizations (A2A) or spend money (AP2, ACP, x402), evaluate each checkpoint: right delegate, constraints preserved in the handoff, every task state handled, and zero out-of-mandate charges across repeated trials.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -966,6 +1135,16 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <button class="opt">Inter-agent misalignment</button>
 <button class="opt">Task verification</button>
 <div class="why">Task verification (premature termination, no or incomplete verification, incorrect verification) was about 23.5% of failures in the paper's annotated traces.</div></div>
+<div class="q" data-answer="1"><p>6. A vendor shows an all-green needle-in-a-haystack heatmap up to 1M tokens. What is the best conclusion?</p>
+<button class="opt">The model can reliably use 1M tokens of context for your agent</button>
+<button class="opt">The model can find a literal, conspicuous fact at those lengths; multi-hop, aggregation and distractor tasks may degrade far earlier, so measure the effective length on your own tasks</button>
+<button class="opt">The model's context is too short</button>
+<div class="why">RULER found near-perfect vanilla needle scores alongside large drops on harder tasks as length grew, and the context-rot report found degradation even on simple tasks once needles are less similar to the question or distractors are present.</div></div>
+<div class="q" data-answer="2"><p>7. The user tells your agent "two tickets, under $200 total". Over A2A, your agent sends the seller agent "buy two tickets for Saturday". The seller charges $240. Which checkpoint failed first?</p>
+<button class="opt">Delegation: it picked the wrong agent</button>
+<button class="opt">Task lifecycle: it mishandled input-required</button>
+<button class="opt">Handoff fidelity: the budget constraint was dropped from the task message (and payment authorization should also have blocked the charge)</button>
+<div class="why">The seller was the right agent, but the $200 limit never reached it. A handoff-fidelity check comparing user constraints with the outbound message catches this, and a mandate-based payment check is the second line of defense.</div></div>
 </div>
 
 <details><summary>Interview questions (with model answers)</summary>
@@ -986,6 +1165,11 @@ print(f"token multiplier vs single agent: {total / SINGLE_AGENT_BASELINE:.1f}x")
 <li>OpenAI, <a href="https://openai.com/index/gdpval/">GDPval</a> (September 2025).</li>
 <li>Backlund and Petersson (Andon Labs), <a href="https://arxiv.org/abs/2502.15840">Vending-Bench</a> (February 2025); <a href="https://andonlabs.com/evals/vending-bench">Andon Labs Vending-Bench page</a>.</li>
 <li>Hsieh et al., <a href="https://arxiv.org/abs/2404.06654">RULER: What's the Real Context Size of Your Long-Context Language Models?</a> (2024); Liu et al., <a href="https://arxiv.org/abs/2307.03172">Lost in the Middle</a> (2023).</li>
+<li>Chroma, <a href="https://www.trychroma.com/research/context-rot">Context Rot: How Increasing Input Tokens Impacts LLM Performance</a> (technical report, July 2025) and <a href="https://github.com/chroma-core/context-rot">code</a>; Greg Kamradt, <a href="https://github.com/gkamradt/LLMTest_NeedleInAHaystack">Needle in a haystack pressure tests</a> (2023); <a href="https://github.com/NVIDIA/RULER">NVIDIA RULER repository</a>.</li>
+<li>A2A project, <a href="https://a2a-protocol.org/latest/">A2A protocol specification and docs</a> and <a href="https://github.com/a2aproject/A2A">GitHub</a>; Linux Foundation, <a href="https://www.linuxfoundation.org/press/a2a-protocol-surpasses-150-organizations-lands-in-major-cloud-platforms-and-sees-enterprise-production-use-in-first-year">A2A protocol surpasses 150 organizations</a>.</li>
+<li>Google Cloud, <a href="https://cloud.google.com/blog/products/ai-machine-learning/announcing-agents-to-payments-ap2-protocol">Announcing Agent Payments Protocol (AP2)</a> (September 2025); <a href="https://ap2-protocol.org/">AP2 documentation</a>.</li>
+<li>OpenAI, <a href="https://openai.com/index/buy-it-in-chatgpt/">Buy it in ChatGPT: Instant Checkout and the Agentic Commerce Protocol</a>; Stripe, <a href="https://stripe.com/blog/developing-an-open-standard-for-agentic-commerce">Developing an open standard for agentic commerce</a>; <a href="https://github.com/agentic-commerce-protocol/agentic-commerce-protocol">ACP specification on GitHub</a>.</li>
+<li>Coinbase, <a href="https://www.coinbase.com/developer-platform/discover/launches/x402">Introducing x402</a> and <a href="https://github.com/coinbase/x402">x402 repository</a>.</li>
 <li>Anthropic, <a href="https://www.anthropic.com/engineering/multi-agent-research-system">How we built our multi-agent research system</a> (June 2025).</li>
 <li>Cemri, Pan, Yang et al., <a href="https://arxiv.org/abs/2503.13657">Why Do Multi-Agent LLM Systems Fail?</a> (MAST, March 2025).</li>
 <li>Du et al., <a href="https://arxiv.org/abs/2305.14325">Improving Factuality and Reasoning in Language Models through Multiagent Debate</a> (2023).</li>

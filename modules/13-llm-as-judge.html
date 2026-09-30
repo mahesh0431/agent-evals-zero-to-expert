@@ -27,6 +27,7 @@
 <li>Validate a judge against human labels with a train/dev/test split, TPR, TNR and Cohen's kappa, and explain why accuracy alone misleads.</li>
 <li>Correct an observed pass rate for judge error and put an honest bootstrap confidence interval on it.</li>
 <li>Explain how judges relate to reward models and RL graders, and how to judge agents (trajectories, tool-using judges, screenshots, audio).</li>
+<li>Use an eval as an optimization target (DSPy optimizers, GEPA, RLVR and RL environments such as Prime Intellect's verifiers) without fooling yourself: held-out splits, judge rotation, canaries and guardrail metrics.</li>
 </ul>
 </div>
 
@@ -1147,6 +1148,213 @@ print(f"TPR={tpr:.2f} TNR={tnr:.2f} observed=0.660 corrected={theta:.3f} "
 <p>"When a measure becomes a target, it ceases to be a good measure." A judge with a mild length bias is a small problem in an eval. The same judge used as an RL reward will, over thousands of updates, teach the model to be long-winded. The same logic applies at the product level: if you tune prompts hard against one judge, you can overfit to that judge's quirks. Keep a held-out human-labelled set that the optimisation never sees, and re-check it.</p>
 </div>
 
+<h2>Your eval as an optimization target</h2>
+<p>Once your eval returns a number, anything that can search can climb it: you tweaking prompts by hand, an automatic prompt optimizer, or a reinforcement-learning trainer updating model weights. That is enormously useful, because a good eval turns "make the agent better" into a well-defined objective. It is also the fastest way to break your eval, because the optimizer will find every gap between what you measure and what you want.</p>
+<div class="callout analogy"><span class="t">Analogy: past exam papers</span>
+<p>A student who studies past exam papers gets better at the subject, up to a point. Past that point, they get better at <em>those papers</em>: the phrasings, the examiner's habits, the answers. The only way to tell which is happening is a fresh exam they have never seen, marked by someone else. Everything in this section is a version of that fresh exam.</p>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="The optimize-evaluate loop. The eval set is split into train, validation and a locked held-out test. The optimizer proposes a candidate, the evaluator scores it on train and validation with judge A and returns score and feedback. Only the final candidate goes to the held-out gate, which uses the locked test split, a different judge, a human spot-check and canary items. A small gap means ship; a large gap raises an overfitting alarm.">
+<defs><marker id="m13l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="14" class="sm">your eval set, split once, up front</text>
+<rect x="20" y="22" width="216" height="34" class="fill-accent" fill-opacity="0.3"/>
+<rect x="236" y="22" width="72" height="34" class="fill-violet" fill-opacity="0.3"/>
+<rect x="308" y="22" width="72" height="34" class="fill-warn" fill-opacity="0.4"/>
+<text x="128" y="44" text-anchor="middle" class="b">train 60%</text>
+<text x="272" y="44" text-anchor="middle" class="b">val 20%</text>
+<text x="344" y="44" text-anchor="middle" class="b">test 20%</text>
+<rect class="box accent" x="40" y="110" width="200" height="70" rx="10"/>
+<text x="140" y="138" text-anchor="middle" class="b">Optimizer</text>
+<text x="140" y="158" text-anchor="middle" class="sm">you, DSPy, GEPA, an RL trainer</text>
+<rect class="box plain" x="310" y="110" width="180" height="70" rx="10"/>
+<text x="400" y="138" text-anchor="middle" class="b">Candidate</text>
+<text x="400" y="158" text-anchor="middle" class="sm">prompt, program or weights</text>
+<rect class="box violet" x="310" y="226" width="180" height="70" rx="10"/>
+<text x="400" y="254" text-anchor="middle" class="b">Evaluator</text>
+<text x="400" y="274" text-anchor="middle" class="sm">train + val, graders, judge A</text>
+<line class="ln accent flow" x1="240" y1="145" x2="306" y2="145" marker-end="url(#m13l)"/>
+<text x="262" y="136" text-anchor="middle" class="sm">propose</text>
+<line class="ln accent flow" x1="400" y1="180" x2="400" y2="222" marker-end="url(#m13l)"/>
+<text x="408" y="206" class="sm">run</text>
+<path class="ln accent flow" d="M310,284 L140,284 L140,184" marker-end="url(#m13l)"/>
+<text x="225" y="302" text-anchor="middle" class="sm">score + written feedback</text>
+<path class="ln dash" d="M296,56 L296,246 L306,246" marker-end="url(#m13l)"/>
+<text x="288" y="214" text-anchor="end" class="sm">train + val items</text>
+<path class="ln warn" d="M380,39 L680,39 L680,86" marker-end="url(#m13l)"/>
+<text x="530" y="32" text-anchor="middle" class="sm t-warn">locked: the optimizer never sees it</text>
+<rect class="box warn" x="560" y="90" width="240" height="122" rx="10"/>
+<text x="680" y="114" text-anchor="middle" class="b">Held-out gate (rarely)</text>
+<text x="680" y="136" text-anchor="middle" class="sm">test split, never optimized on</text>
+<text x="680" y="154" text-anchor="middle" class="sm">judge B from another family</text>
+<text x="680" y="172" text-anchor="middle" class="sm">human spot-check</text>
+<text x="680" y="190" text-anchor="middle" class="sm">canary items</text>
+<line class="ln" x1="490" y1="150" x2="556" y2="150" marker-end="url(#m13l)"/>
+<text x="523" y="166" text-anchor="middle" class="sm">final</text>
+<rect class="box good" x="560" y="246" width="110" height="54" rx="8"/>
+<text x="615" y="268" text-anchor="middle" class="b t-good">Ship</text>
+<text x="615" y="286" text-anchor="middle" class="sm">val − test gap small</text>
+<rect class="box bad" x="690" y="246" width="110" height="54" rx="8"/>
+<text x="745" y="268" text-anchor="middle" class="b t-bad">Overfit alarm</text>
+<text x="745" y="286" text-anchor="middle" class="sm">gap large: stop</text>
+<line class="ln good" x1="620" y1="212" x2="616" y2="242" marker-end="url(#m13l)"/>
+<line class="ln bad" x1="740" y1="212" x2="744" y2="242" marker-end="url(#m13l)"/>
+</svg>
+<figcaption><b>The optimize-evaluate loop, with a held-out gate.</b> The optimizer only ever sees scores (and feedback) from the train and validation splits. The test split, a second judge, humans and canary items sit behind a gate that is used rarely, on the final candidate. The gap between what the optimizer saw and what the gate sees is your overfitting measurement.</figcaption>
+</figure>
+
+<h3>Three ways to climb an eval</h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>What changes</th><th>How it uses your eval</th><th>Typical cost</th></tr>
+<tr><td><b>Manual iteration</b></td><td>Prompts, tools, harness</td><td>You read failures and edit (the error-analysis loop of <a href="12-error-analysis.html">Module 12</a>)</td><td>Your time; slow but insightful</td></tr>
+<tr><td><b>Automatic prompt and program optimization</b> (DSPy optimizers, GEPA)</td><td>Instructions, few-shot examples, any text parameter</td><td>The eval metric is the objective function; some optimizers also read the grader's written feedback</td><td>Tens to thousands of rollouts; no weight updates</td></tr>
+<tr><td><b>Reinforcement learning</b> (RLVR, RL environments)</td><td>Model weights</td><td>The grader's score becomes the reward for each rollout</td><td>Many rollouts, GPUs, a training stack</td></tr>
+</table></div>
+
+<h3>Prompt and program optimizers: DSPy and GEPA</h3>
+<p><b><a href="https://dspy.ai/">DSPy</a></b> (Stanford NLP) lets you write an LLM pipeline as a program of modules, each with a declared input and output "signature", and then <em>compile</em> it against a metric you supply. The <a href="https://github.com/stanfordnlp/dspy/blob/main/docs/docs/learn/optimization/optimizers.md">optimizers</a> differ in what they search over. <code>BootstrapFewShot</code> runs the program on training examples, keeps the traces that pass your metric, and uses them as few-shot demonstrations. <code>MIPROv2</code> proposes candidate instructions and demonstration sets and searches over combinations of them, scoring each on your metric. In every case <b>your eval metric is literally the objective function</b>: if it is noisy, biased or gameable, the optimizer inherits exactly that.</p>
+<p><b><a href="https://github.com/gepa-ai/gepa">GEPA</a></b> (Agrawal et al., <a href="https://arxiv.org/abs/2507.19457">"GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning"</a>, July 2025) goes further in using the eval. Instead of reading only a number, it reads the <b>trajectories and the grader's written feedback</b> (a judge's critique, a compiler error, which unit test failed), asks an LLM to reflect in natural language on what went wrong, and proposes an improved prompt. It keeps a <b>Pareto front</b> of candidates, meaning every candidate that is the best on at least one training example, rather than only the single best average, which keeps diverse strategies alive. The paper reports beating the RL method GRPO on its tasks while using far fewer rollouts, and beating MIPROv2. GEPA is available inside DSPy as <code>dspy.GEPA</code> and as a standalone library that can optimize any text component of a system.</p>
+<p>The practical consequence for eval designers: <b>write graders whose feedback explains the verdict</b>. A judge that returns "FAIL: cited a source that does not contain the claim" gives a reflective optimizer something to work with; a bare 0 does not. The critique-before-verdict judge design earlier in this module is exactly what these optimizers want.</p>
+
+<pre data-lang="python"><code>import dspy
+
+dspy.configure(lm=dspy.LM("anthropic/claude-sonnet-5-5"))      # the model the program uses
+
+class Triage(dspy.Signature):
+    """Route a support ticket to exactly one queue."""
+    ticket: str = dspy.InputField()
+    queue: str = dspy.OutputField(desc="one of: billing, bug, account, other")
+
+program = dspy.ChainOfThought(Triage)
+
+# GEPA metrics return a score AND written feedback the reflection step can read.
+def metric(gold, pred, trace=None, pred_name=None, pred_trace=None):
+    ok = pred.queue.strip().lower() == gold.queue
+    feedback = "Correct." if ok else (
+        f"Predicted '{pred.queue}', expected '{gold.queue}'. Labeler's reason: {gold.why}")
+    return dspy.Prediction(score=float(ok), feedback=feedback)
+
+def score_only(gold, pred, trace=None):                          # plain number for reporting
+    return metric(gold, pred).score
+
+# Examples look like dspy.Example(ticket=..., queue=..., why=...).with_inputs("ticket")
+train, val, test = load_splits()        # disjoint splits; test is never passed to the optimizer
+
+optimizer = dspy.GEPA(metric=metric, auto="light",
+                      reflection_lm=dspy.LM("anthropic/claude-sonnet-5-5", temperature=1.0))
+optimized = optimizer.compile(program, trainset=train, valset=val)
+
+# Report THIS number, measured once on the locked split, not the val score GEPA climbed.
+dspy.Evaluate(devset=test, metric=score_only, num_threads=8, display_progress=True)(optimized)</code></pre>
+<p>(API as documented for recent DSPy releases; check the <a href="https://dspy.ai/current/api/optimizers/GEPA/overview/">GEPA docs</a> for current arguments. <code>load_splits</code> is your own function.)</p>
+
+<h3>Eval tasks become RL environments and rewards</h3>
+<p>The step from "eval" to "training signal" is shorter than it looks. <b>RLVR</b> (reinforcement learning with verifiable rewards, a term popularized by Ai2's <a href="https://arxiv.org/abs/2411.15124">Tülu 3</a> work in 2024) trains a model with rewards computed by a checker instead of a learned reward model: 1 if the math answer matches, if the code passes its tests, if the output satisfies the constraints; 0 otherwise. Those checkers are the same code graders from <a href="03-graders.html">Module 03</a>. The IFEval-style constraint checkers from <a href="06-tool-use-and-conversation.html">Module 06</a> are used exactly this way: the IFBench paper trains with them as rewards.</p>
+<p>For agents, the unit is an <b>environment</b>: a dataset of tasks, a rollout protocol (single turn, multi-turn with a simulated user, tool use, a sandbox), and a rubric of reward functions. That is the same anatomy as an agent eval (<a href="02-anatomy-of-an-eval.html">Module 02</a>, <a href="05-agents-are-different.html">Module 05</a>), which is why the same object can serve both jobs.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 305" role="img" aria-label="One environment, two uses. The environment bundles a dataset, a rollout harness and a rubric of reward functions. The policy model produces rollouts in it. Used as an eval, the scores are averaged and reported with a confidence interval. Used for training, the scores become rewards that update the policy's weights, which loops back to the policy.">
+<defs><marker id="m13m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="110" width="150" height="70" rx="10"/>
+<text x="95" y="138" text-anchor="middle" class="b">Model</text>
+<text x="95" y="158" text-anchor="middle" class="sm">(the "policy")</text>
+<rect class="box dashed" x="220" y="16" width="290" height="254" rx="12"/>
+<text x="365" y="40" text-anchor="middle" class="b">Environment</text>
+<rect class="box accent" x="240" y="54" width="250" height="54" rx="8"/>
+<text x="365" y="76" text-anchor="middle" class="b">Dataset</text>
+<text x="365" y="96" text-anchor="middle" class="sm">tasks + reference answers</text>
+<rect class="box violet" x="240" y="130" width="250" height="54" rx="8"/>
+<text x="365" y="152" text-anchor="middle" class="b">Rollout harness</text>
+<text x="365" y="172" text-anchor="middle" class="sm">single-turn, multi-turn, tools, sandbox</text>
+<rect class="box good" x="240" y="206" width="250" height="54" rx="8"/>
+<text x="365" y="228" text-anchor="middle" class="b">Rubric</text>
+<text x="365" y="248" text-anchor="middle" class="sm">reward functions × weights</text>
+<line class="ln" x1="365" y1="108" x2="365" y2="126" marker-end="url(#m13m)"/>
+<line class="ln" x1="365" y1="184" x2="365" y2="202" marker-end="url(#m13m)"/>
+<line class="ln accent flow" x1="170" y1="145" x2="236" y2="145" marker-end="url(#m13m)"/>
+<text x="203" y="136" text-anchor="middle" class="sm">rollouts</text>
+<rect class="box good" x="560" y="30" width="240" height="96" rx="10"/>
+<text x="680" y="56" text-anchor="middle" class="b">Used as an eval</text>
+<text x="680" y="78" text-anchor="middle" class="sm">score N rollouts per task,</text>
+<text x="680" y="96" text-anchor="middle" class="sm">report mean ± CI, pass^k</text>
+<text x="680" y="114" text-anchor="middle" class="sm t-muted">weights untouched</text>
+<rect class="box violet" x="560" y="160" width="240" height="96" rx="10"/>
+<text x="680" y="186" text-anchor="middle" class="b">Used for training (RL)</text>
+<text x="680" y="208" text-anchor="middle" class="sm">score = reward per rollout,</text>
+<text x="680" y="226" text-anchor="middle" class="sm">policy-gradient update</text>
+<text x="680" y="244" text-anchor="middle" class="sm t-muted">weights change</text>
+<line class="ln good" x1="510" y1="100" x2="556" y2="80" marker-end="url(#m13m)"/>
+<line class="ln violet" x1="510" y1="220" x2="556" y2="210" marker-end="url(#m13m)"/>
+<path class="ln violet flow" d="M680,256 L680,290 L95,290 L95,184" marker-end="url(#m13m)"/>
+<text x="400" y="284" text-anchor="middle" class="sm t-violet">updated weights</text>
+</svg>
+<figcaption><b>One environment, two uses.</b> The dataset, rollout harness and rubric are the same whether you are measuring a model or training it. In eval mode the scores are reported; in training mode they become rewards and the weights move. That is why every weakness in a rubric becomes a target once the environment is used for RL.</figcaption>
+</figure>
+
+<p>Prime Intellect's open-source <b><a href="https://github.com/PrimeIntellect-ai/verifiers">verifiers</a></b> library, which describes itself as a library "for RL environments + evals", is built on exactly this idea. An environment is a Python package exposing a <code>load_environment()</code> function that returns an environment object bundling a dataset, a rollout type and a <b>rubric</b> of weighted reward functions; the same environment can be run as an evaluation or plugged into an RL trainer (Prime Intellect's own is prime-rl). The company's <b><a href="https://www.primeintellect.ai/blog/environments">Environments Hub</a></b>, launched in 2025, is a community registry where people publish and reuse these environments. A sketch of the shape (the library moves fast, so check its docs for current class names):</p>
+<pre data-lang="python"><code>import verifiers as vf
+from datasets import Dataset
+
+def load_environment(**kwargs) -&gt; vf.Environment:
+    dataset = Dataset.from_list([
+        {"question": "In exactly 3 bullet points, say why evals matter.", "answer": "3"},
+        # ... more tasks with checkable answers
+    ])
+
+    def exact_bullets(completion, answer, **kwargs) -&gt; float:
+        text = completion if isinstance(completion, str) else completion[-1]["content"]
+        bullets = [l for l in text.splitlines() if l.lstrip().startswith(("-", "*"))]
+        return 1.0 if len(bullets) == int(answer) else 0.0
+
+    def has_content(completion, **kwargs) -&gt; float:    # guard: empty bullets must not score
+        text = completion if isinstance(completion, str) else completion[-1]["content"]
+        return 1.0 if len(text.split()) &gt;= 15 else 0.0
+
+    rubric = vf.Rubric(funcs=[exact_bullets, has_content], weights=[1.0, 0.5])
+    return vf.SingleTurnEnv(dataset=dataset, rubric=rubric)</code></pre>
+<p>Notice the second reward function. Without it, a policy trained on this environment would quickly learn that "- a\n- b\n- c" earns full marks. That is Goodhart's law in four lines, and it leads to the defenses.</p>
+
+<h3>Overfitting and Goodhart: the defenses</h3>
+<p>An optimizer is an adversary with your eval's source code. The general phenomenon is covered in <a href="18-benchmark-pitfalls.html">Module 18</a> (Goodhart's law, reward hacking in agent evals); here are the defenses specific to optimizing against your own eval.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Illustrative chart over ten optimization rounds. The optimized metric on train and validation with judge A keeps rising to about 91%. The held-out test with judge B and humans rises to about 76% by round 4 or 5, then falls to about 68%. The widening gap is labeled overfitting, and the best checkpoint is where the held-out score peaks.">
+<line class="ln" x1="80" y1="280" x2="570" y2="280"/>
+<line class="ln" x1="80" y1="280" x2="80" y2="50"/>
+<text x="72" y="284" text-anchor="end" class="sm">50%</text>
+<text x="72" y="174" text-anchor="end" class="sm">75%</text>
+<text x="72" y="64" text-anchor="end" class="sm">100%</text>
+<text x="30" y="165" text-anchor="middle" class="sm" transform="rotate(-90 30 165)">score</text>
+<text x="80" y="298" text-anchor="middle" class="sm">0</text>
+<text x="176" y="298" text-anchor="middle" class="sm">2</text>
+<text x="272" y="298" text-anchor="middle" class="sm">4</text>
+<text x="368" y="298" text-anchor="middle" class="sm">6</text>
+<text x="464" y="298" text-anchor="middle" class="sm">8</text>
+<text x="560" y="298" text-anchor="middle" class="sm">10</text>
+<polygon class="fill-bad" fill-opacity="0.15" points="320,130 368,122 416,113 464,108 512,104 560,100 560,201 512,192 464,183 416,174 368,170 320,166"/>
+<polyline class="ln accent thick" points="80,227 128,192 176,170 224,152 272,139 320,130 368,122 416,113 464,108 512,104 560,100"/>
+<polyline class="ln warn thick" points="80,227 128,196 176,179 224,170 272,166 320,166 368,170 416,174 464,183 512,192 560,201"/>
+<line class="ln dash good" x1="296" y1="56" x2="296" y2="280"/>
+<text x="290" y="70" text-anchor="end" class="sm b t-good">best checkpoint:</text>
+<text x="290" y="86" text-anchor="end" class="sm t-good">held-out score peaks</text>
+<text x="486" y="152" text-anchor="middle" class="b t-bad">overfitting gap</text>
+<text x="580" y="96" class="sm b t-accent">optimized metric</text>
+<text x="580" y="112" class="sm t-accent">train/val, judge A</text>
+<text x="580" y="200" class="sm b t-warn">held-out test</text>
+<text x="580" y="216" class="sm t-warn">judge B + human sample</text>
+</svg>
+<figcaption><b>What overfitting to your own eval looks like.</b> The number the optimizer sees keeps rising; the number it cannot see peaks and then falls, as the candidate learns the judge's quirks and the training items rather than the task. Stop at the held-out peak and report the held-out number. Illustrative curves, not real data; x-axis is optimization rounds.</figcaption>
+</figure>
+
+<div class="grid2">
+<div class="card good"><h4>Held-out splits</h4><p>Split once, before optimizing: train (the optimizer's working set), validation (candidate selection), test (locked). Count how often you look at test; every look leaks a little. Refresh the test set with new production samples periodically, and check the optimized prompt for text copied from any split (optimizers happily paste training answers into instructions).</p></div>
+<div class="card accent"><h4>Judge rotation</h4><p>Optimize against judge A, report with judge B from a different model family, plus a human spot-check. If A and B disagree much more after optimization than before, the candidate is exploiting A. For long campaigns, rotate the optimization judge or use a jury, so no single judge's quirks become the target.</p></div>
+<div class="card warn"><h4>Canaries</h4><p>Two kinds. <b>Exploit canaries</b>: items where the only way to score is to game the grader (a response that flatters the judge, a test file the agent could edit, a task with no valid answer). A rising score on these means hacking, not skill. <b>Contamination canaries</b>: a unique string in your eval files, so you can detect if they leak into training data or prompts (<a href="18-benchmark-pitfalls.html">Module 18</a>).</p></div>
+<div class="card bad"><h4>Guardrail metrics</h4><p>Track what must not move while the target metric rises: response length, cost, refusal rate, latency, the other judges' scores. A 5-point gain that comes with 60% longer answers is probably a verbosity exploit. Make these part of the ship gate, not an afterthought.</p></div>
+</div>
+
+<p>Worked example: a GEPA run lifts the validation score from 0.62 to 0.81. On the locked test split with the same judge, the optimized prompt scores 0.74; with judge B, 0.71; on a 60-item human-labeled sample, 0.70. The baseline prompt scored 0.63 on the same human sample, so the honest claim is "about +7 points on human labels (0.63 to 0.70)", not "+19". The 11-point gap between validation and human labels is the price of optimizing on a small validation set against one judge, and the signal to add data, add a second judge to the objective, or stop earlier.</p>
+
 <h2>Judging agents</h2>
 <p>Agents add two things a single-answer judge was never built for: a long <b>process</b> (the trajectory) and a changed <b>world</b> (the end state). <a href="05-agents-are-different.html">Module 05</a> covers agent evals broadly; here is how judges fit.</p>
 
@@ -1257,6 +1465,8 @@ print(f"TPR={tpr:.2f} TNR={tnr:.2f} observed=0.660 corrected={theta:.3f} "
 <li>Correct the observed pass rate with θ = (p_obs + TNR − 1) / (TPR + TNR − 1), and bootstrap both the labelled set and the judged set for an honest interval.</li>
 <li>More expert labels narrow the interval far more than judging more traces. Budget for labels.</li>
 <li>The same grader used as an RL reward gets actively exploited, so keep a held-out human check the optimisation never sees.</li>
+<li>Prompt optimizers (DSPy, GEPA) and RL environments (RLVR, verifiers) turn your eval into the objective. Graders that explain their verdicts make better objectives, and every gap in a rubric becomes a target.</li>
+<li>Defend with a locked test split, a different judge plus humans for the final number, exploit and contamination canaries, and guardrail metrics; report the held-out score, never the one the optimizer climbed.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1293,6 +1503,16 @@ print(f"TPR={tpr:.2f} TNR={tnr:.2f} observed=0.660 corrected={theta:.3f} "
 <button class="opt">The judge cannot produce JSON</button>
 <button class="opt">The policy is optimised to exploit the judge's biases (reward hacking), amplifying them</button>
 <div class="why">In an eval, a bias shifts a number. In training, the policy actively searches for whatever the grader over-rewards: length, confidence, formatting. Keep a held-out human check the optimisation never touches.</div></div>
+<div class="q" data-answer="1"><p>7. GEPA raised your validation score from 0.60 to 0.84. What should you report?</p>
+<button class="opt">+24 points, since validation is held out from training</button>
+<button class="opt">The score on a locked test split the optimizer never saw, ideally with a different judge and a human sample, compared against the baseline on the same items</button>
+<button class="opt">The average of train and validation scores</button>
+<div class="why">The optimizer selected candidates using the validation set, so that score is biased upward. Only a split and a judge that played no part in the search give an honest estimate of the gain.</div></div>
+<div class="q" data-answer="0"><p>8. During RL training on your environment, the reward keeps rising, but so do your "exploit canary" items (tasks where the only way to score is to game the grader). What does that mean?</p>
+<button class="opt">The policy is learning to exploit the rubric; fix the reward functions before training further</button>
+<button class="opt">The model is getting generally smarter</button>
+<button class="opt">The canaries are too easy and should be removed</button>
+<div class="why">Canary items are designed so that genuine skill cannot raise their score. Gains there are reward hacking, which will also be inflating the main reward.</div></div>
 </div>
 
 <details><summary>Interview questions (with model answers)</summary>
@@ -1331,6 +1551,9 @@ print(f"TPR={tpr:.2f} TNR={tnr:.2f} observed=0.660 corrected={theta:.3f} "
 <li>Anthropic, <a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">Define success criteria and build evaluations</a> (LLM-grader tips) and <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (2026).</li>
 <li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices">Evaluation best practices</a> and <a href="https://developers.openai.com/api/docs/guides/reinforcement-fine-tuning">Reinforcement fine-tuning</a> (graders as rewards).</li>
 <li>OpenAI, <a href="https://openai.com/index/healthbench/">HealthBench</a> (2025) and <a href="https://arxiv.org/abs/2504.01848">PaperBench</a> (2025): rubric judges validated against experts.</li>
+<li>Agrawal et al., <a href="https://arxiv.org/abs/2507.19457">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a> (July 2025); <a href="https://github.com/gepa-ai/gepa">gepa-ai/gepa</a>; DSPy, <a href="https://dspy.ai/current/api/optimizers/GEPA/overview/">GEPA optimizer docs</a> and <a href="https://github.com/stanfordnlp/dspy/blob/main/docs/docs/learn/optimization/optimizers.md">optimizers overview</a> (BootstrapFewShot, MIPROv2).</li>
+<li>Lambert et al. (Ai2), <a href="https://arxiv.org/abs/2411.15124">Tülu 3: Pushing Frontiers in Open Language Model Post-Training</a> (2024): RLVR; Pyatkin et al., <a href="https://arxiv.org/abs/2507.02833">Generalizing Verifiable Instruction Following</a> (IFBench, 2025): constraint checkers as rewards.</li>
+<li>Prime Intellect, <a href="https://github.com/PrimeIntellect-ai/verifiers">verifiers: a library for RL environments and evals</a>, <a href="https://docs.primeintellect.ai/tutorials-environments/environments">environments docs</a> and <a href="https://www.primeintellect.ai/blog/environments">Environments Hub announcement</a>.</li>
 <li>Google, <a href="https://adk.dev/evaluate/criteria/">ADK evaluation criteria</a> (trajectory and rubric judges).</li>
 </ul>
 

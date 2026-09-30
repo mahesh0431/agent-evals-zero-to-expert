@@ -408,3 +408,15 @@ figure.diagram:hover .zoombtn, .zoombtn:focus-visible { opacity: 1; }
 .lightbox .lbinner svg text.sm { fill: var(--muted); font-size: 11px; }
 .lightbox .lbcap { max-width: 900px; font-size: 14px; color: var(--muted); text-align: center; }
 .lightbox .lbclose { position: absolute; top: 14px; right: 16px; }
+
+/* color classes win over the muted default for small text, inline and in the lightbox */
+.diagram svg text.t-accent, .diagram svg text.sm.t-accent { fill: var(--accent); }
+.diagram svg text.t-good, .diagram svg text.sm.t-good { fill: var(--good); }
+.diagram svg text.t-bad, .diagram svg text.sm.t-bad { fill: var(--bad); }
+.diagram svg text.t-warn, .diagram svg text.sm.t-warn { fill: var(--warn); }
+.diagram svg text.t-violet, .diagram svg text.sm.t-violet { fill: var(--violet); }
+.lightbox .lbinner svg text.t-accent { fill: var(--accent); }
+.lightbox .lbinner svg text.t-good { fill: var(--good); }
+.lightbox .lbinner svg text.t-bad { fill: var(--bad); }
+.lightbox .lbinner svg text.t-warn { fill: var(--warn); }
+.lightbox .lbinner svg text.t-violet { fill: var(--violet); }

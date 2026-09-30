@@ -25,17 +25,17 @@
 <div class="legend3d">Tasks → Agent ⇄ Environment → Graders → Metrics → better Tasks · drag to rotate</div>
 </div>
 <div class="stats" aria-label="Course at a glance">
-<div><b>23</b><span>modules, beginner to expert</span></div>
-<div><b>200+</b><span>hand-drawn diagrams</span></div>
+<div><b>28</b><span>modules, beginner to expert</span></div>
+<div><b>400+</b><span>hand-drawn diagrams</span></div>
 <div><b>12</b><span>interactive widgets</span></div>
 <div><b>7</b><span>agent modalities covered</span></div>
-<div><b>1</b><span>runnable capstone eval</span></div>
+<div><b>5</b><span>runnable example evals</span></div>
 </div>
 <script src="assets/vendor/three.min.js" defer></script>
 <script src="assets/hero3d.js" defer></script>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 330" role="img" aria-label="The course path: four parts from foundations through agent evals by modality, practice, and expert topics, plus a fifth part on evaluating the building blocks of every agent: harness, skills and memory.">
+<svg viewBox="0 0 840 408" role="img" aria-label="The course path: four parts from foundations through agent evals by modality, practice, and expert topics; a fifth part on the building blocks of every agent (harness, skills, memory, tools and MCP); and a sixth part on security, deep research and real work, domain evals, and governance.">
 <defs><marker id="h0a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box good" x="10" y="40" width="185" height="170" rx="10"/>
 <text x="102" y="66" text-anchor="middle" class="lg t-good">I · Foundations</text>
@@ -77,14 +77,27 @@
 <rect class="box" x="10" y="252" width="820" height="66" rx="10"/>
 <text x="26" y="278" class="lg t-accent">V · Building blocks</text>
 <text x="26" y="302" class="sm t-muted">parts inside every agent</text>
-<rect class="box accent" x="250" y="264" width="180" height="42" rx="8"/>
-<text x="340" y="290" text-anchor="middle" class="sm b">21 Harness evals</text>
-<rect class="box good" x="445" y="264" width="180" height="42" rx="8"/>
-<text x="535" y="290" text-anchor="middle" class="sm b">22 Skills evals</text>
-<rect class="box violet" x="640" y="264" width="180" height="42" rx="8"/>
-<text x="730" y="290" text-anchor="middle" class="sm b">23 Memory evals</text>
+<rect class="box accent" x="232" y="264" width="142" height="42" rx="8"/>
+<text x="303" y="290" text-anchor="middle" class="sm b">21 Harness</text>
+<rect class="box good" x="384" y="264" width="142" height="42" rx="8"/>
+<text x="455" y="290" text-anchor="middle" class="sm b">22 Skills</text>
+<rect class="box violet" x="536" y="264" width="142" height="42" rx="8"/>
+<text x="607" y="290" text-anchor="middle" class="sm b">23 Memory</text>
+<rect class="box warn" x="688" y="264" width="130" height="42" rx="8"/>
+<text x="753" y="290" text-anchor="middle" class="sm b">24 Tools &amp; MCP</text>
+<rect class="box" x="10" y="330" width="820" height="66" rx="10"/>
+<text x="26" y="356" class="lg t-violet">VI · Beyond the core</text>
+<text x="26" y="380" class="sm t-muted">security, real work, domains, law</text>
+<rect class="box bad" x="232" y="342" width="142" height="42" rx="8"/>
+<text x="303" y="368" text-anchor="middle" class="sm b">25 Security</text>
+<rect class="box accent" x="384" y="342" width="142" height="42" rx="8"/>
+<text x="455" y="368" text-anchor="middle" class="sm b">26 Research &amp; work</text>
+<rect class="box good" x="536" y="342" width="142" height="42" rx="8"/>
+<text x="607" y="368" text-anchor="middle" class="sm b">27 Domains</text>
+<rect class="box violet" x="688" y="342" width="130" height="42" rx="8"/>
+<text x="753" y="368" text-anchor="middle" class="sm b">28 Governance</text>
 </svg>
-<figcaption><b>The path.</b> Twenty-three modules in five parts. Part V zooms in on the building blocks every agent shares: its harness, its skills and its memory. Each one is built around diagrams, with code you can run and a short self-check at the end.</figcaption>
+<figcaption><b>The path.</b> Twenty-eight modules in six parts. Part V zooms in on the building blocks every agent shares: its harness, skills, memory, and tools. Part VI goes beyond the core: agent security, deep research and real work, domain evals, and governance. Each one is built around diagrams, with code you can run and a short self-check at the end.</figcaption>
 </figure>
 
 <h2>How to use this course</h2>
@@ -98,7 +111,9 @@
 <ul>
 <li>Design an eval for any agent: tool-using assistants, coding agents, browser and desktop agents, voice agents, image and video agents, multi-agent systems.</li>
 <li>Choose and validate graders, including LLM judges you can actually trust.</li>
-<li>Evaluate the building blocks inside an agent on their own: the harness around the model, the skills it loads, and its long-term memory.</li>
+<li>Evaluate the building blocks inside an agent on their own: the harness around the model, the skills it loads, its long-term memory, and the tools and MCP servers it calls.</li>
+<li>Test agents against prompt injection and tool poisoning, grade deep-research reports and real work deliverables, and build expert-rubric evals for health, law, finance and data.</li>
+<li>Produce the kind of eval evidence regulators and standards ask for: EU AI Act duties, NIST AI RMF, ISO/IEC 42001, and safety cases.</li>
 <li>Report results with honest error bars, and know when a difference is real.</li>
 <li>Read any benchmark paper or model system card critically: what it measures, how it is scored, how it can be gamed.</li>
 <li>Pick the right tool (Inspect, promptfoo, Braintrust, LangSmith, Langfuse, DeepEval, Ragas, OpenAI Evals and others) and explain how they differ.</li>
@@ -110,7 +125,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const host = document.getElementById("modlist");
-  const tones = ["good", "accent", "warn", "violet", "accent"];
+  const tones = ["good", "accent", "warn", "violet", "accent", "violet"];
   host.innerHTML = window.AEZ.PARTS.map((p, i) => `<div class="card ${tones[i]}"><h4>${p.title}</h4><ol start="${+p.mods[0][0]}">` +
     p.mods.map(m => `<li><a href="modules/${m[0]}-${m[1]}.html">${m[2]}</a></li>`).join("") + `</ol></div>`).join("");
 });
