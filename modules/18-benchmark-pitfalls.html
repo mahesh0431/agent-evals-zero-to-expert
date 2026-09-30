@@ -16,7 +16,7 @@
 <div class="kicker">Module 18 · Part IV · Expert</div>
 <h1>Benchmark pitfalls: how scores lie, and how to read them</h1>
 <p class="lede">Every benchmark number is a measurement taken with an imperfect instrument, on a test that may have leaked, by a system that may have learned to game it, reported by someone who chose which number to show you. This module teaches you to see all of that at a glance.</p>
-<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~60 min</span><span class="pill">Prerequisites: <a href="04-metrics-and-statistics.html">Module 04</a>, <a href="07-coding-agents.html">Module 07</a></span></div>
+<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~80 min</span><span class="pill">Prerequisites: <a href="04-metrics-and-statistics.html">Module 04</a>, <a href="07-coding-agents.html">Module 07</a></span></div>
 
 <div class="objectives">
 <h3>By the end of this module you can</h3>
@@ -24,7 +24,9 @@
 <li>Describe the life cycle of a benchmark (release, hill-climbing, saturation, retirement) and say where a given benchmark sits today.</li>
 <li>Explain contamination, detect it with canaries, n-gram overlap, membership tests and time windows, and recognise it in the 2026 SWE-bench Verified audit.</li>
 <li>Name the main ways a score becomes misleading: label noise, Goodhart effects, leaderboard gaming, harness differences, reward hacking, grader bugs, flaky environments and weak construct validity.</li>
+<li>Explain why sandbox resources (infrastructure noise) and automated optimizers (DSPy, GEPA, RL on your eval) make scores less trustworthy, and what to pin or hold out.</li>
 <li>Show with a simulation why a 2-point gap on 100 items is usually noise, and compute a paired bootstrap interval.</li>
+<li>Review your own agentic benchmark with the Agentic Benchmark Checklist (task validity, outcome validity, reporting).</li>
 <li>Interrogate any benchmark claim with a 15-question checklist, and design a benchmark that stays useful for years.</li>
 </ul>
 </div>
@@ -419,6 +421,49 @@ for row in contamination_report(test, idx, n=8):
 <div class="card warn"><h4>Style over substance</h4><p>On preference leaderboards, length and formatting win votes. LMArena added "style control" to adjust for response length and markdown because raw preference was partly measuring presentation.</p></div>
 </div>
 
+<h3>When an optimizer, not a person, climbs your eval</h3>
+<p>"Adaptive overfitting" above describes people looking at results and tweaking. That loop is now automated. Prompt and program optimizers such as <a href="https://dspy.ai/">DSPy</a> and <a href="https://github.com/gepa-ai/gepa">GEPA</a> take your eval score as the <b>objective</b> and search over instructions, few-shot examples and agent programs to maximize it, often by having an LLM read failing traces and propose edits. Reinforcement learning goes one step further: an eval task with an automatic check can be packaged as an <b>RL environment</b> (libraries such as Prime Intellect's <a href="https://github.com/PrimeIntellect-ai/verifiers">verifiers</a> do exactly this), and the grader becomes the reward the model is trained on.</p>
+<p>Each step raises the optimization pressure on the same measure, so Goodhart's law bites harder and sooner. An optimizer tries thousands of variants and finds a grader's quirks far faster than a human would; RL training turns those quirks into learned behavior, which is where the reward hacking in the next section comes from. If the grader is an LLM judge, optimizing against it will find the judge's biases (length, confident tone, keyword matching) unless the judge was validated first. <a href="13-llm-as-judge.html">Module 13</a> covers how judges relate to reward models and RL graders in depth. The defenses are the ones this module keeps returning to, applied more strictly: a <b>held-out set the optimizer never sees</b> (not even its scores), fresh tasks on a schedule, validated graders, and reading the transcripts of the winning variant before trusting its score.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="An optimizer such as DSPy, GEPA or an RL trainer proposes a candidate prompt, agent or set of weights; it runs on your dev eval, is graded, and the score feeds back to the optimizer. An illustrative chart shows the dev-set score rising steadily over rounds while the held-out score levels off, opening a Goodhart gap.">
+<defs><marker id="m18m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="40" width="180" height="56" rx="8"/>
+<text x="110" y="64" text-anchor="middle" class="b">Optimizer</text>
+<text x="110" y="82" text-anchor="middle" class="sm">DSPy, GEPA, RL trainer</text>
+<rect class="box plain" x="280" y="40" width="180" height="56" rx="8"/>
+<text x="370" y="64" text-anchor="middle" class="b">Candidate</text>
+<text x="370" y="82" text-anchor="middle" class="sm">prompt, agent or weights</text>
+<rect class="box warn" x="280" y="170" width="180" height="56" rx="8"/>
+<text x="370" y="194" text-anchor="middle" class="b">Your eval (dev set)</text>
+<text x="370" y="212" text-anchor="middle" class="sm">same tasks every round</text>
+<rect class="box good" x="20" y="170" width="180" height="56" rx="8"/>
+<text x="110" y="194" text-anchor="middle" class="b">Score</text>
+<text x="110" y="212" text-anchor="middle" class="sm">the objective to maximize</text>
+<line class="ln accent flow" x1="200" y1="68" x2="276" y2="68" marker-end="url(#m18m)"/>
+<text x="238" y="60" text-anchor="middle" class="sm">proposes</text>
+<line class="ln accent flow" x1="370" y1="96" x2="370" y2="166" marker-end="url(#m18m)"/>
+<text x="378" y="136" class="sm">runs on</text>
+<line class="ln accent flow" x1="280" y1="198" x2="204" y2="198" marker-end="url(#m18m)"/>
+<text x="242" y="190" text-anchor="middle" class="sm">graded</text>
+<line class="ln accent flow" x1="110" y1="170" x2="110" y2="100" marker-end="url(#m18m)"/>
+<text x="118" y="140" class="sm">feedback</text>
+<text x="240" y="258" text-anchor="middle" class="sm">each round leaks a little of the dev set into the system</text>
+<line class="ln" x1="540" y1="230" x2="800" y2="230"/>
+<line class="ln" x1="540" y1="230" x2="540" y2="60"/>
+<text x="670" y="250" text-anchor="middle" class="sm">optimization rounds →</text>
+<text x="526" y="145" text-anchor="middle" class="sm" transform="rotate(-90 526 145)">score</text>
+<line class="ln accent thick" x1="552" y1="28" x2="576" y2="28"/><text x="584" y="32" class="sm">dev-set score (optimized on)</text>
+<line class="ln good thick" x1="552" y1="46" x2="576" y2="46"/><text x="584" y="50" class="sm">held-out score (never seen)</text>
+<path class="ln accent thick" d="M545,212 C610,160 680,110 790,76"/>
+<path class="ln good thick" d="M545,214 C600,178 650,160 790,158"/>
+<line class="ln bad" x1="770" y1="84" x2="770" y2="152" marker-start="url(#m18m)" marker-end="url(#m18m)"/>
+<text x="760" y="116" text-anchor="end" class="b t-bad">Goodhart</text>
+<text x="760" y="132" text-anchor="end" class="b t-bad">gap</text>
+</svg>
+<figcaption><b>Automated optimization is Goodhart on fast-forward.</b> The loop on the left runs hundreds or thousands of times, each time using the dev-set score. The chart is an illustrative shape, not real data: without a held-out set the optimizer never sees, you only ever observe the top curve.</figcaption>
+</figure>
+
 <h2>Leaderboard gaming: The Leaderboard Illusion</h2>
 <p>In April 2025, Singh et al. (Cohere and collaborators) published <b>"The Leaderboard Illusion"</b>, a study of Chatbot Arena (now LMArena), the crowd-voted leaderboard where users compare two anonymous models and vote for the better answer. Ratings are fitted with a Bradley-Terry model (a statistical model that turns pairwise wins into a score). The paper documented three structural problems:</p>
 <ol>
@@ -536,6 +581,70 @@ for row in contamination_report(test, idx, n=8):
 <tr><td><b>Tools allowed</b></td><td>Humanity's Last Exam with and without search or code execution are different benchmarks in practice.</td><td>"no tools", "with search", "with python"</td></tr>
 <tr><td><b>Reasoning effort</b></td><td>Many models have effort or thinking-budget settings that trade cost for score.</td><td>Effort setting and cost per task</td></tr>
 </table></div>
+
+<h3>Infrastructure noise: the machine is part of the setup</h3>
+<p>The table above lists knobs that people choose on purpose. One more knob is usually not chosen at all: the <b>compute resources of the sandbox</b> the agent runs in (CPU, memory, disk, time limits, how many trials share a machine). In February 2026 Anthropic's engineering blog published <a href="https://www.anthropic.com/engineering/infrastructure-noise">"Quantifying infrastructure noise in agentic coding evals"</a>. Anthropic summarized the result when announcing it: infrastructure configuration can swing agentic coding benchmarks by several percentage points, sometimes more than the leaderboard gap between top models. (Secondary coverage reports swings of more than 6 points between resource configurations.)</p>
+<p>The mechanism is easy to picture. An agentic coding task means installing packages, compiling, running test suites. With tight CPU or memory, those steps run slower or get killed (an out-of-memory kill looks like a crash), more trials hit their time limit, and an agent that would have succeeded is scored as a failure. With generous resources, a brute-force approach that would time out elsewhere can finish. None of that is the model's skill, and none of it appears in a headline number unless someone reports the sandbox spec.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Illustrative chart. Left: the same agent on the same tasks scores 55 percent with tight resources, 60 percent with medium and 63 percent with generous resources, a spread of 8 points. Right: two different models on the same sandbox score 62 and 60 percent, a gap of 2 points. The infrastructure spread is larger than the model gap.">
+<defs><marker id="m18k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="215" y="24" text-anchor="middle" class="lg">Same agent, same tasks, three sandboxes</text>
+<line class="ln" x1="70" y1="250" x2="400" y2="250"/>
+<line class="ln" x1="70" y1="250" x2="70" y2="40"/>
+<text x="62" y="254" text-anchor="end" class="sm">40%</text>
+<text x="62" y="184" text-anchor="end" class="sm">50%</text><line class="ln dash" x1="70" y1="180" x2="400" y2="180" opacity="0.25"/>
+<text x="62" y="114" text-anchor="end" class="sm">60%</text><line class="ln dash" x1="70" y1="110" x2="400" y2="110" opacity="0.25"/>
+<text x="62" y="44" text-anchor="end" class="sm">70%</text><line class="ln dash" x1="70" y1="40" x2="400" y2="40" opacity="0.25"/>
+<rect x="100" y="145" width="56" height="105" rx="3" class="fill-accent"/>
+<text x="128" y="139" text-anchor="middle" class="b">55%</text>
+<rect x="190" y="110" width="56" height="140" rx="3" class="fill-accent"/>
+<text x="218" y="104" text-anchor="middle" class="b">60%</text>
+<rect x="280" y="89" width="56" height="161" rx="3" class="fill-accent"/>
+<text x="308" y="83" text-anchor="middle" class="b">63%</text>
+<text x="128" y="268" text-anchor="middle" class="sm b">tight</text><text x="128" y="284" text-anchor="middle" class="sm">1 CPU · 2 GB</text>
+<text x="218" y="268" text-anchor="middle" class="sm b">medium</text><text x="218" y="284" text-anchor="middle" class="sm">2 CPU · 4 GB</text>
+<text x="308" y="268" text-anchor="middle" class="sm b">generous</text><text x="308" y="284" text-anchor="middle" class="sm">4 CPU · 8 GB</text>
+<line class="ln dash bad" x1="156" y1="145" x2="362" y2="145"/>
+<line class="ln dash bad" x1="336" y1="89" x2="362" y2="89"/>
+<line class="ln bad thick" x1="356" y1="93" x2="356" y2="141" marker-start="url(#m18k)" marker-end="url(#m18k)"/>
+<text x="366" y="114" class="b t-bad">8 pts</text>
+<text x="366" y="130" class="sm t-bad">spread</text>
+<line class="ln dash" x1="430" y1="40" x2="430" y2="280"/>
+<text x="630" y="24" text-anchor="middle" class="lg">Two models, one pinned sandbox</text>
+<line class="ln" x1="480" y1="250" x2="790" y2="250"/>
+<line class="ln" x1="480" y1="250" x2="480" y2="40"/>
+<text x="472" y="254" text-anchor="end" class="sm">40%</text>
+<text x="472" y="184" text-anchor="end" class="sm">50%</text><line class="ln dash" x1="480" y1="180" x2="790" y2="180" opacity="0.25"/>
+<text x="472" y="114" text-anchor="end" class="sm">60%</text><line class="ln dash" x1="480" y1="110" x2="790" y2="110" opacity="0.25"/>
+<text x="472" y="44" text-anchor="end" class="sm">70%</text><line class="ln dash" x1="480" y1="40" x2="790" y2="40" opacity="0.25"/>
+<rect x="520" y="96" width="56" height="154" rx="3" class="fill-violet"/>
+<text x="548" y="90" text-anchor="middle" class="b">62%</text>
+<rect x="610" y="110" width="56" height="140" rx="3" class="fill-violet"/>
+<text x="638" y="104" text-anchor="middle" class="b">60%</text>
+<text x="548" y="268" text-anchor="middle" class="sm b">Model A</text>
+<text x="638" y="268" text-anchor="middle" class="sm b">Model B</text>
+<text x="593" y="284" text-anchor="middle" class="sm">same medium sandbox</text>
+<line class="ln dash good" x1="576" y1="96" x2="708" y2="96"/>
+<line class="ln dash good" x1="666" y1="110" x2="708" y2="110"/>
+<line class="ln good thick" x1="702" y1="96" x2="702" y2="110"/>
+<text x="714" y="100" class="b t-good">2 pts</text>
+<text x="714" y="116" class="sm t-good">model gap</text>
+<text x="410" y="304" text-anchor="middle" class="sm">unpinned infrastructure can outvote the difference between models</text>
+</svg>
+<figcaption><b>The sandbox can move the score more than the model.</b> Illustrative numbers, not Anthropic's data (vertical axes start at 40%). The pattern is the one Anthropic's post warns about: the spread across resource settings for one agent can exceed the gap between two models, so two leaderboard rows run on different machines are not comparable.</figcaption>
+</figure>
+
+<p>What to do about it, whether you read claims or run evals:</p>
+<ul>
+<li><b>Treat resources as part of the configuration.</b> Record CPU, memory, disk, per-task time limit and concurrency next to the model and harness versions, and add them to question 7 of the checklist below ("what budget?").</li>
+<li><b>Compare on identical infrastructure, interleaved.</b> Never compare "baseline last month" with "candidate today on the new cluster". Run both in the same pool, alternating trials.</li>
+<li><b>Separate infrastructure failures from agent failures.</b> Log exit reasons (out-of-memory kill, container failed to start, setup timeout) and report the infrastructure error rate separately, as <a href="04-metrics-and-statistics.html">Module 04</a> recommends. A rising timeout rate is a signal that the machine, not the agent, is deciding outcomes.</li>
+<li><b>Probe for resource sensitivity.</b> Rerun a sample with double the resources. If the score moves, your benchmark is partly measuring hardware, and your error bars should say so.</li>
+<li><b>Prefer shared, standardized harnesses</b> for cross-model claims (HAL, Harbor for Terminal-Bench). <a href="21-harness-evals.html">Module 21</a> covers this from the harness builder's side.</li>
+</ul>
+<p>Try it: run the same agent under different resource limits and compare the spread with the gap between two models.</p>
+<div data-widget="infranoise"></div>
 
 <h2>Reward hacking in agent evals</h2>
 <p><b>Reward hacking</b> (also "specification gaming") is when a system achieves a high score by exploiting a flaw in how success is measured, instead of doing the intended task. It is Goodhart's law performed by the model itself, in real time. Agents are especially prone to it because they have tools: they can read files, run commands and edit anything in their sandbox, including the tests that grade them.</p>
@@ -996,7 +1105,7 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <tr><td>4</td><td>Were all runs and variants reported, or the best?</td><td>"Up to X%", "best configuration", many unreleased variants.</td></tr>
 <tr><td>5</td><td>Who ran it: the vendor, the benchmark authors, or an independent party?</td><td>Only self-reported; no independent reproduction.</td></tr>
 <tr><td>6</td><td>Which harness or scaffold? Is it the same for all compared systems?</td><td>Each vendor uses its own custom agent.</td></tr>
-<tr><td>7</td><td>What budget: steps, turns, wall-clock time, tokens?</td><td>Budget unstated, or different across rows.</td></tr>
+<tr><td>7</td><td>What budget: steps, turns, wall-clock time, tokens, and sandbox resources (CPU, memory, time limit)?</td><td>Budget unstated, or different across rows; rows run on different machines.</td></tr>
 <tr><td>8</td><td>Which tools and input modalities were allowed?</td><td>"With tools" vs "no tools" rows mixed in one table.</td></tr>
 <tr><td>9</td><td>Exactly which version, split or subset?</td><td>Subset chosen by the reporter; version not named.</td></tr>
 <tr><td>10</td><td>What did it cost, and how long did it take?</td><td>A score with no cost when cost varies 10-100x.</td></tr>
@@ -1006,6 +1115,83 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <tr><td>14</td><td>Were transcripts inspected for reward hacking?</td><td>Agent can touch tests or grader; nobody read trajectories.</td></tr>
 <tr><td>15</td><td>Does the benchmark measure what I care about, and is there real-world evidence?</td><td>Benchmark-only evidence for a real-world claim.</td></tr>
 </table></div>
+
+<h2>The Agentic Benchmark Checklist: a review rubric for your own evals</h2>
+<p>The 15 questions above are for reading <em>someone else's</em> claim. When you build or adopt an agentic benchmark, including the private product suite from <a href="12-error-analysis.html">Module 12</a>, you need a rubric for the benchmark itself. The <b>Agentic Benchmark Checklist</b> (ABC; Zhu et al., Daniel Kang's lab at UIUC and collaborators; <a href="https://arxiv.org/abs/2507.02825">arXiv 2507.02825</a>, NeurIPS 2025 Datasets and Benchmarks track; <a href="https://uiuc-kang-lab.github.io/agentic-benchmarks/">project page</a>) distills benchmark-building experience and documented failures into a checklist organized in three parts.</p>
+
+<div class="grid2">
+<div class="card accent"><h4>1 · Task validity</h4><p>A task should be solvable <b>if and only if</b> the agent has the capability being tested. It fails in two directions: the task is impossible (a broken environment, a tool version that no longer behaves as the task assumes, an ambiguous goal), or it is solvable <em>without</em> the capability (a shortcut, such as a reachable answer or future git history).</p></div>
+<div class="card good"><h4>2 · Outcome validity</h4><p>The evaluation result should really indicate success. The ABC breaks this down by grader type (string matching, unit tests, state checks, LLM judges), because each fails differently: substring matching accepts wrong answers, tests miss parts of the task, a state check credits an agent that did nothing when the correct end state equals the start state, a judge is never validated.</p></div>
+<div class="card violet"><h4>3 · Reporting</h4><p>Even a benchmark with known flaws is usable if the reader can tell what the number means. Report known limitations and which checks the benchmark does not pass, statistical uncertainty, baselines (including trivial ones), and the steps taken against contamination and shortcuts.</p></div>
+<div class="card warn"><h4>What the authors found</h4><p>The paper reports that applying the checklist to widely used agentic benchmarks surfaced serious problems; its examples include SWE-bench Verified using insufficient test cases and τ-bench counting empty responses as successful. It reports such issues can misestimate agent performance by up to 100% in relative terms, and that applying ABC to CVE-Bench reduced its performance overestimation by 33%.</p></div>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 420" role="img" aria-label="The Agentic Benchmark Checklist as a review rubric in three columns. Task validity: environment and tool versions pinned, no shortcut to the answer, reference solution passes, infrastructure failures kept separate, goal is unambiguous. Outcome validity: grader accepts all correct forms, empty or do-nothing output fails, tests cover the whole task, judge validated against humans, end state checked. Reporting: known flaws listed, confidence intervals and runs per task, harness budget and cost, contamination risk, null and human baselines. Below, the paper's example findings.">
+<text x="410" y="24" text-anchor="middle" class="lg">Review your benchmark in three passes</text>
+<rect class="box accent" x="10" y="40" width="260" height="276" rx="10"/>
+<rect class="box good" x="280" y="40" width="260" height="276" rx="10"/>
+<rect class="box violet" x="550" y="40" width="260" height="276" rx="10"/>
+<text x="140" y="66" text-anchor="middle" class="lg t-accent">Task validity</text>
+<text x="140" y="84" text-anchor="middle" class="sm">solvable if and only if skilled</text>
+<text x="410" y="66" text-anchor="middle" class="lg t-good">Outcome validity</text>
+<text x="410" y="84" text-anchor="middle" class="sm">a pass really means success</text>
+<text x="680" y="66" text-anchor="middle" class="lg t-violet">Reporting</text>
+<text x="680" y="84" text-anchor="middle" class="sm">the reader knows what it means</text>
+<rect class="box plain" x="26" y="104" width="16" height="16" rx="3"/><text x="52" y="117" class="sm">env and tool versions pinned</text>
+<rect class="box plain" x="26" y="146" width="16" height="16" rx="3"/><text x="52" y="159" class="sm">no shortcut to the answer</text>
+<rect class="box plain" x="26" y="188" width="16" height="16" rx="3"/><text x="52" y="201" class="sm">reference solution passes</text>
+<rect class="box plain" x="26" y="230" width="16" height="16" rx="3"/><text x="52" y="243" class="sm">infra failures kept separate</text>
+<rect class="box plain" x="26" y="272" width="16" height="16" rx="3"/><text x="52" y="285" class="sm">goal is unambiguous</text>
+<rect class="box plain" x="296" y="104" width="16" height="16" rx="3"/><text x="322" y="117" class="sm">grader accepts all correct forms</text>
+<rect class="box plain" x="296" y="146" width="16" height="16" rx="3"/><text x="322" y="159" class="sm b">empty / do-nothing output fails</text>
+<rect class="box plain" x="296" y="188" width="16" height="16" rx="3"/><text x="322" y="201" class="sm b">tests cover the whole task</text>
+<rect class="box plain" x="296" y="230" width="16" height="16" rx="3"/><text x="322" y="243" class="sm">judge validated against humans</text>
+<rect class="box plain" x="296" y="272" width="16" height="16" rx="3"/><text x="322" y="285" class="sm">end state checked, not just reply</text>
+<rect class="box plain" x="566" y="104" width="16" height="16" rx="3"/><text x="592" y="117" class="sm">known flaws and limits listed</text>
+<rect class="box plain" x="566" y="146" width="16" height="16" rx="3"/><text x="592" y="159" class="sm">CIs and runs per task stated</text>
+<rect class="box plain" x="566" y="188" width="16" height="16" rx="3"/><text x="592" y="201" class="sm">harness, budget, cost stated</text>
+<rect class="box plain" x="566" y="230" width="16" height="16" rx="3"/><text x="592" y="243" class="sm">contamination risk addressed</text>
+<rect class="box plain" x="566" y="272" width="16" height="16" rx="3"/><text x="592" y="285" class="sm">null and human baselines given</text>
+<rect class="box bad" x="10" y="332" width="395" height="76" rx="10"/>
+<text x="26" y="356" class="b t-bad">Example failures the paper reports</text>
+<text x="26" y="376" class="sm">τ-bench: empty responses counted as successful</text>
+<text x="26" y="394" class="sm">SWE-bench Verified: insufficient test cases</text>
+<rect class="box good" x="415" y="332" width="395" height="76" rx="10"/>
+<text x="431" y="356" class="b t-good">Why it matters</text>
+<text x="431" y="376" class="sm">misestimates of up to 100% in relative terms</text>
+<text x="431" y="394" class="sm">CVE-Bench overestimation cut by 33% after fixes</text>
+</svg>
+<figcaption><b>The ABC as a review rubric.</b> The three column headings are the checklist's three parts; the items are a condensed paraphrase for practical use, not the paper's exact wording or full list (see the project page for that). The two bold items correspond to the paper's example failures shown in the red box.</figcaption>
+</figure>
+
+<h3>Applying it to your own evals</h3>
+<p>Treat the ABC like a code review for your benchmark. Go item by item, mark each yes, no or not applicable, and write down the <em>evidence</em> (not "we think so"). Several items can be checked automatically with baselines that every eval should run anyway:</p>
+<pre data-lang="python"><code># A minimal "outcome validity" smoke test. run_eval(agent) is your own harness entry
+# point: it runs every task with the given agent and returns the mean score (0..1).
+from my_eval import run_eval, load_reference_solutions   # your code
+
+def null_agent(task):            # does nothing at all
+    return ""
+
+def echo_agent(task):            # restates the task, takes no action
+    return task.instructions
+
+def oracle_agent(task):          # replays the known-good solution
+    return load_reference_solutions()[task.id]
+
+checks = {
+    "null agent scores ~0":        (run_eval(null_agent),   lambda s: s &lt;= 0.02),
+    "echo agent scores ~0":        (run_eval(echo_agent),   lambda s: s &lt;= 0.02),
+    "reference solutions pass ~1": (run_eval(oracle_agent), lambda s: s &gt;= 0.98),
+}
+for name, (score, ok) in checks.items():
+    print(f"{'PASS' if ok(score) else 'FAIL'}  {name:30s} score={score:.2f}")
+
+# Any FAIL is a benchmark bug, not an agent result. A null agent above 0 usually
+# means some tasks are "already solved" in their start state (the tau-bench
+# empty-response pattern); an oracle below 1 means broken tasks or a strict grader.</code></pre>
+<p>Then do the parts no script can: have a second person read 20 passing and 20 failing transcripts and confirm the grader's verdicts, check that each task's goal is unambiguous, and write the reporting section (known flaws, what was not validated, how to cite the version). Record the result as a short "benchmark card" next to the dataset, and repeat the review whenever you version the benchmark. The 15-question checklist tells you what to ask of a claim; the ABC tells you what to fix before you make one.</p>
 
 <h2>How to build a benchmark that lasts</h2>
 <p>Everything above can be turned around into design principles. The benchmarks that stay useful longest share a handful of habits, and each one answers a specific pitfall.</p>
@@ -1057,6 +1243,9 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <li><b>Agents hack graders when they can reach them.</b> Grade with files the agent cannot touch, keep the scorer outside the sandbox, sanitise images and read transcripts.</li>
 <li><b>Small gaps on small sets are noise.</b> Two identical models on 100 items differ by 2+ points 82% of the time; use paired tests, confidence intervals, several runs, and beware best-of-N disclosure (the winner's curse).</li>
 <li><b>Benchmarks are not the real world.</b> Construct validity limits what any score predicts; confirm important claims with your own evals and, where possible, field studies.</li>
+<li><b>The sandbox is part of the setup.</b> Anthropic reports that infrastructure configuration can swing agentic coding scores by several points, sometimes more than the gap between top models. Pin, report and equalize resources, and log infrastructure failures separately.</li>
+<li><b>Optimizers and RL make Goodhart stronger.</b> DSPy, GEPA and RL environments climb your eval far faster than people do; keep a held-out set the optimizer never sees and validate any judge you optimize against.</li>
+<li><b>Review your own benchmark with the ABC.</b> Check task validity, outcome validity and reporting, and run null, echo and reference-solution baselines: a do-nothing agent must score about zero.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1091,6 +1280,16 @@ print(f"share of resamples where A is NOT ahead: {np.mean(diffs &lt;= 0):.0%}")
 <button class="opt">Arena voters prefer newer models</button>
 <button class="opt">Private variants get more votes</button>
 <div class="why">Each measurement is skill plus noise; selecting the maximum selects the luckiest noise. Re-measuring the chosen variant on fresh data removes the bias.</div></div>
+<div class="q" data-answer="2"><p>7. Model A beats Model B by 2 points on an agentic coding benchmark. A footnote says A was run on 8 GB sandboxes and B on 4 GB sandboxes. What is the best reading?</p>
+<button class="opt">A is better; 2 points is a clear margin on a coding benchmark</button>
+<button class="opt">B is better, because it did well with fewer resources</button>
+<button class="opt">The comparison is confounded: resource limits alone can move agentic scores by several points, so rerun both on the same pinned sandbox</button>
+<div class="why">Infrastructure noise can exceed a 2-point gap. Only a comparison on identical, interleaved infrastructure (with CIs) can separate the model difference from the machine difference.</div></div>
+<div class="q" data-answer="1"><p>8. Your internal agent benchmark gives an agent that returns an empty response a score of 18%. Which part of the Agentic Benchmark Checklist has failed?</p>
+<button class="opt">Task validity: the tasks are too hard</button>
+<button class="opt">Outcome validity: the grader credits a non-solution, as in the τ-bench empty-response example</button>
+<button class="opt">Reporting: the score was not published</button>
+<div class="why">Outcome validity asks whether a pass really means success. A do-nothing agent should score about zero; if it does not, some tasks are graded as solved in their start state or the grader accepts empty output.</div></div>
 </div>
 
 <details><summary>Interview questions (with model answers)</summary>
@@ -1102,6 +1301,8 @@ Use tasks created after target models' cutoffs, or from private / copyleft codeb
 A false pass is any wrong solution the grader accepts. Reward hacking is one cause of false passes, where the agent actively exploits the grader. Weak tests produce false passes even from agents that are trying honestly.</p>
 <p><b>Q: Why might a benchmark score overstate real-world usefulness even with no contamination and a perfect grader?</b><br>
 Construct validity: the task distribution differs from real work (well-specified issues, popular repos, single language), the success criterion is narrower (tests pass vs maintainable code), and interaction costs (review, verification, context) are missing. METR's 2025 RCT is the standard example of benchmarks and field outcomes disagreeing.</p>
+<p><b>Q: How would you audit an internal agent benchmark before trusting it for release decisions?</b><br>
+Walk the Agentic Benchmark Checklist. Task validity: pinned environments and tools, no reachable answers or future history, a reference solution that passes every task, unambiguous goals. Outcome validity: null and echo agents score about zero, reference solutions about 100%, a human spot-check of passes and fails, validated judges, state checks rather than reply matching. Reporting: known flaws, CIs and runs per task, harness, budget and sandbox resources, contamination measures. Then hold out a slice that no optimizer or prompt tuning ever sees, and version the benchmark whenever tasks change.</p>
 </details>
 
 <h2>Sources and further reading</h2>
@@ -1124,6 +1325,10 @@ Construct validity: the task distribution differs from real work (well-specified
 <li>Sierra, <a href="https://github.com/sierra-research/tau2-bench">tau2-bench repository</a> (task fixes changelog).</li>
 <li>Scale AI, <a href="https://arxiv.org/abs/2509.16941">SWE-bench Pro</a> (2025) and <a href="https://scale.com/blog/leaderboard">SEAL leaderboards</a>.</li>
 <li>Brown et al., <a href="https://arxiv.org/abs/2005.14165">Language Models are Few-Shot Learners</a> (GPT-3; 13-gram contamination analysis).</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/infrastructure-noise">Quantifying infrastructure noise in agentic coding evals</a> (Feb 2026) and the <a href="https://x.com/AnthropicAI/status/2019501512200974686">announcement post</a>.</li>
+<li>Zhu et al., <a href="https://arxiv.org/abs/2507.02825">Establishing Best Practices for Building Rigorous Agentic Benchmarks</a> (the Agentic Benchmark Checklist; NeurIPS 2025 Datasets and Benchmarks) and the <a href="https://uiuc-kang-lab.github.io/agentic-benchmarks/">ABC project page</a>.</li>
+<li><a href="https://dspy.ai/">DSPy</a> and <a href="https://github.com/gepa-ai/gepa">GEPA</a> (prompt and program optimizers that use your eval as the objective).</li>
+<li>Prime Intellect, <a href="https://github.com/PrimeIntellect-ai/verifiers">verifiers</a> (packaging eval tasks as RL environments).</li>
 </ul>
 
 </article>

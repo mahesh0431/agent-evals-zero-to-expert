@@ -16,7 +16,7 @@
 <div class="kicker">Module 16 · Part IV · Expert</div>
 <h1>How the labs do evals</h1>
 <p class="lede">Anthropic, OpenAI and Google DeepMind each run thousands of evals before a model ships, tie some of them to written safety frameworks, invite outside testers in, and publish the results as a system card. This module maps that whole machine, lab by lab, and then teaches you to read a system card like a sceptical expert.</p>
-<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~50 min</span><span class="pill">Prerequisites: Modules 03, 04, 05, 13</span></div>
+<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~60 min</span><span class="pill">Prerequisites: Modules 03, 04, 05, 13</span></div>
 
 <div class="objectives">
 <h3>By the end of this module you can</h3>
@@ -25,6 +25,7 @@
 <li>Explain Anthropic's RSP (ASL levels, capability thresholds, what v3 changed), OpenAI's Preparedness Framework (tracked categories, High and Critical) and Google DeepMind's Frontier Safety Framework (CCLs, alert thresholds, TCLs).</li>
 <li>Name the main third-party evaluators (UK AISI, US CAISI, METR, Apollo Research, Epoch AI, Scale SEAL, Artificial Analysis, Arena) and what kind of independence each one offers.</li>
 <li>Use the labs' own public tooling ideas in your work: Anthropic's eval vocabulary and error bars, OpenAI-style graders (and where they went), Google ADK trajectory thresholds, Inspect.</li>
+<li>Explain trace grading (grading the spans of an agent run, not just its answer), what OpenAI's AgentKit added, and how to keep trace-level evals portable as hosted tools are retired.</li>
 <li>Read a system card critically: spot scaffold differences, pass@1 vs best-of-n, internal benchmarks, contamination and weak elicitation.</li>
 </ul>
 </div>
@@ -672,6 +673,114 @@ tests:
 <p>OpenAI's "Evaluation best practices" guide recommends eval-driven development: define the objective, collect a dataset that matches production traffic, define metrics, run and compare, and keep evaluating. It warns against generic metrics (like perplexity), testing only at the end and ignoring human feedback, and it gives architecture-specific targets: <b>tool selection and argument precision</b> for single agents, <b>handoff accuracy</b> for multi-agent systems. Its open-source <code>simple-evals</code> repo stopped being updated for new models in July 2025, except for HealthBench, BrowseComp and SimpleQA.</p>
 </div>
 
+<h3>Agent workflows: traces, trace grading and AgentKit</h3>
+<p>The Evals API above grades one input and one output. An agent run is more than that: the model thinks, calls tools, hands work to other agents and passes guardrail checks before it answers. OpenAI's tooling calls the full record of one run a <b>trace</b>, and each step inside it a <b>span</b> (a model generation, a tool call, a handoff, a guardrail check). Its open-source <b>Agents SDK</b> records traces automatically. <b>Trace grading</b> means attaching graders to a trace, so you can ask questions about <em>how</em> the agent got its answer ("did it look the order up before refunding?") and not only whether the final answer was right.</p>
+<p>OpenAI's "Evaluate agent workflows" guide lays out, in outline, a progression that matches this course: start by <b>reading traces</b> to see what the agent actually does, <b>grade traces</b> to find failure patterns across many runs, then turn what you learn into <b>datasets and repeatable eval runs</b> that gate changes. In October 2025 OpenAI bundled this into <b>AgentKit</b>: a visual <b>Agent Builder</b>, a Connector Registry, the embeddable <b>ChatKit</b> UI, Guardrails, and new Evals features (datasets, trace grading, automated prompt optimization, and support for evaluating third-party models).</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 336" role="img" aria-label="Left: one agent run as a trace, a root agent span containing a model generation, a tool call to lookup_order, a guardrail check and a handoff to a refunds agent, laid out over time. Right: trace graders ask questions about the run, such as whether the lookup happened before the refund, whether the handoff went to the right specialist, and whether the final reply was correct. Bottom: grading many traces reveals patterns that become dataset rows and eval runs that gate changes. A status line notes that the Agents SDK tracing is open source while hosted Evals and Agent Builder are deprecated with shutdown on November 30 2026.">
+<defs><marker id="m16k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="24" class="b">One trace = one whole agent run</text>
+<rect class="box accent" x="20" y="38" width="390" height="28" rx="6"/>
+<text x="32" y="57" class="sm b">agent: Support triage (root span)</text>
+<rect class="box plain" x="40" y="74" width="110" height="26" rx="6"/>
+<text x="95" y="91" text-anchor="middle" class="sm">LLM generation</text>
+<rect class="box good" x="155" y="106" width="120" height="26" rx="6"/>
+<text x="215" y="123" text-anchor="middle" class="sm">tool: lookup_order</text>
+<rect class="box violet" x="280" y="138" width="70" height="26" rx="6"/>
+<text x="315" y="155" text-anchor="middle" class="sm">guardrail</text>
+<rect class="box warn" x="300" y="170" width="110" height="26" rx="6"/>
+<text x="355" y="187" text-anchor="middle" class="sm">handoff: Refunds</text>
+<line class="ln" x1="20" y1="210" x2="406" y2="210" marker-end="url(#m16k)"/>
+<text x="20" y="228" class="sm t-muted">time</text>
+<line class="ln accent flow" x1="412" y1="120" x2="446" y2="120" marker-end="url(#m16k)"/>
+<text x="429" y="110" text-anchor="middle" class="sm">grade</text>
+<rect class="box violet" x="450" y="38" width="370" height="172" rx="10"/>
+<text x="635" y="62" text-anchor="middle" class="b">Trace graders: questions about the run</text>
+<text x="466" y="90" class="sm">Looked up the order before any refund?</text>
+<text x="466" y="106" class="sm t-muted">code check on span order</text>
+<text x="466" y="132" class="sm">Handed off to the right specialist?</text>
+<text x="466" y="148" class="sm t-muted">string check on the handoff span</text>
+<text x="466" y="174" class="sm">Was the final reply correct and polite?</text>
+<text x="466" y="190" class="sm t-muted">model grader with a rubric</text>
+<path class="ln dash" d="M635,210 L635,226 L115,226 L115,236" marker-end="url(#m16k)"/>
+<rect class="box plain" x="20" y="240" width="190" height="56" rx="8"/>
+<text x="115" y="264" text-anchor="middle" class="b">Grade many traces</text>
+<text x="115" y="284" text-anchor="middle" class="sm">scores per span and run</text>
+<rect class="box warn" x="223" y="240" width="190" height="56" rx="8"/>
+<text x="318" y="264" text-anchor="middle" class="b">Find the pattern</text>
+<text x="318" y="284" text-anchor="middle" class="sm">e.g. refunds skip lookup</text>
+<rect class="box plain" x="426" y="240" width="190" height="56" rx="8"/>
+<text x="521" y="264" text-anchor="middle" class="b">Save as dataset rows</text>
+<text x="521" y="284" text-anchor="middle" class="sm">input + expected behavior</text>
+<rect class="box good" x="629" y="240" width="190" height="56" rx="8"/>
+<text x="724" y="264" text-anchor="middle" class="b">Eval runs gate changes</text>
+<text x="724" y="284" text-anchor="middle" class="sm">rerun on every prompt edit</text>
+<line class="ln" x1="210" y1="268" x2="220" y2="268" marker-end="url(#m16k)"/>
+<line class="ln" x1="413" y1="268" x2="423" y2="268" marker-end="url(#m16k)"/>
+<line class="ln" x1="616" y1="268" x2="626" y2="268" marker-end="url(#m16k)"/>
+<text x="20" y="322" class="sm t-warn">Sept 2026: Agents SDK tracing is open source; hosted Evals (with dashboard trace grading) and Agent Builder are deprecated, shutdown Nov 30, 2026.</text>
+</svg>
+<figcaption><b>Trace grading asks how the agent got there.</b> A trace nests every step of a run under one root span. Graders read the spans (their order, arguments and outputs) as well as the final reply, and the failures they surface become dataset rows for repeatable evals. The trace and grader questions are an illustrative example.</figcaption>
+</figure>
+
+<p><b>Current status, consistent with the section above.</b> The June 2026 deprecation notices cover the hosted Evals platform (which is where dashboard trace grading runs) and, per OpenAI's deprecation notice for it, <b>Agent Builder</b>, with shutdown scheduled for November 30, 2026. The <b>Agents SDK</b> and its tracing are a separate open-source library. So the durable part of this story is the <em>idea</em>, not the dashboard: capture traces yourself (the SDK lets you register your own trace processors, and many observability tools ingest its traces, see <a href="14-tools-landscape.html">Module 14</a>) and write trace graders as ordinary code or as checks in an open harness. Check OpenAI's deprecations page before you rely on any hosted piece.</p>
+
+<pre data-lang="python"><code># Portable trace grading: record spans from the OpenAI Agents SDK (open source)
+# and grade them in code, independent of any hosted dashboard.
+from agents import Agent, Runner, function_tool, trace, add_trace_processor
+from agents.tracing import TracingProcessor
+
+class SpanRecorder(TracingProcessor):
+    """Keeps an exported copy of every finished span."""
+    def __init__(self):
+        self.spans = []
+    def on_trace_start(self, trace): pass
+    def on_trace_end(self, trace): pass
+    def on_span_start(self, span): pass
+    def on_span_end(self, span):
+        exported = span.export()          # dict incl. trace_id and span_data
+        if exported:
+            self.spans.append(exported)
+    def shutdown(self): pass
+    def force_flush(self): pass
+
+recorder = SpanRecorder()
+add_trace_processor(recorder)            # the default exporter keeps running too
+
+@function_tool
+def lookup_order(order_id: str) -&gt; str:
+    """Look up an order by id."""
+    return "order 123: delivered, $40"    # mock data, nothing real is touched
+
+@function_tool
+def issue_refund(order_id: str, amount: float) -&gt; str:
+    """Refund an order."""
+    return "refund queued (mock)"
+
+agent = Agent(name="Support",
+              instructions="Help with orders. Always look an order up before refunding it.",
+              tools=[lookup_order, issue_refund])
+
+def grade_trace(spans, final_output):
+    data = [s["span_data"] for s in spans]            # field names per the SDK's span export
+    tools = [d.get("name") for d in data if d.get("type") == "function"]
+    refunded = "issue_refund" in tools
+    looked_up_first = (not refunded) or (
+        "lookup_order" in tools and tools.index("lookup_order") &lt; tools.index("issue_refund"))
+    return {
+        "looked_up_before_refund": looked_up_first,    # process check on span order
+        "tool_calls": len(tools),                      # efficiency signal
+        "mentions_refund": "refund" in final_output.lower(),   # crude outcome check
+    }
+
+recorder.spans.clear()                   # one case at a time
+with trace("refund-eval case 17"):
+    result = Runner.run_sync(agent, "Order 123 arrived broken. Refund me.")
+print(grade_trace(recorder.spans, result.final_output))
+</code></pre>
+<p>The grader returns several named checks instead of one score, which is the point of trace grading: a run can reach a good final answer by a bad path (refunding without a lookup), and only a process check sees that. The same idea appears as trajectory matching in Google's ADK below and in <a href="05-agents-are-different.html">Module 05</a>.</p>
+
 <h2>Google DeepMind and Google Cloud</h2>
 
 <h3>The Frontier Safety Framework: CCLs, alert thresholds and TCLs</h3>
@@ -913,6 +1022,9 @@ def simpleqa():
 # run:  inspect eval simpleqa.py --model anthropic/&lt;model-id&gt;
 # view: inspect view   (browse every transcript)</code></pre>
 
+<h3>Regulators and standards</h3>
+<p>Everything above is either a lab's own voluntary framework or an outside tester working under a voluntary agreement. That is changing: parts of frontier evaluation are becoming legal and standards obligations. The EU AI Act's rules for general-purpose AI models with systemic risk include model evaluation and adversarial testing, with a Code of Practice describing how providers can meet them; in the US, NIST's work (including CAISI, above) shapes testing practice; and management-system standards such as ISO/IEC 42001 shape how organizations govern and document their evals. <a href="28-governance-and-responsible-ai.html">Module 28</a> covers these properly, including how a regulator-facing eval differs from an engineering eval and what a safety case looks like. For now, notice the direction of travel: the rule-out logic, documented elicitation and third-party testing described in this module are exactly what regulators are starting to ask for in writing.</p>
+
 <h2>The big comparison table</h2>
 <p>Here is the whole landscape on one screen. "Who tests" means who is named in the lab's public materials, not a complete list.</p>
 <div class="tablewrap"><table>
@@ -1050,6 +1162,8 @@ def simpleqa():
 <li>On 500 tasks a single score carries about ±3.7 points of 95% uncertainty; compare models with paired differences on the same tasks.</li>
 <li>Outside testers (UK AISI, US CAISI, METR, Apollo Research and others) are the check on a lab grading its own work.</li>
 <li>Read a system card sceptically: which snapshot, which scaffold, how many trials, what error bars, and who ran each eval.</li>
+<li>Agent runs are graded as <b>traces</b>: spans for model calls, tool calls, handoffs and guardrails. OpenAI packaged trace grading into its Evals and AgentKit tooling, but those hosted pieces are being retired in 2026; the portable habit is to capture traces yourself and grade the path, not just the answer.</li>
+<li>Voluntary lab frameworks are turning into regulation and standards (EU AI Act obligations for systemic-risk models, NIST, ISO/IEC 42001); <a href="28-governance-and-responsible-ai.html">Module 28</a> covers them.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1084,6 +1198,16 @@ def simpleqa():
 <button class="opt">The environments were too few to measure anything</button>
 <button class="opt">The model refused to take part</button>
 <div class="why">Part of the reduction came from the model recognising it was being evaluated. That is the central threat to alignment evals, also reported in Anthropic's Claude Sonnet 4.5 system card.</div></div>
+<div class="q" data-answer="1"><p>7. Your support agent's final replies grade 95% correct, but trace grading shows that 30% of refunds were issued without an order lookup first. What does this tell you?</p>
+<button class="opt">Nothing important: the final answers are what users see</button>
+<button class="opt">The process is broken in a way final-output grading cannot see; add a span-order check to the eval and gate on it</button>
+<button class="opt">The trace grader is wrong, because the final answers are correct</button>
+<div class="why">Trace grading exists for exactly this: a good answer reached by a bad path (a refund with no lookup) is a latent incident. Process checks on spans catch it; output-only grading never will.</div></div>
+<div class="q" data-answer="2"><p>8. It is late September 2026. You want trace-level evals for an agent built on OpenAI models that will still work next year. What is the safest plan?</p>
+<button class="opt">Build them in Agent Builder's evaluation tab</button>
+<button class="opt">Rely on dashboard trace grading in the hosted Evals platform</button>
+<button class="opt">Record traces from the open-source Agents SDK (your own trace processor or an observability tool) and grade them in code or an open harness</button>
+<div class="why">The hosted Evals platform and Agent Builder are deprecated with shutdown scheduled for November 30, 2026. The Agents SDK's tracing is open source, so traces you capture and graders you own survive the platform change.</div></div>
 </div>
 
 <details>
@@ -1113,6 +1237,7 @@ def simpleqa():
 <li>OpenAI and Apollo Research, <a href="https://openai.com/index/detecting-and-reducing-scheming-in-ai-models/">Detecting and reducing scheming</a>; paper <a href="https://arxiv.org/abs/2509.15541">arXiv 2509.15541</a>.</li>
 <li>OpenAI benchmarks: <a href="https://openai.com/index/gdpval/">GDPval</a>, <a href="https://arxiv.org/abs/2502.12115">SWE-Lancer</a>, <a href="https://arxiv.org/abs/2504.01848">PaperBench</a>, <a href="https://arxiv.org/abs/2504.12516">BrowseComp</a>, <a href="https://openai.com/index/healthbench/">HealthBench</a>; <a href="https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/">Why we no longer evaluate SWE-bench Verified</a>.</li>
 <li>OpenAI docs: <a href="https://developers.openai.com/api/docs/guides/evals">Evals guide (deprecation notice)</a>, <a href="https://developers.openai.com/api/docs/guides/graders">Graders</a>, <a href="https://developers.openai.com/api/docs/guides/reinforcement-fine-tuning">Reinforcement fine-tuning</a>, <a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices">Evaluation best practices</a>, <a href="https://developers.openai.com/cookbook/examples/evaluation/moving-from-openai-evals-to-promptfoo">Moving from OpenAI Evals to promptfoo</a>; <a href="https://openai.com/index/openai-to-acquire-promptfoo/">OpenAI to acquire Promptfoo</a>.</li>
+<li>OpenAI agent-eval tooling: <a href="https://developers.openai.com/api/docs/guides/trace-grading">Trace grading</a>, <a href="https://developers.openai.com/api/docs/guides/agent-evals">Evaluate agent workflows</a>, <a href="https://openai.com/index/introducing-agentkit/">Introducing AgentKit</a> (Oct 2025) and its <a href="https://developers.openai.com/cookbook/examples/agentkit/agentkit_walkthrough">cookbook walkthrough</a>; <a href="https://openai.github.io/openai-agents-python/tracing/">Agents SDK tracing</a>; <a href="https://developers.openai.com/api/docs/deprecations">Deprecations</a> and the <a href="https://community.openai.com/t/deprecation-notice-agent-builder/1382650">Agent Builder deprecation notice</a>.</li>
 <li>Google DeepMind, <a href="https://deepmind.google/blog/strengthening-our-frontier-safety-framework/">Strengthening our Frontier Safety Framework</a>, <a href="https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/strengthening-our-frontier-safety-framework/frontier-safety-framework_3-1.pdf">FSF v3.1 (PDF)</a>, <a href="https://storage.googleapis.com/deepmind-media/gemini/gemini_3_pro_fsf_report.pdf">Gemini 3 Pro FSF report</a>.</li>
 <li>Google Cloud, <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview">Gen AI evaluation service overview</a>; ADK, <a href="https://adk.dev/evaluate/">Why evaluate agents</a> and <a href="https://adk.dev/evaluate/criteria/">Evaluation criteria</a>.</li>
 <li>Meta, <a href="https://about.fb.com/news/2025/02/meta-approach-frontier-ai/">Our approach to frontier AI</a>; analysis of the <a href="https://frontierrisk.substack.com/p/metas-advanced-ai-scaling-framework">Advanced AI Scaling Framework</a>. xAI, <a href="https://data.x.ai/2025-08-20-xai-risk-management-framework.pdf">Risk Management Framework</a>.</li>
