@@ -42,8 +42,8 @@
 
 <div class="kicker">Module 20 · Expert</div>
 <h1>Expert drill, glossary and map</h1>
-<p class="lede">Everything in the course on one page: a map of the whole field, an atlas of the benchmarks that matter, visual cheat sheets for the choices experts make daily, 48 hard interview questions with model answers, 30 flip cards, a glossary of 100+ terms, the sources experts actually read, and a 30-day plan to turn reading into doing.</p>
-<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~90 min (or keep it open as a reference)</span><span class="pill">Prerequisites: Modules 01 to 19, or dip in anywhere</span></div>
+<p class="lede">Everything in the course on one page: a map of the whole field (28 modules in 6 parts), an atlas of the benchmarks that matter, visual cheat sheets for the choices experts make daily, 63 hard interview questions with model answers, 44 flip cards, a glossary of 180+ terms, the sources experts actually read, and a 30-day plan to turn reading into doing.</p>
+<div class="meta"><span class="pill level-4">Expert</span><span class="pill">~90 min (or keep it open as a reference)</span><span class="pill">Prerequisites: any of the 28 modules in 6 parts, or dip in anywhere</span></div>
 
 <div class="objectives">
 <h3>By the end of this module you can</h3>
@@ -51,7 +51,7 @@
 <li>Draw the whole eval field from memory and explain how any two parts of it connect.</li>
 <li>Place any benchmark by modality and horizon, and say whether it still discriminates between frontier systems.</li>
 <li>Answer hard interview and design questions with a repeatable six-step frame, using numbers and formulas where they matter.</li>
-<li>Define 100+ terms precisely, and know where to go (and whom to read) to stay current.</li>
+<li>Define 180+ terms precisely, and know where to go (and whom to read) to stay current.</li>
 <li>Follow a concrete 30-day plan that leaves you with three working evals, a validated judge and a reproduced benchmark run.</li>
 </ul>
 </div>
@@ -59,16 +59,16 @@
 <div data-toc></div>
 
 <h2>How to use this module</h2>
-<p>The first nineteen modules taught the field in order. This one is built for <b>retrieval</b>, the way you will actually use the knowledge: in an interview, in a design review, or when someone forwards a leaderboard screenshot and asks "is this real?". Research on learning is consistent that testing yourself beats rereading, so most of this page hides answers until you ask for them.</p>
+<p>The other modules of the course (28 modules in 6 parts, from the basics through the building blocks of Part V and the beyond-the-core topics of Part VI) teach the field in order. This one is built for <b>retrieval</b>, the way you will actually use the knowledge: in an interview, in a design review, or when someone forwards a leaderboard screenshot and asks "is this real?". Research on learning is consistent that testing yourself beats rereading, so most of this page hides answers until you ask for them.</p>
 <div class="grid2">
 <div class="card accent"><h4>If you have 10 minutes</h4><p>Study the concept map, then flip ten flashcards. Try to say each answer out loud before flipping.</p></div>
 <div class="card violet"><h4>If you have an hour</h4><p>Pick one theme of the interview drill. For each question, write a three-sentence answer before opening the model answer. Compare, then follow the module link for anything you missed.</p></div>
-<div class="card good"><h4>Before an interview</h4><p>Do all nine design-scenario questions (the ones tagged "design") with the six-step frame. Time yourself: two minutes each.</p></div>
-<div class="card warn"><h4>To become an expert</h4><p>Do the 30-day plan at the end. Reading gets you vocabulary. Building three evals and validating a judge gets you judgement.</p></div>
+<div class="card good"><h4>Before an interview</h4><p>Do all thirteen design-scenario questions (the ones tagged "design") with the six-step frame. Time yourself: two minutes each.</p></div>
+<div class="card warn"><h4>To become an expert</h4><p>Do the 30-day plan at the end. Reading gets you vocabulary. Building three evals and validating a judge gets you judgment.</p></div>
 </div>
 
 <h2>The whole field on one page</h2>
-<p>Every idea in the course fits on the map below. The centre is the thing we keep coming back to: an <b>eval run</b>, in which each task is attempted several times (trials) by a system in an environment, each attempt leaves a transcript, and a fixed grader scores it. Everything else either feeds that run, scores it, interprets it, or threatens it. Read the arrows as sentences: "Datasets feed samples into an eval run", "Pitfalls can invalidate decisions".</p>
+<p>Every idea in the course fits on the map below. The center is the thing we keep coming back to: an <b>eval run</b>, in which each task is attempted several times (trials) by a system in an environment, each attempt leaves a transcript, and a fixed grader scores it. Everything else either feeds that run, scores it, interprets it, or threatens it. Read the arrows as sentences: "Datasets feed samples into an eval run", "Pitfalls can invalidate decisions".</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 660" role="img" aria-label="Concept map of the whole eval field: datasets, agents and benchmarks feed an eval run; graders score transcripts into metrics that need statistics; metrics inform decisions; tools and labs build and run evals; safety evals gate releases; pitfalls can invalidate decisions.">
@@ -144,7 +144,7 @@
 <rect class="fill-soft" x="545" y="62" width="78" height="16" rx="4"/><text x="584" y="74" text-anchor="middle" class="sm">measured by</text>
 <rect class="fill-soft" x="190" y="155" width="84" height="16" rx="4"/><text x="232" y="167" text-anchor="middle" class="sm">feed samples</text>
 <rect class="fill-soft" x="373" y="147" width="114" height="16" rx="4"/><text x="430" y="159" text-anchor="middle" class="sm">system under test</text>
-<rect class="fill-soft" x="579" y="155" width="78" height="16" rx="4"/><text x="618" y="167" text-anchor="middle" class="sm">standardise</text>
+<rect class="fill-soft" x="579" y="155" width="78" height="16" rx="4"/><text x="618" y="167" text-anchor="middle" class="sm">standardize</text>
 <rect class="fill-soft" x="243" y="242" width="66" height="16" rx="4"/><text x="276" y="254" text-anchor="middle" class="sm">scored by</text>
 <rect class="fill-soft" x="552" y="242" width="66" height="16" rx="4"/><text x="585" y="254" text-anchor="middle" class="sm">run + log</text>
 <rect class="fill-soft" x="72" y="333" width="96" height="16" rx="4"/><text x="120" y="345" text-anchor="middle" class="sm">aggregate into</text>
@@ -165,7 +165,7 @@
 <p>Three things about this map are worth saying out loud, because experts use them constantly:</p>
 <ul>
 <li><b>The grader is an instrument with its own error</b> (<a href="03-graders.html">Module 03</a>, <a href="13-llm-as-judge.html">Module 13</a>). Every arrow out of "Graders" carries that error forward, so a metric can never be more trustworthy than the grader that produced it.</li>
-<li><b>Benchmarks are just datasets plus graders that someone froze and published.</b> That is why they standardise comparisons, and also why they leak into training data and saturate (<a href="18-benchmark-pitfalls.html">Module 18</a>).</li>
+<li><b>Benchmarks are just datasets plus graders that someone froze and published.</b> That is why they standardize comparisons, and also why they leak into training data and saturate (<a href="18-benchmark-pitfalls.html">Module 18</a>).</li>
 <li><b>Safety evals are evals with a governance action attached.</b> Their mechanics are the same, but the question flips from "how good is it?" to "can we rule out that it is this dangerous?" (<a href="17-safety-evals.html">Module 17</a>).</li>
 </ul>
 
@@ -183,10 +183,86 @@
 <tr><td>Safety evals</td><td>Threshold ("rule-out") evals for CBRN, cyber, AI R&amp;D and autonomy, plus propensity evals for scheming and sabotage.</td><td><a href="17-safety-evals.html">17</a></td></tr>
 <tr><td>Pitfalls</td><td>Contamination, saturation, label noise, harness dependence, leaderboard gaming, reward hacking and evaluation awareness.</td><td><a href="18-benchmark-pitfalls.html">18</a></td></tr>
 <tr><td>Decisions</td><td>An eval with no decision attached is a dashboard; write down in advance what result would change what you do.</td><td><a href="15-production-evals.html">15</a>, <a href="19-capstone.html">19</a></td></tr>
+<tr><td>Harness</td><td>The harness is part of the system under test: attribute a score change to it only with a paired ablation that changes one component at a time.</td><td><a href="21-harness-evals.html">21</a></td></tr>
+<tr><td>Skills</td><td>A skill has to fire when relevant (trigger eval) and help when it fires (uplift eval against a no-skill baseline); its value is roughly P(trigger | relevant) × uplift.</td><td><a href="22-skills-evals.html">22</a></td></tr>
+<tr><td>Memory</td><td>Memory failures are delayed, silent and compounding, so test timelines with updates and deletions, against no-memory, full-context and oracle-retrieval baselines.</td><td><a href="23-memory-evals.html">23</a></td></tr>
+<tr><td>Tools and MCP</td><td>Tool definitions are prompts: test selection, arguments, sequencing, parallel calls and result use, and treat every server as a possible attacker.</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>Security</td><td>Report attack success and utility under attack together, and assume the attacker adapts and retries.</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>Deep research and real work</td><td>Grade long reports on quality and on citations separately, and grade real work by automation rate or checkpoints, not by a single judge score.</td><td><a href="26-research-and-real-work.html">26</a></td></tr>
+<tr><td>Domains</td><td>Match rigor to risk tier: expert-written rubrics, measured agreement, severity weighting and critical failures as gates.</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>Governance</td><td>A regulator-facing eval is an argument with evidence: claims, arguments, evidence and defeaters, documented so an outsider could reproduce it.</td><td><a href="28-governance-and-responsible-ai.html">28</a></td></tr>
 </table></div>
 
+<p>The map above covers Parts I to IV. Parts V and VI add eight modules, and they attach to the same eval run in two ways. Part V opens up the agent itself: the harness, its skills, its memory and its tools each get their own eval, and the rule for all four is to change one block while freezing the rest. Part VI carries the core ideas into places with higher stakes: attackers, long research reports, expert domains and regulators. Several core modules also gained new sections, shown in the dashed box at the bottom.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 450" role="img" aria-label="Companion map for Parts V and VI: the harness, skills, memory and tools each feed the agent under test and each get their own eval; the agent is attacked by security evals, produces research and real work, is applied in expert domains, and must convince governance; cross-cutting upgrades to core modules are listed below.">
+<defs><marker id="m20za" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="430" y="22" text-anchor="middle" class="b">Part V · each building block gets its own eval (hold the others fixed)</text>
+<rect class="box accent" x="20" y="40" width="250" height="66" rx="8"/>
+<text x="145" y="62" text-anchor="middle" class="b">Harness · 21</text>
+<text x="145" y="79" text-anchor="middle" class="sm">loop, context, retries, done check;</text>
+<text x="145" y="94" text-anchor="middle" class="sm">paired ablations, infra noise</text>
+<rect class="box accent" x="590" y="40" width="250" height="66" rx="8"/>
+<text x="715" y="62" text-anchor="middle" class="b">Tools and MCP · 24</text>
+<text x="715" y="79" text-anchor="middle" class="sm">selection, arguments, sequencing;</text>
+<text x="715" y="94" text-anchor="middle" class="sm">poisoning and rug pulls</text>
+<rect class="box violet" x="20" y="134" width="250" height="66" rx="8"/>
+<text x="145" y="156" text-anchor="middle" class="b">Skills · 22</text>
+<text x="145" y="173" text-anchor="middle" class="sm">trigger evals, uplift vs baseline,</text>
+<text x="145" y="188" text-anchor="middle" class="sm">adherence from the trajectory</text>
+<rect class="box violet" x="590" y="134" width="250" height="66" rx="8"/>
+<text x="715" y="156" text-anchor="middle" class="b">Memory · 23</text>
+<text x="715" y="173" text-anchor="middle" class="sm">write, retrieve, update, forget;</text>
+<text x="715" y="188" text-anchor="middle" class="sm">staleness, false memories, leaks</text>
+<rect class="box accent" x="330" y="70" width="200" height="100" rx="10" stroke-width="2.4"/>
+<text x="430" y="100" text-anchor="middle" class="lg">Agent under test</text>
+<text x="430" y="122" text-anchor="middle" class="sm">model + harness + tools</text>
+<text x="430" y="138" text-anchor="middle" class="sm">+ skills + memory</text>
+<text x="430" y="158" text-anchor="middle" class="sm t-muted">change one, freeze the rest</text>
+<line class="ln" x1="271" y1="73" x2="327" y2="98" marker-end="url(#m20za)"/>
+<line class="ln" x1="271" y1="167" x2="327" y2="142" marker-end="url(#m20za)"/>
+<line class="ln" x1="589" y1="73" x2="533" y2="98" marker-end="url(#m20za)"/>
+<line class="ln" x1="589" y1="167" x2="533" y2="142" marker-end="url(#m20za)"/>
+<text x="20" y="244" text-anchor="start" class="sm b">Part VI · beyond the core</text>
+<line class="ln bad" x1="430" y1="172" x2="115" y2="256" marker-end="url(#m20za)"/>
+<line class="ln warn" x1="430" y1="172" x2="323" y2="256" marker-end="url(#m20za)"/>
+<line class="ln good" x1="430" y1="172" x2="531" y2="256" marker-end="url(#m20za)"/>
+<line class="ln violet" x1="430" y1="172" x2="739" y2="256" marker-end="url(#m20za)"/>
+<rect class="fill-soft" x="234" y="206" width="76" height="16" rx="4"/><text x="272" y="218" text-anchor="middle" class="sm">attacked by</text>
+<rect class="fill-soft" x="346" y="206" width="60" height="16" rx="4"/><text x="376" y="218" text-anchor="middle" class="sm">produces</text>
+<rect class="fill-soft" x="445" y="206" width="70" height="16" rx="4"/><text x="480" y="218" text-anchor="middle" class="sm">applied in</text>
+<rect class="fill-soft" x="539" y="206" width="90" height="16" rx="4"/><text x="584" y="218" text-anchor="middle" class="sm">must convince</text>
+<rect class="box bad" x="20" y="258" width="190" height="72" rx="8"/>
+<text x="115" y="280" text-anchor="middle" class="b">Security · 25</text>
+<text x="115" y="298" text-anchor="middle" class="sm">injection, lethal trifecta,</text>
+<text x="115" y="313" text-anchor="middle" class="sm">ASR and utility under attack</text>
+<rect class="box warn" x="228" y="258" width="190" height="72" rx="8"/>
+<text x="323" y="280" text-anchor="middle" class="b">Deep research · 26</text>
+<text x="323" y="298" text-anchor="middle" class="sm">RACE, FACT, citations;</text>
+<text x="323" y="313" text-anchor="middle" class="sm">RLI, TheAgentCompany</text>
+<rect class="box good" x="436" y="258" width="190" height="72" rx="8"/>
+<text x="531" y="280" text-anchor="middle" class="b">Domains · 27</text>
+<text x="531" y="298" text-anchor="middle" class="sm">expert rubrics, kappa,</text>
+<text x="531" y="313" text-anchor="middle" class="sm">severity, HealthBench</text>
+<rect class="box violet" x="644" y="258" width="190" height="72" rx="8"/>
+<text x="739" y="280" text-anchor="middle" class="b">Governance · 28</text>
+<text x="739" y="298" text-anchor="middle" class="sm">EU AI Act, NIST, ISO;</text>
+<text x="739" y="313" text-anchor="middle" class="sm">safety cases, evidence</text>
+<rect class="box dashed" x="20" y="346" width="814" height="92" rx="8"/>
+<text x="430" y="366" text-anchor="middle" class="sm b">Cross-cutting upgrades to core modules</text>
+<rect class="fill-soft" x="38" y="378" width="255" height="20" rx="4"/><text x="165" y="392" text-anchor="middle" class="sm">reliability science and HAL cost · 04</text>
+<rect class="fill-soft" x="302" y="378" width="255" height="20" rx="4"/><text x="429" y="392" text-anchor="middle" class="sm">IRT anchors and subsampling · 04</text>
+<rect class="fill-soft" x="566" y="378" width="255" height="20" rx="4"/><text x="693" y="392" text-anchor="middle" class="sm">trace grading and AgentKit · 16</text>
+<rect class="fill-soft" x="38" y="406" width="255" height="20" rx="4"/><text x="165" y="420" text-anchor="middle" class="sm">CoT monitorability and AI control · 17</text>
+<rect class="fill-soft" x="302" y="406" width="255" height="20" rx="4"/><text x="429" y="420" text-anchor="middle" class="sm">infra noise and the ABC checklist · 18</text>
+<rect class="fill-soft" x="566" y="406" width="255" height="20" rx="4"/><text x="693" y="420" text-anchor="middle" class="sm">optimizers and Goodhart pressure · 18</text>
+</svg>
+<figcaption><b>Parts V and VI on one page.</b> Part V (top) splits the agent into four building blocks, each with its own eval; the discipline is to vary one block and freeze the other three. Part VI (middle) takes the finished agent into four settings: it is attacked (security), it produces long work products (deep research and real work), it is applied in expert domains, and its evidence must convince a regulator or auditor (governance). Numbers are module numbers.</figcaption>
+</figure>
+
 <h2>The benchmark atlas</h2>
-<p>There are thousands of benchmarks. About forty of them come up again and again in papers, system cards and interviews. The atlas places them on two axes. Horizontally: the <b>modality</b> or kind of agent they test. Vertically: the <b>horizon</b>, meaning roughly how long and how many steps a task takes, which correlates strongly with difficulty for today's agents. Dashed outlines mark benchmarks that no longer separate frontier systems, because they are saturated, contaminated or dated.</p>
+<p>There are thousands of benchmarks. About forty of them come up again and again in papers, system cards and interviews, and the Part V and VI modules add about thirty more (listed after the first table below). The atlas places them on two axes. Horizontally: the <b>modality</b> or kind of agent they test. Vertically: the <b>horizon</b>, meaning roughly how long and how many steps a task takes, which correlates strongly with difficulty for today's agents. Dashed outlines mark benchmarks that no longer separate frontier systems, because they are saturated, contaminated or dated.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 580" role="img" aria-label="Benchmark atlas: about 45 benchmarks placed by modality on the horizontal axis and by task horizon on the vertical axis; long-horizon benchmarks cluster in coding and knowledge work, single-turn benchmarks dominate vision and knowledge, and many older single-turn benchmarks are saturated.">
@@ -305,7 +381,7 @@
 <rect class="box dashed" x="330" y="556" width="30" height="14" rx="7"/>
 <text x="366" y="567" text-anchor="start" class="sm">saturated, contaminated or dated for frontier comparison (2026)</text>
 </svg>
-<figcaption><b>Benchmark atlas, September 2026.</b> Placement is a judgement call, not data: horizon is approximate task length for a skilled human, and "saturated or contaminated" follows the research notes (for example, OpenAI stopped reporting SWE-bench Verified in February 2026 after finding flawed tests and contamination). Notice the empty top-right: long-horizon voice and vision agent benchmarks barely exist yet.</figcaption>
+<figcaption><b>Benchmark atlas, September 2026.</b> Placement is a judgment call, not data: horizon is approximate task length for a skilled human, and "saturated or contaminated" follows the research notes (for example, OpenAI stopped reporting SWE-bench Verified in February 2026 after finding flawed tests and contamination). Notice the empty top-right: long-horizon voice and vision agent benchmarks barely exist yet.</figcaption>
 </figure>
 
 <p>How to read the atlas like an expert:</p>
@@ -329,6 +405,88 @@
 <tr><td>HLE</td><td>Frontier-hard expert question</td><td>LLM judge vs answer, plus calibration error</td><td>2,500</td></tr>
 <tr><td>ARC-AGI-3</td><td>Interactive game with no instructions</td><td>Levels solved, compared with human players</td><td>Hundreds of environments</td></tr>
 <tr><td>Audio MultiChallenge</td><td>Multi-turn spoken dialogue</td><td>Instance-specific rubrics, LLM judge</td><td>452 conversations</td></tr>
+</table></div>
+
+<h3>Benchmarks from Parts V and VI</h3>
+<p>The eight newer modules add about thirty more names. They are easier to remember by what they test than by where they sit on the atlas, so they get their own table, grouped by module. Sizes are as the papers report them at release; check the current version before you quote one.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 300" role="img" aria-label="The Parts V and VI benchmarks grouped by how they are graded: scripts that check final state; rubrics or LLM judges; human experts; and benchmarks that report two numbers at once, such as utility and attack success.">
+<rect class="box good" x="20" y="16" width="195" height="44" rx="8"/>
+<text x="117" y="36" text-anchor="middle" class="b">Scripts check state</text>
+<text x="117" y="52" text-anchor="middle" class="sm">cheapest, least argued with</text>
+<rect class="box warn" x="235" y="16" width="195" height="44" rx="8"/>
+<text x="332" y="36" text-anchor="middle" class="b">Rubric or LLM judge</text>
+<text x="332" y="52" text-anchor="middle" class="sm">validate the judge first</text>
+<rect class="box violet" x="450" y="16" width="195" height="44" rx="8"/>
+<text x="547" y="36" text-anchor="middle" class="b">Human experts</text>
+<text x="547" y="52" text-anchor="middle" class="sm">slow, costly, closest to real</text>
+<rect class="box accent" x="665" y="16" width="175" height="44" rx="8"/>
+<text x="752" y="36" text-anchor="middle" class="b">Two numbers at once</text>
+<text x="752" y="52" text-anchor="middle" class="sm">never quote only one</text>
+<rect class="box plain" x="35" y="72" width="165" height="22" rx="11"/><text x="117" y="87" text-anchor="middle" class="sm">Toolathlon (24)</text>
+<rect class="box plain" x="35" y="100" width="165" height="22" rx="11"/><text x="117" y="115" text-anchor="middle" class="sm">MCPMark (24)</text>
+<rect class="box plain" x="35" y="128" width="165" height="22" rx="11"/><text x="117" y="143" text-anchor="middle" class="sm">MCP-Universe (24)</text>
+<rect class="box plain" x="35" y="156" width="165" height="22" rx="11"/><text x="117" y="171" text-anchor="middle" class="sm">TheAgentCompany (26)</text>
+<rect class="box plain" x="35" y="184" width="165" height="22" rx="11"/><text x="117" y="199" text-anchor="middle" class="sm">Spider 2.0, BIRD (27)</text>
+<rect class="box plain" x="35" y="212" width="165" height="22" rx="11"/><text x="117" y="227" text-anchor="middle" class="sm">ScienceAgentBench (27)</text>
+<rect class="box plain" x="250" y="72" width="165" height="22" rx="11"/><text x="332" y="87" text-anchor="middle" class="sm">MCP-Bench (24)</text>
+<rect class="box plain" x="250" y="100" width="165" height="22" rx="11"/><text x="332" y="115" text-anchor="middle" class="sm">MCP-Atlas (24)</text>
+<rect class="box plain" x="250" y="128" width="165" height="22" rx="11"/><text x="332" y="143" text-anchor="middle" class="sm">DeepResearch Bench (26)</text>
+<rect class="box plain" x="250" y="156" width="165" height="22" rx="11"/><text x="332" y="171" text-anchor="middle" class="sm">DEER (26)</text>
+<rect class="box plain" x="250" y="184" width="165" height="22" rx="11"/><text x="332" y="199" text-anchor="middle" class="sm">HealthBench (27)</text>
+<rect class="box plain" x="250" y="212" width="165" height="22" rx="11"/><text x="332" y="227" text-anchor="middle" class="sm">LoCoMo, LongMemEval (23)</text>
+<rect class="box plain" x="465" y="72" width="165" height="22" rx="11"/><text x="547" y="87" text-anchor="middle" class="sm">Remote Labor Index (26)</text>
+<rect class="box plain" x="465" y="100" width="165" height="22" rx="11"/><text x="547" y="115" text-anchor="middle" class="sm">GDPval (03, 26)</text>
+<rect class="box plain" x="465" y="128" width="165" height="22" rx="11"/><text x="547" y="143" text-anchor="middle" class="sm">RoboArena (27)</text>
+<rect class="box plain" x="675" y="72" width="155" height="22" rx="11"/><text x="752" y="87" text-anchor="middle" class="sm">AgentDojo (25)</text>
+<rect class="box plain" x="675" y="100" width="155" height="22" rx="11"/><text x="752" y="115" text-anchor="middle" class="sm">WASP (25)</text>
+<rect class="box plain" x="675" y="128" width="155" height="22" rx="11"/><text x="752" y="143" text-anchor="middle" class="sm">SkillsBench (22)</text>
+<rect class="box plain" x="675" y="156" width="155" height="22" rx="11"/><text x="752" y="171" text-anchor="middle" class="sm">SHADE-Arena (17)</text>
+<rect class="box plain" x="675" y="184" width="155" height="22" rx="11"/><text x="752" y="199" text-anchor="middle" class="sm">HAL (21)</text>
+<text x="752" y="227" text-anchor="middle" class="sm t-muted">utility + ASR, pass + cost,</text>
+<text x="752" y="242" text-anchor="middle" class="sm t-muted">task + sabotage</text>
+<line class="ln dash" x1="20" y1="262" x2="840" y2="262"/>
+<text x="430" y="284" text-anchor="middle" class="sm">Before quoting any of these, ask what the grader is, whether it was validated, and what the headline leaves out.</text>
+</svg>
+<figcaption><b>The newer benchmarks by grading mechanism.</b> Where a benchmark sits here tells you what to check first: for script-graded suites, whether the checks can be gamed or are too weak; for judge-graded ones, whether the judge was validated; for human-graded ones, how many raters and how they agreed; and for two-number benchmarks, the number that is missing from the headline. Numbers in brackets are module numbers.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>What a task is</th><th>How it is graded</th><th>Size</th><th>Module</th></tr>
+<tr><td>HAL (Holistic Agent Leaderboard)</td><td>Run many agents on many benchmarks in one standard harness</td><td>Each benchmark's own grader, with cost next to accuracy; LLM-aided log inspection for shortcuts</td><td>About 21,730 rollouts, 9 models, 9 benchmarks (about $40,000)</td><td><a href="21-harness-evals.html">21</a></td></tr>
+<tr><td>SkillsBench</td><td>Same task with no skill, curated skills or self-generated skills</td><td>Pass rate per arm; the skill's effect is the difference between arms</td><td>About 84 tasks, 11 domains</td><td><a href="22-skills-evals.html">22</a></td></tr>
+<tr><td>LoCoMo</td><td>Answer questions about a very long multi-session conversation</td><td>QA in five categories (single-hop, multi-hop, temporal, open-domain, adversarial), plus event summarization and multimodal dialogue</td><td>10 public conversations, about 300 turns and 9K tokens each, up to 35 sessions</td><td><a href="23-memory-evals.html">23</a></td></tr>
+<tr><td>LongMemEval</td><td>Answer a question after a long chat history</td><td>Five abilities: extraction, multi-session reasoning, temporal reasoning, knowledge updates, abstention</td><td>500 questions; S about 115K tokens, M about 500 sessions and 1.5M tokens</td><td><a href="23-memory-evals.html">23</a></td></tr>
+<tr><td>MemoryAgentBench</td><td>Information arrives incrementally, then questions follow</td><td>Four competencies: accurate retrieval, test-time learning, long-range understanding, conflict resolution</td><td>Multi-dataset suite</td><td><a href="23-memory-evals.html">23</a></td></tr>
+<tr><td>BEAM</td><td>Memory questions over very long conversations</td><td>Question answering over the history (see the paper)</td><td>Beyond a million tokens, with a 10M tier</td><td><a href="23-memory-evals.html">23</a></td></tr>
+<tr><td>MCP-Universe</td><td>Real tasks over real MCP servers in 6 domains</td><td>Execution-based evaluators, some with dynamic ground truth</td><td>6 domains</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>MCP-Bench</td><td>Fuzzy multi-step instructions that do not name the tools</td><td>Rule checks (tool names, schemas, execution) plus an LLM judge rubric</td><td>28 servers, about 250 tools</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>LiveMCP-101</td><td>Multi-step queries needing several MCP tools</td><td>Compared with ground-truth execution plans</td><td>101 queries</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>Toolathlon</td><td>Long-horizon task across real apps from a realistic starting state</td><td>Task-specific scripts check the final state</td><td>108 tasks, 32 apps, 600+ tools</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>MCPMark</td><td>Realistic CRUD-heavy task in Notion, GitHub, Filesystem, PostgreSQL or Playwright</td><td>Verification scripts; reported as pass@k and pass^k</td><td>127 tasks</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>MCP-Atlas</td><td>Tool-use task over real servers, tools not named, with distractors</td><td>Claims-based rubric with partial credit, plus diagnostics</td><td>36 servers, 220 tools, 1,000 tasks</td><td><a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>AgentDojo</td><td>User task in email, banking, travel or workspace, with injections in tool results</td><td>Utility, utility under attack, targeted ASR</td><td>97 user tasks, 629 security cases</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>InjecAgent</td><td>Indirect injection aiming at direct harm or data stealing</td><td>ASR, in a base and an enhanced setting</td><td>1,054 cases</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>Agent Security Bench (ASB)</td><td>Direct and indirect injection, memory poisoning, backdoors</td><td>ASR, benign performance, refusal, a combined score</td><td>About ten scenarios, hundreds of tools</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>AgentHarm</td><td>Explicitly malicious agentic request (misuse)</td><td>Harm score and refusal rate</td><td>110 tasks (440 with augmentations), 11 categories</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>WASP</td><td>Web agent meets injections in user-generated content</td><td>Diverted or not, attacker goal completed or not, utility</td><td>Sandboxed websites</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>AgentDyn</td><td>Dynamic, open-ended tasks with injections</td><td>Utility and ASR against published defenses</td><td>See the paper (2026)</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>MCPTox, MCPSecBench, MCP-SafetyBench</td><td>Agent connected to malicious or realistic MCP servers</td><td>ASR, with per-attack breakdowns</td><td>See each paper</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>ART (Gray Swan and UK AISI)</td><td>High-success attacks curated from a public red-teaming competition</td><td>ASR and transfer across models</td><td>Drawn from about 1.8M attempts</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>DeepResearch Bench</td><td>PhD-level research task ending in a long cited report</td><td>RACE (reference-relative quality) and FACT (citations), reported separately</td><td>100 tasks, 22 fields</td><td><a href="26-research-and-real-work.html">26</a></td></tr>
+<tr><td>DEER</td><td>Expert-level research report</td><td>Expert rubric taxonomy plus a document-level fact check that includes uncited claims</td><td>See the paper</td><td><a href="26-research-and-real-work.html">26</a></td></tr>
+<tr><td>Remote Labor Index</td><td>Real paid freelance project, deliverable compared with the human one</td><td>Expert holistic judgment; automation rate and Elo</td><td>240 projects</td><td><a href="26-research-and-real-work.html">26</a></td></tr>
+<tr><td>TheAgentCompany</td><td>Job task inside a simulated software company</td><td>Scripted checkpoints (a few LLM-judged); full and partial score</td><td>175 tasks</td><td><a href="26-research-and-real-work.html">26</a></td></tr>
+<tr><td>HealthBench</td><td>Realistic health conversation</td><td>Physician-written rubric criteria worth about −10 to +10 points, graded by a model</td><td>5,000 conversations, 48,562 criteria</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>LegalBench</td><td>Legal reasoning task</td><td>Accuracy by task, grouped into six reasoning types</td><td>162 tasks</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>FinanceBench</td><td>Question about a public company filing</td><td>Answer correct within tolerance, with its source</td><td>10,231 questions (150 open)</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>DSBench</td><td>Data analysis or data modeling task</td><td>Accuracy for analysis; relative performance gap (RPG) for modeling</td><td>466 analysis + 74 modeling</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>ScienceAgentBench</td><td>Data-driven discovery task taken from a paper</td><td>Execution-checked program output</td><td>102 tasks from 44 publications</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>Spider 2.0 / BIRD</td><td>Enterprise text-to-SQL workflow / question over a database</td><td>Execution accuracy (plus test suites)</td><td>632 problems / 12,751 pairs</td><td><a href="27-domain-playbook.html">27</a></td></tr>
+<tr><td>SHADE-Arena</td><td>Main task plus a hidden harmful side task, watched by a monitor</td><td>Main and side task success; monitor suspicion 0 to 100, summarized as AUC</td><td>17 task pairs</td><td><a href="17-safety-evals.html">17</a></td></tr>
+<tr><td>SycEval</td><td>Known-answer question, then user pushback</td><td>Re-grade after pushback; progressive and regressive changes reported separately</td><td>Math (AMPS) and medical (MedQuad) items</td><td><a href="17-safety-evals.html">17</a></td></tr>
+<tr><td>EvalDetectBench</td><td>Is this transcript an evaluation or deployment?</td><td>Detection of evaluation context</td><td>Very recent (Sept 2026): read it before quoting it</td><td><a href="17-safety-evals.html">17</a></td></tr>
 </table></div>
 
 <h2>A frame for answering anything</h2>
@@ -383,13 +541,13 @@
 </ol>
 
 <h2>Visual cheat sheets</h2>
-<p>Most expert questions reduce to five recurring choices: which grader, which metric, how to read pass@k against pass^k, how big the noise is, and what to do when a number moves. Each cheat sheet below is one of those choices drawn as a picture. Learn them well enough to sketch on a whiteboard, and you will have a ready answer for most "how would you measure X?" questions.</p>
+<p>Most expert questions reduce to eight recurring choices: which grader, which metric, how to read pass@k against pass^k, how big the noise is, what to do when a number moves, how to evaluate one building block of an agent, how to report a security result, and how high the bar is when a regulator is the audience. Each cheat sheet below is one of those choices drawn as a picture. Learn them well enough to sketch on a whiteboard, and you will have a ready answer for most "how would you measure X?" questions.</p>
 
 <h3>Which grader should I use?</h3>
 <p>Ask three questions in order and stop at the first "yes". The order matters: code graders are the cheapest and most repeatable, so you only move down the ladder when code genuinely cannot see what you need (<a href="03-graders.html">Module 03</a>). Whatever you pick, humans stay in the loop as the source of labels that keep the automatic graders honest.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 860 452" role="img" aria-label="Decision tree for choosing a grader: if a program can check it, use a code grader; if it is one narrow judgement, use a validated LLM judge; if it is subjective or high stakes, use human graders, whose labels also calibrate the judge; otherwise split the criterion up. Grade outcomes for the headline number and processes for safety and diagnosis.">
+<svg viewBox="0 0 860 452" role="img" aria-label="Decision tree for choosing a grader: if a program can check it, use a code grader; if it is one narrow judgment, use a validated LLM judge; if it is subjective or high stakes, use human graders, whose labels also calibrate the judge; otherwise split the criterion up. Grade outcomes for the headline number and processes for safety and diagnosis.">
 <defs><marker id="m20i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="460" y="20" text-anchor="middle" class="sm">Ask in order and stop at the first yes</text>
 <rect class="box accent" x="80" y="36" width="280" height="62" rx="8"/>
@@ -397,7 +555,7 @@
 <text x="220" y="75" text-anchor="middle" class="sm">final state, tests pass, exact answer,</text>
 <text x="220" y="89" text-anchor="middle" class="sm">schema, tool name and arguments</text>
 <rect class="box accent" x="80" y="166" width="280" height="62" rx="8"/>
-<text x="220" y="188" text-anchor="middle" class="b">2 · Is it one narrow judgement?</text>
+<text x="220" y="188" text-anchor="middle" class="b">2 · Is it one narrow judgment?</text>
 <text x="220" y="205" text-anchor="middle" class="sm">faithful to sources? followed policy?</text>
 <text x="220" y="219" text-anchor="middle" class="sm">right tone? one failure mode only</text>
 <rect class="box accent" x="80" y="296" width="280" height="62" rx="8"/>
@@ -441,7 +599,7 @@
 </figure>
 
 <h3>Which metric answers my question?</h3>
-<p>A metric is only "right" relative to a decision. The same transcripts can be summarised as pass@k, pass^k, a mean score or a win rate, and each tells a different story (<a href="04-metrics-and-statistics.html">Module 04</a>). Start from the question on the left and read across.</p>
+<p>A metric is only "right" relative to a decision. The same transcripts can be summarized as pass@k, pass^k, a mean score or a win rate, and each tells a different story (<a href="04-metrics-and-statistics.html">Module 04</a>). Start from the question on the left and read across.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 470" role="img" aria-label="Matching decisions to metrics: best-of-k with a verifier uses pass@k; must work every time uses pass^k; rubric scores use a mean with standard error; preferences use win rate or Bradley-Terry; detectors use precision and recall; cost questions use cost, latency and the Pareto frontier; long tasks use time horizon and milestones. Every metric gets a confidence interval.">
@@ -546,7 +704,7 @@
 <text x="526" y="276" class="sm">a wide gap means an inconsistent agent;</text>
 <text x="526" y="291" class="sm">at k = 1 both equal pass@1</text>
 </svg>
-<figcaption><b>Same agent, opposite verdicts.</b> Exact values from 1 − (1 − p)^k and p^k for a single task with independent trials; this is an idealised illustration, not benchmark data. Real suites average over tasks with different p, so real curves bend more gently. The mono lines are the unbiased estimators from n samples with c correct (Chen et al. 2021; Yao et al. 2024).</figcaption>
+<figcaption><b>Same agent, opposite verdicts.</b> Exact values from 1 − (1 − p)^k and p^k for a single task with independent trials; this is an idealized illustration, not benchmark data. Real suites average over tasks with different p, so real curves bend more gently. The mono lines are the unbiased estimators from n samples with c correct (Chen et al. 2021; Yao et al. 2024).</figcaption>
 </figure>
 
 <h3>How big is the noise?</h3>
@@ -626,7 +784,7 @@
 <text x="230" y="425" text-anchor="middle" class="sm">list the tasks that flipped (discordant)</text>
 <rect class="box accent" x="40" y="472" width="380" height="62" rx="8"/>
 <text x="230" y="494" text-anchor="middle" class="b">5 · Read the flipped transcripts</text>
-<text x="230" y="511" text-anchor="middle" class="sm">real behaviour change, or a grader bug,</text>
+<text x="230" y="511" text-anchor="middle" class="sm">real behavior change, or a grader bug,</text>
 <text x="230" y="525" text-anchor="middle" class="sm">reward hacking, contamination?</text>
 <line class="ln accent flow" x1="230" y1="135" x2="230" y2="170" marker-end="url(#m20l)"/>
 <line class="ln accent flow" x1="230" y1="235" x2="230" y2="270" marker-end="url(#m20l)"/>
@@ -669,8 +827,175 @@
 <figcaption><b>Debug a moved score in this order.</b> Noise, then measurement changes (harness, prompts, judge, data), then infrastructure, then slices, then transcripts. Each exit on the right is a complete answer on its own; only a change that survives the first three checks is worth reading transcripts for.</figcaption>
 </figure>
 
+<h3>Evaluating a building block: isolate, ablate, attribute</h3>
+<p>Part V applies one method to four different parts of an agent. Change one block, hold everything else fixed, compare paired runs, then read the tasks that flipped. What changes from block to block is the signature metric, the number that tells you the block is doing its job.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 400" role="img" aria-label="Cheat sheet for evaluating a building block. Left: three steps, isolate, ablate with paired runs, attribute by reading flipped transcripts, plus a warning about the winner's curse. Right: the signature metrics for the harness, skills, memory, and tools and MCP.">
+<defs><marker id="m20zb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="190" y="24" text-anchor="middle" class="b">Three steps, for every block</text>
+<rect class="box accent" x="20" y="40" width="340" height="70" rx="8"/>
+<text x="190" y="63" text-anchor="middle" class="b">1 · Isolate</text>
+<text x="190" y="82" text-anchor="middle" class="sm">freeze the model, data, grader and other blocks;</text>
+<text x="190" y="97" text-anchor="middle" class="sm">change exactly one component</text>
+<rect class="box accent" x="20" y="140" width="340" height="70" rx="8"/>
+<text x="190" y="163" text-anchor="middle" class="b">2 · Ablate, paired</text>
+<text x="190" y="182" text-anchor="middle" class="sm">same tasks in both arms, several trials each;</text>
+<text x="190" y="197" text-anchor="middle" class="sm">report the paired difference with a CI</text>
+<rect class="box accent" x="20" y="240" width="340" height="70" rx="8"/>
+<text x="190" y="263" text-anchor="middle" class="b">3 · Attribute</text>
+<text x="190" y="282" text-anchor="middle" class="sm">read the transcripts of the tasks that flipped;</text>
+<text x="190" y="297" text-anchor="middle" class="sm">label each failure: model, harness, or both</text>
+<line class="ln accent" x1="190" y1="111" x2="190" y2="138" marker-end="url(#m20zb)"/>
+<line class="ln accent" x1="190" y1="211" x2="190" y2="238" marker-end="url(#m20zb)"/>
+<rect class="box warn" x="20" y="330" width="340" height="56" rx="8"/>
+<text x="190" y="352" text-anchor="middle" class="b">Watch the winner's curse</text>
+<text x="190" y="371" text-anchor="middle" class="sm">best of 20 null variants looks about +3.7 points (SE 2)</text>
+<text x="620" y="24" text-anchor="middle" class="b">The signature metric per block</text>
+<rect class="box accent" x="400" y="40" width="440" height="76" rx="8"/>
+<text x="620" y="62" text-anchor="middle" class="b">Harness · 21</text>
+<text x="620" y="82" text-anchor="middle" class="sm">paired delta with a CI, one component at a time;</text>
+<text x="620" y="98" text-anchor="middle" class="sm">premature-done rate over "done" claims; infra errors kept apart</text>
+<rect class="box violet" x="400" y="128" width="440" height="76" rx="8"/>
+<text x="620" y="150" text-anchor="middle" class="b">Skills · 22</text>
+<text x="620" y="170" text-anchor="middle" class="sm">trigger rate on about 20 queries (near misses included), 3 runs;</text>
+<text x="620" y="186" text-anchor="middle" class="sm">uplift against a no-skill baseline; adherence from the trajectory</text>
+<rect class="box violet" x="400" y="216" width="440" height="76" rx="8"/>
+<text x="620" y="238" text-anchor="middle" class="b">Memory · 23</text>
+<text x="620" y="258" text-anchor="middle" class="sm">staleness, false-memory rate, recall@k, deletion compliance, leaks;</text>
+<text x="620" y="274" text-anchor="middle" class="sm">against no-memory, full-context and oracle-retrieval baselines</text>
+<rect class="box accent" x="400" y="304" width="440" height="76" rx="8"/>
+<text x="620" y="326" text-anchor="middle" class="b">Tools and MCP · 24</text>
+<text x="620" y="346" text-anchor="middle" class="sm">selection, arguments, sequencing, parallel calls, result use;</text>
+<text x="620" y="362" text-anchor="middle" class="sm">contract tests, distractor scaling, pinned manifest hashes</text>
+</svg>
+<figcaption><b>One method, four signature metrics.</b> The left column is the same for every block: isolate, ablate with paired runs, attribute by reading transcripts. The right column is what to put on the dashboard for each block. The winner's-curse figure is from Module 21: if you try 20 variants that do nothing, the best one still looks about 3.7 points better when the standard error is 2, so confirm a winner on fresh tasks.</figcaption>
+</figure>
+
+<h3>Security eval: attack success against utility</h3>
+<p>A security number means nothing on its own. An agent that refuses every task has an attack success rate of zero and is useless; a defense that stops yesterday's attacks can fall to an attacker who adapts. Plot both numbers, and say who the attacker was.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 350" role="img" aria-label="Illustrative chart of targeted attack success rate against utility under attack. An undefended agent sits in the middle; an agent that refuses everything sits at zero on both; a prompt-level defense looks good against static attacks but moves up sharply against adaptive attacks; an isolation design sits near the goal region of high utility and low attack success. Side panel lists what to report.">
+<defs><marker id="m20zc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="280" y="22" text-anchor="middle" class="sm t-muted">Illustrative points, not measured data</text>
+<line class="ln" x1="80" y1="300" x2="490" y2="300" marker-end="url(#m20zc)"/>
+<line class="ln" x1="80" y1="300" x2="80" y2="34" marker-end="url(#m20zc)"/>
+<text x="80" y="316" text-anchor="middle" class="sm">0%</text>
+<text x="280" y="316" text-anchor="middle" class="sm">50%</text>
+<text x="480" y="316" text-anchor="middle" class="sm">100%</text>
+<text x="280" y="338" text-anchor="middle" class="sm">utility under attack (higher is better)</text>
+<text x="72" y="304" text-anchor="end" class="sm">0%</text>
+<text x="72" y="174" text-anchor="end" class="sm">50%</text>
+<text x="72" y="48" text-anchor="end" class="sm">100%</text>
+<text x="30" y="170" transform="rotate(-90 30 170)" text-anchor="middle" class="sm">targeted ASR (lower is better)</text>
+<line class="ln dash" x1="80" y1="170" x2="480" y2="170"/>
+<rect class="box good dashed" x="400" y="250" width="80" height="50" rx="6"/>
+<text x="462" y="266" text-anchor="middle" class="sm t-good">goal</text>
+<circle class="fill-bad" cx="300" cy="196" r="6"/>
+<text x="290" y="200" text-anchor="end" class="sm">undefended</text>
+<circle class="fill-muted" cx="92" cy="297" r="6"/>
+<text x="104" y="276" text-anchor="start" class="sm">refuses everything:</text>
+<text x="104" y="290" text-anchor="start" class="sm">ASR 0, and useless</text>
+<circle class="fill-warn" cx="368" cy="279" r="6"/>
+<text x="358" y="283" text-anchor="end" class="sm">defense vs static attacks</text>
+<line class="ln warn dash" x1="366" y1="271" x2="354" y2="180" marker-end="url(#m20zc)"/>
+<circle class="ln warn thick" cx="352" cy="170" r="6"/>
+<text x="364" y="160" text-anchor="start" class="sm">same defense, adaptive</text>
+<circle class="fill-good" cx="420" cy="290" r="6"/>
+<text x="440" y="244" text-anchor="middle" class="sm">isolation (CaMeL-style)</text>
+<rect class="box accent" x="540" y="30" width="300" height="62" rx="8"/>
+<text x="690" y="52" text-anchor="middle" class="b">Report the triple</text>
+<text x="690" y="70" text-anchor="middle" class="sm">clean utility, utility under attack</text>
+<text x="690" y="84" text-anchor="middle" class="sm">and targeted ASR, per task</text>
+<rect class="box bad" x="540" y="104" width="300" height="62" rx="8"/>
+<text x="690" y="126" text-anchor="middle" class="b">Attack pass@k</text>
+<text x="690" y="144" text-anchor="middle" class="sm">1 − (1 − p)^k: 5% per try becomes</text>
+<text x="690" y="158" text-anchor="middle" class="sm">about 40% at 10 tries, 72% at 25</text>
+<rect class="box warn" x="540" y="178" width="300" height="62" rx="8"/>
+<text x="690" y="200" text-anchor="middle" class="b">State the attacker budget</text>
+<text x="690" y="218" text-anchor="middle" class="sm">static or adaptive, and how many tries;</text>
+<text x="690" y="232" text-anchor="middle" class="sm">defenses often break when it adapts</text>
+<rect class="box violet" x="540" y="252" width="300" height="62" rx="8"/>
+<text x="690" y="274" text-anchor="middle" class="b">Beware false safety</text>
+<text x="690" y="292" text-anchor="middle" class="sm">refusing everything, or an agent too weak</text>
+<text x="690" y="306" text-anchor="middle" class="sm">to finish the attacker's goal</text>
+</svg>
+<figcaption><b>Two axes, one attacker budget.</b> Good security results sit bottom right: the user's task still succeeds under attack and the attacker's goal rarely does. The dashed arrow is the lesson of the NIST and CAISI hijacking work and of "The Attacker Moves Second": a defense measured only against a fixed attack set can move far up once attacks adapt or repeat. The last box is "security by incompetence": low ASR because the agent is too weak, not because it is safe (<a href="25-agent-security-evals.html">Module 25</a>).</figcaption>
+</figure>
+
+<h3>Regulator-facing evidence against engineering evidence</h3>
+<p>The same eval runs can serve a product decision and a regulator, but the bar is different. Five things change when the audience changes, and a safety case is how the evidence is organized once it has to convince someone else.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 420" role="img" aria-label="Cheat sheet comparing engineering and regulator-facing evals on purpose, evidence standard, documentation, reproducibility and independence, with a worked margin example, next to a small safety case tree of claim, argument, evidence and a defeater, and the four families of safety argument.">
+<defs><marker id="m20zd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="237" y="26" text-anchor="middle" class="b">Engineering eval</text>
+<text x="427" y="26" text-anchor="middle" class="b">Regulator-facing eval</text>
+<line class="ln" x1="302" y1="22" x2="352" y2="22" marker-end="url(#m20zd)"/>
+<text x="20" y="69" text-anchor="start" class="b">Purpose</text>
+<rect class="box plain" x="150" y="40" width="175" height="48" rx="6"/>
+<text x="237" y="68" text-anchor="middle" class="sm">"which is better?"</text>
+<rect class="box violet" x="335" y="40" width="185" height="48" rx="6"/>
+<text x="427" y="60" text-anchor="middle" class="sm">support a claim with a</text>
+<text x="427" y="75" text-anchor="middle" class="sm">direction and a threshold</text>
+<text x="20" y="125" text-anchor="start" class="b">Evidence</text>
+<rect class="box plain" x="150" y="96" width="175" height="48" rx="6"/>
+<text x="237" y="124" text-anchor="middle" class="sm">point estimate often enough</text>
+<rect class="box violet" x="335" y="96" width="185" height="48" rx="6"/>
+<text x="427" y="116" text-anchor="middle" class="sm">conservative side of the CI;</text>
+<text x="427" y="131" text-anchor="middle" class="sm">show how hard you looked</text>
+<text x="20" y="181" text-anchor="start" class="b">Documentation</text>
+<rect class="box plain" x="150" y="152" width="175" height="48" rx="6"/>
+<text x="237" y="180" text-anchor="middle" class="sm">enough to decide quickly</text>
+<rect class="box violet" x="335" y="152" width="185" height="48" rx="6"/>
+<text x="427" y="172" text-anchor="middle" class="sm">methods, versions, provenance,</text>
+<text x="427" y="187" text-anchor="middle" class="sm">limitations, who ran it</text>
+<text x="20" y="237" text-anchor="start" class="b">Reproducibility</text>
+<rect class="box plain" x="150" y="208" width="175" height="48" rx="6"/>
+<text x="237" y="236" text-anchor="middle" class="sm">comparable across your runs</text>
+<rect class="box violet" x="335" y="208" width="185" height="48" rx="6"/>
+<text x="427" y="228" text-anchor="middle" class="sm">exact: pin snapshot, harness,</text>
+<text x="427" y="243" text-anchor="middle" class="sm">prompts, seeds, data hashes</text>
+<text x="20" y="293" text-anchor="start" class="b">Independence</text>
+<rect class="box plain" x="150" y="264" width="175" height="48" rx="6"/>
+<text x="237" y="292" text-anchor="middle" class="sm">the builders run it</text>
+<rect class="box violet" x="335" y="264" width="185" height="48" rx="6"/>
+<text x="427" y="284" text-anchor="middle" class="sm">separation: another team,</text>
+<text x="427" y="299" text-anchor="middle" class="sm">audit, or AISI, CAISI, METR</text>
+<rect class="box warn" x="20" y="330" width="500" height="60" rx="8"/>
+<text x="270" y="350" text-anchor="middle" class="b">The margin test (illustrative)</text>
+<text x="270" y="367" text-anchor="middle" class="sm">2 of 40 tasks solved: point estimate 5%, one-sided 95% upper bound about 15%;</text>
+<text x="270" y="382" text-anchor="middle" class="sm">an inability claim with a 10% threshold does not hold yet</text>
+<text x="705" y="26" text-anchor="middle" class="b">Safety case (CAE)</text>
+<rect class="box violet" x="595" y="40" width="220" height="44" rx="8"/>
+<text x="705" y="58" text-anchor="middle" class="b">Claim</text>
+<text x="705" y="75" text-anchor="middle" class="sm">the risk is acceptably low</text>
+<rect class="box accent" x="595" y="112" width="220" height="44" rx="8"/>
+<text x="705" y="130" text-anchor="middle" class="b">Argument</text>
+<text x="705" y="147" text-anchor="middle" class="sm">e.g. inability: it cannot do X</text>
+<rect class="box good" x="595" y="184" width="220" height="44" rx="8"/>
+<text x="705" y="202" text-anchor="middle" class="b">Evidence</text>
+<text x="705" y="219" text-anchor="middle" class="sm">evals: upper bound below threshold</text>
+<rect class="box bad dashed" x="595" y="262" width="220" height="44" rx="8"/>
+<text x="705" y="280" text-anchor="middle" class="b">Defeater</text>
+<text x="705" y="297" text-anchor="middle" class="sm">a better scaffold appears: re-run</text>
+<line class="ln" x1="705" y1="112" x2="705" y2="87" marker-end="url(#m20zd)"/>
+<line class="ln" x1="705" y1="184" x2="705" y2="159" marker-end="url(#m20zd)"/>
+<line class="ln bad dash" x1="705" y1="261" x2="705" y2="231" marker-end="url(#m20zd)"/>
+<rect class="fill-soft" x="720" y="238" width="64" height="16" rx="4"/><text x="752" y="250" text-anchor="middle" class="sm">undercuts</text>
+<text x="705" y="330" text-anchor="middle" class="b">Four argument families</text>
+<rect class="box good" x="570" y="342" width="130" height="20" rx="10"/><text x="635" y="356" text-anchor="middle" class="sm">inability</text>
+<rect class="box accent" x="710" y="342" width="130" height="20" rx="10"/><text x="775" y="356" text-anchor="middle" class="sm">control</text>
+<rect class="box warn" x="570" y="368" width="130" height="20" rx="10"/><text x="635" y="382" text-anchor="middle" class="sm">trustworthiness</text>
+<rect class="box bad" x="710" y="368" width="130" height="20" rx="10"/><text x="775" y="382" text-anchor="middle" class="sm">deference</text>
+<text x="705" y="408" text-anchor="middle" class="sm t-muted">most established → most speculative</text>
+</svg>
+<figcaption><b>Same runs, higher bar.</b> Left: the five rows on which a regulator-facing eval differs from an engineering one, and a worked example of why the conservative side of the interval matters. Right: a safety case in claims, arguments and evidence, with a defeater (a known reason to doubt the claim) that forces the evals to be re-run. The four argument families follow Clymer et al. (2024): inability is the most established, deference the most speculative (<a href="28-governance-and-responsible-ai.html">Module 28</a>).</figcaption>
+</figure>
+
 <h2>Expert interview drill</h2>
-<p>Forty-eight questions in nine themes. Each answer is written the way a strong candidate would say it: precise, with numbers where they matter, and honest about what is uncertain. Questions tagged <b>design</b> are open-ended scenarios; use the six-step frame. Try each question yourself before opening it.</p>
+<p>Sixty-three questions in twelve themes. Questions 49 to 63 cover the building blocks of Part V, the beyond-the-core topics of Part VI, and the newer sections on reliability, cost and measurement. Each answer is written the way a strong candidate would say it: precise, with numbers where they matter, and honest about what is uncertain. Questions tagged <b>design</b> are open-ended scenarios; use the six-step frame. Try each question yourself before opening it.</p>
 
 <div class="drill">
 
@@ -681,7 +1006,7 @@
 </details>
 
 <details><summary>2. Capability evals vs regression evals: what pass rate should each have, and why?</summary>
-<p>Anthropic's January 2026 agent-evals post puts it cleanly: <b>capability evals</b> should start at a low pass rate, because their job is to show headroom and measure progress on things the system cannot yet do. <b>Regression evals</b> should sit near 100%, because they guard behaviour you already have; any drop is a signal. Mixing them hides both signals: a suite averaging 80% can hide a regression on a critical flow under a capability gain elsewhere. Hamel Husain adds a practical heuristic for product evals: if everything passes, the eval probably is not hard enough; he suggests around 70% is healthier for an improvement suite. See <a href="02-anatomy-of-an-eval.html">Module 02</a>.</p>
+<p>Anthropic's January 2026 agent-evals post puts it cleanly: <b>capability evals</b> should start at a low pass rate, because their job is to show headroom and measure progress on things the system cannot yet do. <b>Regression evals</b> should sit near 100%, because they guard behavior you already have; any drop is a signal. Mixing them hides both signals: a suite averaging 80% can hide a regression on a critical flow under a capability gain elsewhere. Hamel Husain adds a practical heuristic for product evals: if everything passes, the eval probably is not hard enough; he suggests around 70% is healthier for an improvement suite. See <a href="02-anatomy-of-an-eval.html">Module 02</a>.</p>
 </details>
 
 <details><summary>3. Why is "the model" the wrong unit of evaluation for agents?</summary>
@@ -719,7 +1044,7 @@
 </details>
 
 <details><summary>11. Your judge's pass rate is 80%, but the judge is imperfect. What is the real pass rate?</summary>
-<p>Measure the judge against human labels to get its true positive rate (TPR, how often it passes truly good outputs) and true negative rate (TNR, how often it fails truly bad ones). Then correct with θ = (p<sub>obs</sub> + TNR − 1) / (TPR + TNR − 1). With p<sub>obs</sub> = 0.80, TPR = 0.90 and TNR = 0.80, θ = 0.60 / 0.70 ≈ 0.857. The correction becomes unstable as TPR + TNR approaches 1 (a judge no better than chance), and the uncertainty in TPR and TNR should be propagated, for example with a bootstrap over the labelled set. See <a href="13-llm-as-judge.html">Module 13</a>; the widget below does the arithmetic.</p>
+<p>Measure the judge against human labels to get its true positive rate (TPR, how often it passes truly good outputs) and true negative rate (TNR, how often it fails truly bad ones). Then correct with θ = (p<sub>obs</sub> + TNR − 1) / (TPR + TNR − 1). With p<sub>obs</sub> = 0.80, TPR = 0.90 and TNR = 0.80, θ = 0.60 / 0.70 ≈ 0.857. The correction becomes unstable as TPR + TNR approaches 1 (a judge no better than chance), and the uncertainty in TPR and TNR should be propagated, for example with a bootstrap over the labeled set. See <a href="13-llm-as-judge.html">Module 13</a>; the widget below does the arithmetic.</p>
 </details>
 
 <details><summary>12. How do Elo and Bradley–Terry ratings work, and what does a 100-point gap mean?</summary>
@@ -812,17 +1137,17 @@
 </details>
 
 <details><summary>16. Name the main judge biases and how to mitigate each.</summary>
-<p><b>Position bias</b>: preferring the first (or second) answer in a pairwise comparison; mitigate by swapping order and averaging, or counting only consistent verdicts. <b>Verbosity bias</b>: preferring longer answers; mitigate with rubrics that penalise padding, length-controlled comparisons, and style control. <b>Self-enhancement bias</b>: preferring outputs from the judge's own model family; mitigate by using a different model to grade than to generate (Anthropic's docs recommend this). <b>Limited reasoning</b>: judges miss maths and logic errors; mitigate with reference-guided grading and letting the judge reason before scoring. And <b>scale compression</b>: 1 to 10 scores cluster; prefer binary or labelled categories. All five are documented in Zheng et al. 2023 and practitioner guides by Eugene Yan and Hamel Husain. See <a href="13-llm-as-judge.html">Module 13</a>.</p>
+<p><b>Position bias</b>: preferring the first (or second) answer in a pairwise comparison; mitigate by swapping order and averaging, or counting only consistent verdicts. <b>Verbosity bias</b>: preferring longer answers; mitigate with rubrics that penalize padding, length-controlled comparisons, and style control. <b>Self-enhancement bias</b>: preferring outputs from the judge's own model family; mitigate by using a different model to grade than to generate (Anthropic's docs recommend this). <b>Limited reasoning</b>: judges miss maths and logic errors; mitigate with reference-guided grading and letting the judge reason before scoring. And <b>scale compression</b>: 1 to 10 scores cluster; prefer binary or labeled categories. All five are documented in Zheng et al. 2023 and practitioner guides by Eugene Yan and Hamel Husain. See <a href="13-llm-as-judge.html">Module 13</a>.</p>
 </details>
 
 <details><summary>17. When do you use human graders, and how do you make them reliable?</summary>
-<p>Use humans to create ground truth for calibrating code and model graders, for high-stakes or subjective judgements (medical, legal, taste), and for final checks before launch. Make them reliable with a written rubric with examples at each level, a calibration round, overlapping assignments so you can measure inter-annotator agreement (Cohen's or Fleiss' kappa), and a "benevolent dictator" domain expert who settles disputes. Expect <b>criteria drift</b>: Shankar et al. (2024) showed people refine their criteria while grading, so budget for a second pass. Anthropic's docs rank humans as the most flexible but slowest grading method, to be avoided where a validated automatic grader will do. GDPval is the large-scale example: blinded expert pairwise comparisons across 44 occupations. See <a href="03-graders.html">Module 03</a>.</p>
+<p>Use humans to create ground truth for calibrating code and model graders, for high-stakes or subjective judgments (medical, legal, taste), and for final checks before launch. Make them reliable with a written rubric with examples at each level, a calibration round, overlapping assignments so you can measure inter-annotator agreement (Cohen's or Fleiss' kappa), and a "benevolent dictator" domain expert who settles disputes. Expect <b>criteria drift</b>: Shankar et al. (2024) showed people refine their criteria while grading, so budget for a second pass. Anthropic's docs rank humans as the most flexible but slowest grading method, to be avoided where a validated automatic grader will do. GDPval is the large-scale example: blinded expert pairwise comparisons across 44 occupations. See <a href="03-graders.html">Module 03</a>.</p>
 </details>
 
 <h3>Agent evals, modality by modality</h3>
 
 <details><summary>18. Design an eval for a voice agent that books doctor appointments. <span class="tag">design</span></summary>
-<p><b>Decision:</b> can it go live on the clinic line, and for which call types? <b>System:</b> telephony audio → ASR → LLM with calendar and patient-record tools → TTS, or a speech-to-speech model; pin every component version. <b>Data:</b> a simulated-caller matrix of intents (book, reschedule, cancel, urgent symptoms, wrong number) crossed with accents, noise, speaking speed and interruption behaviour, plus replays of consented real calls; Cekura-style persona matrices easily reach hundreds of variants. <b>Graders, in layers:</b> component (WER = (S + D + I)/N on names, dates and dates of birth; latency P50/P95, where vendor guides target sub-second time to first audio), conversation (turn-taking, barge-in handling, reading back the date and time before confirming), <b>task outcome</b> checked in the database (right patient, right doctor, right slot, no double booking), and safety (never diagnoses, routes urgent symptoms to a human or emergency line, verifies identity before disclosing anything). <b>Number:</b> task success as pass^k per scenario, because every caller must succeed, plus latency percentiles and escalation rate. <b>Threats:</b> simulator unrealism (calibrate against real calls), transcribe-then-judge missing audio problems, and noisy-channel robustness (τ-Voice saw scores drop further with noise and accents). See the diagram below and <a href="09-voice-agents.html">Module 09</a>.</p>
+<p><b>Decision:</b> can it go live on the clinic line, and for which call types? <b>System:</b> telephony audio → ASR → LLM with calendar and patient-record tools → TTS, or a speech-to-speech model; pin every component version. <b>Data:</b> a simulated-caller matrix of intents (book, reschedule, cancel, urgent symptoms, wrong number) crossed with accents, noise, speaking speed and interruption behavior, plus replays of consented real calls; Cekura-style persona matrices easily reach hundreds of variants. <b>Graders, in layers:</b> component (WER = (S + D + I)/N on names, dates and dates of birth; latency P50/P95, where vendor guides target sub-second time to first audio), conversation (turn-taking, barge-in handling, reading back the date and time before confirming), <b>task outcome</b> checked in the database (right patient, right doctor, right slot, no double booking), and safety (never diagnoses, routes urgent symptoms to a human or emergency line, verifies identity before disclosing anything). <b>Number:</b> task success as pass^k per scenario, because every caller must succeed, plus latency percentiles and escalation rate. <b>Threats:</b> simulator unrealism (calibrate against real calls), transcribe-then-judge missing audio problems, and noisy-channel robustness (τ-Voice saw scores drop further with noise and accents). See the diagram below and <a href="09-voice-agents.html">Module 09</a>.</p>
 </details>
 
 <figure class="diagram">
@@ -881,7 +1206,7 @@
 </details>
 
 <details><summary>20. How do you evaluate a computer-use agent safely? <span class="tag">design</span></summary>
-<p>Isolation first: run every trial in a disposable VM or container that is reset from a snapshot (OSWorld uses VMs; Inspect supports Docker, Kubernetes and other sandboxes), with synthetic accounts, no real credentials, and network egress restricted to an allowlist. Grade outcomes with state checks on files and apps, and also check for <b>collateral damage</b>: nothing changed that should not have (AppWorld's state-based tests do this). Include <b>infeasible tasks</b> where the right behaviour is to stop and say so (OSWorld has them), prompt-injection pages and documents planted in the environment, and irreversible actions (delete, pay, send) that should trigger a confirmation request. Report unsafe-action rate and injection success rate alongside task success, cap steps and wall-clock time, and log full screenshots and actions for review. Only after that move to supervised runs in a staging copy of real systems. See <a href="08-web-and-computer-use.html">Module 08</a>.</p>
+<p>Isolation first: run every trial in a disposable VM or container that is reset from a snapshot (OSWorld uses VMs; Inspect supports Docker, Kubernetes and other sandboxes), with synthetic accounts, no real credentials, and network egress restricted to an allowlist. Grade outcomes with state checks on files and apps, and also check for <b>collateral damage</b>: nothing changed that should not have (AppWorld's state-based tests do this). Include <b>infeasible tasks</b> where the right behavior is to stop and say so (OSWorld has them), prompt-injection pages and documents planted in the environment, and irreversible actions (delete, pay, send) that should trigger a confirmation request. Report unsafe-action rate and injection success rate alongside task success, cap steps and wall-clock time, and log full screenshots and actions for review. Only after that move to supervised runs in a staging copy of real systems. See <a href="08-web-and-computer-use.html">Module 08</a>.</p>
 </details>
 
 <details><summary>21. How do you evaluate a multi-agent system? <span class="tag">design</span></summary>
@@ -893,11 +1218,11 @@
 </details>
 
 <details><summary>23. How do you evaluate a RAG system?</summary>
-<p>Separate retrieval from generation, because they fail differently. Retrieval: context precision and recall against labelled relevant passages (or recall@k), measured on real queries. Generation: <b>faithfulness</b> (every claim supported by the retrieved context), answer relevance, and answer correctness against a reference. TruLens calls groundedness, context relevance and answer relevance the "RAG triad"; Ragas and DeepEval ship similar metrics, mostly judge-based, so validate them on your domain. Include unanswerable questions (the right answer is "I don't know") and questions whose answer changed over time. When scores drop, the split tells you whether to fix the index or the prompt. See <a href="06-tool-use-and-conversation.html">Module 06</a>.</p>
+<p>Separate retrieval from generation, because they fail differently. Retrieval: context precision and recall against labeled relevant passages (or recall@k), measured on real queries. Generation: <b>faithfulness</b> (every claim supported by the retrieved context), answer relevance, and answer correctness against a reference. TruLens calls groundedness, context relevance and answer relevance the "RAG triad"; Ragas and DeepEval ship similar metrics, mostly judge-based, so validate them on your domain. Include unanswerable questions (the right answer is "I don't know") and questions whose answer changed over time. When scores drop, the split tells you whether to fix the index or the prompt. See <a href="06-tool-use-and-conversation.html">Module 06</a>.</p>
 </details>
 
 <details><summary>24. How do you evaluate image and video models, both understanding and generation?</summary>
-<p>For <b>understanding</b>, the classic trap is questions answerable without looking: MMMU-Pro filtered out text-only-solvable questions and added a vision-only setting, and MVBench has items answerable from a single frame. Always run a blind (no image) baseline. For <b>generation</b>, combine automated checks for things detectors can verify (GenEval uses an object detector for count, colour and position; T2I-CompBench uses BLIP-VQA and UniDet; VBench splits video quality into 16 dimensions) with human pairwise preference (arenas with Bradley–Terry ratings) or preference models such as HPSv2, ImageReward and PickScore. Know the weaknesses: GenEval is saturated and can be gamed by prompt rewriting, and arena voters have style biases. See <a href="10-vision-image-video.html">Module 10</a>.</p>
+<p>For <b>understanding</b>, the classic trap is questions answerable without looking: MMMU-Pro filtered out text-only-solvable questions and added a vision-only setting, and MVBench has items answerable from a single frame. Always run a blind (no image) baseline. For <b>generation</b>, combine automated checks for things detectors can verify (GenEval uses an object detector for count, color and position; T2I-CompBench uses BLIP-VQA and UniDet; VBench splits video quality into 16 dimensions) with human pairwise preference (arenas with Bradley–Terry ratings) or preference models such as HPSv2, ImageReward and PickScore. Know the weaknesses: GenEval is saturated and can be gamed by prompt rewriting, and arena voters have style biases. See <a href="10-vision-image-video.html">Module 10</a>.</p>
 </details>
 
 <details><summary>25. How do you evaluate long-horizon agents?</summary>
@@ -1020,7 +1345,7 @@ inspect view   # browse transcripts and scores</code></pre>
 </details>
 
 <details><summary>34. What is Epoch AI's Capabilities Index, and why use Item Response Theory?</summary>
-<p>Individual benchmarks saturate and each covers a narrow slice, so comparing models across years is hard. The Epoch Capabilities Index (ECI) uses <b>Item Response Theory</b> to put 50+ benchmarks on one scale: it jointly estimates each model's ability and each benchmark's difficulty and discrimination, so a new hard benchmark can be linked to old easy ones. The scale is anchored so Claude 3.5 Sonnet is 130 and GPT-5 is 150. It combines Epoch's own runs, developer-reported scores and independent leaderboards, so its quality depends on those inputs. IRT is the same idea standardised tests use to compare students who took different papers. See <a href="16-how-labs-do-evals.html">Module 16</a>.</p>
+<p>Individual benchmarks saturate and each covers a narrow slice, so comparing models across years is hard. The Epoch Capabilities Index (ECI) uses <b>Item Response Theory</b> to put 50+ benchmarks on one scale: it jointly estimates each model's ability and each benchmark's difficulty and discrimination, so a new hard benchmark can be linked to old easy ones. The scale is anchored so Claude 3.5 Sonnet is 130 and GPT-5 is 150. It combines Epoch's own runs, developer-reported scores and independent leaderboards, so its quality depends on those inputs. IRT is the same idea standardized tests use to compare students who took different papers. See <a href="16-how-labs-do-evals.html">Module 16</a>.</p>
 </details>
 
 <details><summary>35. Who evaluates the labs from outside, and what do they add?</summary>
@@ -1034,15 +1359,15 @@ inspect view   # browse transcripts and scores</code></pre>
 </details>
 
 <details><summary>37. What is evaluation awareness, and why does it threaten alignment evals?</summary>
-<p>A model is evaluation-aware when it recognises that it is being tested. If behaviour differs between tests and deployment, alignment evals measure test behaviour, not real behaviour. Anthropic's Claude Sonnet 4.5 system card reported the model sometimes said it thought it was being tested, and white-box probes found representations of evaluation awareness that grew in strength over training. In the OpenAI and Apollo anti-scheming work (September 2025), covert-action rates fell sharply (o3 from 13% to 0.4%), but evaluation awareness causally contributed to the reduction, so part of the improvement may be "behaves well when it thinks it is watched". Mitigations include more realistic environments, production-like transcripts, interpretability checks, and scanning transcripts for awareness (Inspect Scout does this). See <a href="17-safety-evals.html">Module 17</a>.</p>
+<p>A model is evaluation-aware when it recognizes that it is being tested. If behavior differs between tests and deployment, alignment evals measure test behavior, not real behavior. Anthropic's Claude Sonnet 4.5 system card reported the model sometimes said it thought it was being tested, and white-box probes found representations of evaluation awareness that grew in strength over training. In the OpenAI and Apollo anti-scheming work (September 2025), covert-action rates fell sharply (o3 from 13% to 0.4%), but evaluation awareness causally contributed to the reduction, so part of the improvement may be "behaves well when it thinks it is watched". Mitigations include more realistic environments, production-like transcripts, interpretability checks, and scanning transcripts for awareness (Inspect Scout does this). See <a href="17-safety-evals.html">Module 17</a>.</p>
 </details>
 
 <details><summary>38. How do you evaluate an agent's robustness to prompt injection?</summary>
-<p>Plant adversarial instructions where the agent will read them (web pages, emails, documents, tool outputs) inside realistic tasks, and measure two numbers together: <b>attack success rate</b> (did it follow the injected instruction, for example exfiltrate data or send money) and <b>utility under attack</b> (does it still finish the user's real task). A defence that blocks attacks by refusing everything is not a defence. Vary attack styles and positions, grade success by environment state (was the email actually sent?), and include benign look-alike instructions to measure over-refusal. Keep the attack set partly private, since public attack sets end up in training data. Lab system cards now report prompt-injection results in their agentic-safety sections, and CAISI's DeepSeek finding (12x more susceptible to agent hijacking) shows how large the gaps can be. See <a href="08-web-and-computer-use.html">Module 08</a> and <a href="17-safety-evals.html">Module 17</a>.</p>
+<p>Plant adversarial instructions where the agent will read them (web pages, emails, documents, tool outputs) inside realistic tasks, and measure two numbers together: <b>attack success rate</b> (did it follow the injected instruction, for example exfiltrate data or send money) and <b>utility under attack</b> (does it still finish the user's real task). A defense that blocks attacks by refusing everything is not a defense. Vary attack styles and positions, grade success by environment state (was the email actually sent?), and include benign look-alike instructions to measure over-refusal. Keep the attack set partly private, since public attack sets end up in training data. Lab system cards now report prompt-injection results in their agentic-safety sections, and CAISI's DeepSeek finding (12x more susceptible to agent hijacking) shows how large the gaps can be. See <a href="08-web-and-computer-use.html">Module 08</a> and <a href="17-safety-evals.html">Module 17</a>.</p>
 </details>
 
 <details><summary>39. What are Petri and Bloom, and when would you use each?</summary>
-<p>Both came from Anthropic and are now maintained by Meridian Labs. <b>Petri</b> (October 2025) is an automated auditor: an agent runs multi-turn conversations with the target in simulated environments, driven by researcher seed instructions, and an LLM judge scores transcripts on dimensions such as deception, sycophancy, self-preservation and power-seeking; the launch ran 14 models against 111 seeds. <b>Bloom</b> (December 2025) generates a targeted eval for one behaviour in four stages (understanding, ideation, rollout, judgement) and outputs a 1 to 10 presence score with a meta-judge. Anthropic's own summary: Bloom suits precise measurement with statistics, Petri suits open-ended exploration. See <a href="17-safety-evals.html">Module 17</a>.</p>
+<p>Both came from Anthropic and are now maintained by Meridian Labs. <b>Petri</b> (October 2025) is an automated auditor: an agent runs multi-turn conversations with the target in simulated environments, driven by researcher seed instructions, and an LLM judge scores transcripts on dimensions such as deception, sycophancy, self-preservation and power-seeking; the launch ran 14 models against 111 seeds. <b>Bloom</b> (December 2025) generates a targeted eval for one behavior in four stages (understanding, ideation, rollout, judgment) and outputs a 1 to 10 presence score with a meta-judge. Anthropic's own summary: Bloom suits precise measurement with statistics, Petri suits open-ended exploration. See <a href="17-safety-evals.html">Module 17</a>.</p>
 </details>
 
 <h3>Pitfalls</h3>
@@ -1052,11 +1377,11 @@ inspect view   # browse transcripts and scores</code></pre>
 </details>
 
 <details><summary>41. What is "The Leaderboard Illusion" about?</summary>
-<p>A 2025 paper by Singh et al. on Chatbot Arena. It documented undisclosed private testing, in which labs tested many variants and published only the best (Meta tested 27 private variants before Llama 4); unequal data access, where Google and OpenAI each received about 19 to 20% of battles while 83 open-weight models together got about 30%; and silent deprecations that break the Bradley–Terry assumptions. Training on arena-style data could produce relative gains of up to 112% on the arena distribution. The lesson generalises: best-of-N selection on a noisy leaderboard inflates the published number, just like p-hacking. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
+<p>A 2025 paper by Singh et al. on Chatbot Arena. It documented undisclosed private testing, in which labs tested many variants and published only the best (Meta tested 27 private variants before Llama 4); unequal data access, where Google and OpenAI each received about 19 to 20% of battles while 83 open-weight models together got about 30%; and silent deprecations that break the Bradley–Terry assumptions. Training on arena-style data could produce relative gains of up to 112% on the arena distribution. The lesson generalizes: best-of-N selection on a noisy leaderboard inflates the published number, just like p-hacking. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
 </details>
 
 <details><summary>42. What is reward hacking in agent evals, and how do you catch it?</summary>
-<p>The agent satisfies the grader without doing the task: editing or deleting failing tests, special-casing the test inputs, writing to the file the checker reads, or claiming success in the final message. It is an eval bug as much as a model behaviour, and Anthropic's system cards report it as its own section. Catch it by grading with checks the agent cannot touch (tests copied in after the run, read-only checker files), diffing protected files, scanning transcripts for suspicious actions, and spot-reading high-scoring transcripts, not just failures. Goodhart's law is the general version: once a measure becomes a target, it stops being a good measure. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
+<p>The agent satisfies the grader without doing the task: editing or deleting failing tests, special-casing the test inputs, writing to the file the checker reads, or claiming success in the final message. It is an eval bug as much as a model behavior, and Anthropic's system cards report it as its own section. Catch it by grading with checks the agent cannot touch (tests copied in after the run, read-only checker files), diffing protected files, scanning transcripts for suspicious actions, and spot-reading high-scoring transcripts, not just failures. Goodhart's law is the general version: once a measure becomes a target, it stops being a good measure. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
 </details>
 
 <details><summary>43. A benchmark has saturated. What does that mean, and what do you do?</summary>
@@ -1069,7 +1394,7 @@ inspect view   # browse transcripts and scores</code></pre>
 
 <h3>System design</h3>
 
-<details><summary>45. Design the eval programme for a new agent product, from day zero to launch. <span class="tag">design</span></summary>
+<details><summary>45. Design the eval program for a new agent product, from day zero to launch. <span class="tag">design</span></summary>
 <p>Weeks 1 to 2: log traces from dogfooding, run error analysis, build a 20 to 50 task regression set with code graders, and put it in CI. Weeks 3 to 6: grow a capability suite from real and synthetic tasks (dimensions → tuples → natural-language tasks), add one narrow, validated judge per persistent failure mode, run several trials per task, and report pass^k and cost. Before launch: red-team for injection and misuse, run safety checks on irreversible actions, and agree ship criteria in writing (for example, no regression outside the CI, and pass^3 of at least X on critical flows). After launch: sample production traces for online scoring and human review, feed new failures back into the suite, and retire saturated tasks. Give the suite a named owner, as Anthropic recommends. See <a href="15-production-evals.html">Module 15</a> and <a href="19-capstone.html">Module 19</a>.</p>
 </details>
 
@@ -1082,17 +1407,83 @@ inspect view   # browse transcripts and scores</code></pre>
 </details>
 
 <details><summary>48. How do you choose between two models for production?</summary>
-<p>Run both through your own suite (public leaderboards measure someone else's distribution), same harness, several trials, paired comparison. Plot quality against cost and against latency and look at the <b>Pareto frontier</b>: a model that is 1 point better but 3x the cost is rarely the right choice unless that point sits on your most valuable flow. Look at the breakdown, not just the mean: the better-on-average model may be worse on a critical slice. Check reliability (pass^k), refusal and safety behaviour, and variance. Then confirm with a limited online A/B test, because offline wins do not always transfer. See <a href="04-metrics-and-statistics.html">Module 04</a> and <a href="15-production-evals.html">Module 15</a>.</p>
+<p>Run both through your own suite (public leaderboards measure someone else's distribution), same harness, several trials, paired comparison. Plot quality against cost and against latency and look at the <b>Pareto frontier</b>: a model that is 1 point better but 3x the cost is rarely the right choice unless that point sits on your most valuable flow. Look at the breakdown, not just the mean: the better-on-average model may be worse on a critical slice. Check reliability (pass^k), refusal and safety behavior, and variance. Then confirm with a limited online A/B test, because offline wins do not always transfer. See <a href="04-metrics-and-statistics.html">Module 04</a> and <a href="15-production-evals.html">Module 15</a>.</p>
+</details>
+
+<h3>Building blocks (Part V)</h3>
+
+<details><summary>49. Your agent's score went up 5 points after a new release. How do you tell whether the model or the harness gets the credit?</summary>
+<p>First, remember there are two harnesses: the <b>agent harness</b> (loop, tools, context management, retries, verification) is part of the system under test, and the <b>evaluation harness</b> runs the trials and grades them. Pin the evaluation harness, then run a <b>paired ablation</b>: the same tasks, several trials each, changing one component at a time (new model with old harness, old model with new harness) and report each paired difference with a CI. Then read the transcripts of the tasks that flipped and label each failure; a 2026 taxonomy, "Model or Harness?", argues that many faults sit on the interaction between two components, so a failure can need two labels. Two traps: the <b>winner's curse</b> (if you tried 20 harness variants that do nothing, the best still looks about 3.7 points better when the SE is 2, so confirm on fresh tasks) and gate size (a −2 point gate needs roughly 350 tasks to be meaningful). HAL exists because this question is so common: it runs scaffold × model × benchmark under one setup and reports cost next to accuracy. See <a href="21-harness-evals.html">Module 21</a>.</p>
+</details>
+
+<details><summary>50. Two models are 2 points apart on an agentic coding benchmark. Could the machines explain the gap?</summary>
+<p>Yes, easily. Anthropic's February 2026 engineering post on infrastructure noise reports that sandbox configuration (CPU, memory, time limits, how many trials share a machine) can swing agentic coding scores by several percentage points, sometimes more than the gap between top models. So pin the sandbox resources and report them, interleave both systems on identical infrastructure rather than running one today and one next week, log infrastructure errors (timeouts, out-of-memory kills, failed container starts) separately from agent failures, and put a CI on the difference. If the setups differ, you are comparing two experiments, not two models. See <a href="18-benchmark-pitfalls.html">Module 18</a> and <a href="21-harness-evals.html">Module 21</a>.</p>
+</details>
+
+<details><summary>51. How do you evaluate whether a skill triggers when it should, and only then?</summary>
+<p>Write a <b>trigger eval</b>: about 20 realistic queries, roughly half that should trigger the skill and half that should not, where the negatives are <b>near misses</b> (same vocabulary, different need) rather than easy unrelated prompts. Run each query 3 times and count it as triggered if it fires in at least half the runs; the harness counts a trigger when the first tool call is a Skill call or a read of the skill file. If the description needs work, let an optimizer propose rewrites on a 60/40 stratified split and pick the version by its score on the held-out 40%, not the training part. Then run the <b>uplift</b> eval separately: with-skill and baseline runs launched together, graded by assertions with evidence. A skill's value is roughly P(trigger | relevant) × uplift, minus the cost of false triggers. See <a href="22-skills-evals.html">Module 22</a>.</p>
+</details>
+
+<details><summary>52. Design an eval for a personal assistant's long-term memory. <span class="tag">design</span></summary>
+<p>Memory failures are delayed, silent and compounding, so single-turn tests miss them. Build <b>timelines</b>: scripted multi-session histories that plant facts, then change them ("I moved to Denver"), then ask the user to forget something, then probe much later. Cover all six operations (write, retrieve, update, read, forget, consolidate) and report separate numbers: recall@k for retrieval, <b>staleness rate</b> (answers with the outdated value), <b>false-memory rate</b> (confident claims the user never made), write precision and recall, deletion compliance (including summaries that absorbed the deleted fact), and cross-user leakage. Always run three baselines: no memory, full context (often strong on LoCoMo-sized histories) and oracle retrieval, which tells you whether the loss is in retrieval or in reasoning. Use LongMemEval or MemoryAgentBench for comparison, but do not compare vendor numbers across reports, because setups differ. See <a href="23-memory-evals.html">Module 23</a>.</p>
+</details>
+
+<details><summary>53. You are shipping an MCP server to other teams' agents. What do you test? <span class="tag">design</span></summary>
+<p>Treat the tool definitions as prompts, because they are. Test five rungs separately: <b>selection</b> (right tool, including when to call none), <b>arguments</b> (valid and correct), <b>sequencing</b>, <b>parallel calls</b> and <b>result use</b>. Write contract tests on the server itself (schemas, errors, pagination), then agent-level tasks with prompts that do not name the tool, plus <b>distractor scaling</b>: add similar tools and watch selection accuracy fall. Grade by final state where you can (as Toolathlon and MCPMark do with scripts) and by claims-based rubrics where you cannot (as MCP-Atlas does). On the security side, test tool poisoning, over-broad permissions and the <b>rug pull</b> (the description changes after approval): the defense is to pin a hash of the tool manifest and re-list tools after a list_changed notice, and your eval should assert that the client blocks or re-prompts. See <a href="24-tools-and-mcp-evals.html">Module 24</a> and <a href="25-agent-security-evals.html">Module 25</a>.</p>
+</details>
+
+<h3>Beyond the core (Part VI)</h3>
+
+<details><summary>54. A vendor says its agent has a 2% prompt injection success rate. What do you ask?</summary>
+<p>Five questions, each a way a single ASR number misleads. <b>Which attacker?</b> A fixed, static attack set, or an adaptive one; in NIST and CAISI's January 2025 work, attack success on new injection tasks rose from about 11% with the strongest built-in attack to about 81% with new red-team attacks. <b>How many tries?</b> Attack pass@k compounds: 5% per try is about 40% at 10 tries and about 72% at 25; the NIST work saw about 57% rise to about 80% with 25 attempts. <b>Per task, or averaged?</b> A harmless average can hide one catastrophic task. <b>What did the defense cost?</b> Report utility and utility under attack alongside targeted ASR, as AgentDojo does. <b>Is it secure or just weak?</b> "Security by incompetence" is low ASR because the agent cannot finish the attacker's goal either. Then check the design: an agent with private data, untrusted content and a way to send data out has the <b>lethal trifecta</b>, and needs an architectural answer, not a filter. See <a href="25-agent-security-evals.html">Module 25</a>.</p>
+</details>
+
+<details><summary>55. How do you grade a 20-page deep-research report, and keep the cost sane?</summary>
+<p>Separate report quality from citation quality. DeepResearch Bench does this with <b>RACE</b>, which scores the report against a reference report on four dimensions with task-adaptive weights and reports target ÷ (target + reference), so 0.5 means as good as the reference, and <b>FACT</b>, which checks each (statement, URL) pair and reports citation accuracy and effective citations. DEER adds a document-level fact check that covers <b>uncited</b> claims too. Keep faithfulness (does the source say this?) apart from factuality (is it true?): a faithful citation of a wrong source passes one and fails the other. On cost, a naive design can use about 990,000 judge tokens per report, so use passage retrieval instead of whole pages, a cascade (cheap check first, strong judge on the uncertain cases) and stratified sampling of claims, and validate each cheaper stage against the full one. See <a href="26-research-and-real-work.html">Module 26</a>.</p>
+</details>
+
+<details><summary>56. Design an eval for a health assistant that answers the public. <span class="tag">design</span></summary>
+<p>Start with the risk tier: advice straight to non-experts is a high tier, so you need expert rubrics, abstention and escalation tests, a critical-failure rate and measured agreement. Follow the HealthBench pattern: physicians write conversation-specific criteria with points from about −10 to +10; the score is met points ÷ total positive points, clipped to 0 to 1. Double-grade 100 to 300 items and compute Cohen's kappa, because raw agreement flatters when most answers are fine; the model grader should agree with physicians about as well as physicians agree with each other. Weight by severity, and treat critical failures (a missed emergency, a dangerous dose) as a <b>gate</b>, not a term in an average. Report coverage and abstention together, so refusing everything does not look safe. Refresh the suite as guidelines change. See <a href="27-domain-playbook.html">Module 27</a>.</p>
+</details>
+
+<details><summary>57. What makes eval evidence strong enough for a regulator or a safety case?</summary>
+<p>Five things change when the audience changes: <b>purpose</b> (support a claim with a direction and threshold, not "which is better?"), <b>evidence standard</b> (the conservative side of the CI, plus proof you tried hard to make it fail), <b>documentation</b>, <b>reproducibility</b> (pinned snapshot, harness, prompts, seeds, data hashes) and <b>independence</b>. A safety case organizes this as claims, arguments and evidence, lists <b>defeaters</b> openly, and uses one of four argument families (inability, control, trustworthiness, deference; inability is the most established). The margin test is the classic trap: 2 solved out of 40 is a 5% point estimate but a one-sided 95% upper bound of about 15%, so a "below 10%" claim does not hold yet. For EU systemic-risk models, Article 55 asks for model evaluation including adversarial testing, and the GPAI Code of Practice adds detail; ISO/IEC 42001 certifies the management system, not the model. See <a href="28-governance-and-responsible-ai.html">Module 28</a>.</p>
+</details>
+
+<h3>Reliability, cost and the measurement itself</h3>
+
+<details><summary>58. Two agents both score 70%. Why might one be far more reliable?</summary>
+<p>Because accuracy is one number and reliability is several. "Towards a Science of AI Agent Reliability" (the Princeton HAL group, ICML 2026) proposes four dimensions: <b>consistency</b> (does it behave the same way twice; pass^k is one measure), <b>robustness</b> (does it survive paraphrases, noise and faults), <b>predictability</b> (can you anticipate its failures, for example through calibrated confidence) and <b>safety</b> (how bad are the failures). Its headline finding, as the authors summarize it, is that capability has improved faster than reliability. So report the four side by side, each with its own bootstrap error bar over tasks. See <a href="04-metrics-and-statistics.html">Module 04</a>.</p>
+</details>
+
+<details><summary>59. Full benchmark runs cost too much. How do you cut cost without fooling yourself?</summary>
+<p>Two options. <b>Stratified subsampling</b>: run a random sample from each stratum and use the finite population correction, SE = √(p(1−p)/n × (N−n)/(N−1)); with N = 500 and n = 100 the 95% half-width is about ±8.6 points, which is fine for spotting large regressions and useless for 2-point decisions. <b>Anchor sets with IRT</b>: fit task difficulty and discrimination once from many past full runs (the 2PL model, P = 1/(1 + e^(−a(θ−b)))), then run a new system on a small anchor set and estimate its full score; tinyBenchmarks reports about 100 examples getting within about 2% on popular LLM benchmarks, and "Efficient Benchmarking of AI Agents" (2026) applies mid-range task selection to agents. Good anchors are tasks near a 50% solve rate for the systems you care about. Keep full runs for checking the estimator and for decisions that matter. See <a href="04-metrics-and-statistics.html">Module 04</a>.</p>
+</details>
+
+<details><summary>60. How would you measure whether a model knows it is being evaluated?</summary>
+<p>As a classifier test. Mix transcripts from evals and from real use, hide the labels, and ask the model (or probe its activations) which is which; <b>AUC</b> summarizes how well it separates them, and a human baseline tells you how obvious the evals are to people too. Needham et al. (2025) built such a benchmark from transcripts drawn from dozens of public datasets, and a 2025 probing paper reports that eval-like and deployment-like prompts are linearly separable inside an open-weights model. Remember that detection is not the same as behavior change: the next step is a cue on/off comparison, the same scenario with and without the test-like cues, to see whether behavior shifts. EvalDetectBench (September 2026) is a dedicated benchmark but very recent, so read it before quoting it. Use the result practically: find your most test-like scenarios and make them realistic. See <a href="17-safety-evals.html">Module 17</a>.</p>
+</details>
+
+<details><summary>61. What does an AI control evaluation measure, and how is it different from a capability eval?</summary>
+<p>A capability eval asks what the model can do. A control evaluation (Greenblatt et al., 2023) asks whether your <b>deployment protocol</b> stays safe even if the model tries its hardest to misbehave. A red team plays the untrusted model U and tries to slip something past, such as a backdoor in APPS coding solutions; a blue team designs the protocol with a weaker trusted model T (trusted monitoring, defer to trusted, trusted editing, untrusted monitoring) and a limited human audit budget. The result is two numbers, <b>safety</b> and <b>usefulness</b>, traded off along a curve. SHADE-Arena applies a related idea to agents: a main task plus a hidden side task, with a monitor scoring suspicion; at release the best monitor reached an AUC of about 0.87. Chain-of-thought monitorability is the related bet that reasoning stays readable, which Korbak et al. call a "fragile opportunity". UK AISI's ControlArena packages these setups. See <a href="17-safety-evals.html">Module 17</a>.</p>
+</details>
+
+<details><summary>62. Your team runs DSPy or GEPA against the eval suite and the score keeps climbing. What worries you?</summary>
+<p>Goodhart's law on fast-forward. An optimizer tries hundreds or thousands of variants, so it finds the grader's quirks far faster than a person would, and RL training on the same grader turns those quirks into learned behavior. If the grader is an unvalidated LLM judge, the optimizer will find its biases (length, confident tone, keywords). The winner's curse also applies: the best of many variants looks better than it is. Defenses: validate the grader before optimizing against it, keep a <b>held-out set the optimizer never sees</b> and treat that score as the real one, read transcripts of the winning variant for shortcuts, and refresh the held-out set if it gets used for decisions too often. The same logic applies to a skill description optimizer, which is why it selects by the held-out score. See <a href="18-benchmark-pitfalls.html">Module 18</a> and <a href="22-skills-evals.html">Module 22</a>.</p>
+</details>
+
+<details><summary>63. Before you trust a new agentic benchmark, what do you check?</summary>
+<p>Run the <b>Agentic Benchmark Checklist</b> (Zhu et al., NeurIPS 2025): <b>task validity</b> (can the task be solved only by the intended skill?), <b>outcome validity</b> (does the grader's pass mean real success?) and <b>reporting</b> (are limitations and uncertainty stated?). The authors found real problems in popular benchmarks, including insufficient tests in SWE-bench Verified and τ-bench counting empty responses as successes, with misestimation of up to 100% in relative terms. Three cheap smoke tests catch many of these: a <b>null agent</b> that does nothing, an <b>echo agent</b> that restates the task and takes no action, and the <b>reference solution</b> run through the grader. The first two should score about zero; the reference solution should score about 100%. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
 </details>
 
 </div>
 
 <div class="callout expert"><span class="t">What separates a senior answer</span>
-<p>Across all 48 answers, three habits recur: <b>(1)</b> every number comes with its uncertainty and its conditions (harness, trials, date); <b>(2)</b> the grader is treated as a measuring instrument that must itself be validated; <b>(3)</b> the answer ends with a decision or a next check, not with a score. If you do these three things, your answers will sound expert even on topics you know less well.</p>
+<p>Across all 63 answers, three habits recur: <b>(1)</b> every number comes with its uncertainty and its conditions (harness, trials, date); <b>(2)</b> the grader is treated as a measuring instrument that must itself be validated; <b>(3)</b> the answer ends with a decision or a next check, not with a score. If you do these three things, your answers will sound expert even on topics you know less well.</p>
 </div>
 
 <h2>Rapid-fire flashcards</h2>
-<p>Thirty cards covering the facts experts are expected to know cold. Click or tap a card (or focus it and press Enter) to flip it. Say the answer before you flip.</p>
+<p>Forty-four cards covering the facts experts are expected to know cold. Click or tap a card (or focus it and press Enter) to flip it. Say the answer before you flip.</p>
 <div class="flashbar"><button type="button" data-flip="all">Flip all</button><button type="button" data-flip="none">Reset</button><button type="button" data-flip="shuffle">Shuffle</button></div>
 <div class="flashgrid" id="flashgrid">
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Metric</small><b>pass^k formula (unbiased)</b></span><span class="bk">C(c, k) / C(n, k), averaged over tasks: the chance that all k trials succeed. pass^1 = pass@1.</span></span></button>
@@ -1120,11 +1511,25 @@ inspect view   # browse transcripts and scores</code></pre>
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Labs</small><b>When was ASL-3 first activated, and why?</b></span><span class="bk">May 2025, for Claude Opus 4, as a precaution: Anthropic could not rule out CBRN risk.</span></span></button>
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Labs</small><b>OpenAI Preparedness v2 Tracked Categories</b></span><span class="bk">Biological and chemical; cybersecurity; AI self-improvement. Thresholds: High and Critical.</span></span></button>
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Labs</small><b>Google DeepMind's threshold term</b></span><span class="bk">Critical Capability Levels (CCLs), with alert thresholds; v3.1 adds Tracked Capability Levels.</span></span></button>
-<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Tools</small><b>Inspect's four building blocks</b></span><span class="bk">Dataset, Solver, Scorer, combined into a Task. MIT licence; UK AISI and Meridian Labs.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Tools</small><b>Inspect's four building blocks</b></span><span class="bk">Dataset, Solver, Scorer, combined into a Task. MIT license; UK AISI and Meridian Labs.</span></span></button>
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Tools</small><b>What is happening to OpenAI's hosted Evals?</b></span><span class="bk">Read-only 31 Oct 2026, shut down 30 Nov 2026; OpenAI points users to promptfoo, which it acquired.</span></span></button>
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Process</small><b>Error analysis in two words</b></span><span class="bk">Open coding (free-text notes per trace), then axial coding (group into a taxonomy and count).</span></span></button>
-<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Safety</small><b>Evaluation awareness</b></span><span class="bk">The model recognises it is being tested, so test behaviour may not match deployment behaviour.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Safety</small><b>Evaluation awareness</b></span><span class="bk">The model recognizes it is being tested, so test behavior may not match deployment behavior.</span></span></button>
 <button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Rating</small><b>Epoch ECI anchors</b></span><span class="bk">An IRT scale over 50+ benchmarks: Claude 3.5 Sonnet = 130, GPT-5 = 150.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Harness</small><b>Agent harness vs evaluation harness</b></span><span class="bk">The agent harness (loop, tools, context, retries) is part of the system under test; the evaluation harness runs trials and grades them.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Harness</small><b>HAL at scale</b></span><span class="bk">About 21,730 rollouts, 9 models, 9 benchmarks, about $40,000; higher reasoning effort reduced accuracy in most runs.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Skills</small><b>Trigger eval setup</b></span><span class="bk">About 20 queries, half near-miss negatives, 3 runs each, triggered if it fires in at least half the runs.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Skills</small><b>SkillsBench headline</b></span><span class="bk">Curated skills: roughly +16 points on average, varying by domain. Self-generated skills: no reliable benefit.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Memory</small><b>LongMemEval's five abilities</b></span><span class="bk">Extraction, multi-session reasoning, temporal reasoning, knowledge updates, abstention. 500 questions.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Memory</small><b>Three memory baselines</b></span><span class="bk">No memory, full context, oracle retrieval. Oracle retrieval separates retrieval failures from reasoning failures.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>MCP</small><b>Who controls each MCP primitive?</b></span><span class="bk">Tools: the model. Resources: the application. Prompts: the user.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>MCP</small><b>Rug pull defense</b></span><span class="bk">Pin a hash of the tool manifest; re-list tools after list_changed and block or re-prompt if descriptions changed.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Security</small><b>Lethal trifecta</b></span><span class="bk">Private data + untrusted content + a way to communicate out (Willison, 2025). With all three, an injection can exfiltrate data; remove a leg.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Security</small><b>Attack pass@k at 5% per try</b></span><span class="bk">1 − 0.95^k: about 40% at 10 tries, about 64% at 20, about 72% at 25.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Research</small><b>RACE score of 0.5</b></span><span class="bk">As good as the reference report. RACE = target ÷ (target + reference), with task-adaptive weights.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Real work</small><b>TheAgentCompany partial score</b></span><span class="bk">0.5 × (checkpoints passed ÷ total) + 0.5 × full completion; 175 tasks.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Domains</small><b>HealthBench score</b></span><span class="bk">Met rubric points ÷ total positive points, clipped to 0..1; criteria run from about −10 to +10.</span></span></button>
+<button class="flash" type="button" aria-pressed="false"><span class="in"><span class="fr"><small>Safety</small><b>CoT monitor g-mean²</b></span><span class="bk">TPR × TNR: one number that punishes a monitor that is good on only one side.</span></span></button>
 </div>
 <script>
 (function () {
@@ -1201,19 +1606,27 @@ inspect view   # browse transcripts and scores</code></pre>
 </figure>
 
 <div class="azbar">
-<a href="#gl-a">A</a><a href="#gl-b">B</a><a href="#gl-c">C</a><a href="#gl-d">D</a><a href="#gl-e">E</a><a href="#gl-f">F</a><a href="#gl-g">G</a><a href="#gl-h">H</a><a href="#gl-i">I</a><a href="#gl-j">J</a><a href="#gl-l">L</a><a href="#gl-m">M</a><a href="#gl-o">O</a><a href="#gl-p">P</a><a href="#gl-r">R</a><a href="#gl-s">S</a><a href="#gl-t">T</a><a href="#gl-u">U</a><a href="#gl-v">V</a><a href="#gl-w">W</a>
+<a href="#gl-a">A</a><a href="#gl-b">B</a><a href="#gl-c">C</a><a href="#gl-d">D</a><a href="#gl-e">E</a><a href="#gl-f">F</a><a href="#gl-g">G</a><a href="#gl-h">H</a><a href="#gl-i">I</a><a href="#gl-j">J</a><a href="#gl-l">L</a><a href="#gl-m">M</a><a href="#gl-n">N</a><a href="#gl-o">O</a><a href="#gl-p">P</a><a href="#gl-r">R</a><a href="#gl-s">S</a><a href="#gl-t">T</a><a href="#gl-u">U</a><a href="#gl-v">V</a><a href="#gl-w">W</a>
 </div>
 
 <div class="gloss">
 <h3 id="gl-a">A</h3>
 <dl>
 <dt>A/B test</dt><dd>Randomly splitting live traffic between two versions and comparing real outcomes; the final check that offline eval gains transfer. <a class="m" href="15-production-evals.html">Module 15</a></dd>
+<dt>Ablation (paired)</dt><dd>Removing or swapping one component of a system while holding everything else fixed, then comparing paired runs on the same tasks to measure that component's effect. <a class="m" href="21-harness-evals.html">Module 21</a></dd>
+<dt>Adaptive attack</dt><dd>An attack tuned against the specific target and its defenses, often over many tries; defenses measured only against fixed attack lists often fall to it. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 <dt>Agent</dt><dd>A system in which a model decides its own next steps in a loop, calling tools and observing results until it judges the task done. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Agent-computer interface (ACI)</dt><dd>The design of the tools, formats and observations an agent uses; Anthropic argues it deserves as much care as human-computer interface design. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
+<dt>AgentDojo</dt><dd>A prompt injection benchmark from ETH Zurich: 97 user tasks and 629 security cases, reporting utility, utility under attack and targeted ASR. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
+<dt>Agentic Benchmark Checklist (ABC)</dt><dd>A checklist (Zhu et al., NeurIPS 2025) for task validity, outcome validity and reporting in agent benchmarks; applying it surfaced flaws that misestimated performance by up to 100% in relative terms. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
+<dt>AI control</dt><dd>Evaluating whether a deployment protocol stays safe even if the model tries to subvert it: a red team plays the untrusted model, a blue team designs monitoring with a trusted model, and the result is safety against usefulness. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Alert threshold</dt><dd>In Google DeepMind's Frontier Safety Framework, an early-warning level below a Critical Capability Level that triggers closer assessment. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
+<dt>Anchor set</dt><dd>A small, well-chosen subset of tasks whose results, through an IRT model fitted on past full runs, estimate a system's full-benchmark score. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>ARC-AGI</dt><dd>François Chollet's abstraction-and-reasoning benchmarks; versions 1 and 2 are grid puzzles scored at pass@2, and ARC-AGI-3 (2026) is interactive. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>ASL (AI Safety Level)</dt><dd>Anthropic's safeguard tiers under its Responsible Scaling Policy; stronger deployment and security standards apply as capability thresholds are approached. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>AST matching</dt><dd>Grading a function call by parsing it into a syntax tree and comparing function name and arguments against allowed values, as BFCL does. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
+<dt>Attack success rate (ASR)</dt><dd>The share of attack attempts in which the attacker's goal is achieved; meaningful only with the attacker's budget, the number of tries and the utility cost of the defense stated. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
+<dt>Automation rate</dt><dd>In the Remote Labor Index, the share of projects where the AI's deliverable would be accepted as the commissioned work; the best agent at launch reached 2.5%. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 <dt>Axial coding</dt><dd>The second step of error analysis: grouping free-text failure notes into a taxonomy of failure modes and counting them. <a class="m" href="12-error-analysis.html">Module 12</a></dd>
 </dl>
 <h3 id="gl-b">B</h3>
@@ -1221,7 +1634,7 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Barge-in</dt><dd>A caller interrupting a voice agent mid-utterance; good agents stop speaking quickly and respond to the interruption. <a class="m" href="09-voice-agents.html">Module 09</a></dd>
 <dt>Benchmark</dt><dd>A frozen, published eval (data plus grader plus protocol) used to compare systems across teams. <a class="m" href="01-what-are-evals.html">Module 01</a></dd>
 <dt>BFCL</dt><dd>Berkeley Function Calling Leaderboard: tool-calling accuracy from single calls (AST matching) to multi-turn and agentic categories. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
-<dt>Bloom</dt><dd>An agentic pipeline, from Anthropic and now Meridian Labs, that generates a targeted behavioural eval for one behaviour in four stages. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
+<dt>Bloom</dt><dd>An agentic pipeline, from Anthropic and now Meridian Labs, that generates a targeted behavioral eval for one behavior in four stages. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Bootstrap</dt><dd>Resampling your eval results with replacement many times to get a confidence interval for any statistic, without a formula. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Bradley–Terry model</dt><dd>A model of pairwise preferences in which P(A beats B) depends only on the difference of their strengths; Arena fits it by maximum likelihood. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>BrowseComp</dt><dd>OpenAI's 1,266 hard-to-find, easy-to-verify browsing questions. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
@@ -1231,12 +1644,16 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>CAISI</dt><dd>The US Center for AI Standards and Innovation at NIST, renamed from the US AI Safety Institute in June 2025; runs voluntary evaluations of demonstrable risks. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>Calibration</dt><dd>How well a model's stated confidence matches its accuracy; HLE reports RMS calibration error alongside accuracy. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Canary string</dt><dd>A unique marker placed in benchmark files so that training-data pipelines can filter them out and contamination can be detected. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
+<dt>Canary token</dt><dd>A unique secret planted in data the agent can reach; if it appears anywhere it should not, data was exfiltrated. It lets leak checks run automatically. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 <dt>Capability eval</dt><dd>An eval designed to measure what a system cannot yet do reliably; it should start with a low pass rate. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
+<dt>Chain-of-thought monitorability</dt><dd>Whether a model's visible reasoning reveals misbehavior to a monitor; Korbak et al. (2025) call it a fragile opportunity, and monitors are scored with g-mean² = TPR × TNR. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Chatbot Arena (Arena, LMArena)</dt><dd>A crowdsourced leaderboard of anonymous side-by-side votes ranked with Bradley–Terry; rebranded "Arena" in January 2026. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Clustered standard errors</dt><dd>Standard errors computed at the level of groups of related tasks, so related items are not counted as independent evidence. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Cohen's kappa</dt><dd>Agreement between two raters corrected for agreement expected by chance; 0 is chance, 1 is perfect. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
+<dt>Compaction</dt><dd>A harness feature that replaces old context with a summary when it grows too long; evaluate it by probing which facts survive the summary. <a class="m" href="21-harness-evals.html">Module 21</a></dd>
 <dt>Compounding error</dt><dd>End-to-end success of a multi-step task falls roughly as the product of per-step success rates, so small per-step gains matter a lot. <a class="m" href="11-multi-agent-long-horizon.html">Module 11</a></dd>
 <dt>Confidence interval (CI)</dt><dd>A range built by a method that captures the true value in 95% (say) of repeated experiments; for a rate, roughly p̂ ± 1.96 × SE. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
+<dt>Confused deputy</dt><dd>A program with broad authority that is tricked into using it for a caller who should not have it, for example an MCP server that proxies to an API with one static credential. <a class="m" href="24-tools-and-mcp-evals.html">Module 24</a></dd>
 <dt>Construct validity</dt><dd>Whether an eval measures the capability it claims to, rather than a shortcut or a side effect. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Contamination</dt><dd>Test items or solutions leaking into training data, so scores measure memory rather than ability. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Critical Capability Level (CCL)</dt><dd>Google DeepMind's term for a capability threshold at which severe risk becomes possible without mitigations. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
@@ -1247,8 +1664,10 @@ inspect view   # browse transcripts and scores</code></pre>
 <dl>
 <dt>Dangerous-capability eval</dt><dd>An eval that tests for capabilities enabling severe harm (CBRN, cyber, autonomous AI R&amp;D) to decide what safeguards a model needs. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Dataset</dt><dd>The set of samples an eval runs on; in Inspect, samples with an input and a target. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
+<dt>Deep-research agent</dt><dd>An agent that searches, reads and synthesizes many sources into a long cited report; grade report quality and citation quality separately. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 <dt>Discordant pair</dt><dd>A task that exactly one of two compared systems gets right; only these carry information in a paired test. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Dual control</dt><dd>τ²-bench's setting in which both the agent and the simulated user can act on a shared environment (for example, the user's phone). <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
+<dt>Dual LLM pattern</dt><dd>An isolation design (Willison, 2023): a privileged model plans and calls tools but never sees untrusted text, and a quarantined model reads untrusted text but has no tools. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 </dl>
 <h3 id="gl-e">E</h3>
 <dl>
@@ -1258,14 +1677,18 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Environment</dt><dd>The stateful world an agent acts in (a repo, a VM, a website, a database with APIs), reset between trials. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Epoch (in Inspect)</dt><dd>One full pass over the dataset; running several epochs gives several trials per sample. <a class="m" href="14-tools-landscape.html">Module 14</a></dd>
 <dt>Error analysis</dt><dd>Reading traces, noting failures, grouping them into a taxonomy and counting, before building any metric. <a class="m" href="12-error-analysis.html">Module 12</a></dd>
+<dt>EU AI Act</dt><dd>The EU's AI law, with two tracks: AI systems regulated by their use and risk, and general-purpose models (Articles 53 and 55). GPAI duties apply from August 2025. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
 <dt>Eval-driven development</dt><dd>Writing evals before or alongside features and using them to gate every change, as OpenAI's best-practice guide recommends. <a class="m" href="15-production-evals.html">Module 15</a></dd>
-<dt>Evaluation awareness</dt><dd>A model recognising that it is being tested, which can make test behaviour unrepresentative of deployment. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
+<dt>Evaluation awareness</dt><dd>A model recognizing that it is being tested, which can make test behavior unrepresentative of deployment. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Evaluation harness</dt><dd>The infrastructure that runs tasks, manages environments, records transcripts and applies graders. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
+<dt>Execution accuracy</dt><dd>Text-to-SQL grading that runs the predicted and reference queries and compares their results, not their text; coincidental matches on one database still slip through, which test suites address. <a class="m" href="27-domain-playbook.html">Module 27</a></dd>
 </dl>
 <h3 id="gl-f">F</h3>
 <dl>
+<dt>FACT</dt><dd>DeepResearch Bench's citation score: each statement and cited URL is checked, giving citation accuracy and the number of effective (verified) citations. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 <dt>FAIL_TO_PASS / PASS_TO_PASS</dt><dd>SWE-bench's two test sets: tests the fix must make pass, and tests that must keep passing. <a class="m" href="07-coding-agents.html">Module 07</a></dd>
 <dt>Faithfulness (groundedness)</dt><dd>Whether every claim in a generated answer is supported by the provided context. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
+<dt>False-memory rate</dt><dd>How often the agent confidently states something the user never said, such as a hallucinated preference stored as fact. <a class="m" href="23-memory-evals.html">Module 23</a></dd>
 <dt>Frontier Safety Framework (FSF)</dt><dd>Google DeepMind's policy of Critical Capability Levels, alert thresholds and safety-case review before launch. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>Full duplex</dt><dd>A voice system that can listen and speak at the same time, enabling backchannels and natural interruptions. <a class="m" href="09-voice-agents.html">Module 09</a></dd>
 </dl>
@@ -1273,26 +1696,33 @@ inspect view   # browse transcripts and scores</code></pre>
 <dl>
 <dt>GAIA</dt><dd>466 real-world assistant questions needing tools and browsing, graded by quasi-exact match on short answers. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
 <dt>GDPval</dt><dd>OpenAI's 1,320 real professional tasks across 44 occupations, graded by blinded expert pairwise comparison. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
-<dt>Golden set</dt><dd>A curated, carefully labelled set of cases whose expected behaviour is trusted; often the regression suite. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
+<dt>Golden set</dt><dd>A curated, carefully labeled set of cases whose expected behavior is trusted; often the regression suite. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
 <dt>Goodhart's law</dt><dd>When a measure becomes a target, it ceases to be a good measure; the root of benchmark overfitting and reward hacking. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
+<dt>GPAI (general-purpose AI model)</dt><dd>In the EU AI Act, a model that can competently perform a wide range of distinct tasks and be integrated into many downstream systems. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
+<dt>GPAI Code of Practice</dt><dd>A voluntary code published on 10 July 2025, the most straightforward way to show compliance with Articles 53 and 55; its safety chapter names four risks: CBRN, cyber offense, loss of control and harmful manipulation. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
 <dt>GPQA Diamond</dt><dd>198 "Google-proof" graduate science questions; now saturated at the frontier. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Grader (scorer)</dt><dd>The logic that scores some aspect of an output or transcript: code, a model, or a human. <a class="m" href="03-graders.html">Module 03</a></dd>
 <dt>Grounding (GUI)</dt><dd>Mapping an instruction to the right on-screen element or coordinates; measured by ScreenSpot-style click accuracy. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
 </dl>
 <h3 id="gl-h">H</h3>
 <dl>
+<dt>HAL (Holistic Agent Leaderboard)</dt><dd>Princeton's standardized evaluation harness that runs scaffold × model × benchmark grids and reports cost next to accuracy. <a class="m" href="21-harness-evals.html">Module 21</a></dd>
 <dt>Harbor</dt><dd>The Laude Institute's framework for containerised agent evals; the official harness for Terminal-Bench 2.0. <a class="m" href="14-tools-landscape.html">Module 14</a></dd>
-<dt>Harness (two meanings)</dt><dd>The <em>agent</em> harness is the scaffold around the model; the <em>evaluation</em> harness is the infrastructure that runs trials and graders. Always say which one you mean. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
+<dt>Harness (two meanings)</dt><dd>The <em>agent</em> harness is the scaffold around the model; the <em>evaluation</em> harness is the infrastructure that runs trials and graders. Always say which one you mean. <a class="m" href="05-agents-are-different.html">Module 05</a> <a class="m" href="21-harness-evals.html">Module 21</a></dd>
+<dt>HealthBench</dt><dd>OpenAI's health benchmark: 5,000 conversations with 48,562 physician-written rubric criteria; score = met points ÷ positive points, clipped to 0 to 1. <a class="m" href="27-domain-playbook.html">Module 27</a></dd>
 <dt>Held-out set</dt><dd>Data never used during development, reserved for the final estimate so it is not biased by iteration. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
 <dt>HLE (Humanity's Last Exam)</dt><dd>2,500 frontier-hard expert questions, reporting accuracy and calibration error. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Human baseline</dt><dd>The score humans achieve on the same tasks under stated conditions; essential for interpreting agent scores (OSWorld: 72.36%). <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
 </dl>
 <h3 id="gl-i">I</h3>
 <dl>
-<dt>Infeasible task</dt><dd>A task deliberately impossible to complete, where the correct behaviour is to say so; tests over-eagerness. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
+<dt>Indirect prompt injection</dt><dd>Injection delivered through content the agent reads (a web page, an email, a tool result) rather than typed by the user. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
+<dt>Infeasible task</dt><dd>A task deliberately impossible to complete, where the correct behavior is to say so; tests over-eagerness. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
+<dt>Infrastructure noise</dt><dd>Score variation caused by the sandbox (CPU, memory, time limits, shared machines); Anthropic reports it can swing agentic coding scores by several percentage points. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Inspect</dt><dd>The open-source (MIT) eval framework from the UK AI Security Institute and Meridian Labs, built on Dataset, Solver, Scorer and Task. <a class="m" href="14-tools-landscape.html">Module 14</a></dd>
 <dt>Inter-annotator agreement</dt><dd>How often human graders agree with each other; sets a ceiling on how well any grader can be validated. <a class="m" href="03-graders.html">Module 03</a></dd>
-<dt>Item Response Theory (IRT)</dt><dd>A statistical model that jointly estimates item difficulty and test-taker ability; Epoch's ECI uses it to link benchmarks. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
+<dt>ISO/IEC 42001</dt><dd>The international standard for AI management systems; certification covers an organization's processes, not a model. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
+<dt>Item Response Theory (IRT)</dt><dd>A statistical model that jointly estimates item difficulty and test-taker ability; Epoch's ECI uses it to link benchmarks. <a class="m" href="16-how-labs-do-evals.html">Module 16</a> <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 </dl>
 <h3 id="gl-j">J</h3>
 <dl>
@@ -1303,22 +1733,34 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Label noise</dt><dd>Wrong or ambiguous reference answers in a dataset; it caps the achievable score and blurs comparisons near the top. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Latency percentiles</dt><dd>P50, P95 and P99 response times; tails matter more than averages for user experience, especially in voice. <a class="m" href="09-voice-agents.html">Module 09</a></dd>
 <dt>Leaderboard Illusion</dt><dd>A 2025 paper showing how private variant testing, best-of-N publishing and unequal data access distort Arena rankings. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
+<dt>Lethal trifecta</dt><dd>Willison's threat model (2025): private data, untrusted content and a way to communicate out. With all three, an injection can exfiltrate data. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 <dt>LiveCodeBench</dt><dd>A coding benchmark that keeps collecting new, dated contest problems, so each model can be scored only on problems released after its training cutoff. <a class="m" href="07-coding-agents.html">Module 07</a></dd>
+<dt>LoCoMo</dt><dd>A long-term conversational memory benchmark (ACL 2024): conversations of about 300 turns over up to 35 sessions, with question answering, event summarization and multimodal dialogue tasks. <a class="m" href="23-memory-evals.html">Module 23</a></dd>
+<dt>LongMemEval</dt><dd>A memory benchmark (ICLR 2025) of 500 questions testing extraction, multi-session reasoning, temporal reasoning, knowledge updates and abstention over long chat histories. <a class="m" href="23-memory-evals.html">Module 23</a></dd>
 </dl>
 <h3 id="gl-m">M</h3>
 <dl>
 <dt>MAST</dt><dd>A taxonomy of multi-agent system failures grouped into system design issues, inter-agent misalignment and task verification. <a class="m" href="11-multi-agent-long-horizon.html">Module 11</a></dd>
+<dt>MCP (Model Context Protocol)</dt><dd>An open protocol that connects hosts to servers exposing tools (model-controlled), resources (application-controlled) and prompts (user-controlled). <a class="m" href="24-tools-and-mcp-evals.html">Module 24</a></dd>
+<dt>Memory poisoning</dt><dd>An injection that the agent stores in memory, so it fires in a later session after its source is gone. <a class="m" href="23-memory-evals.html">Module 23</a></dd>
 <dt>METR</dt><dd>A non-profit that evaluates frontier models' autonomous capabilities and publishes the time-horizon measurements. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>Metric</dt><dd>The aggregate number computed from per-trial scores, such as success rate, pass^k, mean rubric score or cost per task. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Model-written evals</dt><dd>Eval datasets generated by language models and then filtered; Perez et al. (2022) generated 154 such datasets. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
+</dl>
+<h3 id="gl-n">N</h3>
+<dl>
+<dt>NIST AI RMF</dt><dd>The US NIST AI Risk Management Framework, organized as four functions: Govern, Map, Measure and Manage; its generative AI profile (AI 600-1) lists twelve risks. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
+<dt>Nugget</dt><dd>A short, atomic fact an expert expects in a good answer; coverage is the share of expected nuggets present, with vital ones weighted more. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 </dl>
 <h3 id="gl-o">O</h3>
 <dl>
 <dt>Offline vs online evaluation</dt><dd>Offline runs a fixed dataset before release; online scores sampled live traffic after release. Web benchmarks use the same words for replayed vs live websites. <a class="m" href="15-production-evals.html">Module 15</a></dd>
 <dt>Open coding</dt><dd>The first step of error analysis: writing a free-text note on the first failure in each trace. <a class="m" href="12-error-analysis.html">Module 12</a></dd>
 <dt>OpenTelemetry (OTel)</dt><dd>A vendor-neutral standard for traces and spans that most LLM observability tools ingest. <a class="m" href="15-production-evals.html">Module 15</a></dd>
+<dt>Oracle retrieval</dt><dd>A memory baseline that hands the model exactly the right past evidence; comparing against it shows whether failures come from retrieval or from reasoning. <a class="m" href="23-memory-evals.html">Module 23</a></dd>
 <dt>OSWorld</dt><dd>369 real desktop tasks on Ubuntu VMs graded by final file and app state; OSWorld-Verified fixed broken tasks in 2025. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
 <dt>Outcome</dt><dd>The final state of the environment after a trial, which outcome-based graders check. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
+<dt>OWASP Top 10 for Agentic Applications</dt><dd>A December 2025 list of the top agent security risks, ASI01 (agent goal hijack) to ASI10, usable as a coverage checklist for security evals. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 </dl>
 <h3 id="gl-p">P</h3>
 <dl>
@@ -1331,56 +1773,75 @@ inspect view   # browse transcripts and scores</code></pre>
 <dt>Position bias</dt><dd>A judge preferring an answer because of where it appears in the prompt. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
 <dt>Power analysis</dt><dd>Working out how many samples are needed to detect a given difference with a given probability. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Precision and recall</dt><dd>Of the items flagged, how many were right (precision); of the items that should be flagged, how many were (recall). <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
+<dt>Premature done</dt><dd>An agent claiming success when the end-state check fails; the premature-done rate is false "done" claims ÷ all "done" claims. <a class="m" href="21-harness-evals.html">Module 21</a></dd>
 <dt>Preparedness Framework</dt><dd>OpenAI's frontier-risk policy (v2, April 2025) with Tracked Categories and High and Critical thresholds. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>Process grading</dt><dd>Scoring the trajectory (tool choices, arguments, order, safety of each step), not just the final outcome. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
-<dt>Prompt injection</dt><dd>Adversarial instructions hidden in content the agent reads (web pages, emails, tool outputs) that try to hijack its behaviour. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
+<dt>Progressive disclosure</dt><dd>How skills load in three levels: name and description always in context, the SKILL.md body when the skill is triggered, and bundled files only when a step needs them. <a class="m" href="22-skills-evals.html">Module 22</a></dd>
+<dt>Prompt injection</dt><dd>Adversarial instructions hidden in content the agent reads (web pages, emails, tool outputs) that try to hijack its behavior. <a class="m" href="08-web-and-computer-use.html">Module 08</a> <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 <dt>promptfoo</dt><dd>An MIT-licensed, YAML-configured CLI for prompt and model regression tests and red teaming; acquired by OpenAI in 2026. <a class="m" href="14-tools-landscape.html">Module 14</a></dd>
 <dt>Propensity eval</dt><dd>An eval of what a model tends to do when it could misbehave (deceive, sabotage), as opposed to what it is capable of. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 </dl>
 <h3 id="gl-r">R</h3>
 <dl>
+<dt>RACE</dt><dd>DeepResearch Bench's report-quality score: task-adaptive weighted criteria, scored against a reference report as target ÷ (target + reference), so 0.5 means as good as the reference. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 <dt>RAG</dt><dd>Retrieval-augmented generation: fetching relevant documents and conditioning the answer on them; evaluated separately for retrieval and generation. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
 <dt>Red teaming</dt><dd>Deliberate adversarial testing by humans or automated attackers to find failures and misuse paths. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Reference solution</dt><dd>A known-good answer or patch that proves a task is solvable and anchors the grader. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
-<dt>Regression eval</dt><dd>An eval that guards existing behaviour and should pass near 100%; any drop blocks a change. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
+<dt>Regression eval</dt><dd>An eval that guards existing behavior and should pass near 100%; any drop blocks a change. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
 <dt>Reinforcement fine-tuning (RFT)</dt><dd>Training that uses graders as the reward signal, so grader quality directly shapes the model. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
+<dt>Reliability (four dimensions)</dt><dd>Consistency, robustness, predictability and safety, measured separately (Princeton HAL group, 2026), whose headline finding is that capability has improved faster than reliability. <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
+<dt>Remote Labor Index (RLI)</dt><dd>Scale AI and CAIS's benchmark of 240 real freelance projects, scored by automation rate; the best agent at launch reached 2.5%. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 <dt>Responsible Scaling Policy (RSP)</dt><dd>Anthropic's policy tying AI Safety Levels of safeguards to capability thresholds; v3.4 effective July 2026. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>Reward hacking</dt><dd>An agent satisfying the grader without doing the intended task, for example by editing tests. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Rubric</dt><dd>Written criteria, ideally with examples at each level, that humans or judges apply when grading. <a class="m" href="03-graders.html">Module 03</a></dd>
+<dt>Rug pull</dt><dd>An MCP server changing a tool's description after the user approved it; defend by pinning a hash of the tool manifest and re-checking after list_changed. <a class="m" href="24-tools-and-mcp-evals.html">Module 24</a></dd>
 </dl>
 <h3 id="gl-s">S</h3>
 <dl>
+<dt>Safety case</dt><dd>A structured argument that a system is safe enough, built from claims, arguments and evidence with defeaters listed openly; argument families are inability, control, trustworthiness and deference. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
 <dt>Sandbagging</dt><dd>A model deliberately underperforming on an evaluation; a research category in OpenAI's Preparedness Framework. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Sandbox</dt><dd>An isolated environment (container, VM) where an agent can act without affecting real systems. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
 <dt>Saturation</dt><dd>When top systems cluster near a benchmark's ceiling, so it no longer separates them. <a class="m" href="18-benchmark-pitfalls.html">Module 18</a></dd>
 <dt>Scaffold (agent harness)</dt><dd>The non-model part of an agent: prompts, loop, tools, memory and stopping rules. Not the same thing as the evaluation harness that runs the eval. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Scheming</dt><dd>A model covertly pursuing goals its developers did not intend, for example by hiding actions; studied through covert-action proxies. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Self-enhancement bias</dt><dd>A judge favouring outputs from its own model family. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
+<dt>SHADE-Arena</dt><dd>A 2025 benchmark of 17 task pairs, each a main task plus a hidden harmful side task, scored by whether the agent completes the side task without a monitor flagging it. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>Simulated user</dt><dd>An LLM playing the user with a hidden goal, so conversational agents can be tested at scale. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
+<dt>Skill</dt><dd>A folder with a SKILL.md file (a name and description in frontmatter, instructions in the body) plus optional scripts and references that an agent loads when relevant. <a class="m" href="22-skills-evals.html">Module 22</a></dd>
+<dt>SkillsBench</dt><dd>A 2026 benchmark of about 84 tasks in 11 domains run with and without skills; curated skills added roughly 16 points on average, self-generated ones no reliable benefit. <a class="m" href="22-skills-evals.html">Module 22</a></dd>
 <dt>Solver</dt><dd>Inspect's term for what produces the output: from a single generate call to a full agent loop. <a class="m" href="14-tools-landscape.html">Module 14</a></dd>
+<dt>Staleness rate</dt><dd>Stale answers ÷ update probes: how often the agent answers with a value the user has since changed. <a class="m" href="23-memory-evals.html">Module 23</a></dd>
 <dt>Standard error (SE)</dt><dd>The standard deviation of an estimate across hypothetical re-runs; for a rate, √(p(1 − p)/n). <a class="m" href="04-metrics-and-statistics.html">Module 04</a></dd>
 <dt>Step budget</dt><dd>The maximum number of actions an agent may take; scores depend on it, so it must be reported. <a class="m" href="08-web-and-computer-use.html">Module 08</a></dd>
 <dt>SWE-bench</dt><dd>Real GitHub issues from Python repos that an agent must fix, graded by tests in Docker; see Verified and Pro. <a class="m" href="07-coding-agents.html">Module 07</a></dd>
+<dt>Sycophancy</dt><dd>Changing a correct answer to agree with the user; SycEval measures it by pushing back on graded answers and reporting progressive and regressive changes separately. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
 <dt>System card</dt><dd>A lab's published report on a model's evaluations, safeguards and risk classification at release. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
+<dt>Systemic risk</dt><dd>In the EU AI Act, risks specific to the most capable GPAI models; presumed above 10^25 FLOP of training compute, and it triggers the Article 55 duties. <a class="m" href="28-governance-and-responsible-ai.html">Module 28</a></dd>
 </dl>
 <h3 id="gl-t">T</h3>
 <dl>
 <dt>Task</dt><dd>A single test with defined inputs and success criteria; in Inspect, the object tying dataset, solver and scorer together. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
 <dt>τ-bench (tau-bench)</dt><dd>Sierra's benchmark of tool-using agents serving simulated users under a policy, graded by database state and reported as pass^k. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
 <dt>Terminal-Bench</dt><dd>Hard command-line tasks in Docker graded by test scripts; version 2.0 has 89 tasks. <a class="m" href="07-coding-agents.html">Module 07</a></dd>
+<dt>TheAgentCompany</dt><dd>A benchmark of 175 job tasks in a simulated software company, graded by scripted checkpoints with partial credit. <a class="m" href="26-research-and-real-work.html">Module 26</a></dd>
 <dt>Theoretical saturation</dt><dd>In error analysis, the point where reading more traces stops revealing new failure modes. <a class="m" href="12-error-analysis.html">Module 12</a></dd>
 <dt>Time horizon</dt><dd>METR's measure: the human task length at which a model's predicted success is 50% (or 80%). <a class="m" href="11-multi-agent-long-horizon.html">Module 11</a></dd>
+<dt>Tool poisoning</dt><dd>Hidden instructions in a tool's own description that steer the model, for example to leak data through that tool. <a class="m" href="24-tools-and-mcp-evals.html">Module 24</a></dd>
 <dt>TPR / TNR</dt><dd>True positive rate and true negative rate of a grader measured against human labels; the right way to report judge quality. <a class="m" href="13-llm-as-judge.html">Module 13</a></dd>
 <dt>Trace</dt><dd>A structured record of one run, made of nested spans for model calls, tool calls and sub-agents. <a class="m" href="15-production-evals.html">Module 15</a></dd>
+<dt>Trace grading</dt><dd>Grading an agent's full trace (its spans of model calls, tool calls and handoffs) rather than only the final answer; OpenAI offers it as a platform feature. <a class="m" href="16-how-labs-do-evals.html">Module 16</a></dd>
 <dt>Trajectory</dt><dd>The sequence of observations, reasoning and actions an agent takes during one trial. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Transcript</dt><dd>The complete record of a trial, including outputs, tool calls and reasoning. <a class="m" href="02-anatomy-of-an-eval.html">Module 02</a></dd>
 <dt>Trial</dt><dd>One attempt at a task; run several because outputs vary. <a class="m" href="05-agents-are-different.html">Module 05</a></dd>
 <dt>Time to first audio (TTFA)</dt><dd>How long a voice agent takes to start speaking after the caller stops; vendor guides target well under a second. <a class="m" href="09-voice-agents.html">Module 09</a></dd>
+<dt>Trigger eval</dt><dd>A skill eval that checks the skill fires on relevant queries and stays quiet on near misses: about 20 queries, 3 runs each. <a class="m" href="22-skills-evals.html">Module 22</a></dd>
 </dl>
 <h3 id="gl-u">U</h3>
 <dl>
 <dt>Uplift</dt><dd>How much a model increases a person's ability to do something (for example, a harmful task) compared with a control group without it. <a class="m" href="17-safety-evals.html">Module 17</a></dd>
+<dt>Uplift eval (skills)</dt><dd>For a skill, the difference in outcomes between with-skill and no-skill runs of the same tasks, launched together and graded the same way. <a class="m" href="22-skills-evals.html">Module 22</a></dd>
 <dt>User simulator noise</dt><dd>Errors introduced by the simulated user (hallucinating, quitting early), which count against the agent unless controlled. <a class="m" href="06-tool-use-and-conversation.html">Module 06</a></dd>
+<dt>Utility under attack</dt><dd>The share of injected tasks where the user's goal is still met; reported next to ASR so a defense cannot win by breaking the agent. <a class="m" href="25-agent-security-evals.html">Module 25</a></dd>
 </dl>
 <h3 id="gl-v">V</h3>
 <dl>
@@ -1501,12 +1962,21 @@ inspect view   # browse transcripts and scores</code></pre>
 </ul></div>
 </div>
 
+<p>Parts V and VI add sources that move quickly. These are worth a monthly look:</p>
+<ul>
+<li><b>Harness and reliability:</b> <a href="https://hal.cs.princeton.edu">HAL</a> (cost next to accuracy for every scaffold and model) and its <a href="https://hal.cs.princeton.edu/reliability/">reliability</a> work; Anthropic's post on <a href="https://www.anthropic.com/engineering/infrastructure-noise">infrastructure noise</a> (<a href="21-harness-evals.html">Module 21</a>, <a href="04-metrics-and-statistics.html">Module 04</a>).</li>
+<li><b>Skills and tools:</b> <a href="https://www.skillsbench.ai">SkillsBench</a>, the <a href="https://github.com/anthropics/skills">anthropics/skills</a> repository, and the <a href="https://labs.scale.com/leaderboard/mcp_atlas">MCP-Atlas leaderboard</a> (<a href="22-skills-evals.html">Module 22</a>, <a href="24-tools-and-mcp-evals.html">Module 24</a>).</li>
+<li><b>Security:</b> the <a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/">OWASP Top 10 for Agentic Applications</a>, NIST's <a href="https://www.nist.gov/artificial-intelligence/ai-agent-standards-initiative">AI Agent Standards Initiative</a>, and Simon Willison's writing on the <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">lethal trifecta</a> (<a href="25-agent-security-evals.html">Module 25</a>).</li>
+<li><b>Real work:</b> the <a href="https://labs.scale.com/leaderboard/rli">Remote Labor Index leaderboard</a>, whose automation rates have moved since launch, and the <a href="https://deepresearch-bench.github.io">DeepResearch Bench</a> site (<a href="26-research-and-real-work.html">Module 26</a>).</li>
+<li><b>Governance and control:</b> the EU <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai">GPAI Code of Practice</a> and its signatory list, UK AISI's <a href="https://www.aisi.gov.uk/blog/safety-cases-at-aisi">safety cases</a> work, and <a href="https://control-arena.aisi.org.uk">ControlArena</a> (<a href="28-governance-and-responsible-ai.html">Module 28</a>, <a href="17-safety-evals.html">Module 17</a>).</li>
+</ul>
+
 <div class="callout tip"><span class="t">A habit that compounds</span>
 <p>Keep a one-line log whenever you read a new result: <em>date, claim, benchmark, harness, number of trials, error bars (yes/no), source tier</em>. After three months you will have your own calibrated sense of which sources hold up, and you will notice when a "new state of the art" is inside the noise of the previous one.</p>
 </div>
 
 <h2>A 30-day practice plan</h2>
-<p>Reading this course gives you the map. Judgement comes from building. The plan below takes about an hour a day and leaves you with three working evals in different modalities, a validated judge, a statistically sound comparison and a reproduced benchmark run. Each step names the module to reopen.</p>
+<p>Reading this course gives you the map. Judgment comes from building. The plan below takes about an hour a day and leaves you with three working evals in different modalities, a validated judge, a statistically sound comparison and a reproduced benchmark run. Each step names the module to reopen.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 296" role="img" aria-label="A 30-day practice timeline in four weeks: build a first eval from real traces, then two agent evals in other modalities, then validate a judge and run the statistics, then reproduce a public benchmark with Inspect and write it up.">
@@ -1587,6 +2057,16 @@ inspect view   # browse transcripts and scores</code></pre>
 <tr><td>29 to 30</td><td>Write up all three evals as if for a design review, then answer ten drill questions above from memory.</td><td>You can explain every number you produced.</td><td><a href="19-capstone.html">19</a></td></tr>
 </table></div>
 
+<p>Finished the thirty days? Ten more days take the same habits into Parts V and VI. Each step reuses one of the evals you already built.</p>
+<div class="tablewrap"><table>
+<tr><th>Days</th><th>Do this</th><th>Done when</th><th>Module</th></tr>
+<tr><td>31 to 32</td><td>Run a paired harness ablation on Eval 2: remove one component (retries, a verification step, sub-agents), keep everything else fixed, several trials per task.</td><td>A delta with a CI, cost per arm, and a list of flipped tasks you have read.</td><td><a href="21-harness-evals.html">21</a></td></tr>
+<tr><td>33 to 34</td><td>Write a trigger eval (about 20 queries, half near misses, 3 runs) and an uplift eval for one skill, or contract tests plus a distractor test for one MCP server.</td><td>Trigger rates on both sides, and an uplift or selection accuracy with intervals.</td><td><a href="22-skills-evals.html">22</a>, <a href="24-tools-and-mcp-evals.html">24</a></td></tr>
+<tr><td>35 to 36</td><td>Build five memory timelines with an update and a deletion each; run them against no-memory, full-context and oracle-retrieval baselines.</td><td>Staleness, false-memory and deletion-compliance numbers for each arm.</td><td><a href="23-memory-evals.html">23</a></td></tr>
+<tr><td>37 to 38</td><td>Plant indirect injections with canary tokens in your agent's tool results; run with and without one defense, several seeds each.</td><td>Clean utility, utility under attack and ASR, each with a task-level interval, and your attack budget stated.</td><td><a href="25-agent-security-evals.html">25</a></td></tr>
+<tr><td>39 to 40</td><td>Pick one domain task family, write a weighted rubric with a critical-failure gate, double-grade 50 items, and package the results as a one-page evidence pack.</td><td>A kappa, a gate result with an upper bound, and a manifest someone else could rerun.</td><td><a href="27-domain-playbook.html">27</a>, <a href="28-governance-and-responsible-ai.html">28</a></td></tr>
+</table></div>
+
 <div class="callout analogy"><span class="t">Analogy: learning to cook</span>
 <p>Reading every cookbook does not make you a chef. Cooking the same dish three times, tasting carefully and changing one thing each time does. The 30-day plan is three dishes, a calibrated palate (the judge), and a blind tasting (the paired test).</p>
 </div>
@@ -1599,6 +2079,7 @@ inspect view   # browse transcripts and scores</code></pre>
 <li><b>Know the size of the noise before you argue.</b> A single score on 500 tasks is about ±4.4 points; quadruple the tasks to halve that, and compare systems with a paired test.</li>
 <li><b>When a number moves, debug in order:</b> noise, measurement changes, infrastructure, slices, then transcripts. Most surprises die in the first two checks.</li>
 <li><b>Every claim needs its conditions:</b> harness, budget, trials, error bars and date. Frameworks, leaderboards and tools change monthly, so read the primary source and cite the version.</li>
+<li><b>Parts V and VI reuse the same logic under more pressure.</b> Evaluate one building block at a time with paired ablations; report security as utility and attack success at a stated budget; grade long reports on quality and citations separately; and when a regulator is the audience, use the conservative side of the interval and write the evidence down as a safety case.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1628,6 +2109,26 @@ inspect view   # browse transcripts and scores</code></pre>
 <button class="opt">It inflates the score.</button>
 <button class="opt">It under-reports capability, giving false reassurance that a threshold is not crossed.</button>
 <div class="why">These are rule-out tests: the goal is a confident negative. If the model was not pushed as hard as a motivated user could push it, a low score does not rule anything out.</div></div>
+<div class="q" data-answer="0"><p>6. On DeepResearch Bench, an agent's report gets a RACE score of 0.45. What does that mean?</p>
+<button class="opt">It is judged slightly worse than the reference report.</button>
+<button class="opt">It met 45% of the rubric criteria.</button>
+<button class="opt">45% of its citations were verified.</button>
+<div class="why">RACE is reference-relative: target ÷ (target + reference), so 0.5 means as good as the reference and 0.45 means a little worse. Citations are scored separately by FACT.</div></div>
+<div class="q" data-answer="1"><p>7. An injection succeeds 5% of the time per attempt, and the attacker can try 20 times. About how likely is at least one success?</p>
+<button class="opt">About 5%</button>
+<button class="opt">About 64%</button>
+<button class="opt">100%</button>
+<div class="why">Attack pass@k = 1 − 0.95^20 ≈ 0.64. A per-attempt ASR understates risk whenever attackers can retry, which is why the attacker budget belongs next to the number.</div></div>
+<div class="q" data-answer="2"><p>8. A description optimizer produced five candidate skill descriptions on a 60/40 split. Which one should you ship?</p>
+<button class="opt">The one with the highest score on the 60% it was tuned on</button>
+<button class="opt">The longest one, since it covers the most cases</button>
+<button class="opt">The one with the highest score on the held-out 40%</button>
+<div class="why">Selecting on the data you tuned on rewards overfitting (and the winner's curse). The held-out score is the honest estimate of how the description will trigger on new queries.</div></div>
+<div class="q" data-answer="1"><p>9. A safety case claims the model solves at most 10% of cyber tasks. It solved 2 of 40. Does the claim hold?</p>
+<button class="opt">Yes: 5% is below 10%</button>
+<button class="opt">Not yet: the one-sided 95% upper bound is about 15%</button>
+<button class="opt">No: any solved task breaks the claim</button>
+<div class="why">Regulator-facing evidence uses the conservative side of the interval. With 40 tasks, 10% cannot be ruled out, so you need more tasks or a stronger argument.</div></div>
 </div>
 
 <h2>Sources and further reading</h2>
@@ -1652,6 +2153,17 @@ inspect view   # browse transcripts and scores</code></pre>
 <li>ARC Prize, <a href="https://arcprize.org/blog/arc-agi-3-launch">ARC-AGI-3 launch</a> (Mar 2026).</li>
 <li>Epoch AI, <a href="https://epoch.ai/eci">Epoch Capabilities Index</a>; UK AISI, <a href="https://inspect.aisi.org.uk/">Inspect</a>; NIST, <a href="https://www.nist.gov/news-events/news/2025/09/caisi-evaluation-deepseek-ai-models-finds-shortcomings-and-risks">CAISI evaluation of DeepSeek</a>.</li>
 <li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals-faq/">Evals FAQ</a>; Shankar et al., <a href="https://arxiv.org/abs/2404.12272">Who Validates the Validators?</a>; Eugene Yan, <a href="https://eugeneyan.com/writing/llm-evaluators/">Evaluating the Effectiveness of LLM-Evaluators</a>.</li>
+<li>Kapoor et al., <a href="https://arxiv.org/abs/2510.11977">Holistic Agent Leaderboard (HAL)</a> (ICLR 2026) and <a href="https://hal.cs.princeton.edu">hal.cs.princeton.edu</a>; <a href="https://arxiv.org/abs/2602.16666">Towards a Science of AI Agent Reliability</a> (ICML 2026); Anthropic, <a href="https://www.anthropic.com/engineering/infrastructure-noise">Quantifying infrastructure noise in agentic coding evals</a> (Feb 2026); <a href="https://arxiv.org/abs/2607.28802">Model or Harness?</a> (2026).</li>
+<li>Li et al., <a href="https://arxiv.org/abs/2602.12670">SkillsBench</a> (2026); Anthropic, <a href="https://github.com/anthropics/skills">anthropics/skills</a>.</li>
+<li>Maharana et al., <a href="https://arxiv.org/abs/2402.17753">LoCoMo</a> (ACL 2024); Wu et al., <a href="https://arxiv.org/abs/2410.10813">LongMemEval</a> (ICLR 2025); <a href="https://arxiv.org/abs/2507.05257">MemoryAgentBench</a> (ICLR 2026); <a href="https://arxiv.org/abs/2510.27246">BEAM</a> (ICLR 2026).</li>
+<li>MCP benchmarks: <a href="https://arxiv.org/abs/2508.14704">MCP-Universe</a>, <a href="https://arxiv.org/abs/2508.20453">MCP-Bench</a>, <a href="https://arxiv.org/abs/2508.15760">LiveMCP-101</a>, <a href="https://arxiv.org/abs/2510.25726">Toolathlon</a>, <a href="https://arxiv.org/abs/2509.24002">MCPMark</a>, <a href="https://arxiv.org/abs/2602.00933">MCP-Atlas</a>; Invariant Labs, <a href="https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks">tool poisoning attacks</a>.</li>
+<li>Security: <a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/">OWASP Top 10 for Agentic Applications</a> (Dec 2025); NIST, <a href="https://www.nist.gov/news-events/news/2025/01/technical-blog-strengthening-ai-agent-hijacking-evaluations">Strengthening AI agent hijacking evaluations</a> (Jan 2025); Willison, <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">The lethal trifecta</a> (Jun 2025); <a href="https://arxiv.org/abs/2406.13352">AgentDojo</a>, <a href="https://arxiv.org/abs/2403.02691">InjecAgent</a>, <a href="https://arxiv.org/abs/2410.02644">ASB</a>, <a href="https://arxiv.org/abs/2410.09024">AgentHarm</a>, <a href="https://arxiv.org/abs/2504.18575v2">WASP</a>, <a href="https://arxiv.org/abs/2602.03117">AgentDyn</a>, <a href="https://arxiv.org/abs/2508.14925">MCPTox</a>, <a href="https://arxiv.org/abs/2507.20526">the ART competition</a>, <a href="https://arxiv.org/abs/2503.18813">CaMeL</a>, <a href="https://arxiv.org/abs/2510.09023">The Attacker Moves Second</a>.</li>
+<li>Research and real work: Du et al., <a href="https://arxiv.org/abs/2506.11763">DeepResearch Bench</a> (2025); <a href="https://arxiv.org/html/2512.17776v2">DEER</a> (ICML 2026); Scale AI and CAIS, <a href="https://arxiv.org/abs/2510.26787">Remote Labor Index</a> and <a href="https://labs.scale.com/leaderboard/rli">leaderboard</a>; <a href="https://arxiv.org/html/2412.14161v2">TheAgentCompany</a> (2024).</li>
+<li>Domains: OpenAI, <a href="https://openai.com/index/healthbench/">HealthBench</a> and <a href="https://arxiv.org/abs/2505.08775">paper</a> (2025); <a href="https://arxiv.org/abs/2308.11462">LegalBench</a>, <a href="https://arxiv.org/abs/2311.11944">FinanceBench</a>, <a href="https://arxiv.org/abs/2409.07703">DSBench</a>, <a href="https://arxiv.org/abs/2410.05080">ScienceAgentBench</a>, <a href="https://arxiv.org/abs/2411.07763">Spider 2.0</a>.</li>
+<li>Governance: EU AI Act <a href="https://artificialintelligenceact.eu/article/55/">Article 55</a>; <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai">GPAI Code of Practice</a> (Jul 2025); NIST <a href="https://www.nist.gov/itl/ai-risk-management-framework">AI RMF</a>; <a href="https://www.iso.org/standard/81230.html">ISO/IEC 42001</a>; Clymer et al., <a href="https://arxiv.org/abs/2403.10462">Safety Cases</a> (2024); UK AISI, <a href="https://www.aisi.gov.uk/blog/safety-cases-at-aisi">Safety cases at AISI</a>.</li>
+<li>Measurement: Polo et al., <a href="https://arxiv.org/abs/2402.14992">tinyBenchmarks</a> (ICML 2024); <a href="https://arxiv.org/abs/2603.23749">Efficient Benchmarking of AI Agents</a> (2026); Zhu et al., <a href="https://arxiv.org/abs/2507.02825">Agentic Benchmark Checklist</a> (NeurIPS 2025); OpenAI, <a href="https://developers.openai.com/api/docs/guides/trace-grading">trace grading</a>.</li>
+<li>Monitoring and control: Korbak et al., <a href="https://arxiv.org/abs/2507.11473">Chain of Thought Monitorability</a> (2025); OpenAI, <a href="https://arxiv.org/abs/2512.18311">monitorability evaluation</a> (Dec 2025); Anthropic, <a href="https://www.anthropic.com/research/shade-arena-sabotage-monitoring">SHADE-Arena</a> (2025); Greenblatt et al., <a href="https://arxiv.org/abs/2312.06942">AI Control</a> (2023); UK AISI, <a href="https://control-arena.aisi.org.uk">ControlArena</a>; Needham et al., <a href="https://arxiv.org/abs/2505.23836">LLMs Often Know When They Are Being Evaluated</a> (2025); <a href="https://arxiv.org/abs/2609.01611">EvalDetectBench</a> (2026).</li>
+<li>Optimizers: <a href="https://dspy.ai">DSPy</a> and <a href="https://github.com/gepa-ai/gepa">GEPA</a>.</li>
 </ul>
 
 </article>
