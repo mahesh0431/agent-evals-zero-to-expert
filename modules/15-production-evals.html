@@ -16,7 +16,7 @@
 <div class="kicker">Module 15 · Practice</div>
 <h1>Evals in production and CI</h1>
 <p class="lede">An offline eval suite tells you whether a change is safe to ship. Production tells you whether you were right. This module wires the two together: tracing, online judges, user signals, CI gates, staged rollouts and dashboards, arranged as one loop that makes your agent a little better every lap.</p>
-<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~70 min</span><span class="pill">Prereqs: Modules 04, 12, 13</span></div>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~90 min</span><span class="pill">Prereqs: Modules 04, 12, 13</span></div>
 
 <div class="objectives">
 <h3>By the end of this module you can</h3>
@@ -26,6 +26,7 @@
 <li>Design an online evaluation system: sampling strategy, LLM judges on live traffic under a budget, implicit feedback signals, guardrails vs async scoring.</li>
 <li>Turn evals into a CI gate that is statistically sound (paired bootstrap), not flaky, cached and cost-bounded, with tiered suites.</li>
 <li>Run a model or provider migration, detect drift, build a useful dashboard, and handle agent-specific failures such as runaway loops and cost explosions.</li>
+<li>Run evals as a program: assign owners, place your team on a maturity ladder, budget eval cost, set a review cadence, report to stakeholders with confidence intervals, and pay down eval debt.</li>
 </ul>
 </div>
 
@@ -340,7 +341,7 @@ def run_agent(conversation_id, messages):
 <tr><td>Output</td><td>An action (allow, block, rewrite, escalate)</td><td>A score attached to a trace</td></tr>
 </table></div>
 
-<p>Guardrails still need evaluating: measure their precision and recall offline on labelled examples, just like any grader, and monitor their trigger rate online. A guardrail whose trigger rate doubles overnight is telling you something changed, either in the traffic or in the model upstream of it. Eugene Yan notes that fine-tuned small evaluators are a good fit for low-latency guardrails, while bigger judges suit async scoring.</p>
+<p>Guardrails still need evaluating: measure their precision and recall offline on labeled examples, just like any grader, and monitor their trigger rate online. A guardrail whose trigger rate doubles overnight is telling you something changed, either in the traffic or in the model upstream of it. Eugene Yan notes that fine-tuned small evaluators are a good fit for low-latency guardrails, while bigger judges suit async scoring.</p>
 
 <h3>Sampling: what to judge</h3>
 <p>Running an LLM judge on every production trace is usually wasteful. A good sampling design mixes <b>three streams</b> with different purposes:</p>
@@ -394,7 +395,7 @@ def run_agent(conversation_id, messages):
 <tr><td>Judge everything</td><td>200,000</td><td>800M tok = $800</td><td>60M tok = $300</td><td><b>$1,100</b></td></tr>
 <tr><td>2% random + 3% flagged</td><td>10,000</td><td>40M tok = $40</td><td>3M tok = $15</td><td><b>$55</b></td></tr>
 </table></div>
-<p>A twenty-fold saving for almost the same information. Other levers: truncate or summarise long transcripts before judging (but check the judge still agrees with humans on the shortened input), use a cheaper model for a first-pass triage and a stronger one only on uncertain cases, and use provider-side prompt caching for the fixed rubric part of the judge prompt.</p>
+<p>A twenty-fold saving for almost the same information. Other levers: truncate or summarize long transcripts before judging (but check the judge still agrees with humans on the shortened input), use a cheaper model for a first-pass triage and a stronger one only on uncertain cases, and use provider-side prompt caching for the fixed rubric part of the judge prompt.</p>
 
 <h3>Code: a budget-capped online judge sampler</h3>
 <p>This worker pulls finished traces, decides whether to judge each one, enforces a rate limit and a daily dollar budget, calls a judge, and writes the score back to the trace in Langfuse. Note the <b>deterministic hash sampling</b>: the same trace ID always gets the same decision, so reruns and backfills are reproducible, and the <b>stream label</b> is stored with every score so the dashboard never mixes biased and unbiased samples.</p>
@@ -492,14 +493,14 @@ def judge_trace(t: dict):
         enqueue_for_human_review(t["id"], reason=f"judge fail ({stream})")</code></pre>
 
 <div class="callout expert"><span class="t">Expert nuance: the judge drifts too</span>
-<p>An online judge is a measuring instrument that lives for months. If the judge model is an alias that the provider updates, your "quality dropped 4 points" alert might be the judge changing, not your agent. Pin an exact judge model version (never a moving alias such as "latest"), log it on every score, and keep a small <b>anchor set</b> of human-labelled traces that you re-judge weekly: if the judge's agreement with humans on the anchor set moves, recalibrate before trusting the trend (<a href="13-llm-as-judge.html">Module 13</a>).</p>
+<p>An online judge is a measuring instrument that lives for months. If the judge model is an alias that the provider updates, your "quality dropped 4 points" alert might be the judge changing, not your agent. Pin an exact judge model version (never a moving alias such as "latest"), log it on every score, and keep a small <b>anchor set</b> of human-labeled traces that you re-judge weekly: if the judge's agreement with humans on the anchor set moves, recalibrate before trusting the trend (<a href="13-llm-as-judge.html">Module 13</a>).</p>
 </div>
 
 <h3>Implicit feedback signals</h3>
-<p>Explicit feedback (thumbs up or down, star ratings) is precious but rare: typically only a small fraction of users ever click, and those who do are not representative (angry users click more). <b>Implicit signals</b> are behaviours users show anyway, which correlate with success or failure. They are free, available on 100% of traffic, and noisy.</p>
+<p>Explicit feedback (thumbs up or down, star ratings) is precious but rare: typically only a small fraction of users ever click, and those who do are not representative (angry users click more). <b>Implicit signals</b> are behaviors users show anyway, which correlate with success or failure. They are free, available on 100% of traffic, and noisy.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 370" role="img" aria-label="An annotated conversation: the agent books the wrong day, the user rephrases, the agent adds a fee, the user clicks thumbs down, asks for a human, and leaves. Each event is labelled with the implicit or explicit signal it produces.">
+<svg viewBox="0 0 820 370" role="img" aria-label="An annotated conversation: the agent books the wrong day, the user rephrases, the agent adds a fee, the user clicks thumbs down, asks for a human, and leaves. Each event is labeled with the implicit or explicit signal it produces.">
 <defs><marker id="m15e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="40" y="24" class="b">Session transcript</text>
 <text x="560" y="24" class="b">Signal it produces</text>
@@ -535,12 +536,12 @@ def judge_trace(t: dict):
 <tr><td>Acceptance</td><td>Suggested code kept, PR merged, action confirmed, draft sent</td><td>Success</td><td>Accepted-then-reverted later is a delayed failure</td></tr>
 <tr><td>Escalation</td><td>"Talk to a human", handoff tool called, support ticket opened</td><td>Agent could not resolve</td><td>Some escalations are correct policy (the agent <em>should</em> hand off)</td></tr>
 <tr><td>Abandonment</td><td>Session ends mid-task, no confirmation, no return</td><td>Gave up</td><td>Also happens when the user simply got what they needed</td></tr>
-<tr><td>Explicit thumbs / ratings</td><td>UI buttons</td><td>Direct judgement</td><td>Low and biased response rate; rating the tone, not the correctness</td></tr>
+<tr><td>Explicit thumbs / ratings</td><td>UI buttons</td><td>Direct judgment</td><td>Low and biased response rate; rating the tone, not the correctness</td></tr>
 <tr><td>Return rate</td><td>User comes back with the same issue within days</td><td>The "resolution" did not stick</td><td>Needs joining across sessions</td></tr>
 </table></div>
 
 <div class="callout warn"><span class="t">Goodhart's law applies to user signals</span>
-<p>If you optimise directly for fewer thumbs-downs, an agent can learn to be agreeable and flattering (sycophancy) rather than correct. If you optimise for fewer escalations, it can learn to refuse to hand off when it should. Use implicit signals as <b>alarms and samplers</b> (which traces to look at), and use calibrated judges and human labels as the <b>target</b>.</p>
+<p>If you optimize directly for fewer thumbs-downs, an agent can learn to be agreeable and flattering (sycophancy) rather than correct. If you optimize for fewer escalations, it can learn to refuse to hand off when it should. Use implicit signals as <b>alarms and samplers</b> (which traces to look at), and use calibrated judges and human labels as the <b>target</b>.</p>
 </div>
 
 <h2>Shipping safely: shadow, canary, A/B, interleaving</h2>
@@ -576,7 +577,7 @@ def judge_trace(t: dict):
 </figure>
 
 <h3>Shadow deployments</h3>
-<p>In a <b>shadow</b> (or "dark launch") deployment, the new version receives a copy of real production requests, but its output is thrown away; users only see the old version. You then compare the two on the same inputs, which is a <b>paired</b> comparison with real traffic, the best of both worlds. The catch for agents: agents <em>act</em>. A shadow agent must not send the email or issue the refund. You have to stub every write tool (return a plausible fake success) and point read tools at real or replayed data. That also means shadow runs diverge from reality after the first write: if the real agent refunded and the shadow did not, turn 2 is no longer comparable. Shadow mode is most informative for single-turn behaviour and early trajectory steps.</p>
+<p>In a <b>shadow</b> (or "dark launch") deployment, the new version receives a copy of real production requests, but its output is thrown away; users only see the old version. You then compare the two on the same inputs, which is a <b>paired</b> comparison with real traffic, the best of both worlds. The catch for agents: agents <em>act</em>. A shadow agent must not send the email or issue the refund. You have to stub every write tool (return a plausible fake success) and point read tools at real or replayed data. That also means shadow runs diverge from reality after the first write: if the real agent refunded and the shadow did not, turn 2 is no longer comparable. Shadow mode is most informative for single-turn behavior and early trajectory steps.</p>
 
 <h3>Canaries</h3>
 <p>A <b>canary</b> release sends a small fraction of real users (often 1% then 5 to 10%) to the new version, with automated checks that roll back if error rate, cost per trace, p95 latency, step-cap hits or safety-guardrail triggers exceed limits relative to the control. Canaries are for catching <b>breakage</b> quickly, not for measuring small quality differences: 1% of traffic rarely gives enough samples for a precise quality comparison in hours.</p>
@@ -584,9 +585,9 @@ def judge_trace(t: dict):
 <h3>A/B tests for agents</h3>
 <p>An <b>A/B test</b> randomly assigns users to control (A) or treatment (B) and compares outcome metrics. It is the only way to measure causal impact on what the business actually cares about (resolution, retention, revenue). Agent-specific design choices:</p>
 <ul>
-<li><b>Randomise by user, not by request.</b> Agents have memory and multi-turn sessions; switching versions mid-conversation contaminates both arms. Hash the user ID into an arm and keep it sticky.</li>
+<li><b>Randomize by user, not by request.</b> Agents have memory and multi-turn sessions; switching versions mid-conversation contaminates both arms. Hash the user ID into an arm and keep it sticky.</li>
 <li><b>Pick one primary metric</b> (for example "session judged resolved" or "no human escalation within 7 days") and several <b>guardrail metrics</b> that must not degrade (cost per session, p95 latency, safety flags).</li>
-<li><b>Size it up front.</b> Agents often change behaviour by small amounts, and small effects need many users.</li>
+<li><b>Size it up front.</b> Agents often change behavior by small amounts, and small effects need many users.</li>
 </ul>
 <h4>Worked example: how many users?</h4>
 <p>Your baseline resolution rate is 60%. You want 80% power to detect a 2-point absolute improvement at a two-sided 5% significance level. The usual approximation for two proportions:</p>
@@ -906,12 +907,12 @@ jobs:
 </ul>
 
 <h2>Model and provider migrations</h2>
-<p>Few changes are as tempting or as risky as swapping the model: a new release is cheaper, faster or smarter on public benchmarks. Public benchmarks do not measure <em>your</em> task (<a href="01-what-are-evals.html">Module 01</a>), and agents are sensitive to behavioural details that benchmarks ignore: how verbose the model is, how eagerly it calls tools, how it formats arguments, when it asks clarifying questions. A migration playbook:</p>
+<p>Few changes are as tempting or as risky as swapping the model: a new release is cheaper, faster or smarter on public benchmarks. Public benchmarks do not measure <em>your</em> task (<a href="01-what-are-evals.html">Module 01</a>), and agents are sensitive to behavioral details that benchmarks ignore: how verbose the model is, how eagerly it calls tools, how it formats arguments, when it asks clarifying questions. A migration playbook:</p>
 <ol>
 <li><b>Freeze everything else.</b> Same prompts, tools, dataset and graders. Change one variable.</li>
 <li><b>Run the full suite with epochs on both models</b>, in the same job, and compare with the paired method. Also run the capability suite: a new model may unlock tasks you had given up on.</li>
 <li><b>Compare per slice, not just overall.</b> A flat average can hide a big gain on easy slices and a big loss on a critical one.</li>
-<li><b>Compare behaviour, not just scores.</b> Tool calls per task, tokens per task, cost per success, latency, refusal rate, clarifying-question rate, finish reasons, output length. These "shape" metrics catch shifts that the pass/fail grader misses and often explain score changes.</li>
+<li><b>Compare behavior, not just scores.</b> Tool calls per task, tokens per task, cost per success, latency, refusal rate, clarifying-question rate, finish reasons, output length. These "shape" metrics catch shifts that the pass/fail grader misses and often explain score changes.</li>
 <li><b>Read transcripts</b> where the two models disagree. This is where you find out that the new model now asks for confirmation before every refund, which your grader counts as success but your users will hate.</li>
 <li><b>Re-tune, then re-evaluate.</b> Prompts are often overfitted to the old model. Allow a round of prompt adjustment, but evaluate the tuned version on a held-out split so you are not overfitting to the eval.</li>
 <li><b>Re-validate judges.</b> If the new model is also your judge, or the judge is from the same family, check judge-human agreement again: self-preference bias changes with the pairing (<a href="13-llm-as-judge.html">Module 13</a>).</li>
@@ -956,7 +957,7 @@ jobs:
 <p>A fourth, subtler kind is <b>criteria drift</b>: what "good" means changes as you look at more outputs. Shankar and colleagues found that people need criteria to grade outputs, but grading outputs changes their criteria. That is healthy, but it means your rubrics and judges need versioning just like your prompts, and a score series should note when the rubric changed.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 310" role="img" aria-label="Four kinds of drift push on an agent whose code did not change: input drift from users, model or provider drift, tool and environment drift, and criteria drift in what good means. Each arrow is labelled with the signal that detects it, and the agent's quality line drops even though no commit happened.">
+<svg viewBox="0 0 820 310" role="img" aria-label="Four kinds of drift push on an agent whose code did not change: input drift from users, model or provider drift, tool and environment drift, and criteria drift in what good means. Each arrow is labeled with the signal that detects it, and the agent's quality line drops even though no commit happened.">
 <defs><marker id="m15k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box accent" x="20" y="20" width="220" height="118" rx="10"/>
 <text x="130" y="42" text-anchor="middle" class="b">Input drift</text>
@@ -1067,11 +1068,11 @@ jobs:
 </table></div>
 
 <h2>Humans in the loop: review queues and annotation</h2>
-<p>Every stream above eventually ends in a person reading traces. A <b>review queue</b> (tools such as LangSmith and Langfuse call them annotation queues) is a to-do list of traces with a labelling interface. Done well, it is the highest-value hour of the team's week; done badly, it is a backlog nobody opens. Hamel Husain's advice applies directly: remove all friction from looking at data.</p>
+<p>Every stream above eventually ends in a person reading traces. A <b>review queue</b> (tools such as LangSmith and Langfuse call them annotation queues) is a to-do list of traces with a labeling interface. Done well, it is the highest-value hour of the team's week; done badly, it is a backlog nobody opens. Hamel Husain's advice applies directly: remove all friction from looking at data.</p>
 <ul>
 <li><b>What goes in:</b> judge failures, cases where the judge was uncertain or unparseable, disagreements between judge and user signal (thumbs-up but judge fail, or the reverse), a small uniform random slice (to find failures no filter catches), and traces from new features.</li>
 <li><b>What reviewers produce:</b> a binary pass/fail with a short written critique (not a 1-to-5 score), a failure-mode tag from the taxonomy, and a flag "add to dataset". This is exactly the open-coding and axial-coding workflow from <a href="12-error-analysis.html">Module 12</a>.</li>
-<li><b>Where labels go:</b> three places. (1) New dataset cases, with the trace converted into a replayable input and the reviewer's critique turned into the expected behaviour. (2) Judge calibration data: every human label is also a test of the judge (TPR and TNR, <a href="13-llm-as-judge.html">Module 13</a>). (3) Product bugs, when the failure is not the model's fault at all (a broken tool, missing data).</li>
+<li><b>Where labels go:</b> three places. (1) New dataset cases, with the trace converted into a replayable input and the reviewer's critique turned into the expected behavior. (2) Judge calibration data: every human label is also a test of the judge (TPR and TNR, <a href="13-llm-as-judge.html">Module 13</a>). (3) Product bugs, when the failure is not the model's fault at all (a broken tool, missing data).</li>
 <li><b>Quality control:</b> have two reviewers label an overlapping 10% and track agreement (Cohen's kappa). Low agreement means the rubric is ambiguous, not that reviewers are careless.</li>
 </ul>
 
@@ -1116,16 +1117,16 @@ jobs:
 <details>
 <summary>Worked example: turning a production trace into a regression case</summary>
 <p>The flight-change session from the implicit-signals figure lands in the queue (escalation plus a judge fail). The reviewer writes: "FAIL. Agent booked Thursday when the user said Friday; later added a $75 fee without warning. First failure: date parsing." Tags: <code>wrong_entity</code>, <code>unannounced_cost</code>.</p>
-<p>The engineer converts it into a test case: input = the first user message plus the booking tool's recorded responses (so it replays deterministically); graders = a code check that the <code>rebook</code> tool was called with a Friday date, and a judge check "if the action has a fee, the agent states the fee and asks for confirmation before acting". The case goes into the smoke suite as a must-pass case because it touches money. The failure mode also gets a synthetic variant set ("move it to next Tuesday", "the 14th", "two days later") so the fix generalises rather than memorising one phrasing.</p>
+<p>The engineer converts it into a test case: input = the first user message plus the booking tool's recorded responses (so it replays deterministically); graders = a code check that the <code>rebook</code> tool was called with a Friday date, and a judge check "if the action has a fee, the agent states the fee and asks for confirmation before acting". The case goes into the smoke suite as a must-pass case because it touches money. The failure mode also gets a synthetic variant set ("move it to next Tuesday", "the 14th", "two days later") so the fix generalizes rather than memorising one phrasing.</p>
 </details>
 
 <h2>Privacy and PII in traces</h2>
 <p>Traces are the most sensitive data many AI teams hold: full conversations, tool results containing customer records, sometimes credentials pasted by users. The same traces are what you want to put in datasets, send to third-party judge models and show to reviewers. Treat this as a design problem from day one:</p>
 <div class="grid2">
-<div class="card accent"><h4>Minimise at capture</h4><p>Content capture is opt-in in the OTel GenAI conventions for good reason. Capture content only where you will use it; redact known PII patterns (emails, phone numbers, card numbers, government IDs) before export, for example in an OpenTelemetry Collector processor or an SDK hook; hash user IDs.</p></div>
+<div class="card accent"><h4>Minimize at capture</h4><p>Content capture is opt-in in the OTel GenAI conventions for good reason. Capture content only where you will use it; redact known PII patterns (emails, phone numbers, card numbers, government IDs) before export, for example in an OpenTelemetry Collector processor or an SDK hook; hash user IDs.</p></div>
 <div class="card warn"><h4>Control access and retention</h4><p>Role-based access to trace content; short default retention for raw content with longer retention for metrics and scores; audit logs of who viewed what; region and self-hosting choices (for example self-hosted Langfuse) where data residency rules apply.</p></div>
 <div class="card violet"><h4>Mind the judge</h4><p>Sending a transcript to an external judge model sends it to a processor. Check your data-processing agreements, prefer judges covered by the same terms as your production model, and redact before judging when the rubric does not need the PII.</p></div>
-<div class="card bad"><h4>Datasets are forever</h4><p>A production trace copied into an eval dataset escapes normal retention and deletion. Record provenance (which trace, which user) so deletion requests can reach datasets too; anonymise or synthesise variants for long-lived regression cases; get consent where required.</p></div>
+<div class="card bad"><h4>Datasets are forever</h4><p>A production trace copied into an eval dataset escapes normal retention and deletion. Record provenance (which trace, which user) so deletion requests can reach datasets too; anonymize or synthesise variants for long-lived regression cases; get consent where required.</p></div>
 </div>
 <div class="callout warn"><span class="t">Redaction can break evals</span>
 <p>If you replace every number with <code>[REDACTED]</code>, you can no longer check that the agent refunded the right amount. Prefer consistent pseudonymisation (the same real value always maps to the same fake value within a trace) so that relationships survive, and test your redactor's precision and recall like any other classifier.</p>
@@ -1208,7 +1209,7 @@ jobs:
 <div class="tablewrap"><table>
 <tr><th>Failure</th><th>What it looks like in traces</th><th>Control</th><th>Metric to alert on</th></tr>
 <tr><td><b>Runaway loop</b></td><td>The same tool called with the same arguments again and again; alternating between two actions</td><td>Step cap; repeated-call detector (hash of tool name + arguments); "you have tried this 3 times" injected message, then stop</td><td>Step-cap hit rate; steps per task p99</td></tr>
-<tr><td><b>Cost explosion</b></td><td>Huge input token counts late in a trajectory; giant tool outputs pasted into context</td><td>Per-task token and dollar budget; truncate or summarise tool outputs; context compaction</td><td>Cost per task p99; daily spend vs forecast</td></tr>
+<tr><td><b>Cost explosion</b></td><td>Huge input token counts late in a trajectory; giant tool outputs pasted into context</td><td>Per-task token and dollar budget; truncate or summarize tool outputs; context compaction</td><td>Cost per task p99; daily spend vs forecast</td></tr>
 <tr><td><b>Tool errors</b></td><td>Error spans; the agent retrying with guessed arguments; hallucinated success after an error</td><td>Structured error messages the model can act on; retries with backoff in code; circuit breaker that disables a failing tool and tells the agent</td><td>Error rate per tool; "claimed success after error" judge check</td></tr>
 <tr><td><b>Duplicate side effects</b></td><td>Two <code>issue_refund</code> spans for one request after a timeout</td><td>Idempotency keys on write tools; confirmation step for irreversible actions</td><td>Write actions per task; duplicates detected by a code check</td></tr>
 <tr><td><b>Silent truncation</b></td><td>finish_reason = length; half-written JSON</td><td>Schema validation; raise max tokens or split the task</td><td>Truncation rate</td></tr>
@@ -1245,14 +1246,324 @@ jobs:
 <figcaption><b>A minimum viable production eval stack.</b> The staircase from the list above: observe first, then test, then monitor, then judge, then add statistics and experiments. Timings are a suggested pace for a small team, not a rule.</figcaption>
 </figure>
 
+<h2>Running an eval program</h2>
+<p>Everything above is machinery: traces, judges, gates, dashboards. Eval programs rarely fail because the machinery is missing. They fail for organizational reasons. Nobody owns the suite, so it goes stale. Nobody reads the dashboard, so drift goes unnoticed. The judge was calibrated once, two models ago. Finance is surprised by the bill, and evals get cut. This section is about running evals as an ongoing program rather than a one-off project.</p>
+
+<div class="callout analogy"><span class="t">Analogy: the gym membership and the training plan</span>
+<p>Buying eval tools is like buying a gym membership: necessary, and nothing happens until someone turns up every week with a plan. An eval program is the training plan: who comes, how often, what gets measured, how progress is reported, and when the plan itself is revised.</p>
+</div>
+
+<h3>Who owns evals</h3>
+<p>The most common failure is an eval suite that is one engineer's side project. When that engineer moves team, the suite quietly dies. Spread ownership across clear roles:</p>
+<div class="tablewrap"><table>
+<tr><th>Role</th><th>Owns</th><th>Typically</th></tr>
+<tr><td><b>Quality owner</b></td><td>What "good" means: success criteria, rubrics, and the final say when labelers disagree</td><td>One product manager or domain expert. Hamel Husain calls this role the "benevolent dictator": one person with taste and authority beats a committee.</td></tr>
+<tr><td><b>Domain experts and annotators</b></td><td>Labels, rubric examples, the weekly review queue</td><td>Support leads, clinicians, lawyers, analysts: whoever knows a good answer when they see one</td></tr>
+<tr><td><b>Eval engineers</b></td><td>Harness, CI gate, dashboards, judge calibration, cost controls</td><td>ML or platform engineers; a central team once several products share infrastructure</td></tr>
+<tr><td><b>Feature teams</b></td><td>Adding cases with every feature and bug fix; fixing regressions they cause</td><td>Every engineer who changes a prompt, tool or model setting</td></tr>
+<tr><td><b>Leadership</b></td><td>Launch criteria, eval budget, reading the monthly report and acting on it</td><td>Engineering and product leads</td></tr>
+</table></div>
+<p>Two organizational shapes work. A <b>central eval team</b> builds shared infrastructure (harness, judges, dashboards) and the evaluation methods. <b>Embedded owners</b> in each product team write the cases and rubrics, because only they know the product. Most mature organizations are a hybrid: platform central, content local. A simple rule keeps either shape honest: <b>every eval has a named owner, and every metric on a dashboard has an action attached</b> ("if this drops below X, Y investigates within a day").</p>
+
+<h3>Eval maturity levels</h3>
+<p>It helps to know where you are. The ladder below is a practical synthesis, not an industry standard. Each level makes the next one possible; skipping levels (for example buying a production monitoring platform before you have read fifty traces yourself) usually produces dashboards nobody trusts.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 470" role="img" aria-label="A six-step staircase of eval maturity. Level 0, vibes: try a few prompts and ship if it looks fine. Level 1, spot checks: a spreadsheet of cases run by hand. Level 2, suite plus CI gate: a versioned dataset from real failures and a smoke gate on every pull request. Level 3, production loop: tracing, online judges on samples and a review queue that feeds the suite. Level 4, trusted numbers: calibrated judges, paired statistics with confidence intervals, slices, cost and A/B tests. Level 5, eval-driven: evals written before building, suite health managed, offline results predict online outcomes, reported to leadership.">
+<defs><marker id="m15n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="28" class="b">Where is your eval program?</text>
+<text x="20" y="46" class="sm">most teams start at 0 or 1; level 3 is a good first target</text>
+<rect class="box plain" x="20" y="340" width="125" height="70" rx="8"/>
+<text x="82" y="360" text-anchor="middle" class="b">0 · Vibes</text>
+<text x="82" y="378" text-anchor="middle" class="sm">try a few prompts,</text>
+<text x="82" y="394" text-anchor="middle" class="sm">ship if it looks ok</text>
+<rect class="box plain" x="153" y="284" width="125" height="126" rx="8"/>
+<text x="215" y="304" text-anchor="middle" class="b">1 · Spot checks</text>
+<text x="215" y="322" text-anchor="middle" class="sm">a sheet of cases</text>
+<text x="215" y="338" text-anchor="middle" class="sm">run by hand before</text>
+<text x="215" y="354" text-anchor="middle" class="sm">big changes</text>
+<rect class="box accent" x="286" y="228" width="125" height="182" rx="8"/>
+<text x="348" y="248" text-anchor="middle" class="b">2 · Suite + gate</text>
+<text x="348" y="266" text-anchor="middle" class="sm">versioned dataset</text>
+<text x="348" y="282" text-anchor="middle" class="sm">from real failures,</text>
+<text x="348" y="298" text-anchor="middle" class="sm">smoke gate per PR</text>
+<rect class="box good pulse" x="419" y="172" width="125" height="238" rx="8"/>
+<text x="481" y="192" text-anchor="middle" class="b">3 · Prod loop</text>
+<text x="481" y="210" text-anchor="middle" class="sm">tracing, online</text>
+<text x="481" y="226" text-anchor="middle" class="sm">judges on samples,</text>
+<text x="481" y="242" text-anchor="middle" class="sm">review feeds suite</text>
+<rect class="box violet" x="552" y="116" width="125" height="294" rx="8"/>
+<text x="614" y="136" text-anchor="middle" class="b">4 · Trusted</text>
+<text x="614" y="154" text-anchor="middle" class="sm">calibrated judges,</text>
+<text x="614" y="170" text-anchor="middle" class="sm">paired stats + CIs,</text>
+<text x="614" y="186" text-anchor="middle" class="sm">slices, cost, A/B</text>
+<rect class="box warn" x="685" y="60" width="125" height="350" rx="8"/>
+<text x="747" y="80" text-anchor="middle" class="b">5 · Eval-driven</text>
+<text x="747" y="98" text-anchor="middle" class="sm">evals written first,</text>
+<text x="747" y="114" text-anchor="middle" class="sm">healthy suite,</text>
+<text x="747" y="130" text-anchor="middle" class="sm">offline predicts</text>
+<text x="747" y="146" text-anchor="middle" class="sm">online; reported up</text>
+<text x="215" y="378" text-anchor="middle" class="sm t-muted">results depend</text>
+<text x="215" y="394" text-anchor="middle" class="sm t-muted">on who ran them</text>
+<text x="348" y="378" text-anchor="middle" class="sm t-muted">a PR can fail</text>
+<text x="348" y="394" text-anchor="middle" class="sm t-muted">on an eval</text>
+<text x="481" y="378" text-anchor="middle" class="sm t-muted">new failures reach</text>
+<text x="481" y="394" text-anchor="middle" class="sm t-muted">the suite monthly</text>
+<text x="614" y="378" text-anchor="middle" class="sm t-muted">headline has a CI,</text>
+<text x="614" y="394" text-anchor="middle" class="sm t-muted">judge is calibrated</text>
+<text x="747" y="378" text-anchor="middle" class="sm t-muted">a decision changed</text>
+<text x="747" y="394" text-anchor="middle" class="sm t-muted">because of an eval</text>
+<text x="481" y="300" text-anchor="middle" class="sm b t-good">first target</text>
+<text x="481" y="318" text-anchor="middle" class="sm">the flywheel turns</text>
+<line class="ln accent flow" x1="20" y1="440" x2="806" y2="440" marker-end="url(#m15n)"/>
+<text x="413" y="462" text-anchor="middle" class="sm">each level makes the next one possible: observe, then test, then trust, then steer</text>
+</svg>
+<figcaption><b>An eval maturity ladder.</b> A practical synthesis of common practice, not a formal standard. The gray lines at the foot of each step are the signal that you have reached it. Level 3 is where the eval flywheel from the start of this module actually turns: production failures flow back into the suite without heroics. Levels 4 and 5 are about making the numbers trustworthy enough that leadership steers by them.</figcaption>
+</figure>
+
+<p>A quick self-assessment: you are at level 2 if a pull request can fail because of an eval; at level 3 if last month's suite contains cases that came from last month's production failures; at level 4 if you can state your headline metric with a confidence interval and know your judge's agreement with humans; at level 5 if a new feature's success criteria are written as eval cases before the feature is built, and a product decision was changed because of an eval result.</p>
+
+<h3>Budgeting eval cost</h3>
+<p>Evals cost money in four places: <b>per-PR runs</b>, <b>scheduled runs</b> (nightly or weekly full suites), <b>online judging</b> of production samples, and <b>human time</b> for labeling and review. Sandbox compute for agent evals is a fifth line if you run containers at scale. Write the budget down; it turns "evals are expensive" into a list of levers.</p>
+
+<pre data-lang="python"><code>"""Monthly eval budget. All prices and volumes are illustrative; plug in your own."""
+AGENT_RUN = 0.12      # $ per agent run on one case (tokens, mostly cached prefix)
+JUDGE_CALL = 0.01     # $ per judge call
+PER_CASE = AGENT_RUN + JUDGE_CALL
+
+def monthly_budget(prs_per_day=15, work_days=22,
+                   smoke_cases=40, smoke_epochs=3,
+                   nightly_cases=400, nightly_epochs=3,
+                   traces_per_day=50_000, judge_sample=0.02,
+                   review_hours_per_week=4, hourly_rate=80):
+    lines = {
+        "smoke gate (per PR)": prs_per_day * work_days * smoke_cases * smoke_epochs * PER_CASE,
+        "nightly full suite":  30 * nightly_cases * nightly_epochs * PER_CASE,
+        "online judge":        30 * traces_per_day * judge_sample * JUDGE_CALL,
+        "human review":        review_hours_per_week * 52 / 12 * hourly_rate,
+    }
+    lines["total"] = sum(lines.values())
+    return lines
+
+for name, dollars in monthly_budget().items():
+    print(f"{name:22s} ${dollars:9,.0f}")
+# smoke gate (per PR)    $    5,148
+# nightly full suite     $    4,680
+# online judge           $      300
+# human review           $    1,387
+# total                  $   11,515</code></pre>
+
+<p>The illustrative result is typical in shape: the <b>per-PR gate</b> is the biggest line, because it multiplies by the number of pull requests, and online judging on a small sample is cheap. The levers follow directly. Skip evals on changes that cannot affect behavior (path filters). Run only the slices whose prompts or tools changed, with the full suite nightly as the safety net. Use one epoch on must-pass smoke cases and save repeats for the statistical gate. Cache judge calls on unchanged outputs. Swap in a cheaper judge model only after checking it agrees with your humans as well as the expensive one (<a href="13-llm-as-judge.html">Module 13</a>). There is no standard "right" eval spend; compare it with the cost of one bad release reaching users, which is usually the more persuasive number for a budget holder.</p>
+
+<h3>Review cadence</h3>
+<p>Evals decay without a rhythm. A cadence that works for many teams:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 340" role="img" aria-label="Four lanes over three months. Every pull request: dense ticks for automatic smoke gates. Weekly: thirteen dots for a sixty-minute trace-reading and triage session. Monthly: three suite-health and report sessions. Quarterly: one review that recalibrates judges and resets targets.">
+<defs><marker id="m15o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="56" class="b">Every PR</text>
+<text x="20" y="72" class="sm">smoke gate, automatic</text>
+<path class="ln" d="M196,50 V72 M207,50 V72 M218,50 V72 M229,50 V72 M240,50 V72 M251,50 V72 M262,50 V72 M273,50 V72 M284,50 V72 M295,50 V72 M306,50 V72 M317,50 V72 M328,50 V72 M339,50 V72 M350,50 V72 M361,50 V72 M372,50 V72 M383,50 V72 M394,50 V72 M405,50 V72 M416,50 V72 M427,50 V72 M438,50 V72 M449,50 V72 M460,50 V72 M471,50 V72 M482,50 V72 M493,50 V72 M504,50 V72 M515,50 V72 M526,50 V72 M537,50 V72 M548,50 V72 M559,50 V72 M570,50 V72 M581,50 V72 M592,50 V72 M603,50 V72 M614,50 V72 M625,50 V72 M636,50 V72 M647,50 V72 M658,50 V72 M669,50 V72 M680,50 V72 M691,50 V72 M702,50 V72 M713,50 V72 M724,50 V72 M735,50 V72 M746,50 V72 M757,50 V72 M768,50 V72 M779,50 V72 M790,50 V72"/>
+<line class="ln dash" x1="20" y1="95" x2="800" y2="95"/>
+<text x="20" y="126" class="b">Weekly, 60 min</text>
+<text x="20" y="142" class="sm">read traces, triage queue</text>
+<circle cx="213" cy="130" r="6" class="fill-accent"/>
+<circle cx="260" cy="130" r="6" class="fill-accent"/>
+<circle cx="307" cy="130" r="6" class="fill-accent"/>
+<circle cx="354" cy="130" r="6" class="fill-accent"/>
+<circle cx="401" cy="130" r="6" class="fill-accent"/>
+<circle cx="448" cy="130" r="6" class="fill-accent"/>
+<circle cx="495" cy="130" r="6" class="fill-accent"/>
+<circle cx="542" cy="130" r="6" class="fill-accent"/>
+<circle cx="589" cy="130" r="6" class="fill-accent"/>
+<circle cx="636" cy="130" r="6" class="fill-accent"/>
+<circle cx="683" cy="130" r="6" class="fill-accent"/>
+<circle cx="730" cy="130" r="6" class="fill-accent"/>
+<circle cx="777" cy="130" r="6" class="fill-accent"/>
+<line class="ln dash" x1="20" y1="165" x2="800" y2="165"/>
+<text x="20" y="196" class="b">Monthly</text>
+<text x="20" y="212" class="sm">suite health + report</text>
+<rect class="box good" x="325" y="185" width="70" height="30" rx="6"/><text x="360" y="205" text-anchor="middle" class="sm">report</text>
+<rect class="box good" x="529" y="185" width="70" height="30" rx="6"/><text x="564" y="205" text-anchor="middle" class="sm">report</text>
+<rect class="box good" x="731" y="185" width="70" height="30" rx="6"/><text x="766" y="205" text-anchor="middle" class="sm">report</text>
+<line class="ln dash" x1="20" y1="235" x2="800" y2="235"/>
+<text x="20" y="266" class="b">Quarterly</text>
+<text x="20" y="282" class="sm">recalibrate, reset targets</text>
+<rect class="box violet" x="660" y="252" width="141" height="34" rx="6"/><text x="730" y="274" text-anchor="middle" class="sm b">quarter review</text>
+<line class="ln" x1="190" y1="305" x2="806" y2="305" marker-end="url(#m15o)"/>
+<text x="292" y="326" text-anchor="middle" class="sm">month 1</text>
+<text x="496" y="326" text-anchor="middle" class="sm">month 2</text>
+<text x="700" y="326" text-anchor="middle" class="sm">month 3</text>
+</svg>
+<figcaption><b>A review rhythm for one quarter.</b> The fast loop is automatic; the slower loops need people and a calendar invite. Frequencies are a common starting point, not a rule: a high-traffic product may need the trace review twice a week, and a regulated one may need formal sign-off at the monthly step.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Cadence</th><th>Who</th><th>Looks at</th><th>Produces</th></tr>
+<tr><td>Every PR</td><td>CI, the PR author</td><td>Smoke and statistical gate results</td><td>Merge or fix</td></tr>
+<tr><td>Weekly (30 to 60 minutes)</td><td>Quality owner, one engineer, a domain expert</td><td>20 to 50 traces from the random and flagged streams; the review queue</td><td>New labeled cases, new failure categories, bugs filed</td></tr>
+<tr><td>Monthly</td><td>Eval owner plus product lead</td><td>Dashboard trends with CIs; suite health (saturated, noisy, stale cases); cost versus budget</td><td>The stakeholder report; dataset refresh</td></tr>
+<tr><td>Quarterly</td><td>Leadership, eval and product owners</td><td>Judge agreement on a fresh human-labeled sample; whether offline results predicted online ones; targets</td><td>Recalibrated judges, new targets, budget, retired evals</td></tr>
+</table></div>
+
+<h3>Reporting to stakeholders</h3>
+<p>Executives do not need your eval log. They need to know whether quality is good enough, whether it is moving, what is wrong, and what decision is needed. The rules that make a report trustworthy:</p>
+<ul>
+<li><b>Every number with its n and its confidence interval.</b> Worked example: 420 of 500 randomly sampled traces pass, so p = 0.84. The standard error is √(0.84 × 0.16 / 500) ≈ 0.016, and the 95% interval is 0.84 ± 1.96 × 0.016, about <b>81% to 87%</b>. (<a href="04-metrics-and-statistics.html">Module 04</a> covers intervals.)</li>
+<li><b>Compare with a target and with last period, honestly.</b> If the target is 85% and the interval is 81% to 87%, you cannot say you missed it, or that you met it. Say exactly that. Distinguishing 84% from 85% would need many thousands of samples, so set targets as bands and act on clear movements.</li>
+<li><b>Show the slices that matter.</b> An 84% average can hide a 71% slice that is the most expensive to get wrong.</li>
+<li><b>Translate into business terms.</b> "Tickets resolved without a human", "cost per resolved ticket", "incidents traced to the agent", next to the quality number.</li>
+<li><b>Say how the number was made.</b> Which judge, when it was last calibrated against humans, which dataset version. One line is enough, but its absence should make readers suspicious.</li>
+<li><b>End with the decision.</b> What you recommend and what you need from the reader.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 400" role="img" aria-label="A one-page monthly eval report for a refund agent. Headline: task success 84 percent, 95 percent CI 81 to 87, n equals 500, target 85 percent within the interval, last month 81 percent. A trend chart of six months with error bars and a dashed target line. Cost and speed: 41 cents per resolved ticket, p95 latency 38 seconds, step-cap hits 0.8 percent. A slice table where partial refunds is at 71 percent. Top failure modes and the decision needed.">
+<rect class="box plain" x="20" y="16" width="780" height="370" rx="12"/>
+<text x="40" y="44" class="b">Refund agent: monthly eval report</text>
+<text x="780" y="44" text-anchor="end" class="sm">illustrative numbers</text>
+<rect class="box accent" x="40" y="60" width="240" height="140" rx="8"/>
+<text x="56" y="82" class="sm">task success (random sample)</text>
+<text x="56" y="110" class="lg">84%</text>
+<text x="56" y="132" class="sm">95% CI 81 to 87 (n = 500)</text>
+<text x="56" y="152" class="sm t-warn">target 85%: inside the CI</text>
+<text x="56" y="172" class="sm">last month 81% (78 to 84)</text>
+<text x="56" y="190" class="sm">judge calibrated 3 weeks ago</text>
+<rect class="box plain" x="300" y="60" width="240" height="140" rx="8"/>
+<text x="316" y="80" class="sm b">6-month trend with 95% CIs</text>
+<line class="ln dash warn" x1="320" y1="120" x2="528" y2="120"/>
+<text x="322" y="114" class="sm t-warn">target</text>
+<path class="ln" d="M330,135 V161 M368,131 V157 M406,127 V153 M444,119 V145 M482,123 V149 M520,111 V137"/>
+<polyline class="ln accent thick" points="330,148 368,144 406,140 444,132 482,136 520,124"/>
+<circle cx="520" cy="124" r="4" class="fill-accent"/>
+<text x="330" y="192" text-anchor="middle" class="sm">Apr</text>
+<text x="406" y="192" text-anchor="middle" class="sm">Jun</text>
+<text x="482" y="192" text-anchor="middle" class="sm">Aug</text>
+<text x="520" y="192" text-anchor="middle" class="sm">Sep</text>
+<rect class="box plain" x="560" y="60" width="220" height="140" rx="8"/>
+<text x="576" y="82" class="sm b">Cost and speed</text>
+<text x="576" y="108" class="sm">$0.41 per resolved ticket</text>
+<text x="576" y="130" class="sm">p95 latency 38 s</text>
+<text x="576" y="152" class="sm">step-cap hits 0.8%</text>
+<text x="576" y="174" class="sm">eval spend on budget</text>
+<rect class="box plain" x="40" y="216" width="360" height="152" rx="8"/>
+<text x="56" y="238" class="sm b">By slice (95% CI)</text>
+<text x="56" y="266" class="mono">status questions  91% [87-95] n=180</text>
+<text x="56" y="292" class="mono t-bad">partial refunds   71% [64-78] n=160</text>
+<text x="56" y="318" class="mono">international     88% [83-93] n=160</text>
+<text x="56" y="350" class="sm">the average hides the slice that costs most</text>
+<rect class="box warn" x="420" y="216" width="360" height="152" rx="8"/>
+<text x="436" y="238" class="sm b">Top failure modes, and the ask</text>
+<text x="436" y="262" class="sm">1. partial refunds: wrong amount (23 traces)</text>
+<text x="436" y="282" class="sm">2. re-asks for an order id already given (11)</text>
+<text x="436" y="302" class="sm">3. slow tool retries (6)</text>
+<text x="436" y="330" class="b">Decision: approve the partial-refund</text>
+<text x="436" y="348" class="b">fix before holiday traffic</text>
+</svg>
+<figcaption><b>A one-page eval report for stakeholders.</b> Illustrative numbers (the slices add up to the 500 sampled traces and to the 84% headline). Everything a reader needs to act is on one page: the headline with its interval against a target, the trend, cost and speed, the slice that is failing, the top failure modes from error analysis, and the decision being asked for.</figcaption>
+</figure>
+
+<h3>Eval debt and refresh</h3>
+<p>Like technical debt in code (Sculley et al. described "hidden technical debt" in ML systems in 2015), eval suites accumulate <b>eval debt</b>: small shortcuts and neglect that make the numbers less meaningful every month. Symptoms to look for:</p>
+<ul>
+<li><b>Saturation.</b> Everything passes every run. The suite still catches regressions, but it no longer tells you whether a change made things <em>better</em>.</li>
+<li><b>Staleness.</b> The product, policies or tools changed and old cases now test behavior nobody wants (the refund window changed from 30 to 60 days, and 40 cases still expect 30).</li>
+<li><b>Mix drift.</b> The suite's mix of slices no longer resembles production, so the headline number is weighted toward yesterday's users.</li>
+<li><b>Uncalibrated judges.</b> The judge prompt or judge model changed, or production outputs changed style, and nobody re-measured agreement with humans.</li>
+<li><b>Tolerated noise.</b> Cases that flip between runs for environment reasons (timeouts, sandbox errors) and have been ignored for so long that real failures are ignored too.</li>
+<li><b>Orphans and leakage.</b> Evals nobody owns; cases copied into prompts or few-shot examples, so the system is being tested on its own answer key.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Lifecycle of an eval case. A new case from a real failure joins the suite and becomes active, sometimes failing. When every system passes it, it becomes saturated and leaves the gate for a cheap nightly regression archive. An active case can go stale when the product changes, and is then rewritten as a new case; or it can be noisy, flipping between runs, and must be fixed or quarantined. Separately, a frozen anchor set is never edited so that trends stay comparable.">
+<defs><marker id="m15p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="56" width="150" height="60" rx="8"/>
+<text x="95" y="80" text-anchor="middle" class="b">New case</text>
+<text x="95" y="100" text-anchor="middle" class="sm">from a real failure</text>
+<rect class="box accent pulse" x="230" y="56" width="150" height="60" rx="8"/>
+<text x="305" y="80" text-anchor="middle" class="b">Active</text>
+<text x="305" y="100" text-anchor="middle" class="sm">sometimes fails</text>
+<rect class="box warn" x="440" y="56" width="150" height="60" rx="8"/>
+<text x="515" y="80" text-anchor="middle" class="b">Saturated</text>
+<text x="515" y="100" text-anchor="middle" class="sm">always passes</text>
+<rect class="box plain" x="650" y="56" width="150" height="60" rx="8"/>
+<text x="725" y="80" text-anchor="middle" class="b">Regression archive</text>
+<text x="725" y="100" text-anchor="middle" class="sm">cheap, nightly</text>
+<line class="ln accent flow" x1="170" y1="86" x2="228" y2="86" marker-end="url(#m15p)"/>
+<text x="200" y="44" text-anchor="middle" class="sm">joins suite</text>
+<line class="ln" x1="380" y1="86" x2="438" y2="86" marker-end="url(#m15p)"/>
+<text x="410" y="44" text-anchor="middle" class="sm">every system passes</text>
+<line class="ln" x1="590" y1="86" x2="648" y2="86" marker-end="url(#m15p)"/>
+<text x="620" y="44" text-anchor="middle" class="sm">leaves the gate</text>
+<rect class="box bad" x="130" y="200" width="150" height="60" rx="8"/>
+<text x="205" y="224" text-anchor="middle" class="b">Stale</text>
+<text x="205" y="244" text-anchor="middle" class="sm">tests unwanted behavior</text>
+<rect class="box warn" x="330" y="200" width="150" height="60" rx="8"/>
+<text x="405" y="224" text-anchor="middle" class="b">Noisy</text>
+<text x="405" y="244" text-anchor="middle" class="sm">flips between runs</text>
+<line class="ln bad" x1="285" y1="118" x2="215" y2="198" marker-end="url(#m15p)"/>
+<text x="243" y="150" text-anchor="end" class="sm">product changed</text>
+<line class="ln" x1="325" y1="118" x2="395" y2="198" marker-end="url(#m15p)"/>
+<text x="370" y="150" class="sm">environment errors</text>
+<path class="ln dash" d="M130,230 L95,230 L95,120" marker-end="url(#m15p)"/>
+<text x="102" y="175" class="sm">rewrite as new</text>
+<text x="405" y="282" text-anchor="middle" class="sm">fix the environment,</text>
+<text x="405" y="298" text-anchor="middle" class="sm">or quarantine outside the gate</text>
+<rect class="box violet" x="560" y="196" width="240" height="90" rx="8"/>
+<text x="680" y="222" text-anchor="middle" class="b">Frozen anchor set</text>
+<text x="680" y="244" text-anchor="middle" class="sm">never edited, same cases every month,</text>
+<text x="680" y="262" text-anchor="middle" class="sm">so trend lines stay comparable</text>
+</svg>
+<figcaption><b>The lifecycle of an eval case.</b> Healthy suites keep cases moving: new ones arrive from production failures, saturated ones leave the gate (but keep running cheaply as regression checks), stale ones are rewritten, noisy ones are fixed or quarantined. A small frozen anchor set sits apart and is never edited, so month-to-month trends compare like with like.</figcaption>
+</figure>
+
+<p>A refresh policy turns this into routine. A common shape: every month, add cases mined from the last month's production failures and review queue; every quarter, move saturated cases to the regression archive, rewrite or delete stale ones, re-weight slices to match production, and recalibrate judges on a fresh human-labeled sample. Version the dataset (<code>refund-suite v14</code>) and print the version next to every number, because a score on v14 is not comparable with a score on v9. The monthly suite-health step can be a short script over your run history:</p>
+
+<pre data-lang="python"><code>"""Suite health: flag saturated, always-failing and noisy cases from run history.
+history: one row per (case_id, run_id) of the SAME baseline system, passed in {0, 1},
+and error_type (None, "timeout", "sandbox", ...) for environment failures."""
+import pandas as pd
+
+def suite_health(history: pd.DataFrame, last_n_runs: int = 20) -&gt; pd.DataFrame:
+    runs = history["run_id"].drop_duplicates().sort_values().tail(last_n_runs)
+    h = history[history["run_id"].isin(runs)]
+    stats = h.groupby("case_id").agg(
+        pass_rate=("passed", "mean"),
+        runs=("passed", "size"),
+        env_errors=("error_type", lambda s: s.notna().mean()),
+    )
+
+    def status(r) -&gt; str:
+        if r.runs &lt; 5:            return "too new"
+        if r.env_errors &gt; 0.2:    return "noisy: fix environment"   # not the agent's fault
+        if r.pass_rate == 1.0:    return "saturated: archive?"
+        if r.pass_rate == 0.0:    return "always fails: broken case or capability target?"
+        return "active"          # between 0 and 1: informative (agents are stochastic)
+
+    stats["status"] = stats.apply(status, axis=1)
+    return stats.sort_values(["status", "pass_rate"])
+
+# print(suite_health(history)["status"].value_counts())</code></pre>
+
+<p>Note the design choice: on an agent, a case that passes 60% of the time is not "flaky" in the software-testing sense; it is measuring real variance, and it is often the most informative case you have (<a href="04-metrics-and-statistics.html">Module 04</a>). Only failures caused by the environment, not the agent, belong in the "noisy" bucket.</p>
+
+<div class="callout expert"><span class="t">Expert habit: check that the suite still predicts production</span>
+<p>Once a quarter, line up each release's offline delta against its online delta (random-sample judge score, resolution rate, complaints). If offline improvements stop showing up online, your suite has drifted from reality, and that is the most important form of eval debt. The fix is almost always more cases from recent production, weighted to production's slice mix.</p>
+</div>
+
+<div class="callout tip"><span class="t">Go deeper</span><p>The capstone (<a href="19-capstone.html">Module 19</a>) walks through building a program like this end to end, and <a href="28-governance-and-responsible-ai.html">Module 28</a> covers the governance side: when evals become evidence for regulators and auditors, not just for your own team.</p></div>
+
+
 <div class="takeaways"><h3>Key takeaways</h3><ol>
 <li>Production evals are a loop: offline suite, CI gate, staged rollout, tracing, online evals, review, error analysis, and new test cases, then round again.</li>
 <li>Trace everything as sessions, traces and spans (OpenTelemetry GenAI names where possible), including tool calls, tokens, cost, model version and agent version.</li>
 <li>Guardrails act inline and must be fast; online evals measure after the fact and can be slow. Evaluate the guardrails too.</li>
 <li>Judge a uniform random sample for the dashboard number and a flagged stream for discovery, and never average the two together.</li>
 <li>Gate CI with a paired, statistically sound comparison against a baseline, tiered into smoke, nightly and capability suites, with budgets at every level.</li>
-<li>Treat any model or provider change as a migration: compare per slice and by behaviour, read disagreeing transcripts, and pin exact versions.</li>
+<li>Treat any model or provider change as a migration: compare per slice and by behavior, read disagreeing transcripts, and pin exact versions.</li>
 <li>Agents need hard limits in code (steps, tokens, dollars, time, repeated calls), and those limits are themselves things to test.</li>
+<li>An eval program needs owners: one quality owner with the final say on what "good" means, domain experts for labels, engineers for the harness, and every feature team adding cases. Every dashboard metric needs an owner and an action.</li>
+<li>Budget evals line by line (per-PR gate, scheduled suites, online judging, human time), report every number with its n and confidence interval against a target, and pay down eval debt: refresh from production, archive saturated cases, fix noisy ones, keep a frozen anchor set.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1272,11 +1583,11 @@ jobs:
 <button class="opt">Fail: the average went down</button>
 <button class="opt">Fail: the interval includes zero</button>
 <div class="why">This is a non-inferiority gate. The lower bound (−0.8) is above the −1 tolerance. A "must not drop" rule would block harmless changes and train the team to ignore the gate.</div></div>
-<div class="q" data-answer="1"><p>4. Why randomise an agent A/B test by user rather than by request?</p>
+<div class="q" data-answer="1"><p>4. Why randomize an agent A/B test by user rather than by request?</p>
 <button class="opt">It needs fewer users</button>
 <button class="opt">Agents keep multi-turn state and memory; switching versions mid-session contaminates both arms and breaks the user experience</button>
 <button class="opt">Requests cannot be hashed</button>
-<div class="why">Per-user randomisation is actually less statistically efficient, but it is the only design that keeps each session coherent. Cluster standard errors by user when users have several sessions.</div></div>
+<div class="why">Per-user randomization is actually less statistically efficient, but it is the only design that keeps each session coherent. Cluster standard errors by user when users have several sessions.</div></div>
 <div class="q" data-answer="2"><p>5. Your nightly suite drops 5 points overnight with no code change. The traces show <code>gen_ai.response.model</code> changed. What is the best next step?</p>
 <button class="opt">Revert yesterday's commits</button>
 <button class="opt">Retrain the judge</button>
@@ -1287,6 +1598,16 @@ jobs:
 <button class="opt">Total monthly spend</button>
 <button class="opt">Average latency</button>
 <div class="why">Total spend moves with traffic; averages hide tails. Cost per success and the rate of hitting the step cap move directly when agents start looping.</div></div>
+<div class="q" data-answer="0"><p>7. Your team has a versioned offline suite and a CI gate, but no production tracing, and the suite has not changed in six months. What is the most valuable next step?</p>
+<button class="opt">Add tracing and a weekly review that turns production failures into new suite cases</button>
+<button class="opt">Add 20 more epochs to every CI run</button>
+<button class="opt">Buy a second eval platform</button>
+<div class="why">This team is at maturity level 2. Level 3 is the production loop: without it the suite drifts away from what users actually do, and more epochs only measure the stale suite more precisely.</div></div>
+<div class="q" data-answer="2"><p>8. A random sample of 500 traces has 420 passes. The target is 85%. Which statement belongs in the report to leadership?</p>
+<button class="opt">"We missed the target: 84% versus 85%."</button>
+<button class="opt">"We are at 84%, close enough to call it met."</button>
+<button class="opt">"84% (95% CI about 81 to 87, n = 500): we cannot tell whether we meet the 85% target; here is the slice that is dragging it down."</button>
+<div class="why">The standard error is about 1.6 points, so the interval spans the target. Report the interval, avoid claiming a miss or a hit you cannot support, and point to the actionable slice.</div></div>
 </div>
 
 <details>
@@ -1294,7 +1615,7 @@ jobs:
 <ul>
 <li><b>How do you check that offline scores predict online outcomes?</b> Track, per release, the offline suite delta and the online delta (random-stream judge score, resolution rate). If they disagree repeatedly, your dataset's slice mix or graders do not match production; reweight the suite to production's mix and mine new cases from the disagreement.</li>
 <li><b>How do you combine flagged and random streams correctly?</b> With inverse-probability weighting: each judged trace gets weight 1 / P(sampled). A random-only trace sampled at 2% has weight 50; a flagged trace sampled with probability 1 has weight 1. Deterministic hash sampling makes these probabilities known exactly.</li>
-<li><b>Why not use the thumbs-up rate as the CI gate?</b> It does not exist in CI (no users), it is biased and sparse, and optimising it invites sycophancy. Use it to find and weight cases, not as the target.</li>
+<li><b>Why not use the thumbs-up rate as the CI gate?</b> It does not exist in CI (no users), it is biased and sparse, and optimizing it invites sycophancy. Use it to find and weight cases, not as the target.</li>
 <li><b>What breaks a shadow deployment for agents?</b> Side effects (must be stubbed), divergence after the first write (later turns stop being comparable), and cost (you pay for two agents). It is best for early-step and single-turn comparisons.</li>
 <li><b>Sequential testing.</b> If you peek at an A/B test every day and stop as soon as p &lt; 0.05, your false-positive rate is much higher than 5%. Use a fixed horizon, or sequential methods designed for peeking (for example always-valid confidence sequences).</li>
 <li><b>What makes an eval gate trustworthy to engineers?</b> It is fast, it rarely fails for reasons unrelated to their change (low flake rate), it explains itself (per-slice diffs and links to failing transcripts in the job summary), and its tolerance is written down and agreed. A gate that fails randomly gets bypassed within a month.</li>
@@ -1314,6 +1635,8 @@ jobs:
 <li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a> and <a href="https://hamel.dev/blog/posts/evals-faq/">Evals FAQ</a>.</li>
 <li>Eugene Yan, <a href="https://eugeneyan.com/writing/llm-evaluators/">Evaluating the Effectiveness of LLM-Evaluators</a> (small evaluators for guardrails).</li>
 <li>Shankar et al., <a href="https://arxiv.org/abs/2404.12272">Who Validates the Validators?</a> (criteria drift).</li>
+<li>Hamel Husain, <a href="https://hamel.dev/blog/posts/field-guide/">A Field Guide to Rapidly Improving AI Products</a> (the "benevolent dictator" quality owner, review habits).</li>
+<li>Sculley et al. (Google), <a href="https://research.google/pubs/pub43146/">Hidden Technical Debt in Machine Learning Systems</a>, NeurIPS 2015, and Breck et al., <a href="https://research.google/pubs/pub46555/">The ML Test Score: A Rubric for ML Production Readiness and Technical Debt Reduction</a>, 2017 (maturity rubrics and debt, for classic ML).</li>
 </ul>
 
 </article>

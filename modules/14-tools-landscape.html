@@ -122,7 +122,7 @@
 
 <p>In one sentence each:</p>
 <ul>
-<li><b>Research harnesses</b> run standardised tasks against models, often in sandboxes, with a strong focus on reproducibility. Their user is a researcher comparing <em>models</em>, not a product team comparing <em>prompts</em>.</li>
+<li><b>Research harnesses</b> run standardized tasks against models, often in sandboxes, with a strong focus on reproducibility. Their user is a researcher comparing <em>models</em>, not a product team comparing <em>prompts</em>.</li>
 <li><b>Developer test and CI tools</b> feel like a test runner. You write cases in a config file or as test functions, run a command, and get pass or fail. They plug into GitHub Actions or pytest.</li>
 <li><b>Observability plus eval platforms</b> start from <b>tracing</b>: recording every model call, tool call and step of your live application as a tree of <b>spans</b> (a span is one timed unit of work, such as "call the search tool"; a <b>trace</b> is the whole tree for one request). They add datasets, experiments and LLM judges on top, usually with a web UI for the team.</li>
 <li><b>Metric and judge libraries</b> give you scoring functions (faithfulness, factuality, helpfulness) and nothing else. You call them from whichever harness or platform you use.</li>
@@ -196,7 +196,7 @@
 <circle cx="480" cy="522" r="5" class="fill-warn"/><text x="490" y="526" class="sm">metric / judge</text>
 <circle cx="600" cy="522" r="5" class="fill-muted"/><text x="610" y="526" class="sm">cloud service  († shutting down)</text>
 </svg>
-<figcaption><b>The eval tools landscape (qualitative positioning, not measured data).</b> Positions are the author's judgement of each tool's centre of gravity from its docs; most tools stretch across regions. For example, Braintrust and LangSmith both run offline experiments too, and DeepEval can send results to the hosted Confident AI platform.</figcaption>
+<figcaption><b>The eval tools landscape (qualitative positioning, not measured data).</b> Positions are the author's judgment of each tool's center of gravity from its docs; most tools stretch across regions. For example, Braintrust and LangSmith both run offline experiments too, and DeepEval can send results to the hosted Confident AI platform.</figcaption>
 </figure>
 
 <p>Read the map diagonally. The <b>bottom-left</b> is where frontier labs, safety institutes and academics live: free, code-first, reproducible, no production concept at all. The <b>top-right</b> is where product teams live once they have real users: hosted UIs, traces from production, judges running on sampled traffic. The <b>bottom-middle</b> is the developer's inner loop: a CLI or pytest in CI. The <b>top-left</b> is vendor consoles: easy, point-and-click, tied to one provider.</p>
@@ -206,13 +206,13 @@
 </div>
 
 <h2>Tool by tool</h2>
-<p>Each card gives the maker, licence, language, core abstractions (the nouns you will type), what it is best at, and how it handles agents, multimodal inputs and LLM judges (<a href="13-llm-as-judge.html">Module 13</a>). Snippets are copied from each tool's official docs or README (trimmed where marked). If a feature is not listed, it is because it could not be verified from a primary source, not necessarily because it is missing.</p>
+<p>Each card gives the maker, license, language, core abstractions (the nouns you will type), what it is best at, and how it handles agents, multimodal inputs and LLM judges (<a href="13-llm-as-judge.html">Module 13</a>). Snippets are copied from each tool's official docs or README (trimmed where marked). If a feature is not listed, it is because it could not be verified from a primary source, not necessarily because it is missing.</p>
 
 <h3>Research harnesses</h3>
 
 <div class="card violet" style="margin:16px 0">
 <h4>Inspect (<code>inspect_ai</code>)</h4>
-<p><b>Maker:</b> UK AI Security Institute and Meridian Labs (a 501(c)(3) non-profit). <b>Licence:</b> MIT. <b>Language:</b> Python (log viewer in TypeScript/React). Used by the UK AISI, US CAISI, EU AI Office, and the Japanese and Korean AISIs.</p>
+<p><b>Maker:</b> UK AI Security Institute and Meridian Labs (a 501(c)(3) non-profit). <b>License:</b> MIT. <b>Language:</b> Python (log viewer in TypeScript/React). Used by the UK AISI, US CAISI, EU AI Office, and the Japanese and Korean AISIs.</p>
 <ul>
 <li><b>Core abstractions:</b> a <code>Task</code> combines a <code>Dataset</code> (samples with <code>input</code> and <code>target</code>), a <code>Solver</code> (anything from a single <code>generate()</code> call to a full agent) and a <code>Scorer</code> (text match, model grading, or custom).</li>
 <li><b>Best at:</b> rigorous, reproducible research and safety evals of models and agents. Ships with 200+ pre-built evals in <code>inspect_evals</code>.</li>
@@ -295,7 +295,7 @@ inspect view                       # browse the logs</code></pre>
 
 <div class="card violet" style="margin:16px 0">
 <h4>EleutherAI lm-evaluation-harness</h4>
-<p><b>Maker:</b> EleutherAI. <b>Licence:</b> MIT. <b>Language:</b> Python, with tasks defined in YAML plus Jinja2 prompt templates.</p>
+<p><b>Maker:</b> EleutherAI. <b>License:</b> MIT. <b>Language:</b> Python, with tasks defined in YAML plus Jinja2 prompt templates.</p>
 <ul>
 <li><b>Best at:</b> few-shot academic benchmarks on open-weight models (60+ benchmarks, hundreds of subtasks). It is the backend of the Hugging Face Open LLM Leaderboard. Backends include Hugging Face transformers, vLLM and API models.</li>
 <li><b>Agents:</b> not a focus. <b>Multimodal:</b> prototype only (<code>hf-multimodal</code>, <code>vllm-vlm</code>), with a pointer to the <code>lmms-eval</code> fork.</li>
@@ -310,9 +310,9 @@ inspect view                       # browse the logs</code></pre>
 
 <div class="card violet" style="margin:16px 0">
 <h4>HELM (Stanford CRFM)</h4>
-<p><b>Maker:</b> Stanford Center for Research on Foundation Models. <b>Licence:</b> Apache-2.0. <b>Language:</b> Python.</p>
+<p><b>Maker:</b> Stanford Center for Research on Foundation Models. <b>License:</b> Apache-2.0. <b>Language:</b> Python.</p>
 <ul>
-<li><b>Best at:</b> "holistic, reproducible and transparent evaluation of foundation models": standardised scenarios, metrics beyond accuracy, and public leaderboards (HELM Capabilities, HELM Safety, VHELM for vision-language, and domain boards).</li>
+<li><b>Best at:</b> "holistic, reproducible and transparent evaluation of foundation models": standardized scenarios, metrics beyond accuracy, and public leaderboards (HELM Capabilities, HELM Safety, VHELM for vision-language, and domain boards).</li>
 <li><b>Multimodal:</b> yes, via VHELM. <b>Agents:</b> not its focus.</li>
 </ul>
 <pre data-lang="bash"><code>helm-run --run-entries mmlu:subject=philosophy,model=openai/gpt2 --suite my-suite --max-eval-instances 10
@@ -322,7 +322,7 @@ helm-server --suite my-suite   # browse results at http://localhost:8000/</code>
 
 <div class="card violet" style="margin:16px 0">
 <h4>Harbor (Terminal-Bench harness)</h4>
-<p><b>Maker:</b> the creators of Terminal-Bench (Laude Institute). <b>Licence:</b> Apache-2.0.</p>
+<p><b>Maker:</b> the creators of Terminal-Bench (Laude Institute). <b>License:</b> Apache-2.0.</p>
 <ul>
 <li><b>Best at:</b> containerised end-to-end agent evals where the agent under test is a full CLI agent (Claude Code, OpenHands, Codex CLI and more) and grading is by outcome tests inside the container. Official harness for <b>Terminal-Bench 2.0</b>; runs in parallel on cloud sandboxes (Daytona, Modal and others) and can generate RL rollouts. Anthropic's agent-eval post cites it.</li>
 </ul>
@@ -338,7 +338,7 @@ harbor run --dataset terminal-bench@2.0 \
 <ul>
 <li><b>Lighteval</b> (Hugging Face, MIT): 1000+ tasks; <code>inspect-ai</code> is its preferred backend. Example: <code>lighteval eval "hf-inference-providers/openai/gpt-oss-20b" gpqa:diamond</code>.</li>
 <li><b>OpenBench</b> (Groq, MIT): 95+ benchmarks built on <code>inspect-ai</code>. Example: <code>bench eval mmlu --model groq/openai/gpt-oss-120b --limit 10</code>.</li>
-<li><b>Petri</b> and <b>Bloom</b> (both started at Anthropic, both MIT, now developed by Meridian Labs): Petri is an automated auditing agent (auditor, target, judge) for alignment behaviours; Bloom auto-generates behavioural evals for one target behaviour in four stages (Understanding, Ideation, Rollout, Judgment). See <a href="17-safety-evals.html">Module 17</a>.</li>
+<li><b>Petri</b> and <b>Bloom</b> (both started at Anthropic, both MIT, now developed by Meridian Labs): Petri is an automated auditing agent (auditor, target, judge) for alignment behaviors; Bloom auto-generates behavioral evals for one target behavior in four stages (Understanding, Ideation, Rollout, Judgment). See <a href="17-safety-evals.html">Module 17</a>.</li>
 <li><b>OpenAI simple-evals</b> (MIT): reference implementations of MMLU, GPQA, MATH, HumanEval, SimpleQA, BrowseComp, HealthBench and others. "As of July 2025, simple-evals will no longer be updated for new models or benchmark results"; HealthBench, BrowseComp and SimpleQA are still maintained as reference code.</li>
 <li><b>OpenAI Evals repo</b> (<code>openai/evals</code>, MIT): a registry of evals defined in YAML plus JSONL data; not accepting evals with custom code. Treat it as a historical reference.</li>
 </ul>
@@ -348,7 +348,7 @@ harbor run --dataset terminal-bench@2.0 \
 
 <div class="card good" style="margin:16px 0">
 <h4>promptfoo</h4>
-<p><b>Maker:</b> Promptfoo, now part of OpenAI (acquisition announced 2026-03-09): "Promptfoo remains open source and MIT licensed." <b>Licence:</b> MIT. <b>Language:</b> TypeScript/Node CLI; you write config in YAML.</p>
+<p><b>Maker:</b> Promptfoo, now part of OpenAI (acquisition announced 2026-03-09): "Promptfoo remains open source and MIT licensed." <b>License:</b> MIT. <b>Language:</b> TypeScript/Node CLI; you write config in YAML.</p>
 <ul>
 <li><b>Core abstractions:</b> <code>prompts</code> × <code>providers</code> (models) × <code>tests</code> (each with <code>vars</code> and <code>assert</code>). Assertion types include <code>equals</code>, <code>contains</code>, <code>contains-json</code>, <code>javascript</code>, <code>similar</code> and <code>llm-rubric</code>.</li>
 <li><b>Best at:</b> declarative regression matrices (every prompt against every model against every test) and <b>red teaming</b> (automated vulnerability scanning). OpenAI's recommended replacement for its Evals platform.</li>
@@ -373,10 +373,10 @@ tests:
 
 <div class="card good" style="margin:16px 0">
 <h4>DeepEval (Confident AI)</h4>
-<p><b>Maker:</b> Confident AI. <b>Licence:</b> Apache-2.0. <b>Language:</b> Python. Optional hosted platform (Confident AI, commercial).</p>
+<p><b>Maker:</b> Confident AI. <b>License:</b> Apache-2.0. <b>Language:</b> Python. Optional hosted platform (Confident AI, commercial).</p>
 <ul>
 <li><b>Core abstractions:</b> <code>LLMTestCase</code> (input, actual output, expected output, context), metrics such as <code>GEval</code>, and <code>assert_test()</code>, run by pytest or <code>deepeval test run</code>.</li>
-<li><b>Best at:</b> "unit tests for LLMs": pytest-style assertions with a large catalogue of metrics.</li>
+<li><b>Best at:</b> "unit tests for LLMs": pytest-style assertions with a large catalog of metrics.</li>
 <li><b>Agents:</b> metrics TaskCompletion, ToolCorrectness, GoalAccuracy, StepEfficiency, PlanAdherence; trajectory evaluation via <code>@observe()</code> tracing. <b>Multimodal:</b> multimodal metrics (for example image generation and editing quality). <b>Judge:</b> G-Eval, and most metrics are judge-based.</li>
 </ul>
 <pre data-lang="python"><code>from deepeval import assert_test
@@ -480,7 +480,7 @@ Eval(
 
 <div class="card accent" style="margin:16px 0">
 <h4>LangSmith</h4>
-<p><b>Maker:</b> LangChain. <b>Licence:</b> SDK MIT (Python and JS/TS); the hosted platform is commercial.</p>
+<p><b>Maker:</b> LangChain. <b>License:</b> SDK MIT (Python and JS/TS); the hosted platform is commercial.</p>
 <ul>
 <li><b>Core abstractions:</b> Dataset, Target function, Evaluators, Experiments. LLM judges via the <code>openevals</code> package (<code>create_llm_as_judge</code>). Tracing is the core product (for example <code>wrappers.wrap_openai</code>).</li>
 <li><b>Best at:</b> teams on LangChain or LangGraph who want tracing, datasets, experiments and annotation in one place; it also works without LangChain via wrappers.</li>
@@ -501,11 +501,11 @@ Client().evaluate(target, data="Sample dataset", evaluators=[correctness_evaluat
 
 <div class="card accent" style="margin:16px 0">
 <h4>Langfuse</h4>
-<p><b>Maker:</b> Langfuse, "now part of ClickHouse" (January 2026). <b>Licence:</b> "MIT licensed, except for the <code>ee</code> folders" (an <b>open-core</b> model: the core is open source, some enterprise features are not). Self-host via Docker Compose, Helm or Terraform, or use the cloud.</p>
+<p><b>Maker:</b> Langfuse, "now part of ClickHouse" (January 2026). <b>License:</b> "MIT licensed, except for the <code>ee</code> folders" (an <b>open-core</b> model: the core is open source, some enterprise features are not). Self-host via Docker Compose, Helm or Terraform, or use the cloud.</p>
 <ul>
 <li><b>Core abstractions:</b> traces and observations, Datasets, Experiments (<code>run_experiment(data, task, evaluators)</code>), Scores / <code>Evaluation</code>, prompt management.</li>
 <li><b>Best at:</b> open-source, self-hostable observability plus evals, for example when data must stay in your region. Anthropic's agent-eval post mentions it as a self-hosted alternative.</li>
-<li><b>Judge:</b> LLM-as-judge, code evaluators, user feedback and manual labelling. <b>Tracing:</b> OpenTelemetry, LangChain, OpenAI SDK and LiteLLM integrations.</li>
+<li><b>Judge:</b> LLM-as-judge, code evaluators, user feedback and manual labeling. <b>Tracing:</b> OpenTelemetry, LangChain, OpenAI SDK and LiteLLM integrations.</li>
 </ul>
 <pre data-lang="python"><code>from langfuse import get_client, Evaluation
 langfuse = get_client()
@@ -521,7 +521,7 @@ print(result.format())</code></pre>
 
 <div class="card accent" style="margin:16px 0">
 <h4>Arize Phoenix</h4>
-<p><b>Maker:</b> Arize AI. <b>Licence:</b> Elastic License 2.0 (ELv2), which is <b>source-available, not OSI open source</b>: you can read, run and self-host the code, but the licence restricts offering it as a managed service. <code>arize-phoenix-evals</code> is also ELv2. <b>Language:</b> Python and TypeScript.</p>
+<p><b>Maker:</b> Arize AI. <b>License:</b> Elastic License 2.0 (ELv2), which is <b>source-available, not OSI open source</b>: you can read, run and self-host the code, but the license restricts offering it as a managed service. <code>arize-phoenix-evals</code> is also ELv2. <b>Language:</b> Python and TypeScript.</p>
 <ul>
 <li><b>Core abstractions:</b> OpenTelemetry / OpenInference traces, evaluators (LLM classifiers), datasets and experiments, prompt management, a playground.</li>
 <li><b>Agents:</b> integrations include the Claude Agent SDK, OpenAI Agents, LangGraph and CrewAI; a remote MCP server lets coding agents query your traces.</li>
@@ -542,7 +542,7 @@ scores = evaluator.evaluate({"input": "How do I reset?", "output": "Go to settin
 
 <div class="card accent" style="margin:16px 0">
 <h4>W&amp;B Weave</h4>
-<p><b>Maker:</b> Weights &amp; Biases. <b>Licence:</b> Apache-2.0. <b>SDKs:</b> Python and TypeScript.</p>
+<p><b>Maker:</b> Weights &amp; Biases. <b>License:</b> Apache-2.0. <b>SDKs:</b> Python and TypeScript.</p>
 <ul>
 <li><b>Core abstractions:</b> <code>@weave.op</code> (a traced function: inputs and outputs are captured automatically), <code>Model</code>, <code>Evaluation(dataset, scorers)</code>, <code>evaluation.evaluate(model)</code>, and <code>EvaluationLogger</code> for logging evals imperatively from your own loop.</li>
 <li><b>Best at:</b> teams already using W&amp;B for ML experiments who want LLM traces and evals in the same place.</li>
@@ -568,7 +568,7 @@ asyncio.run(evaluation.evaluate(MyModel(prompt='World')))</code></pre>
 
 <div class="card accent" style="margin:16px 0">
 <h4>Opik (Comet)</h4>
-<p><b>Maker:</b> Comet. <b>Licence:</b> Apache-2.0, full platform self-hostable. <b>SDKs:</b> Python, TypeScript (Ruby via OpenTelemetry).</p>
+<p><b>Maker:</b> Comet. <b>License:</b> Apache-2.0, full platform self-hostable. <b>SDKs:</b> Python, TypeScript (Ruby via OpenTelemetry).</p>
 <ul>
 <li><b>Features:</b> tracing for multi-step agents, LLM-as-judge metrics (Hallucination, Moderation, AnswerRelevance, ContextPrecision), datasets and experiments, an Agent Optimizer SDK, guardrails, and "a PyTest integration to test LLM pipelines on every commit".</li>
 </ul>
@@ -584,7 +584,7 @@ evaluation = evaluate(dataset=dataset, task=evaluation_task, scoring_metrics=[Ha
 
 <div class="card accent" style="margin:16px 0">
 <h4>MLflow GenAI evaluation (MLflow 3)</h4>
-<p><b>Maker:</b> open-source project originally from Databricks. <b>Licence:</b> Apache-2.0. Python plus TS/JS and Java SDKs; self-host, or managed on Databricks, SageMaker or Azure ML.</p>
+<p><b>Maker:</b> open-source project originally from Databricks. <b>License:</b> Apache-2.0. Python plus TS/JS and Java SDKs; self-host, or managed on Databricks, SageMaker or Azure ML.</p>
 <ul>
 <li><b>Core abstractions:</b> <code>mlflow.genai.evaluate(data, predict_fn, scorers)</code>; data rows with <code>inputs</code> and <code>expectations</code>; built-in LLM judges (<code>Correctness</code>, <code>Guidelines</code>) and custom <code>@scorer</code> functions. OpenTelemetry-based tracing, 50+ built-in metrics, prompt registry, AI gateway.</li>
 <li><b>Agents:</b> evaluation of "LLM applications and AI agents", plus production monitoring and human feedback.</li>
@@ -621,7 +621,7 @@ results = mlflow.genai.evaluate(
 
 <div class="card warn" style="margin:16px 0">
 <h4>Ragas</h4>
-<p><b>Maker:</b> VibrantLabs (formerly Exploding Gradients; the repo is still <code>explodinggradients/ragas</code>). <b>Licence:</b> Apache-2.0. <b>Language:</b> Python.</p>
+<p><b>Maker:</b> VibrantLabs (formerly Exploding Gradients; the repo is still <code>explodinggradients/ragas</code>). <b>License:</b> Apache-2.0. <b>Language:</b> Python.</p>
 <ul>
 <li><b>Core abstractions:</b> metrics (LLM-based and traditional, for example <code>DiscreteMetric</code>), <code>SingleTurnSample</code>, <code>EvaluationDataset</code>, experiments, and test-set generation.</li>
 <li><b>Best at:</b> RAG metrics (faithfulness, context precision and recall; see <a href="06-tool-use-and-conversation.html">Module 06</a>) and generating synthetic test sets.</li>
@@ -642,7 +642,7 @@ print(score.value, score.reason)</code></pre>
 
 <div class="card warn" style="margin:16px 0">
 <h4>TruLens</h4>
-<p><b>Maker:</b> TruEra, now part of Snowflake. <b>Licence:</b> MIT. <b>Language:</b> Python.</p>
+<p><b>Maker:</b> TruEra, now part of Snowflake. <b>License:</b> MIT. <b>Language:</b> Python.</p>
 <ul>
 <li><b>Core abstractions:</b> <code>TruSession</code>, feedback functions / <code>Metric</code> (judges backed by a model provider), a <code>TruApp</code> wrapper, <code>@instrument</code> span types, and a leaderboard. Known for the <b>RAG Triad</b>: groundedness, context relevance, answer relevance.</li>
 <li><b>Agents:</b> evaluators LogicalConsistency, ExecutionEfficiency, PlanAdherence, PlanQuality, ToolSelection, ToolCalling, ToolQuality; MCP tool calls are captured as spans. <b>Tracing:</b> OpenTelemetry-native, exportable to Jaeger, Grafana Tempo or Datadog.</li>
@@ -861,7 +861,7 @@ python -m garak --model_type openai --model_name gpt-4o-mini --probes encoding
 <p>Tool choice is partly a bet on who will still maintain the tool in two years. The last two years saw acquisitions, handovers and one shutdown.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 360" role="img" aria-label="Timeline from July 2024 to December 2026 with colour-coded events: Anthropic Console Evaluate tool launched; simple-evals frozen; Petri and Bloom released and later handed to Meridian Labs; Langfuse joins ClickHouse; OpenAI to acquire promptfoo; Vertex AI renamed; OpenAI Evals deprecation announced, read-only on 31 October and shut down on 30 November 2026.">
+<svg viewBox="0 0 820 360" role="img" aria-label="Timeline from July 2024 to December 2026 with color-coded events: Anthropic Console Evaluate tool launched; simple-evals frozen; Petri and Bloom released and later handed to Meridian Labs; Langfuse joins ClickHouse; OpenAI to acquire promptfoo; Vertex AI renamed; OpenAI Evals deprecation announced, read-only on 31 October and shut down on 30 November 2026.">
 <rect x="200" y="158" width="300" height="14" rx="3" class="fill-soft"/>
 <line class="ln thick" x1="30" y1="165" x2="800" y2="165"/>
 <text x="62" y="186" class="sm b t-muted">2024</text><text x="206" y="186" class="sm b t-muted">2025</text><text x="506" y="186" class="sm b t-muted">2026</text>
@@ -899,10 +899,10 @@ python -m garak --model_type openai --model_name gpt-4o-mini --probes encoding
 <p>Legend: <span class="y">Y</span> first-class, <span class="p">P</span> partial or via integration, <b>–</b> not a focus, <b>?</b> not verified from a primary source (treat as unknown, not as "no"). Sources are the per-tool cards above and the list at the end.</p>
 
 <div class="tablewrap"><table>
-<tr><th>Tool</th><th>Licence</th><th>Lang</th><th>Primary use</th><th>Agents / tools</th><th>Multimodal</th><th>LLM judge</th><th>Tracing</th><th>CI hook</th><th>UI</th></tr>
+<tr><th>Tool</th><th>License</th><th>Lang</th><th>Primary use</th><th>Agents / tools</th><th>Multimodal</th><th>LLM judge</th><th>Tracing</th><th>CI hook</th><th>UI</th></tr>
 <tr><td><b>Inspect</b></td><td>MIT</td><td>Py</td><td>Research and safety evals of models and agents</td><td><span class="y">Y</span> react, sandboxes, MCP, bridge</td><td><span class="y">Y</span></td><td><span class="y">Y</span></td><td>Log viewer + Scout</td><td>CLI</td><td>Local viewer</td></tr>
 <tr><td><b>lm-eval-harness</b></td><td>MIT</td><td>Py</td><td>Few-shot academic benchmarks</td><td>–</td><td><span class="p">P</span> prototype</td><td>–</td><td>–</td><td>CLI</td><td>–</td></tr>
-<tr><td><b>HELM</b></td><td>Apache-2.0</td><td>Py</td><td>Holistic standardised leaderboards</td><td>–</td><td><span class="y">Y</span> VHELM</td><td>?</td><td>–</td><td>CLI</td><td>Static leaderboard</td></tr>
+<tr><td><b>HELM</b></td><td>Apache-2.0</td><td>Py</td><td>Holistic standardized leaderboards</td><td>–</td><td><span class="y">Y</span> VHELM</td><td>?</td><td>–</td><td>CLI</td><td>Static leaderboard</td></tr>
 <tr><td><b>Harbor</b></td><td>Apache-2.0</td><td>?</td><td>Containerised CLI-agent benchmarks</td><td><span class="y">Y</span></td><td>–</td><td>?</td><td>–</td><td>CLI</td><td>–</td></tr>
 <tr><td><b>simple-evals</b></td><td>MIT</td><td>Py</td><td>Reference benchmark code (frozen)</td><td><span class="p">P</span> BrowseComp</td><td>–</td><td>?</td><td>–</td><td>–</td><td>–</td></tr>
 <tr><td><b>promptfoo</b></td><td>MIT (OpenAI-owned)</td><td>TS / YAML</td><td>Regression matrices + red teaming</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> llm-rubric</td><td>?</td><td><span class="y">Y</span> GH Action</td><td>Local viewer</td></tr>
@@ -979,7 +979,7 @@ python -m garak --model_type openai --model_name gpt-4o-mini --probes encoding
 <rect class="box plain" x="590" y="314" width="220" height="44" rx="6"/><text x="700" y="334" text-anchor="middle" class="sm">Eval + Run objects on OpenAI</text><text x="700" y="350" text-anchor="middle" class="sm t-bad">servers (ends 2026-11-30)</text>
 <line class="ln" x1="340" y1="336" x2="366" y2="336" marker-end="url(#m14b)"/><line class="ln" x1="560" y1="336" x2="586" y2="336" marker-end="url(#m14b)"/>
 </svg>
-<figcaption><b>The shape of each tool.</b> Same eval, different centre of gravity: Inspect and DeepEval are code you run locally, promptfoo is a config file, Braintrust is code that reports to a server, and the OpenAI Evals API is configuration that lives on someone else's server.</figcaption>
+<figcaption><b>The shape of each tool.</b> Same eval, different center of gravity: Inspect and DeepEval are code you run locally, promptfoo is a config file, Braintrust is code that reports to a server, and the OpenAI Evals API is configuration that lives on someone else's server.</figcaption>
 </figure>
 
 <h3>1. Inspect</h3>
@@ -1303,7 +1303,7 @@ run = client.evals.runs.create(
 <div class="card violet"><h4>Research on frontier models or safety</h4><p><b>Inspect.</b> It is what government AI safety institutes use, it has sandboxes and agent tooling built in, and 200+ ready-made evals. Add <b>Harbor</b> if your agent is a full CLI agent on Terminal-Bench style tasks. See <a href="16-how-labs-do-evals.html">Module 16</a>.</p></div>
 <div class="card violet"><h4>Classic benchmarks on open weights</h4><p><b>lm-evaluation-harness</b> (the Open LLM Leaderboard backend), <b>Lighteval</b>, or <b>HELM</b> if you want its holistic metrics and leaderboards.</p></div>
 <div class="card good"><h4>CLI + CI + red teaming</h4><p><b>promptfoo.</b> Config in YAML, a GitHub Action that comments diffs on pull requests, and a strong red-teaming feature set. Also the migration path off the OpenAI Evals API.</p></div>
-<div class="card good"><h4>Pytest-style unit tests</h4><p><b>DeepEval</b> (large metric catalogue including agent metrics) or <b>Pydantic Evals</b> (lightweight, OpenTelemetry span-based). LangSmith and Opik also offer pytest integrations.</p></div>
+<div class="card good"><h4>Pytest-style unit tests</h4><p><b>DeepEval</b> (large metric catalog including agent metrics) or <b>Pydantic Evals</b> (lightweight, OpenTelemetry span-based). LangSmith and Opik also offer pytest integrations.</p></div>
 <div class="card accent"><h4>Production tracing + experiments UI</h4><p>Hosted and polished: <b>Braintrust</b> or <b>LangSmith</b> (especially on LangChain/LangGraph), or <b>Weave</b> if you already use W&amp;B. Self-hosted or open: <b>Langfuse</b>, <b>Phoenix</b>, <b>Opik</b>, <b>MLflow</b>.</p></div>
 <div class="card warn"><h4>RAG quality</h4><p><b>Ragas</b> or <b>TruLens</b> metrics (faithfulness, context relevance, the RAG triad), called from whatever harness you already run.</p></div>
 <div class="card"><h4>Single-vendor stack</h4><p>On Google: <b>ADK eval</b> and the <b>Gen AI evaluation service</b>. On Azure: <b>Foundry evaluation</b>. OpenAI-only: the hosted Evals API is ending, so use <b>promptfoo</b> (now OpenAI-owned) instead.</p></div>
@@ -1313,7 +1313,7 @@ run = client.evals.runs.create(
 </div>
 
 <div class="callout tip"><span class="t">A useful tie-breaker: who needs to look at the results?</span>
-<p>If only engineers read results, a CLI and CI output are enough. If product managers, domain experts or annotators need to read transcripts and label them, you want a platform with a UI and annotation queues. Hamel-style error analysis (<a href="12-error-analysis.html">Module 12</a>) depends on people actually reading traces, so the viewing experience matters more than the metric catalogue.</p>
+<p>If only engineers read results, a CLI and CI output are enough. If product managers, domain experts or annotators need to read transcripts and label them, you want a platform with a UI and annotation queues. Hamel-style error analysis (<a href="12-error-analysis.html">Module 12</a>) depends on people actually reading traces, so the viewing experience matters more than the metric catalog.</p>
 </div>
 
 <h2>How tools compose</h2>
@@ -1388,11 +1388,11 @@ run = client.evals.runs.create(
 <p>Phoenix (OpenInference), Langfuse, MLflow, TruLens, Pydantic Evals, Opik and Microsoft Foundry all speak <b>OpenTelemetry</b> (OTel), the open standard for traces and spans. If your application emits OTel spans, you can switch trace stores, or send the same spans to two of them, without rewriting instrumentation. Vendor-specific decorators are convenient but are the first place lock-in creeps in. Standard naming for GenAI spans is still settling, so check exactly which attributes each tool reads.</p>
 </div>
 
-<h2>Open source vs hosted: licences, lock-in, privacy</h2>
+<h2>Open source vs hosted: licenses, lock-in, privacy</h2>
 
-<h3>Licences are a spectrum, not a switch</h3>
+<h3>Licenses are a spectrum, not a switch</h3>
 <figure class="diagram">
-<svg viewBox="0 0 820 300" role="img" aria-label="Licence spectrum from permissive open source (MIT, Apache) through open core and source-available, to open SDK with a closed platform, to fully closed services.">
+<svg viewBox="0 0 820 300" role="img" aria-label="License spectrum from permissive open source (MIT, Apache) through open core and source-available, to open SDK with a closed platform, to fully closed services.">
 <defs><marker id="m14e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <line class="ln thick" x1="20" y1="30" x2="800" y2="30" marker-start="url(#m14e)" marker-end="url(#m14e)"/>
 <text x="24" y="20" class="sm">more control, more ops work</text>
@@ -1443,7 +1443,7 @@ run = client.evals.runs.create(
 <text x="634" y="238" class="sm">changed or shut down</text>
 <text x="634" y="254" class="sm">by the vendor</text>
 </svg>
-<figcaption><b>The licence spectrum.</b> Licences as stated in each project's repository on 2026-09-29. "Open source" in the strict (OSI) sense means the permissive column; Elastic License 2.0 is source-available, not OSI-approved. The OpenAI Evals shutdown is the textbook example of right-hand-side risk.</figcaption>
+<figcaption><b>The license spectrum.</b> Licenses as stated in each project's repository on 2026-09-29. "Open source" in the strict (OSI) sense means the permissive column; Elastic License 2.0 is source-available, not OSI-approved. The OpenAI Evals shutdown is the textbook example of right-hand-side risk.</figcaption>
 </figure>
 
 <h3>Where your data goes</h3>
@@ -1533,8 +1533,8 @@ run = client.evals.runs.create(
 <li>Eval tools fall into five families (research harnesses, developer test and CI tools, observability plus eval platforms, metric and judge libraries, cloud services), and each answers a different question.</li>
 <li>Every tool is the same four boxes with different names: a row of data, a system under test, a grader, and a stored run. Learn the mapping and any tool's docs become readable.</li>
 <li>Tools from different families usually complement each other. A common stack is one offline harness in CI plus one platform for production traces.</li>
-<li>Pick by the question you need answered and by who reads the results, not by the length of the metric catalogue.</li>
-<li>Licences are a spectrum: permissive open source, open core or source-available (Langfuse, Phoenix), open SDK with a hosted platform, and fully closed services.</li>
+<li>Pick by the question you need answered and by who reads the results, not by the length of the metric catalog.</li>
+<li>Licenses are a spectrum: permissive open source, open core or source-available (Langfuse, Phoenix), open SDK with a hosted platform, and fully closed services.</li>
 <li>An LLM judge sends graded text to its model provider even when the eval library runs locally. Privacy reviews must cover that path.</li>
 <li>The real lock-in is your datasets, labels and judge prompts. Keep them in version control you own; the OpenAI Evals shutdown shows why.</li>
 <li>Next to the five families sit red-teaming scanners (garak, PyRIT), transcript analysis (Docent, Inspect Scout) and third-party measurement (Artificial Analysis, OpenRouter rankings). Scanners discover failures, analysis tools find patterns, public numbers build a shortlist; none of them replaces your own eval.</li>
@@ -1553,7 +1553,7 @@ run = client.evals.runs.create(
 <button class="opt">The Dataset</button>
 <button class="opt">The Solver (plus a sandbox on the task)</button>
 <div class="why">The Solver is "the system under test" in Inspect: from a single <code>generate()</code> to a full <code>react()</code> agent with tools. The dataset and scorer can stay the same.</div></div>
-<div class="q" data-answer="0"><p>3. What is the licence status of Arize Phoenix?</p>
+<div class="q" data-answer="0"><p>3. What is the license status of Arize Phoenix?</p>
 <button class="opt">Elastic License 2.0: source-available and self-hostable, but not OSI open source</button>
 <button class="opt">MIT, like Langfuse</button>
 <button class="opt">Closed source SaaS only</button>
@@ -1591,7 +1591,7 @@ Their system under test is a model, not a deployed app, so there is no productio
 <p><b>Q: You are asked to migrate 40 evals off the OpenAI Evals API. What is your plan?</b><br>
 Export the item schemas, data files and grader definitions. Map each grader type: <code>string_check</code> becomes a code assertion, <code>score_model</code> or <code>label_model</code> becomes an <code>llm-rubric</code> or custom judge with the same prompt. Re-run the current production system on the new tool to set a fresh baseline before comparing anything, because judge templates differ. Store datasets and grader prompts in your repo so the next migration is cheaper.</p>
 <p><b>Q: Two tools report different faithfulness scores for the same outputs. Which is right?</b><br>
-Possibly neither. Same-named metrics in different libraries use different judge prompts, models and aggregation. Validate each against a small human-labelled set (agreement, false positive and negative rates; <a href="13-llm-as-judge.html">Module 13</a>) and trust the one that agrees with your humans on your data.</p>
+Possibly neither. Same-named metrics in different libraries use different judge prompts, models and aggregation. Validate each against a small human-labeled set (agreement, false positive and negative rates; <a href="13-llm-as-judge.html">Module 13</a>) and trust the one that agrees with your humans on your data.</p>
 <p><b>Q: What is the main lock-in risk with an eval platform, and how do you mitigate it?</b><br>
 Datasets, labels and history, not code. Keep canonical datasets and judge prompts in version control, export regularly, and use OpenTelemetry instrumentation so traces can be redirected.</p>
 </details>
@@ -1605,7 +1605,7 @@ Datasets, labels and history, not code. Keep canonical datasets and judge prompt
 <li>Braintrust, <a href="https://www.braintrust.dev/docs/start/eval-sdk">Eval SDK quickstart</a>; <a href="https://github.com/braintrustdata/autoevals">autoevals</a>.</li>
 <li>LangChain, <a href="https://docs.langchain.com/langsmith/evaluation-quickstart">LangSmith evaluation quickstart</a>; <a href="https://github.com/langchain-ai/langsmith-sdk">langsmith-sdk</a>.</li>
 <li>Langfuse, <a href="https://github.com/langfuse/langfuse">GitHub</a>, <a href="https://langfuse.com/docs/evaluation/experiments/experiments-via-sdk">Experiments via SDK</a>.</li>
-<li>Arize, <a href="https://github.com/Arize-ai/phoenix">Phoenix on GitHub</a>, <a href="https://raw.githubusercontent.com/Arize-ai/phoenix/main/LICENSE">Phoenix licence</a>, <a href="https://pypi.org/project/arize-phoenix-evals/">arize-phoenix-evals</a>.</li>
+<li>Arize, <a href="https://github.com/Arize-ai/phoenix">Phoenix on GitHub</a>, <a href="https://raw.githubusercontent.com/Arize-ai/phoenix/main/LICENSE">Phoenix license</a>, <a href="https://pypi.org/project/arize-phoenix-evals/">arize-phoenix-evals</a>.</li>
 <li>Confident AI, <a href="https://github.com/confident-ai/deepeval">DeepEval on GitHub</a>.</li>
 <li><a href="https://github.com/explodinggradients/ragas">Ragas on GitHub</a>; <a href="https://github.com/truera/trulens">TruLens on GitHub</a>, <a href="https://www.trulens.org/getting_started/quickstarts/quickstart/">TruLens quickstart</a>.</li>
 <li>Weights &amp; Biases, <a href="https://github.com/wandb/weave">Weave on GitHub</a>, <a href="https://docs.wandb.ai/weave/guides/core-types/evaluations">Weave evaluations</a>.</li>

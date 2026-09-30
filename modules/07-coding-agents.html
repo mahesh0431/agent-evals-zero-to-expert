@@ -420,7 +420,7 @@ python -m swebench.harness.run_evaluation \
 
 <p>Two kinds of problem dominated:</p>
 <div class="grid2">
-<div class="card warn"><h4>Underspecified issues</h4><p>The issue text did not contain enough information to know what the "right" fix was. For example, the maintainers chose one of several reasonable behaviours in the PR, but the issue never said which. No agent can reliably guess that.</p></div>
+<div class="card warn"><h4>Underspecified issues</h4><p>The issue text did not contain enough information to know what the "right" fix was. For example, the maintainers chose one of several reasonable behaviors in the PR, but the issue never said which. No agent can reliably guess that.</p></div>
 <div class="card bad"><h4>Unfair tests</h4><p>The hidden tests checked something the issue never asked for: a specific function name, an exact error message wording, or a new helper the human happened to add. A correct fix written differently fails.</p></div>
 </div>
 <p>Annotators also estimated difficulty in time buckets; fewer than 10% of Verified tasks were estimated to take an experienced engineer more than an hour. That is worth remembering: Verified is mostly <em>short</em> tasks.</p>
@@ -429,7 +429,7 @@ python -m swebench.harness.run_evaluation \
 <p>A "percent resolved" number can be wrong in two directions. It can be <b>inflated</b> (the agent gets credit it did not earn) or <b>deflated</b> (the agent is marked wrong when it was right). An expert reads every coding leaderboard with both columns in mind.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 320" role="img" aria-label="Eight ways a resolved-rate can be wrong. Inflating: contamination, solution in the issue, git history leak, weak tests. Deflating: over-strict tests, undocumented behaviour, environment flakiness, harness limits.">
+<svg viewBox="0 0 840 320" role="img" aria-label="Eight ways a resolved-rate can be wrong. Inflating: contamination, solution in the issue, git history leak, weak tests. Deflating: over-strict tests, undocumented behavior, environment flakiness, harness limits.">
 <defs><marker id="m7f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="150" y="24" text-anchor="middle" class="b t-bad">Inflates the score (false passes)</text>
 <text x="690" y="24" text-anchor="middle" class="b t-warn">Deflates the score (false fails)</text>
@@ -444,7 +444,7 @@ python -m swebench.harness.run_evaluation \
 <rect class="box warn" x="560" y="40" width="260" height="52" rx="6"/>
 <text x="572" y="61" class="b">Over-strict tests</text><text x="572" y="80" class="sm">tests demand one specific implementation</text>
 <rect class="box warn" x="560" y="110" width="260" height="52" rx="6"/>
-<text x="572" y="131" class="b">Undocumented behaviour</text><text x="572" y="150" class="sm">tests check what the issue never said</text>
+<text x="572" y="131" class="b">Undocumented behavior</text><text x="572" y="150" class="sm">tests check what the issue never said</text>
 <rect class="box warn" x="560" y="180" width="260" height="52" rx="6"/>
 <text x="572" y="201" class="b">Environment flakiness</text><text x="572" y="220" class="sm">network, timeouts, version drift</text>
 <rect class="box warn" x="560" y="250" width="260" height="52" rx="6"/>
@@ -545,7 +545,7 @@ harbor run --dataset terminal-bench@2.0 --agent claude-code \
 <p>The <b>Aider polyglot</b> benchmark (Paul Gauthier, Dec 2024) uses 225 of the hardest Exercism exercises in C++, Go, Java, JavaScript, Python and Rust. The model edits code through Aider's edit formats and gets <b>two attempts</b>: after a first failure, it sees the unit-test output and tries again. It reports percent solved, <b>percent well-formed edits</b> (did the model follow the edit format at all?) and cost. It is a good example of measuring the <em>interface</em> skill (producing edits a tool can apply) as well as the coding skill. Exercism solutions are public, so contamination is a real risk.</p>
 
 <h3>LiveCodeBench: fighting contamination with time</h3>
-<p><b>LiveCodeBench</b> (Jain et al., 2024) continuously collects new competitive-programming problems from LeetCode, AtCoder and Codeforces and tags each with its <b>release date</b>. You evaluate a model only on problems published <em>after</em> its training cutoff, so it cannot have seen them. This is a <b>contamination-aware time window</b>. It covers code generation, self-repair, code execution and test-output prediction, scored with pass@1. The idea generalises: SWE-rebench and SWE-bench-Live apply the same freshness logic to repository tasks.</p>
+<p><b>LiveCodeBench</b> (Jain et al., 2024) continuously collects new competitive-programming problems from LeetCode, AtCoder and Codeforces and tags each with its <b>release date</b>. You evaluate a model only on problems published <em>after</em> its training cutoff, so it cannot have seen them. This is a <b>contamination-aware time window</b>. It covers code generation, self-repair, code execution and test-output prediction, scored with pass@1. The idea generalizes: SWE-rebench and SWE-bench-Live apply the same freshness logic to repository tasks.</p>
 <figure class="diagram">
 <svg viewBox="0 0 840 290" role="img" aria-label="Timeline of problems tagged by release date. Model A has an earlier training cutoff than model B. Problems before each cutoff may have been seen in training; problems after are that model's clean window. A fair comparison of A and B uses only problems after both cutoffs.">
 <defs><marker id="m7m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
@@ -609,14 +609,14 @@ harbor run --dataset terminal-bench@2.0 --agent claude-code \
 <h3>Research-engineering benchmarks: MLE-bench, RE-Bench, PaperBench</h3>
 <ul>
 <li><b>MLE-bench</b> (OpenAI, Oct 2024): 75 Kaggle competitions run offline. The agent must train models and submit predictions, which are graded against each competition's private leaderboard. The metric is the percentage of competitions where the agent would have earned a medal. At release, o1-preview with the AIDE scaffold earned a medal in 16.9% of competitions. Runs are expensive (up to 24 hours on a GPU per competition).</li>
-<li><b>RE-Bench</b> (METR, Nov 2024): 7 open-ended ML research-engineering environments, such as optimising a GPU kernel or fine-tuning a small model. Scores are <b>continuous</b>, normalised so the starting solution is 0 and a reference solution is 1, and compared against 71 eight-hour attempts by 61 human experts. Agents did better than humans at 2-hour budgets; humans won at 8 to 32 hours. It feeds METR's time-horizon measurements (<a href="11-multi-agent-long-horizon.html">Module 11</a>).</li>
+<li><b>RE-Bench</b> (METR, Nov 2024): 7 open-ended ML research-engineering environments, such as optimizing a GPU kernel or fine-tuning a small model. Scores are <b>continuous</b>, normalized so the starting solution is 0 and a reference solution is 1, and compared against 71 eight-hour attempts by 61 human experts. Agents did better than humans at 2-hour budgets; humans won at 8 to 32 hours. It feeds METR's time-horizon measurements (<a href="11-multi-agent-long-horizon.html">Module 11</a>).</li>
 <li><b>PaperBench</b> (OpenAI, Apr 2025): replicate 20 ICML 2024 Spotlight and Oral papers from scratch. There are 8,316 gradable sub-tasks in hierarchical rubrics co-written with the papers' authors, graded by an <b>LLM judge</b> that was itself validated on a judge-eval set. At release, the best agent (Claude 3.5 Sonnet, new) averaged 21.0%; ML PhDs reached 41.4% on a subset. This is what execution-based grading looks like when the "answer" is too big to test with asserts: you fall back to a rubric and a judge (<a href="13-llm-as-judge.html">Module 13</a>).</li>
 </ul>
 
 <h3>SWE-Lancer: pricing the work</h3>
 <p><b>SWE-Lancer</b> (OpenAI, Feb 2025) uses more than 1,400 real freelance tasks from Upwork on the Expensify codebase, worth $1M in actual payouts. Two task types:</p>
 <ul>
-<li><b>IC SWE</b> (individual contributor) tasks: implement the fix. Graded by <b>end-to-end Playwright tests</b> (browser automation that clicks through the real app) that were triple-verified by engineers. End-to-end tests are much harder to game than unit tests because they check behaviour a user would see.</li>
+<li><b>IC SWE</b> (individual contributor) tasks: implement the fix. Graded by <b>end-to-end Playwright tests</b> (browser automation that clicks through the real app) that were triple-verified by engineers. End-to-end tests are much harder to game than unit tests because they check behavior a user would see.</li>
 <li><b>SWE Manager</b> tasks: choose the best of several implementation proposals. Graded against the choice the original engineering manager made.</li>
 </ul>
 <p>Its headline metric is <b>dollars earned</b>: each task is weighted by what it actually paid. The public "Diamond" split is worth $500.8K; at release, Claude 3.5 Sonnet earned $208K of it. Dollar weighting is a neat idea: it automatically gives hard, valuable tasks more weight than trivial ones, which an unweighted percentage does not.</p>
@@ -633,17 +633,17 @@ harbor run --dataset terminal-bench@2.0 --agent claude-code \
 <tr><td>Aider polyglot</td><td>Exercism exercises, 6 languages</td><td>225</td><td>unit tests, 2 attempts</td><td>% solved, % well-formed</td><td><span class="n">High</span>: public solutions</td></tr>
 <tr><td>LiveCodeBench</td><td>competitive programming</td><td>growing</td><td>hidden tests</td><td>pass@1 in a time window</td><td><span class="y">Low</span> by design (post-cutoff problems)</td></tr>
 <tr><td>MLE-bench</td><td>Kaggle competition end to end</td><td>75 (22 Lite)</td><td>private leaderboard</td><td>% with any medal</td><td><span class="p">Medium</span>: public Kaggle write-ups</td></tr>
-<tr><td>RE-Bench</td><td>open-ended ML research engineering</td><td>7</td><td>task-specific score</td><td>normalised score vs humans</td><td><span class="y">Low</span></td></tr>
+<tr><td>RE-Bench</td><td>open-ended ML research engineering</td><td>7</td><td>task-specific score</td><td>normalized score vs humans</td><td><span class="y">Low</span></td></tr>
 <tr><td>PaperBench</td><td>replicate an ML paper</td><td>20 papers, 8,316 rubric items</td><td>LLM judge on rubrics</td><td>avg replication score</td><td><span class="p">Medium</span>: papers are public, code often not</td></tr>
 <tr><td>SWE-Lancer</td><td>paid freelance tasks</td><td>1,400+ ($1M)</td><td>E2E Playwright tests; manager choice</td><td>% solved, $ earned</td><td><span class="p">Medium</span>: public repo</td></tr>
 </table></div>
-<p>Contamination ratings are this course's judgement based on each benchmark's construction, not a measured value. Sources for sizes and graders are listed at the end of the module. Deliberately, there are no leaderboard numbers here: they change monthly, and several are no longer meaningful (see the Verified audit above).</p>
+<p>Contamination ratings are this course's judgment based on each benchmark's construction, not a measured value. Sources for sizes and graders are listed at the end of the module. Deliberately, there are no leaderboard numbers here: they change monthly, and several are no longer meaningful (see the Verified audit above).</p>
 
 <h2>Execution-based grading done right</h2>
 <p>Whether you use a public benchmark or build your own, the same engineering rules make execution-based grading trustworthy.</p>
 
 <h3>Hidden tests</h3>
-<p>The tests used for grading must not be visible to the agent during its run. Otherwise the agent can (and, under optimisation pressure, will) write code that satisfies the tests rather than the task, or simply edit the tests. SWE-bench applies <code>test_patch</code> only in a fresh grading container; Harbor copies <code>tests/</code> in only at verification time. Your agent may of course write and run <em>its own</em> tests; that is good engineering. It just must not see the grader's.</p>
+<p>The tests used for grading must not be visible to the agent during its run. Otherwise the agent can (and, under optimization pressure, will) write code that satisfies the tests rather than the task, or simply edit the tests. SWE-bench applies <code>test_patch</code> only in a fresh grading container; Harbor copies <code>tests/</code> in only at verification time. Your agent may of course write and run <em>its own</em> tests; that is good engineering. It just must not see the grader's.</p>
 
 <div class="callout warn"><span class="t">Watch for test tampering</span>
 <p>If grading happens in the same container the agent worked in, the agent may have modified test files, <code>conftest.py</code>, <code>pytest.ini</code>, or monkey-patched the test runner. Reapply the pristine test files at grading time, and diff the agent's patch for changes to test infrastructure. Some teams simply reject any patch that touches test paths.</p>
@@ -653,7 +653,7 @@ harbor run --dataset terminal-bench@2.0 --agent claude-code \
 <p>A <b>flaky test</b> passes or fails on the same code depending on timing, randomness, network or ordering. Flaky tests add noise to both F2P and P2P, and noise can look like a regression or an improvement. Standard defences:</p>
 <ul>
 <li>When building the benchmark, run the gold solution several times (3 to 5) and <b>drop any test whose result varies</b>.</li>
-<li>Run the grader with network disabled and random seeds fixed, so behaviour cannot depend on the outside world.</li>
+<li>Run the grader with network disabled and random seeds fixed, so behavior cannot depend on the outside world.</li>
 <li>Track per-test flip rates across runs; <b>quarantine</b> tests that flip.</li>
 <li>Never "re-run failed tests until they pass" only for the agent: that biases the score upward. Whatever policy you choose, apply it identically to every system.</li>
 </ul>
@@ -878,7 +878,7 @@ def scorecard(passed: bool, diff: str, trace: dict, judge: dict) -&gt; dict:
 <p>For every number, ask: which harness? how many steps or dollars allowed? how many attempts (pass@1 or best-of-k)? which subset and which version of the dataset? was it run by the benchmark maintainers or self-reported by a vendor? Two numbers are comparable only if all five answers match.</p>
 </div>
 
-<p>For your own work, this cuts both ways. If you are <b>choosing a model</b>, hold the harness fixed and swap models. If you are <b>building an agent product</b>, hold the model fixed and treat the harness as the thing you are optimising, with your eval as the scoreboard.</p>
+<p>For your own work, this cuts both ways. If you are <b>choosing a model</b>, hold the harness fixed and swap models. If you are <b>building an agent product</b>, hold the model fixed and treat the harness as the thing you are optimizing, with your eval as the scoreboard.</p>
 
 <div class="callout tip"><span class="t">Go deeper</span><p>How do you prove a harness change helped, rather than just seeing a number move? <a href="21-harness-evals.html">Module 21</a> covers harness evaluation end to end.</p></div>
 <h2>Build your own coding-agent eval from your repo's history</h2>
@@ -1037,7 +1037,7 @@ if __name__ == "__main__":
 <ul>
 <li><b>Seeded-bug recall.</b> Take known-good PRs, inject a bug (or use historical PRs that were later reverted or hot-fixed), and measure how often the reviewer flags the right location. This gives <b>recall</b>: of the real problems, what fraction did it catch?</li>
 <li><b>Comment precision.</b> Have humans or a calibrated LLM judge label each comment as valid-and-useful, valid-but-trivial (nitpick), or wrong. <b>Precision</b> matters enormously here: a reviewer that raises ten false alarms per PR gets ignored, no matter its recall.</li>
-<li><b>Acceptance in production.</b> Once deployed, track the rate at which developers resolve, apply or dismiss the agent's comments. This is an online eval signal (<a href="15-production-evals.html">Module 15</a>), noisy but grounded in real behaviour.</li>
+<li><b>Acceptance in production.</b> Once deployed, track the rate at which developers resolve, apply or dismiss the agent's comments. This is an online eval signal (<a href="15-production-evals.html">Module 15</a>), noisy but grounded in real behavior.</li>
 <li><b>Matching comments to ground truth.</b> A comment "counts" if it points at the right file and line range and describes the same problem. Line matching is code; "same problem" usually needs a judge.</li>
 </ul>
 <p>Report precision and recall together (or an F-score), per severity level, and look at examples. A reviewer tuned only for recall becomes a noise machine.</p>
@@ -1365,7 +1365,7 @@ def dev_bootstrap_ci(shown_a, acc_a, shown_b, acc_b, n_boot=5000):
 <button class="opt">Resolved, because the issue is fixed</button>
 <button class="opt">Unresolved: every F2P must pass AND every P2P must still pass</button>
 <button class="opt">Scored 0.5 for partial credit</button>
-<div class="why">The resolve rule is all-or-nothing. Breaking existing behaviour counts the same as not fixing the bug at all.</div></div>
+<div class="why">The resolve rule is all-or-nothing. Breaking existing behavior counts the same as not fixing the bug at all.</div></div>
 <div class="q" data-answer="2"><p>2. Why was SWE-bench Verified created?</p>
 <button class="opt">To add more programming languages</button>
 <button class="opt">To make tasks harder so scores would drop</button>
@@ -1405,9 +1405,9 @@ def dev_bootstrap_ci(shown_a, acc_a, shown_b, acc_b, n_boot=5000):
 
 <details><summary>Expert corner: interview-style questions</summary>
 <p><b>Q: Design an eval to tell whether a new coding agent is better than the current one for your company.</b> Mine 100 to 200 tasks from recent merged PRs with tests; hand-review a sample for fairness; build per-era Docker images; run both agents 3+ times per task in identical sandboxes (no network, trimmed git, hidden tests applied last); report pass@1 with paired confidence intervals, pass^3, regressions on the full suite, diff size, judge-scored quality, cost per resolved task and turns; read 20 flipped trajectories in each direction before deciding.</p>
-<p><b>Q: Your agent's resolve rate jumped 12 points overnight after a prompt change. What do you check?</b> Whether new passes are genuine (read trajectories), whether the agent started touching test files or configs, whether it found a leak (git history, network, cached artefacts), whether the eval set or harness version changed, and whether the jump survives re-runs (variance).</p>
+<p><b>Q: Your agent's resolve rate jumped 12 points overnight after a prompt change. What do you check?</b> Whether new passes are genuine (read trajectories), whether the agent started touching test files or configs, whether it found a leak (git history, network, cached artifacts), whether the eval set or harness version changed, and whether the jump survives re-runs (variance).</p>
 <p><b>Q: Why might SWE-bench Pro be more trustworthy than Verified in 2026?</b> Its commercial and held-out splits use code that is not public, and its public split uses copyleft repos that training pipelines tend to avoid, so contamination is less likely. OpenAI reported that it "empirically seems to suffer less from contamination issues". It also has longer, multi-file tasks, so it is not saturated. It still depends on test quality, and its open-source set has had its own git-leak report, so the same hygiene applies.</p>
-<p><b>Q: When would you choose continuous scoring (RE-Bench) or dollar weighting (SWE-Lancer) over binary pass rate?</b> Continuous scores fit open-ended optimisation tasks where "better" is a matter of degree. Dollar or effort weighting fits when tasks vary hugely in value and you want the metric to track economic usefulness rather than counting trivial and hard tasks equally.</p>
+<p><b>Q: When would you choose continuous scoring (RE-Bench) or dollar weighting (SWE-Lancer) over binary pass rate?</b> Continuous scores fit open-ended optimization tasks where "better" is a matter of degree. Dollar or effort weighting fits when tasks vary hugely in value and you want the metric to track economic usefulness rather than counting trivial and hard tasks equally.</p>
 </details>
 
 <h2>Sources and further reading</h2>
