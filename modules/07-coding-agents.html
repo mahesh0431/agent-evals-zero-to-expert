@@ -879,6 +879,7 @@ def scorecard(passed: bool, diff: str, trace: dict, judge: dict) -&gt; dict:
 
 <p>For your own work, this cuts both ways. If you are <b>choosing a model</b>, hold the harness fixed and swap models. If you are <b>building an agent product</b>, hold the model fixed and treat the harness as the thing you are optimising, with your eval as the scoreboard.</p>
 
+<div class="callout tip"><span class="t">Go deeper</span><p>How do you prove a harness change helped, rather than just seeing a number move? <a href="21-harness-evals.html">Module 21</a> covers harness evaluation end to end.</p></div>
 <h2>Build your own coding-agent eval from your repo's history</h2>
 <p>Public benchmarks tell you about general skill on popular open-source Python projects. What you want to know is whether an agent can work in <em>your</em> codebase: your frameworks, your conventions, your weird build. The good news: your git history is a ready-made benchmark generator. Every merged pull request that added tests is a task with a known answer and a built-in grader. This is exactly how SWE-bench was built, applied to your repo.</p>
 

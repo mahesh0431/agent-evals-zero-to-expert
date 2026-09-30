@@ -778,6 +778,7 @@ task = {
 <div class="card violet"><h4>"Is our agent good?"</h4><p>Evaluate the whole system as shipped. The scaffold is part of the product, and scaffold improvements are real improvements, so ablate them one at a time to see which ones pay off.</p></div>
 </div>
 
+<div class="callout tip"><span class="t">Go deeper</span><p>This section is the short version. <a href="21-harness-evals.html">Module 21</a> is a full module on evaluating the harness on its own: ablations, the model × harness matrix, component metrics and harness regression tests.</p></div>
 <h2>Safety along the trajectory</h2>
 <p>A chatbot's worst output is a bad paragraph. An agent's worst output is an <em>action</em>: a charge that cannot be reversed, an email that cannot be unsent, a production database that is gone. That changes eval design in two ways. First, the sandbox matters for your own safety: the agent under test can really delete files, so nothing in the sandbox should be connected to anything you care about. Second, safety becomes a property of the <em>path</em>, not just the outcome. An agent that reaches the correct end state after trying to email a customer's passport number to the wrong address has failed, even if the send was blocked.</p>
 

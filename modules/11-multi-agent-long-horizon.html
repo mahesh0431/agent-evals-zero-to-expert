@@ -471,6 +471,7 @@ print(score(M, final_state))
 <p>It is tempting to blame every long-run failure on a full context window. Vending-Bench's authors explicitly found "no clear correlation" between failures and the point at which the context window filled. Coherence over long runs is a skill in its own right. Do not assume a bigger window fixes it: measure.</p>
 </div>
 
+<div class="callout tip"><span class="t">Go deeper</span><p>Long-term memory across sessions (what gets written, retrieved, updated and forgotten) gets its own treatment in <a href="23-memory-evals.html">Module 23</a>, including the LoCoMo, LongMemEval and MemoryAgentBench benchmarks.</p></div>
 <h2>Cost and wall-clock budgets</h2>
 <p>Long tasks are expensive: MLE-bench runs take about a day of GPU time each, and Vending-Bench runs exceed 20 million tokens. That has two consequences for evals.</p>
 <ol>

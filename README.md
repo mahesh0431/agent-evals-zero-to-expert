@@ -6,8 +6,8 @@ A free, visual course on evaluating AI agents across every modality: tool calls,
 
 ## What's inside
 
-- **20 modules in 4 parts**, each built around inline diagrams (over 200 in total), with runnable code, worked examples, a self-check quiz and cited sources.
-- **Interactive widgets**: score noise, confidence intervals, paired A/B comparisons, pass@k vs pass^k, compounding errors, judge-error correction, word error rate and Arena ratings. All of them are collected in the [Eval Playground](https://mahesh0431.github.io/agent-evals-zero-to-expert/playground.html).
+- **23 modules in 5 parts**, each built around inline diagrams (nearly 300 in total), with runnable code, worked examples, a self-check quiz and cited sources.
+- **Interactive widgets**: score noise, confidence intervals, paired A/B comparisons, pass@k vs pass^k, compounding errors, judge-error correction, word error rate, Arena ratings, harness ablation, skill trigger thresholds and memory retrieval. All of them are collected in the [Eval Playground](https://mahesh0431.github.io/agent-evals-zero-to-expert/playground.html).
 - **A runnable capstone** in [`code/capstone`](code/capstone): an [Inspect](https://inspect.aisi.org.uk/) eval of a tool-using support agent, with outcome, policy and LLM-judge scorers, pass^k over epochs, analysis scripts and a CI gate.
 
 | Part | Modules |
@@ -16,6 +16,7 @@ A free, visual course on evaluating AI agents across every modality: tool calls,
 | II · Agent evals, every modality | 05 Why agents are different · 06 Tool use, RAG and conversation · 07 Coding agents · 08 Web and computer use · 09 Voice agents · 10 Vision, image and video · 11 Multi-agent and long-horizon |
 | III · Practice | 12 Error analysis · 13 LLM-as-a-judge · 14 The tools landscape · 15 Evals in production and CI |
 | IV · Expert | 16 How the labs do evals · 17 Safety and dangerous-capability evals · 18 Benchmark pitfalls · 19 Capstone · 20 Expert drill, glossary and map |
+| V · Building blocks | 21 Evaluating the agent harness · 22 Evaluating agent skills · 23 Evaluating agent memory |
 
 ## Run locally
 

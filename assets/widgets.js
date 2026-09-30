@@ -1,5 +1,5 @@
 // Interactive widgets. Place <div data-widget="NAME"></div> anywhere in a module.
-// Widgets: passk, ci, variance, compare, compound, judgefix, wer, elo
+// Widgets: passk, ci, variance, compare, compound, judgefix, wer, elo, ablation, trigger, memory
 (function () {
   const $ = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
   const fmt = (x, d = 1) => (x * 100).toFixed(d) + "%";
@@ -174,6 +174,83 @@
         const xs = [...Array(33)].map((_, i) => -400 + i * 25);
         chart(el.querySelector("svg"), { xmin: -400, xmax: 400, xticks: [-400, -200, 0, 200, 400], xlabel: "rating gap", ylabel: "P(A wins)", series: [{ color: "violet", pts: xs.map(x => [x, f(x)]) }], markers: [{ x: v.g, color: "accent" }] });
         st("p", fmt(f(v.g)));
+      });
+    },
+    ablation(el) {
+      const C = [
+        ["plan", "Planning step before acting", 0.05, 1.10],
+        ["verify", "Self-test / verify before 'done'", 0.09, 1.25],
+        ["tools", "Clear tool descriptions + errors", 0.07, 1.00],
+        ["compact", "Compaction + notes file", 0.04, 0.85],
+        ["sub", "Sub-agents for search", 0.03, 1.60],
+      ];
+      el.innerHTML = `<h4>Ablate the harness</h4><div class="wdesc">The model stays fixed. Switch harness components on and off and watch the success rate (with its 95% interval) and the cost per task move. Effects are illustrative, not measured.</div>
+      <div class="controls">${C.map(c => `<label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" data-c="${c[0]}" checked> ${c[1]}</label>`).join("")}${slider("n", "Tasks in the suite", 20, 500, 10, 100)}</div><svg></svg>
+      <div class="readout">${stat("s", "success, your harness")}${stat("b", "success, bare loop")}${stat("c", "cost per task")}${stat("v", "verdict")}</div>
+      <div class="note">Two lessons: small suites cannot separate harnesses whose intervals overlap, and a component can raise success while raising cost (sub-agents) or lower cost at little accuracy loss (compaction). Report both.</div>`;
+      const svg = el.querySelector("svg");
+      const run = () => {
+        const n = +el.querySelector("[data-in=n]").value; el.querySelector("[data-out=n]").textContent = n;
+        let p = 0.40, cost = 0.30; const on = {};
+        C.forEach(c => { on[c[0]] = el.querySelector(`[data-c=${c[0]}]`).checked; if (on[c[0]]) { p += c[2]; cost *= c[3]; } });
+        if (on.plan && on.verify) p += 0.03; // interaction: verification works better with a plan
+        p = Math.min(p, 0.97);
+        const [lo, hi] = wilson(p, n), [blo, bhi] = wilson(0.40, n);
+        const Wd = 640, H = 230, L = 150, R = 60, bar = 34, X = v => L + v * (Wd - L - R);
+        const row = (y, label, v, a, b, col) => `<text x="${L - 10}" y="${y + bar / 2 + 4}" text-anchor="end">${label}</text><rect x="${L}" y="${y}" width="${X(v) - L}" height="${bar}" rx="6" style="fill:var(--${col === "muted" ? "surface-2" : col + "-soft"});stroke:var(--${col})"/><line x1="${X(a)}" x2="${X(b)}" y1="${y + bar / 2}" y2="${y + bar / 2}" style="stroke:var(--text);stroke-width:2"/><line x1="${X(a)}" x2="${X(a)}" y1="${y + 8}" y2="${y + bar - 8}" style="stroke:var(--text);stroke-width:2"/><line x1="${X(b)}" x2="${X(b)}" y1="${y + 8}" y2="${y + bar - 8}" style="stroke:var(--text);stroke-width:2"/><text x="${X(b) + 6}" y="${y + bar / 2 + 4}" style="font-weight:700">${fmt(v, 0)}</text>`;
+        let g = [0, .25, .5, .75, 1].map(t => `<line x1="${X(t)}" x2="${X(t)}" y1="20" y2="${H - 40}" style="stroke:var(--line);stroke-dasharray:3 4"/><text x="${X(t)}" y="${H - 22}" text-anchor="middle" style="fill:var(--muted)">${t * 100}%</text>`).join("");
+        g += row(40, "bare loop", 0.40, blo, bhi, "muted") + row(110, "your harness", p, lo, hi, "accent");
+        g += `<text x="${(L + Wd - R) / 2}" y="${H - 4}" text-anchor="middle" style="fill:var(--muted)">task success rate (bars show 95% Wilson interval)</text>`;
+        svg.setAttribute("viewBox", `0 0 ${Wd} ${H}`); svg.innerHTML = g;
+        const set = (k, v) => el.querySelector(`[data-stat=${k}]`).textContent = v;
+        set("s", fmt(p, 0)); set("b", "40%"); set("c", "$" + cost.toFixed(2));
+        set("v", lo > bhi ? "clearly better" : hi < blo ? "clearly worse" : "can't tell yet");
+      };
+      el.querySelectorAll("input").forEach(i => i.addEventListener("input", run)); run();
+    },
+
+    trigger(el) {
+      // 12 should-trigger and 12 should-not queries with the relevance score a description produces (illustrative)
+      const pos = [0.92, 0.88, 0.83, 0.79, 0.74, 0.70, 0.66, 0.61, 0.55, 0.48, 0.41, 0.33];
+      const near = [0.72, 0.64, 0.58, 0.52, 0.45, 0.39, 0.34, 0.28, 0.22, 0.18, 0.12, 0.08];
+      const easy = [0.20, 0.16, 0.14, 0.12, 0.10, 0.09, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02];
+      el.innerHTML = `<h4>Trigger threshold: precision vs recall</h4><div class="wdesc">Each dot is an eval query. Green dots should trigger the skill, red dots should not. The skill fires when a query's relevance to the description is above the threshold. Move it, then switch the negatives from near-misses to easy ones.</div>
+      <div class="controls">${slider("t", "Trigger threshold", 0.05, 0.95, 0.01, 0.5)}<label>Negative queries<select data-in="neg" style="font:inherit;padding:4px;border-radius:6px"><option value="near">near-misses (hard)</option><option value="easy">obviously unrelated (easy)</option></select></label></div><svg></svg>
+      <div class="readout">${stat("p", "precision")}${stat("r", "recall")}${stat("fp", "false triggers")}${stat("fn", "missed triggers")}</div>
+      <div class="note">With easy negatives almost any threshold looks perfect, which is why skill-creator asks for near-miss negatives. Scores here are illustrative.</div>`;
+      el.querySelector("select").setAttribute("data-in", "neg");
+      wire(el, (v, out, st) => {
+        out("t", v.t.toFixed(2));
+        const neg = v.neg === "easy" ? easy : near;
+        const svg = el.querySelector("svg"), Wd = 640, H = 170, L = 30, R = 30, X = x => L + x * (Wd - L - R);
+        let g = `<rect x="${X(v.t)}" y="18" width="${X(1) - X(v.t)}" height="110" rx="6" style="fill:var(--accent-soft)"/><text x="${X(v.t) + 6}" y="32" style="fill:var(--accent);font-weight:700">fires</text>`;
+        g += `<line x1="${L}" x2="${Wd - R}" y1="138" y2="138" style="stroke:var(--line)"/>` + [0, .25, .5, .75, 1].map(t => `<text x="${X(t)}" y="156" text-anchor="middle" style="fill:var(--muted)">${t}</text>`).join("");
+        g += `<text x="${L}" y="60" style="fill:var(--good)">should trigger</text><text x="${L}" y="108" style="fill:var(--bad)">should not</text>`;
+        pos.forEach(x => g += `<circle cx="${X(x)}" cy="74" r="7" style="fill:var(--good);opacity:.85"/>`);
+        neg.forEach(x => g += `<circle cx="${X(x)}" cy="118" r="7" style="fill:var(--bad);opacity:.85"/>`);
+        g += `<line x1="${X(v.t)}" x2="${X(v.t)}" y1="14" y2="138" style="stroke:var(--accent);stroke-width:2.5"/>`;
+        g += `<text x="${Wd / 2}" y="168" text-anchor="middle" style="fill:var(--muted)">relevance of query to the skill description</text>`;
+        svg.setAttribute("viewBox", `0 0 ${Wd} ${H + 6}`); svg.innerHTML = g;
+        const tp = pos.filter(x => x >= v.t).length, fp = neg.filter(x => x >= v.t).length, fn = pos.length - tp;
+        st("p", tp + fp ? fmt(tp / (tp + fp), 0) : "–"); st("r", fmt(tp / pos.length, 0)); st("fp", fp + " / " + neg.length); st("fn", fn + " / " + pos.length);
+      });
+    },
+
+    memory(el) {
+      el.innerHTML = `<h4>Retrieve how many memories?</h4><div class="wdesc">A memory system retrieves the top-k stored memories and hands them to the model. Too few and the needed fact is missed; too many and the answer drowns in distractors and costs more. Compare with stuffing the whole history into the context.</div>
+      <div class="controls">${slider("k", "Memories retrieved (top-k)", 1, 40, 1, 8)}${slider("s", "Sessions of history", 5, 500, 5, 100)}</div><svg></svg>
+      <div class="readout">${stat("a", "accuracy, retrieval")}${stat("f", "accuracy, full context")}${stat("t", "tokens per answer")}${stat("ft", "full-context tokens")}</div>
+      <div class="note">Illustrative model, not benchmark data: recall@k rises with k and falls as history grows; the reader loses a little accuracy per distractor; full context degrades as history gets long and stops fitting. Real systems show the same shape, with different numbers.</div>`;
+      wire(el, (v, out, st) => {
+        out("k", v.k); out("s", v.s);
+        const scale = 2 + Math.log(v.s) * 1.6;
+        const acc = k => Math.max(0, (1 - Math.exp(-k / scale)) * (0.93 - 0.004 * k));
+        const full = Math.max(0.2, 0.9 - 0.13 * Math.log10(v.s) - (v.s > 250 ? 0.15 : 0));
+        const ks = [...Array(40)].map((_, i) => i + 1);
+        chart(el.querySelector("svg"), { xmin: 1, xmax: 40, xticks: [1, 10, 20, 30, 40], xlabel: "top-k memories retrieved", ylabel: "answer accuracy",
+          series: [{ color: "accent", label: "retrieval", pts: ks.map(k => [k, acc(k)]) }, { color: "warn", label: "full context", pts: [[1, full], [40, full]] }], markers: [{ x: v.k, color: "accent" }] });
+        const tok = 400 + v.k * 120, ftok = v.s * 1800;
+        st("a", fmt(acc(v.k), 0)); st("f", fmt(full, 0)); st("t", tok.toLocaleString()); st("ft", ftok.toLocaleString());
       });
     },
   };
