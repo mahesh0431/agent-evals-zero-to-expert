@@ -298,8 +298,8 @@
 <text x="36" y="72" class="sm">A 45-year-old man presents with crushing</text>
 <text x="36" y="88" class="sm">chest pain radiating to the left arm, ECG</text>
 <text x="36" y="104" class="sm">shows ST elevation. Most likely diagnosis?</text>
-<text x="36" y="130" class="mono">A) GERD      B) Myocardial infarction</text>
-<text x="36" y="148" class="mono">C) Pleurisy  D) Panic attack</text>
+<text x="36" y="130" class="mono">A) GERD</text><text x="160" y="130" class="mono">B) Myocardial infarction</text>
+<text x="36" y="148" class="mono">C) Pleurisy</text><text x="160" y="148" class="mono">D) Panic attack</text>
 <rect class="box accent" x="36" y="170" width="338" height="54" rx="8"/>
 <text x="205" y="193" text-anchor="middle" class="b">Grade: does the letter match?</text>
 <text x="205" y="212" text-anchor="middle" class="sm">all facts given, one right answer</text>
@@ -448,8 +448,8 @@ print("benchmark score:", round(mean(score_example(stroke, m) for m in responses
 <defs><marker id="m27e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="20" y="36" width="250" height="84" rx="10"/>
 <text x="36" y="62" class="b">Question</text>
-<text x="36" y="84" class="sm">What was the operating margin in FY2024,</text>
-<text x="36" y="102" class="sm">and how did it change from FY2023?</text>
+<text x="36" y="84" class="sm">What was the FY2024 operating margin,</text>
+<text x="36" y="102" class="sm">and the change from FY2023?</text>
 <rect class="box accent pulse" x="320" y="50" width="120" height="56" rx="10"/><text x="380" y="83" text-anchor="middle" class="b">Agent</text>
 <rect class="box good" x="490" y="36" width="310" height="84" rx="10"/>
 <text x="506" y="62" class="b">Answer</text>
@@ -657,7 +657,7 @@ def execution_match(gold_sql, pred_sql, db_paths):
 <text x="710" y="300" text-anchor="middle" class="sm">200</text>
 <text x="440" y="330" text-anchor="middle">trials per policy, observed success 60% in every case</text>
 </svg>
-<figcaption><b>Ten trials cannot tell 60% from 50%.</b> Wilson 95% intervals for an observed 60% success rate (real computation). Only at around 100 trials per policy does the interval pull clear of a rival at 50%, and comparing two policies directly (a paired or A/B test) needs even more. Many robotics papers report 10 to 20 trials per task.</figcaption>
+<figcaption><b>Ten trials cannot tell 60% from 50%.</b> Wilson 95% intervals for an observed 60% success rate (real computation). Only at around 100 trials does the lower end of the interval climb to a rival at 50%, and comparing two policies directly (a paired or A/B test) needs even more. Yet reports of 10 to 20 trials per task are common in robotics papers.</figcaption>
 </figure>
 
 <p>This is why careful robotics groups now publish their statistics. Toyota Research Institute's large behavior model study (<b>"A Careful Examination of Large Behavior Models for Multitask Dexterous Manipulation"</b>, arXiv 2507.05331, later in Science Robotics) is a good model to copy: blind, randomized A/B trials in which the operator does not know which policy is running, and reported uncertainty rather than single numbers. TRI also wrote up the method in a post on statistical thinking for robot policy evaluation.</p>
