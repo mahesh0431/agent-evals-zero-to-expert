@@ -29,6 +29,11 @@
       ["19", "capstone", "Capstone: an agent eval end to end"],
       ["20", "expert-drill", "Expert drill, glossary and map"],
     ]},
+    { title: "Part V · Evaluating the building blocks", mods: [
+      ["21", "harness-evals", "Evaluating the agent harness"],
+      ["22", "skills-evals", "Evaluating agent skills"],
+      ["23", "memory-evals", "Evaluating agent memory"],
+    ]},
   ];
   const ALL = PARTS.flatMap(p => p.mods);
   const inModules = location.pathname.includes("/modules/");
