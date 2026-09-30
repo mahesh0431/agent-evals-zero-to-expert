@@ -1,5 +1,5 @@
 // Interactive widgets. Place <div data-widget="NAME"></div> anywhere in a module.
-// Widgets: passk, ci, variance, compare, compound, judgefix, wer, elo, ablation, trigger, memory
+// Widgets: passk, ci, variance, compare, compound, judgefix, wer, elo, ablation, trigger, memory, infranoise
 (function () {
   const $ = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
   const fmt = (x, d = 1) => (x * 100).toFixed(d) + "%";
@@ -251,6 +251,35 @@
           series: [{ color: "accent", label: "retrieval", pts: ks.map(k => [k, acc(k)]) }, { color: "warn", label: "full context", pts: [[1, full], [40, full]] }], markers: [{ x: v.k, color: "accent" }] });
         const tok = 400 + v.k * 120, ftok = v.s * 1800;
         st("a", fmt(acc(v.k), 0)); st("f", fmt(full, 0)); st("t", tok.toLocaleString()); st("ft", ftok.toLocaleString());
+      });
+    },
+    infranoise(el) {
+      const cfg = [["tight", "1 CPU · 2 GB · 10 min", -0.07], ["default", "2 CPU · 4 GB · 30 min", 0], ["generous", "8 CPU · 16 GB · 60 min", 0.03]];
+      el.innerHTML = `<h4>Infrastructure noise vs model gap</h4><div class="wdesc">Two agents whose true success rates differ by a small gap, each run under three sandbox resource settings. Pick which setting each one got and see whether the "winner" is the better model or the bigger machine. Effects are illustrative.</div>
+      <div class="controls">${slider("g", "True gap, model A minus B (pts)", 0, 10, 1, 2)}${slider("n", "Tasks in the suite", 50, 1000, 50, 800)}
+      <label>Model A runs on<select data-in="a" style="font:inherit;padding:4px;border-radius:6px">${cfg.map((c, i) => `<option value="${i}"${i === 0 ? " selected" : ""}>${c[0]} (${c[1]})</option>`).join("")}</select></label>
+      <label>Model B runs on<select data-in="b" style="font:inherit;padding:4px;border-radius:6px">${cfg.map((c, i) => `<option value="${i}"${i === 2 ? " selected" : ""}>${c[0]} (${c[1]})</option>`).join("")}</select></label></div><svg></svg>
+      <div class="readout">${stat("ra", "measured A")}${stat("rb", "measured B")}${stat("sp", "infra spread (A)")}${stat("v", "leaderboard says")}</div>
+      <div class="note">Fix: pin and publish the resource configuration, run both agents on the same one, and report it next to the score. Harness and infrastructure are part of what you measured.</div>`;
+      wire(el, (v, out, st) => {
+        out("g", v.g); out("n", v.n);
+        const base = 0.55, pa = base + v.g / 100, pb = base;
+        const A = +v.a, B = +v.b, ma = pa + cfg[A][2], mb = pb + cfg[B][2];
+        const svg = el.querySelector("svg"), Wd = 640, H = 250, L = 150, R = 30, X = x => L + (x - 0.35) / 0.4 * (Wd - L - R);
+        let g = [0.35, 0.45, 0.55, 0.65, 0.75].map(t => `<line x1="${X(t)}" x2="${X(t)}" y1="14" y2="${H - 44}" style="stroke:var(--line);stroke-dasharray:3 4"/><text x="${X(t)}" y="${H - 28}" text-anchor="middle" style="fill:var(--muted)">${Math.round(t * 100)}%</text>`).join("");
+        const rowY = [40, 90, 140];
+        cfg.forEach((c, i) => {
+          g += `<text x="${L - 10}" y="${rowY[i] + 12}" text-anchor="end">${c[0]}</text>`;
+          [[pa, "accent", -8, i === A], [pb, "violet", 8, i === B]].forEach(([p0, col, dy, sel]) => {
+            const m = p0 + c[2], [lo, hi] = wilson(m, v.n), y = rowY[i] + 8 + dy;
+            g += `<line x1="${X(lo)}" x2="${X(hi)}" y1="${y}" y2="${y}" style="stroke:var(--${col});stroke-width:2;opacity:${sel ? 1 : .35}"/><circle cx="${X(m)}" cy="${y}" r="${sel ? 7 : 5}" style="fill:var(--${col});opacity:${sel ? 1 : .35}"/>`;
+          });
+        });
+        g += `<circle cx="${L}" cy="${H - 8}" r="5" style="fill:var(--accent)"/><text x="${L + 10}" y="${H - 4}">model A</text><circle cx="${L + 90}" cy="${H - 8}" r="5" style="fill:var(--violet)"/><text x="${L + 100}" y="${H - 4}">model B</text><text x="${Wd - R}" y="${H - 4}" text-anchor="end" style="fill:var(--muted)">bold dot = the run you reported</text>`;
+        svg.setAttribute("viewBox", `0 0 ${Wd} ${H}`); svg.innerHTML = g;
+        const [alo, ahi] = wilson(ma, v.n), [blo, bhi] = wilson(mb, v.n);
+        st("ra", fmt(ma, 1)); st("rb", fmt(mb, 1)); st("sp", ((cfg[2][2] - cfg[0][2]) * 100).toFixed(0) + " pts");
+        st("v", alo > bhi ? "A wins" : blo > ahi ? (v.g > 0 ? "B wins (wrongly)" : "B wins") : "too close to call");
       });
     },
   };

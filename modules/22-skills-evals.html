@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>22 · Evaluating agent skills · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 22 · Part V · Evaluating the building blocks</div>
+<h1>Evaluating agent skills</h1>
+<p class="lede">A skill is a folder of know-how that an agent loads only when it thinks the skill is relevant. That single design choice creates two separate ways to fail: the skill never fires when it should, or it fires and does not actually help. This module shows how to measure both, following the method in Anthropic's own open-source <code>skill-creator</code> skill, and then goes further: adherence, many skills at once, portability across models, and skills as a security supply chain.</p>
+<div class="meta"><span class="pill level-3">Advanced</span><span class="pill">~65 min</span><span class="pill">Prereqs: Modules 03, 04, 05, 13</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Explain what a skill is (folder, <code>SKILL.md</code>, frontmatter, bundled files), how <b>progressive disclosure</b> loads it in three levels, and how it differs from a tool, an MCP server and a system prompt.</li>
+<li>Treat <b>triggering</b> as a classification problem: build should-trigger and near-miss should-not-trigger sets, run repeats, and compute trigger rate, precision, recall and a confusion matrix.</li>
+<li>Optimize a skill's description with a <b>train / held-out split</b> and explain why you pick the winner by held-out score.</li>
+<li>Run an <b>uplift</b> eval: with-skill vs baseline runs in parallel, objective assertions, a grader that cites evidence, aggregate stats with mean and standard deviation, and an analyst pass that catches non-discriminating and flaky assertions.</li>
+<li>Check <b>adherence</b> from the trajectory: did the agent read the referenced file, run the bundled script, follow the steps in order?</li>
+<li>Evaluate <b>selection</b> when dozens of skills are installed, <b>portability</b> across models and harnesses, and <b>safety</b> of third-party skills.</li>
+<li>Compute trigger metrics and a paired bootstrap confidence interval for uplift in Python.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>What a skill is</h2>
+<p>Imagine you hire a very capable generalist. They can write, code and analyze data, but they do not know <em>your</em> company's way of doing things: which report template finance expects, which chart colors are on-brand, which validation step always catches the broken export. You could brief them on all of it every morning, but most days they would not need most of it. A better approach is a shelf of labeled binders. The generalist glances at the labels, pulls down the right binder when a task calls for it, and only then reads the details.</p>
+<p>An <b>agent skill</b> is one of those binders. Anthropic introduced Agent Skills in October 2025. Concretely, a skill is a <b>folder</b> containing:</p>
+<ul>
+<li>A file called <code>SKILL.md</code>. It starts with <b>YAML frontmatter</b> (a small block of <code>key: value</code> lines between <code>---</code> markers) holding at least a <code>name</code> and a <code>description</code>, followed by Markdown instructions (the <b>body</b>).</li>
+<li>Optional <b>bundled resources</b>: <code>scripts/</code> (executable code for deterministic or repetitive steps), <code>references/</code> (longer documents loaded into context only when needed) and <code>assets/</code> (files used in the output, such as templates, icons or fonts).</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Left: the folder tree of a quarterly-report skill with SKILL.md, a scripts folder, a references folder and an assets folder. Right: the SKILL.md file, split into frontmatter with name and description, and a body with four numbered steps that point at the bundled files.">
+<defs><marker id="m22a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="26" class="b">The folder</text>
+<rect class="box plain" x="20" y="38" width="270" height="250" rx="10"/>
+<text x="38" y="66" class="mono">quarterly-report/</text>
+<text x="38" y="94" class="mono">├─ SKILL.md</text>
+<text x="38" y="122" class="mono">├─ scripts/</text>
+<text x="38" y="146" class="mono">│   └─ make_chart.py</text>
+<text x="38" y="174" class="mono">├─ references/</text>
+<text x="38" y="198" class="mono">│   └─ style-guide.md</text>
+<text x="38" y="226" class="mono">└─ assets/</text>
+<text x="38" y="250" class="mono">    └─ template.docx</text>
+<text x="38" y="276" class="sm">only SKILL.md is required</text>
+<line class="ln accent" x1="140" y1="90" x2="332" y2="90" marker-end="url(#m22a)"/>
+<text x="360" y="26" class="b">Inside SKILL.md</text>
+<rect class="box accent" x="340" y="38" width="460" height="92" rx="10"/>
+<text x="356" y="60" class="mono">---</text>
+<text x="356" y="78" class="mono">name: quarterly-report</text>
+<text x="356" y="96" class="mono">description: Build the quarterly sales report</text>
+<text x="356" y="112" class="mono">  from a CSV export. Use whenever the user ...</text>
+<text x="790" y="60" text-anchor="end" class="sm t-accent">frontmatter: the label</text>
+<rect class="box plain" x="340" y="142" width="460" height="146" rx="10"/>
+<text x="356" y="164" class="mono">---</text>
+<text x="356" y="184" class="mono"># Quarterly report</text>
+<text x="356" y="206" class="mono">1. Validate the CSV columns first</text>
+<text x="356" y="226" class="mono">2. Run scripts/make_chart.py</text>
+<text x="356" y="246" class="mono">3. Read references/style-guide.md</text>
+<text x="356" y="266" class="mono">4. Fill assets/template.docx</text>
+<text x="790" y="164" text-anchor="end" class="sm">body: the instructions</text>
+<text x="410" y="316" text-anchor="middle" class="sm t-muted">the body points at bundled files; the agent opens or runs them only when a step needs them</text>
+</svg>
+<figcaption><b>Anatomy of a skill.</b> The frontmatter is a short label the agent always sees; the body is the playbook it reads after deciding the skill is relevant; the bundled files are opened or executed only when a step calls for them. We will use this <code>quarterly-report</code> skill as the running example.</figcaption>
+</figure>
+
+<p>Two limits from the spec matter for evals. The <code>name</code> can be at most 64 characters and the <code>description</code> at most 1,024 characters; <code>skill-creator</code>'s validator enforces both and its description optimizer aims for roughly 100 to 200 words. That short description is <b>everything</b> the agent knows about the skill before deciding to open it, so it carries almost all of the triggering behavior. Hold on to that thought: it is why trigger evals exist.</p>
+
+<h3>Progressive disclosure: three levels of loading</h3>
+<p>The key design idea is <b>progressive disclosure</b>: show the model a little, and let it ask for more. Skills load in three levels:</p>
+<ol>
+<li><b>Level 1, metadata.</b> The <code>name</code> and <code>description</code> of <em>every</em> installed skill sit in the context all the time. <code>skill-creator</code> puts this at about 100 words per skill.</li>
+<li><b>Level 2, the body.</b> When the agent decides a skill is relevant, the whole <code>SKILL.md</code> body is loaded. The guidance is to keep it under about 500 lines, and to split anything bigger into reference files with clear pointers.</li>
+<li><b>Level 3, bundled resources.</b> Reference files are read only when a step needs them. Scripts can be <em>executed</em> without their code ever entering the context: only their output does. This level is effectively unlimited.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 390" role="img" aria-label="Three snapshots of the context window. At session start it holds the system prompt, one short label per installed skill and the user message. After the skill triggers, the SKILL.md body is added. When a step needs detail, a reference file is added and only the output of a script, not its code.">
+<defs><marker id="m22b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="140" y="30" text-anchor="middle" class="b">Level 1 · always</text>
+<text x="410" y="30" text-anchor="middle" class="b">Level 2 · on trigger</text>
+<text x="680" y="30" text-anchor="middle" class="b">Level 3 · on demand</text>
+<rect class="box dashed" x="30" y="44" width="220" height="290" rx="10"/>
+<rect class="box dashed" x="300" y="44" width="220" height="290" rx="10"/>
+<rect class="box dashed" x="570" y="44" width="220" height="290" rx="10"/>
+<rect class="box plain" x="42" y="56" width="196" height="28" rx="6"/><text x="140" y="75" text-anchor="middle" class="sm">system prompt</text>
+<rect class="box accent" x="42" y="90" width="196" height="40" rx="6"/><text x="140" y="108" text-anchor="middle" class="sm">skill labels (name + description)</text><text x="140" y="123" text-anchor="middle" class="sm">x every installed skill</text>
+<rect class="box plain" x="42" y="136" width="196" height="28" rx="6"/><text x="140" y="155" text-anchor="middle" class="sm">user: "make the Q3 report"</text>
+<rect class="box plain" x="312" y="56" width="196" height="28" rx="6"/><text x="410" y="75" text-anchor="middle" class="sm">system prompt</text>
+<rect class="box accent" x="312" y="90" width="196" height="40" rx="6"/><text x="410" y="108" text-anchor="middle" class="sm">skill labels (name + description)</text><text x="410" y="123" text-anchor="middle" class="sm">x every installed skill</text>
+<rect class="box plain" x="312" y="136" width="196" height="28" rx="6"/><text x="410" y="155" text-anchor="middle" class="sm">user: "make the Q3 report"</text>
+<rect class="box violet pulse" x="312" y="170" width="196" height="70" rx="6"/><text x="410" y="198" text-anchor="middle" class="b">SKILL.md body</text><text x="410" y="218" text-anchor="middle" class="sm">steps, rules, pointers</text>
+<rect class="box plain" x="582" y="56" width="196" height="28" rx="6"/><text x="680" y="75" text-anchor="middle" class="sm">system prompt</text>
+<rect class="box accent" x="582" y="90" width="196" height="40" rx="6"/><text x="680" y="108" text-anchor="middle" class="sm">skill labels (name + description)</text><text x="680" y="123" text-anchor="middle" class="sm">x every installed skill</text>
+<rect class="box plain" x="582" y="136" width="196" height="28" rx="6"/><text x="680" y="155" text-anchor="middle" class="sm">user: "make the Q3 report"</text>
+<rect class="box violet" x="582" y="170" width="196" height="70" rx="6"/><text x="680" y="198" text-anchor="middle" class="b">SKILL.md body</text><text x="680" y="218" text-anchor="middle" class="sm">steps, rules, pointers</text>
+<rect class="box good" x="582" y="246" width="196" height="40" rx="6"/><text x="680" y="264" text-anchor="middle" class="sm">references/style-guide.md</text><text x="680" y="279" text-anchor="middle" class="sm">(read because step 3 said so)</text>
+<rect class="box warn" x="582" y="292" width="196" height="30" rx="6"/><text x="680" y="312" text-anchor="middle" class="sm">make_chart.py output only</text>
+<line class="ln accent flow" x1="252" y1="190" x2="296" y2="190" marker-end="url(#m22b)"/>
+<text x="274" y="180" text-anchor="middle" class="sm">fires</text>
+<line class="ln accent flow" x1="522" y1="190" x2="566" y2="190" marker-end="url(#m22b)"/>
+<text x="544" y="180" text-anchor="middle" class="sm">needs</text>
+<text x="140" y="356" text-anchor="middle" class="sm">~100 words per skill,</text>
+<text x="140" y="372" text-anchor="middle" class="sm">paid on every request</text>
+<text x="410" y="356" text-anchor="middle" class="sm">the body, ideally under</text>
+<text x="410" y="372" text-anchor="middle" class="sm">~500 lines, paid only when used</text>
+<text x="680" y="356" text-anchor="middle" class="sm">unbounded; script code never</text>
+<text x="680" y="372" text-anchor="middle" class="sm">enters context, only its output</text>
+</svg>
+<figcaption><b>Progressive disclosure, as the context window sees it.</b> Level 1 costs a little on every request for every installed skill. Level 2 is paid only when the agent decides the skill is relevant. Level 3 is paid only for the specific file or script output a step needs. Each arrow is a decision the agent makes, and each decision can be wrong, which is what this module teaches you to measure.</figcaption>
+</figure>
+
+<h3>Skill vs tool vs MCP server vs system prompt</h3>
+<p>Beginners often blur these four. They sit in different places around the agent loop and fail in different ways, so they need different evals. This module covers skills; tools and MCP servers get their own treatment in <a href="24-tools-and-mcp-evals.html">Module 24</a>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 312" role="img" aria-label="The agent model in the middle. A system prompt feeds it on every turn. A skill folder is read into it only when relevant. On the right it calls a tool and gets a result, and talks to an MCP server that exposes many tools and resources over a protocol. A dashed path shows that a skill's steps can tell the agent to call tools.">
+<defs><marker id="m22c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="320" y="100" width="180" height="84" rx="12"/>
+<text x="410" y="136" text-anchor="middle" class="lg">Agent (model</text>
+<text x="410" y="158" text-anchor="middle" class="lg">in a loop)</text>
+<rect class="box plain" x="20" y="30" width="220" height="64" rx="10"/>
+<text x="130" y="56" text-anchor="middle" class="b">System prompt</text>
+<text x="130" y="76" text-anchor="middle" class="sm">rules and persona, every turn</text>
+<rect class="box violet" x="20" y="180" width="220" height="64" rx="10"/>
+<text x="130" y="206" text-anchor="middle" class="b">Skill (folder)</text>
+<text x="130" y="226" text-anchor="middle" class="sm">know-how, read when relevant</text>
+<rect class="box good" x="580" y="30" width="220" height="64" rx="10"/>
+<text x="690" y="56" text-anchor="middle" class="b">Tool</text>
+<text x="690" y="76" text-anchor="middle" class="sm">one callable function</text>
+<rect class="box warn" x="580" y="180" width="220" height="64" rx="10"/>
+<text x="690" y="206" text-anchor="middle" class="b">MCP server</text>
+<text x="690" y="226" text-anchor="middle" class="sm">tools + resources over a protocol</text>
+<line class="ln" x1="240" y1="70" x2="316" y2="116" marker-end="url(#m22c)"/>
+<text x="266" y="82" class="sm">always</text>
+<line class="ln violet flow" x1="240" y1="206" x2="316" y2="170" marker-end="url(#m22c)"/>
+<text x="252" y="176" class="sm">if chosen</text>
+<line class="ln" x1="504" y1="120" x2="576" y2="72" marker-end="url(#m22c)" marker-start="url(#m22c)"/>
+<text x="548" y="84" text-anchor="end" class="sm">call / result</text>
+<line class="ln" x1="504" y1="168" x2="576" y2="206" marker-end="url(#m22c)" marker-start="url(#m22c)"/>
+<text x="560" y="176" class="sm">protocol</text>
+<path class="ln dash violet" d="M130,244 C130,286 690,286 690,248" marker-end="url(#m22c)"/>
+<text x="410" y="302" text-anchor="middle" class="sm t-violet">a skill's steps can tell the agent which tools to call</text>
+</svg>
+<figcaption><b>Where each building block plugs in.</b> A system prompt is always present. A tool or MCP server is an <em>action</em> the model can take. A skill is <em>knowledge</em> the model chooses to read, which may in turn tell it how to use tools well. Only the skill has a "did the model choose to open it?" step, and that step is what makes skill evals different.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th></th><th>System prompt</th><th>Tool</th><th>MCP server</th><th>Skill</th></tr>
+<tr><td>What it is</td><td>Standing instructions</td><td>A callable function with a schema</td><td>A process exposing tools, resources and prompts over a protocol</td><td>A folder of instructions plus optional scripts and files</td></tr>
+<tr><td>When it is in context</td><td>Always</td><td>Schema always; result after a call</td><td>Its tool schemas, usually always</td><td>Label always; body and files on demand</td></tr>
+<tr><td>Who decides to use it</td><td>Nobody: it is just there</td><td>Model picks the tool and arguments</td><td>Model picks one of its tools</td><td>Model decides from the description alone</td></tr>
+<tr><td>Typical failure</td><td>Too long, instructions ignored</td><td>Wrong tool, wrong arguments</td><td>Same as tools, plus server errors</td><td>Never opened, opened wrongly, or opened but not followed</td></tr>
+<tr><td>Main eval</td><td>Instruction following (<a href="06-tool-use-and-conversation.html">Module 06</a>)</td><td>Tool-call accuracy (<a href="06-tool-use-and-conversation.html">Module 06</a>, <a href="24-tools-and-mcp-evals.html">Module 24</a>)</td><td>Tool and server evals (<a href="24-tools-and-mcp-evals.html">Module 24</a>)</td><td>Trigger eval + uplift eval + adherence (this module)</td></tr>
+</table></div>
+
+<div class="callout tip"><span class="t">An open standard</span>
+<p>In December 2025 the format was published as an open standard, with a specification at <a href="https://agentskills.io/specification">agentskills.io</a>, and other tools now load the same folders (VS Code documents "Use Agent Skills in VS Code", for example). For evals this matters: a skill is a portable artifact that may run under several models and harnesses you did not test, which is why this module has a section on portability.</p>
+</div>
+
+<h2>Why skills need their own evals</h2>
+<p>A normal prompt change has one job: make the output better. A skill has <b>two independent jobs</b>, and <code>skill-creator</code> frames its whole method around them:</p>
+<ol>
+<li><b>Does it trigger at the right times?</b> The agent must decide, from the description alone, to open the skill for relevant requests and to leave it closed for irrelevant ones.</li>
+<li><b>When it triggers, does it improve the output?</b> A skill that loads perfectly but adds nothing (or makes things worse) is just context bloat.</li>
+</ol>
+<p>These are independent. A brilliant body behind a vague description never gets read. A crisp description in front of a muddled body gets read and then ignored. Measuring only the end result mixes the two, and you cannot tell which half to fix.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 380" role="img" aria-label="A funnel of 100 relevant requests. 70 trigger the skill, 60 have the body actually followed, 42 produce output better than the baseline. Side boxes name the failure at each stage: never fires, loaded but not followed, followed but no uplift. A separate box notes false triggers on irrelevant requests.">
+<defs><marker id="m22d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="40" y="30" width="420" height="54" rx="10"/>
+<text x="250" y="54" text-anchor="middle" class="b">100 relevant requests</text>
+<text x="250" y="72" text-anchor="middle" class="sm">the skill would help here</text>
+<rect class="box accent" x="75" y="112" width="350" height="54" rx="10"/>
+<text x="250" y="136" text-anchor="middle" class="b">70 trigger the skill</text>
+<text x="250" y="154" text-anchor="middle" class="sm">recall = 70%</text>
+<rect class="box violet" x="110" y="194" width="280" height="54" rx="10"/>
+<text x="250" y="218" text-anchor="middle" class="b">60 follow the body</text>
+<text x="250" y="236" text-anchor="middle" class="sm">adherence = 60/70</text>
+<rect class="box good" x="145" y="276" width="210" height="54" rx="10"/>
+<text x="250" y="300" text-anchor="middle" class="b">42 beat baseline</text>
+<text x="250" y="318" text-anchor="middle" class="sm">uplift when used</text>
+<line class="ln accent flow" x1="250" y1="84" x2="250" y2="108" marker-end="url(#m22d)"/>
+<line class="ln accent flow" x1="250" y1="166" x2="250" y2="190" marker-end="url(#m22d)"/>
+<line class="ln accent flow" x1="250" y1="248" x2="250" y2="272" marker-end="url(#m22d)"/>
+<rect class="box bad" x="520" y="112" width="280" height="54" rx="10"/>
+<text x="660" y="136" text-anchor="middle" class="b">30 never fire</text>
+<text x="660" y="154" text-anchor="middle" class="sm">fix the description (Part 1)</text>
+<rect class="box warn" x="520" y="194" width="280" height="54" rx="10"/>
+<text x="660" y="218" text-anchor="middle" class="b">10 loaded, not followed</text>
+<text x="660" y="236" text-anchor="middle" class="sm">fix the body's clarity (Part 3)</text>
+<rect class="box warn" x="520" y="276" width="280" height="54" rx="10"/>
+<text x="660" y="300" text-anchor="middle" class="b">18 followed, no better</text>
+<text x="660" y="318" text-anchor="middle" class="sm">fix the content itself (Part 2)</text>
+<line class="ln bad" x1="425" y1="139" x2="516" y2="139" marker-end="url(#m22d)"/>
+<line class="ln warn" x1="390" y1="221" x2="516" y2="221" marker-end="url(#m22d)"/>
+<line class="ln warn" x1="355" y1="303" x2="516" y2="303" marker-end="url(#m22d)"/>
+<rect class="box bad dashed" x="520" y="30" width="280" height="54" rx="10"/>
+<text x="660" y="54" text-anchor="middle" class="b t-bad">plus: fires on unrelated requests</text>
+<text x="660" y="72" text-anchor="middle" class="sm">false triggers: wasted tokens, derailed tasks</text>
+<text x="410" y="362" text-anchor="middle" class="sm t-muted">illustrative numbers; each leak points to a different part of the skill to fix</text>
+</svg>
+<figcaption><b>The skill funnel.</b> Only 42 of 100 relevant requests end with a skill-driven improvement, and each leak has a different cause and a different fix. On top of that, false triggers on unrelated requests cost tokens and can pull the agent off course. Numbers are illustrative.</figcaption>
+</figure>
+
+<p>So a complete skill eval has at least three measurements, plus two situational ones:</p>
+<div class="grid2">
+<div class="card accent"><b>Trigger eval (Part 1)</b><br>A classification test: for each query, should the skill fire, and did it? Metrics: trigger rate, precision, recall.</div>
+<div class="card good"><b>Uplift eval (Part 2)</b><br>A paired A/B test: same tasks with and without the skill. Metrics: pass-rate delta, plus time and token cost.</div>
+<div class="card violet"><b>Adherence (Part 3)</b><br>A process check on the trajectory: did the agent do what the skill said, in order, with the bundled files?</div>
+<div class="card warn"><b>Many skills, portability, safety (Parts 4 to 6)</b><br>Selection among dozens of skills, behavior across models, and the risks of installing someone else's code.</div>
+</div>
+
+<div class="callout analogy"><span class="t">Analogy: the recipe card</span>
+<p>A recipe card in a kitchen binder can fail in three ways. Nobody pulls it out when making that dish (trigger). The cook pulls it out but improvises anyway (adherence). The cook follows it exactly and the dish is no better than their usual version (uplift). A food critic who only tastes the final plate cannot tell you which one happened.</p>
+</div>
+
+<h2>Part 1: Trigger evals</h2>
+<p>Triggering is a <b>binary classification problem</b>. Each query is a case. The label is "should this skill fire?" and the prediction is "did it fire?". Everything you learned about precision and recall in <a href="04-metrics-and-statistics.html">Module 04</a> applies directly.</p>
+
+<h3>How triggering actually works</h3>
+<p>Skills appear in the agent's list of available skills with just their name and description, and the model decides whether to consult one based on that description. <code>skill-creator</code> adds two observations that shape how you write trigger evals:</p>
+<ul>
+<li><b>Claude tends to under-trigger skills</b>, that is, not use them when they would help. Its advice is to make descriptions "a little bit pushy": say what the skill does <em>and</em> list the situations where it should be used, even when the user does not name the skill.</li>
+<li><b>Simple, one-step queries may not trigger a skill even when the description matches perfectly</b>, because the agent can handle them directly with basic tools. "Read this PDF" is a poor trigger test. Complex, multi-step or specialized queries trigger reliably when the description matches.</li>
+</ul>
+<p>The second point is subtle and important: a trigger eval full of short, easy queries will show low recall for <em>every</em> description, and you will waste time "fixing" a description that is fine. Your queries must be substantive enough that a skill would genuinely help.</p>
+
+<h3>Building the query set</h3>
+<p><code>skill-creator</code> recommends about <b>20 queries</b>: 8 to 10 that should trigger and 8 to 10 that should not. The format is a plain JSON list:</p>
+<pre data-lang="json"><code>[
+  {"query": "ok so finance just dropped q3_sales_FINAL.csv in /data and the CFO wants the usual quarterly writeup by thursday, same format as last quarter pls", "should_trigger": true},
+  {"query": "Can you prepare the Q2 business review document for EMEA? Revenue by country is in the 'Q2' tab of the attached sheet; flag anything down more than 10% QoQ.", "should_trigger": true},
+  {"query": "what was our Q3 revenue growth vs Q2? just the percentage, csv is data/q3_sales.csv", "should_trigger": false},
+  {"query": "write a python job that pulls the quarterly CSV exports from s3 every night and loads them into postgres", "should_trigger": false}
+]</code></pre>
+<p>The guidance on writing these is specific, and worth following closely:</p>
+<ul>
+<li><b>Realistic, concrete and detailed.</b> File paths, column names, company context, a little backstory, casual phrasing, even typos. Bad: <code>"Create a chart"</code>. Good: a paragraph that sounds like a real person with a real file.</li>
+<li><b>Should-trigger coverage.</b> Different phrasings of the same intent (formal and casual), cases where the user never names the skill or file type but clearly needs it, uncommon use cases, and cases where this skill competes with another and should win.</li>
+<li><b>Should-not-trigger = near-misses.</b> The most valuable negatives share keywords or concepts with the skill but actually need something else: adjacent domains, ambiguous phrasing where naive keyword matching would fire. "Write a fibonacci function" as a negative for a report skill is too easy and tests nothing. In the example above, both negatives mention quarterly CSVs, but one only needs a number and the other needs a data pipeline.</li>
+</ul>
+
+<h3>Repeats and the trigger rate</h3>
+<p>Triggering is stochastic: the same query can fire on one run and not on the next. So each query is run <b>3 times</b>, and the result per query is a <b>trigger rate</b> (fired runs divided by total runs). In <code>skill-creator</code>'s scripts a query "passes" if its trigger rate is at least a threshold (default 0.5) when it should trigger, or below that threshold when it should not.</p>
+<p>How does the harness know a skill fired? <code>skill-creator</code>'s <code>run_eval.py</code> installs the description temporarily, runs the query headlessly through the Claude Code CLI (<code>claude -p</code>), and watches the streamed events: if the agent's first tool call is a <code>Skill</code> or <code>Read</code> call that names this skill, it counts as triggered; any other first tool call counts as not triggered. That is a precise, cheap, code-based grader (<a href="03-graders.html">Module 03</a>), which is exactly what you want for a classification eval.</p>
+
+<h3>The confusion matrix, worked</h3>
+<p>Suppose you run 10 should-trigger and 10 should-not-trigger queries, 3 times each: 60 runs. You can count at the <b>run level</b>:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="A two by two confusion matrix. Should trigger and fired: 22 true positives. Should trigger and did not fire: 8 false negatives. Should not trigger and fired: 4 false positives. Should not and did not fire: 26 true negatives. Formulas on the right give precision 0.85, recall 0.73, F1 0.79 and false trigger rate 0.13.">
+<text x="320" y="30" text-anchor="middle" class="b">what the agent did</text>
+<text x="245" y="54" text-anchor="middle" class="sm">fired</text>
+<text x="395" y="54" text-anchor="middle" class="sm">did not fire</text>
+<text x="160" y="104" text-anchor="end" class="b">should trigger</text>
+<text x="160" y="122" text-anchor="end" class="sm">10 queries x 3</text>
+<text x="160" y="204" text-anchor="end" class="b">should not</text>
+<text x="160" y="222" text-anchor="end" class="sm">10 queries x 3</text>
+<rect class="box good" x="170" y="64" width="150" height="100" rx="8"/>
+<text x="245" y="108" text-anchor="middle" class="lg">22</text>
+<text x="245" y="130" text-anchor="middle" class="sm">true positives</text>
+<rect class="box bad" x="320" y="64" width="150" height="100" rx="8"/>
+<text x="395" y="108" text-anchor="middle" class="lg">8</text>
+<text x="395" y="130" text-anchor="middle" class="sm">misses (under-trigger)</text>
+<rect class="box warn" x="170" y="164" width="150" height="100" rx="8"/>
+<text x="245" y="208" text-anchor="middle" class="lg">4</text>
+<text x="245" y="230" text-anchor="middle" class="sm">false triggers</text>
+<rect class="box plain" x="320" y="164" width="150" height="100" rx="8"/>
+<text x="395" y="208" text-anchor="middle" class="lg">26</text>
+<text x="395" y="230" text-anchor="middle" class="sm">true negatives</text>
+<text x="320" y="292" text-anchor="middle" class="sm t-muted">60 runs total (illustrative)</text>
+<rect class="box plain" x="520" y="64" width="280" height="200" rx="10"/>
+<text x="540" y="94" class="b t-accent">precision = 22 / (22 + 4) = 0.85</text>
+<text x="540" y="112" class="sm">when it fires, is that right?</text>
+<text x="540" y="144" class="b t-accent">recall = 22 / (22 + 8) = 0.73</text>
+<text x="540" y="162" class="sm">when it should fire, does it?</text>
+<text x="540" y="194" class="b">F1 = 0.79</text>
+<text x="540" y="226" class="b t-warn">false-trigger rate = 4 / 30 = 0.13</text>
+<text x="540" y="244" class="sm">how often near-misses grab it</text>
+</svg>
+<figcaption><b>A trigger confusion matrix at the run level.</b> Recall is the under-triggering problem; precision and the false-trigger rate are the over-triggering problem. With a pushy description you usually trade some precision for recall, so you must watch both. Numbers are illustrative.</figcaption>
+</figure>
+
+<p>At the <b>query level</b>, with the 0.5 threshold, the same data might look like this: of the 10 positives, 8 fired in at least 2 of 3 runs (pass) and 2 fired in 1 or 0 runs (fail); of the 10 negatives, 9 fired in at most 1 run (pass) and 1 fired in 2 runs (fail). Score: 17 of 20 queries pass. The two views answer different questions. Run-level rates tell you how often a real user would see the behavior; query-level pass counts tell you <em>which</em> phrasings are broken, which is what you need to fix the description.</p>
+
+<div class="callout expert"><span class="t">Expert nuance: a partial trigger is its own signal</span>
+<p>A query that fires 1 run in 3 is not "a miss". It is sitting on the model's decision boundary, and a tiny change in wording, model version or the other installed skills will flip it. Report the trigger-rate distribution (how many queries at 0/3, 1/3, 2/3, 3/3), not just the pass count. Many queries at 1/3 or 2/3 means your description is ambiguous, even if the pass count looks fine.</p>
+</div>
+
+<h3>What a good description looks like</h3>
+<p>Because the description is the only thing the agent sees before deciding, <b>description quality is trigger quality</b>. Before running any optimizer, check a description against the rules that <code>skill-creator</code> and its scripts encode:</p>
+<div class="tablewrap"><table>
+<tr><th>Property</th><th>Why it matters for triggering</th><th>Weak</th><th>Stronger</th></tr>
+<tr><td>Says <b>what</b> and <b>when</b></td><td>All "when to use" information belongs in the description, not the body, because the body is not visible until after the decision</td><td>"Quarterly report helper."</td><td>"Build the quarterly sales report from a CSV export. Use whenever the user mentions QBRs, quarterly writeups or finance's quarterly CSV..."</td></tr>
+<tr><td>A little <b>pushy</b></td><td>Counters the tendency to under-trigger</td><td>Lists only the exact skill name</td><td>Adds "even if they don't explicitly ask for a report"</td></tr>
+<tr><td><b>Short</b></td><td>Hard limit of 1,024 characters (longer is truncated); the optimizer aims for about 100 to 200 words; every word is paid on every request</td><td>A 400-word essay</td><td>Two or three dense sentences</td></tr>
+<tr><td><b>Distinct</b> from neighbors</td><td>Overlapping descriptions collide (Part 4)</td><td>"Helps with reports and slides"</td><td>Names what it does <em>not</em> cover, or the artifact it produces</td></tr>
+</table></div>
+<p>A description review like this is cheap and catches the obvious problems, but it is a hypothesis, not a measurement. Only the trigger eval tells you whether the description actually works with a given model.</p>
+
+<p>Try it: move the description's trigger threshold and watch precision and recall trade off.</p>
+<div data-widget="trigger"></div>
+
+<h3>Optimizing the description without fooling yourself</h3>
+<p>Once you can score a description, the obvious next step is to improve it automatically: ask a model to rewrite the description based on which queries failed, re-score, repeat. <code>skill-creator</code> has a script for exactly this (<code>run_loop.py</code>), and its design contains a classic machine-learning lesson.</p>
+<p>If you tune the description against the same 20 queries you score it on, you will <b>overfit</b>: the description slowly turns into a list of those exact queries' keywords, scores 20 of 20, and then fails on the next real user. So the loop:</p>
+<ol>
+<li>Splits the set into <b>60% train and 40% held-out test</b>, stratified so both halves contain should-trigger and should-not-trigger queries (with 10 and 10, that is 6 + 6 train and 4 + 4 test).</li>
+<li>Evaluates the current description on both halves, running each query 3 times.</li>
+<li>Asks Claude to propose an improved description based on the <em>train</em> failures only.</li>
+<li>Repeats for up to 5 iterations.</li>
+<li>Returns the <code>best_description</code>, <b>selected by test score, not train score</b>.</li>
+</ol>
+<p>It also runs the eval with the same model that powers the user's session, so the triggering test matches what the user will actually experience.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="A line chart over description iterations 0 to 5. Train score climbs from 0.67 to 1.0 and stays there. Held-out test score rises from 0.63 to a peak of 0.88 at iteration 2, then falls back to 0.63. Iteration 2 is circled as the one to pick.">
+<line class="ln" x1="80" y1="40" x2="80" y2="262"/>
+<line class="ln" x1="80" y1="262" x2="570" y2="262"/>
+<text x="72" y="44" text-anchor="end" class="sm">1.0</text>
+<text x="72" y="154" text-anchor="end" class="sm">0.75</text>
+<text x="72" y="264" text-anchor="end" class="sm">0.5</text>
+<line class="ln dash" x1="80" y1="150" x2="560" y2="150"/>
+<text x="80" y="284" text-anchor="middle" class="sm">0</text>
+<text x="176" y="284" text-anchor="middle" class="sm">1</text>
+<text x="272" y="284" text-anchor="middle" class="sm">2</text>
+<text x="368" y="284" text-anchor="middle" class="sm">3</text>
+<text x="464" y="284" text-anchor="middle" class="sm">4</text>
+<text x="560" y="284" text-anchor="middle" class="sm">5</text>
+<text x="320" y="306" text-anchor="middle" class="b">description iteration</text>
+<text x="34" y="150" text-anchor="middle" class="b" transform="rotate(-90 34 150)">queries passed</text>
+<polyline class="ln accent thick" points="80,186 176,114 272,74 368,40 464,40 560,40"/>
+<polyline class="ln bad thick" points="80,205 176,150 272,95 368,150 464,205 560,205"/>
+<circle class="fill-accent" cx="80" cy="186" r="4"/><circle class="fill-accent" cx="176" cy="114" r="4"/><circle class="fill-accent" cx="272" cy="74" r="4"/><circle class="fill-accent" cx="368" cy="40" r="4"/><circle class="fill-accent" cx="464" cy="40" r="4"/><circle class="fill-accent" cx="560" cy="40" r="4"/>
+<circle class="fill-bad" cx="80" cy="205" r="4"/><circle class="fill-bad" cx="176" cy="150" r="4"/><circle class="fill-bad" cx="272" cy="95" r="4"/><circle class="fill-bad" cx="368" cy="150" r="4"/><circle class="fill-bad" cx="464" cy="205" r="4"/><circle class="fill-bad" cx="560" cy="205" r="4"/>
+<circle class="box good pulse" cx="272" cy="95" r="13"/>
+<text x="292" y="94" class="sm t-good">pick this one</text>
+<rect class="box plain" x="600" y="40" width="210" height="220" rx="10"/>
+<line class="ln accent thick" x1="616" y1="66" x2="644" y2="66"/><text x="652" y="70" class="sm">train (12 queries)</text>
+<line class="ln bad thick" x1="616" y1="90" x2="644" y2="90"/><text x="652" y="94" class="sm">held-out test (8)</text>
+<text x="616" y="130" class="sm">Train keeps rising: the</text>
+<text x="616" y="146" class="sm">description is memorizing</text>
+<text x="616" y="162" class="sm">the 12 training queries.</text>
+<text x="616" y="194" class="sm">Test peaks, then falls.</text>
+<text x="616" y="210" class="sm">Select by test score, so</text>
+<text x="616" y="226" class="sm">iteration 2 wins, even</text>
+<text x="616" y="242" class="sm">though 3 to 5 look perfect.</text>
+</svg>
+<figcaption><b>Overfitting a description.</b> The train score reaches 12 of 12 while the held-out score drops back after iteration 2. Picking by train score would ship the most overfitted description. Illustrative data, not a real run.</figcaption>
+</figure>
+
+<div class="callout warn"><span class="t">Eight test queries is still a small test</span>
+<p>With 8 held-out queries, one query flipping moves the score by 12.5 points, and the queries themselves are stochastic. Treat the held-out score as a guard against gross overfitting, not a precise measurement. If triggering really matters (a skill used by thousands of people), grow the query set, keep a <em>second</em> untouched set for a final check, and add real queries from production logs where the skill should have fired but did not.</p>
+</div>
+
+<h2>Part 2: Uplift evals</h2>
+<p>Now the second question: when the skill is used, is the output better? "Better" must mean <b>better than something</b>. The heart of an uplift eval is a paired comparison: the same task run <b>with the skill</b> and against a <b>baseline</b>.</p>
+
+<h3>Choosing the baseline</h3>
+<ul>
+<li><b>New skill:</b> the baseline is <b>no skill at all</b>. Same prompt, same model, same tools, no skill path. This answers "is the skill worth having?".</li>
+<li><b>Improving an existing skill:</b> the baseline is the <b>old version</b>. Snapshot the skill folder before editing and point the baseline run at the snapshot. This answers "is the new version better than the old?".</li>
+</ul>
+<p><code>skill-creator</code> insists on one operational detail: spawn the with-skill and baseline runs <b>in the same turn, at the same time</b>, rather than running all with-skill runs first and baselines later. Running them together means both arms see the same model endpoint, load and conditions, and it avoids the temptation to stop once the with-skill results look good. It is the agent-eval version of running control and treatment together in an experiment.</p>
+
+<h3>The test cases: evals.json</h3>
+<p>Test prompts live in <code>evals/evals.json</code> inside the skill folder. Start with 2 or 3 realistic prompts, and add verifiable statements (the <code>expectations</code>, also called assertions) while the first runs are in progress:</p>
+<pre data-lang="json"><code>{
+  "skill_name": "quarterly-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "finance dropped the Q3 export in data/q3_sales.csv, can you turn it into our usual quarterly report? regions are col B, revenue col E",
+      "expected_output": "A .docx built from the company template with a revenue-by-region chart and a short executive summary",
+      "files": ["evals/files/q3_sales.csv"],
+      "expectations": [
+        "The report is built from assets/template.docx (same headers and footer)",
+        "Revenue-by-region totals in the chart match the CSV to the dollar",
+        "The executive summary names the highest and lowest region by revenue",
+        "The chart was produced by scripts/make_chart.py"
+      ]
+    }
+  ]
+}</code></pre>
+<p>What makes a good assertion, according to <code>skill-creator</code>:</p>
+<ul>
+<li><b>Objectively verifiable.</b> Someone else (or a script) could check it and agree. "Totals match the CSV to the dollar" is checkable; "the report is professional" is not.</li>
+<li><b>Descriptively named.</b> Someone glancing at the results should understand what each one checks without opening anything.</li>
+<li><b>Not forced onto subjective qualities.</b> Writing style or design quality go to <b>human review</b> instead. Forcing a fuzzy judgment into a pass/fail assertion gives you a noisy number you will over-trust.</li>
+<li><b>Scripted when possible.</b> For assertions a program can check (file exists, totals match, template headers present), write a script instead of eyeballing: faster, more reliable, reusable across iterations. This is the code-grader-first rule of <a href="03-graders.html">Module 03</a>.</li>
+</ul>
+
+<div class="callout tip"><span class="t">A second practical recipe</span>
+<p>Philipp Schmid's <a href="https://www.philschmid.de/testing-skills">Practical Guide to Evaluating and Testing Agent Skills</a> (2026) reaches a very similar recipe from outside Anthropic. His own summary: define success criteria covering <b>outcome, style and efficiency</b>, then write around <b>10 to 12 prompts with deterministic checks</b>. The three criteria line up with this module: outcome is the uplift eval, style is where human review or a calibrated judge comes in, and efficiency is the time and token columns. His AI Engineer talk makes the point in its title: "Don't Ship Skills Without Evals".</p>
+</div>
+
+<h3>The pipeline</h3>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 340" role="img" aria-label="Pipeline. evals.json feeds two runs launched at the same time, one with the skill and one baseline. Each run saves outputs and timing. A grader checks each assertion with evidence and writes grading.json. An aggregation step writes benchmark.json with mean and standard deviation per configuration and the delta. An analyst pass writes notes. Everything goes to a human viewer.">
+<defs><marker id="m22e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="16" y="124" width="120" height="72" rx="10"/>
+<text x="76" y="154" text-anchor="middle" class="b">evals.json</text>
+<text x="76" y="174" text-anchor="middle" class="sm">prompts + files</text>
+<rect class="box violet" x="184" y="40" width="160" height="80" rx="10"/>
+<text x="264" y="68" text-anchor="middle" class="b">with_skill run</text>
+<text x="264" y="88" text-anchor="middle" class="sm">outputs/ + timing.json</text>
+<text x="264" y="104" text-anchor="middle" class="sm">(tokens, duration)</text>
+<rect class="box plain" x="184" y="200" width="160" height="80" rx="10"/>
+<text x="264" y="228" text-anchor="middle" class="b">baseline run</text>
+<text x="264" y="248" text-anchor="middle" class="sm">no skill, or old snapshot</text>
+<text x="264" y="264" text-anchor="middle" class="sm">same prompt, same time</text>
+<line class="ln accent flow" x1="136" y1="150" x2="180" y2="90" marker-end="url(#m22e)"/>
+<line class="ln accent flow" x1="136" y1="170" x2="180" y2="230" marker-end="url(#m22e)"/>
+<rect class="box accent" x="392" y="112" width="130" height="96" rx="10"/>
+<text x="457" y="138" text-anchor="middle" class="b">grader</text>
+<text x="457" y="158" text-anchor="middle" class="sm">each assertion:</text>
+<text x="457" y="174" text-anchor="middle" class="sm">text, passed,</text>
+<text x="457" y="190" text-anchor="middle" class="sm">evidence</text>
+<line class="ln" x1="344" y1="80" x2="388" y2="140" marker-end="url(#m22e)"/>
+<line class="ln" x1="344" y1="240" x2="388" y2="180" marker-end="url(#m22e)"/>
+<rect class="box good" x="570" y="112" width="130" height="96" rx="10"/>
+<text x="635" y="138" text-anchor="middle" class="b">aggregate</text>
+<text x="635" y="158" text-anchor="middle" class="sm">pass rate, time,</text>
+<text x="635" y="174" text-anchor="middle" class="sm">tokens: mean ± sd</text>
+<text x="635" y="190" text-anchor="middle" class="sm">+ delta</text>
+<line class="ln" x1="522" y1="160" x2="566" y2="160" marker-end="url(#m22e)"/>
+<text x="544" y="150" text-anchor="middle" class="sm">grading</text>
+<rect class="box warn" x="742" y="112" width="106" height="96" rx="10"/>
+<text x="795" y="138" text-anchor="middle" class="b">analyst</text>
+<text x="795" y="158" text-anchor="middle" class="sm">patterns the</text>
+<text x="795" y="174" text-anchor="middle" class="sm">averages</text>
+<text x="795" y="190" text-anchor="middle" class="sm">hide</text>
+<line class="ln" x1="700" y1="160" x2="738" y2="160" marker-end="url(#m22e)"/>
+<rect class="box plain" x="392" y="262" width="456" height="56" rx="10"/>
+<text x="620" y="286" text-anchor="middle" class="b">human viewer: outputs tab + benchmark tab</text>
+<text x="620" y="304" text-anchor="middle" class="sm">free-text feedback per run, saved to feedback.json</text>
+<line class="ln accent" x1="795" y1="208" x2="795" y2="258" marker-end="url(#m22e)"/>
+<line class="ln accent" x1="635" y1="208" x2="635" y2="258" marker-end="url(#m22e)"/>
+</svg>
+<figcaption><b>The uplift pipeline in <code>skill-creator</code>.</b> Paired runs start together, a grader checks every assertion against the transcript and output files and cites evidence, an aggregation script summarizes each configuration, an analyst pass looks for patterns the averages hide, and a human reviews real outputs, not just numbers.</figcaption>
+</figure>
+
+<h3>The grader: evidence, not vibes</h3>
+<p><code>skill-creator</code>'s grader (<code>agents/grader.md</code>) is an LLM-as-a-judge (<a href="13-llm-as-judge.html">Module 13</a>) with an unusually strict brief. It reads the full transcript <em>and</em> examines the output files itself (it is told not to trust what the transcript says was produced), then marks each assertion pass or fail. A few of its rules are worth memorizing because they apply to any grader:</p>
+<ul>
+<li><b>Pass requires genuine substance.</b> "A file exists with the right name but wrong or empty content" is a fail. So is meeting an assertion "by coincidence rather than by actually doing the work".</li>
+<li><b>The burden of proof is on the assertion.</b> When uncertain, fail.</li>
+<li><b>No partial credit.</b> Each assertion is pass or fail.</li>
+<li><b>Extract and verify claims</b> beyond the assertions: factual ("the form has 12 fields"), process ("used pypdf") and quality claims, flagging any that cannot be verified.</li>
+<li><b>Critique the evals themselves.</b> "A passing grade on a weak assertion is worse than useless: it creates false confidence." If an assertion would also pass for a clearly wrong output, or an important outcome has no assertion, the grader says so.</li>
+</ul>
+<p>The result is a <code>grading.json</code> per run. Its <code>expectations</code> array must use the field names <code>text</code>, <code>passed</code> and <code>evidence</code>, because the viewer depends on them:</p>
+<pre data-lang="json"><code>{
+  "expectations": [
+    {
+      "text": "Revenue-by-region totals in the chart match the CSV to the dollar",
+      "passed": true,
+      "evidence": "Ran check_totals.py: all 6 regions match (APAC 1,204,310 = CSV sum)"
+    },
+    {
+      "text": "The executive summary names the highest and lowest region by revenue",
+      "passed": false,
+      "evidence": "Summary names APAC as highest but calls LATAM lowest; CSV shows MEA is lowest"
+    }
+  ],
+  "summary": {"passed": 3, "failed": 1, "total": 4, "pass_rate": 0.75},
+  "claims": [
+    {"claim": "All six regions are included", "type": "factual", "verified": true,
+     "evidence": "Six rows in the chart data table"}
+  ],
+  "eval_feedback": {
+    "suggestions": [
+      {"assertion": "The report is built from assets/template.docx (same headers and footer)",
+       "reason": "Passes in baseline runs too when the model copies a generic header; check the footer text exactly"}
+    ],
+    "overall": "Totals are well checked; the template assertion is weak."
+  }
+}</code></pre>
+
+<h3>Aggregate, then look past the aggregate</h3>
+<p>An aggregation script (<code>aggregate_benchmark.py</code>) turns all the grading files into a <code>benchmark.json</code> with, for each configuration, the <b>mean, standard deviation, min and max</b> of pass rate, time and tokens, plus the <b>delta</b> between configurations. Time and tokens come from a <code>timing.json</code> saved for each run as soon as it finishes (the notification that carries <code>total_tokens</code> and <code>duration_ms</code> is the only chance to capture them).</p>
+<p>Then comes a step many teams skip: the <b>analyst pass</b> (<code>agents/analyzer.md</code>, "Analyzing Benchmark Results"). Its job is to surface patterns that aggregate numbers hide, not to suggest fixes. For each assertion across all runs, it asks:</p>
+<ul>
+<li>Does it <b>always pass in both</b> configurations? Then it does not differentiate skill value (a <b>non-discriminating</b> assertion).</li>
+<li>Does it <b>always fail in both</b>? It may be broken, or beyond the model's ability.</li>
+<li>Does it always pass <b>with</b> the skill and fail <b>without</b>? That is where the skill clearly adds value.</li>
+<li>Does it always fail with the skill but pass without? The skill may be <b>hurting</b>.</li>
+<li>Is it <b>highly variable</b>? Possibly a flaky assertion or non-deterministic behavior.</li>
+</ul>
+<p>It also compares time, tokens and tool calls across configurations (does the skill make runs much slower or more expensive?) and looks for outlier runs that skew averages.</p>
+
+<h3>Worked example: the quarterly-report skill</h3>
+<p>Four test prompts, 3 runs each per configuration (a new skill, so the baseline is no skill). Here is what the benchmark summary and a per-assertion breakdown might look like. <b>These numbers are illustrative</b>, chosen to show the patterns the analyst pass is meant to catch.</p>
+<div class="tablewrap"><table>
+<tr><th>Configuration</th><th>Pass rate (mean ± sd)</th><th>Time, s</th><th>Tokens</th></tr>
+<tr><td><b>with_skill</b></td><td>0.86 ± 0.10</td><td>52 ± 12</td><td>6,100 ± 900</td></tr>
+<tr><td>without_skill</td><td>0.44 ± 0.17</td><td>34 ± 8</td><td>3,500 ± 600</td></tr>
+<tr><td><b>delta</b></td><td><b>+0.42</b></td><td>+18</td><td>+2,600</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+<tr><th>Assertion (12 runs per arm)</th><th>With skill</th><th>Without</th><th>Analyst reading</th></tr>
+<tr><td>Output is a .docx file</td><td>12/12</td><td>12/12</td><td>Non-discriminating: drop it or strengthen it</td></tr>
+<tr><td>Built from the company template</td><td>12/12</td><td>0/12</td><td>Clear skill value (the baseline cannot know the template)</td></tr>
+<tr><td>Chart totals match the CSV</td><td>11/12</td><td>7/12</td><td>Real uplift from the bundled script</td></tr>
+<tr><td>Summary names top and bottom region</td><td>10/12</td><td>8/12</td><td>Small difference; not significant at this n</td></tr>
+<tr><td>Chart made by make_chart.py</td><td>11/12</td><td>0/12</td><td>Process check: measures adherence, not uplift</td></tr>
+</table></div>
+<p>The analyst notes might read:</p>
+<pre data-lang="json"><code>[
+  "Assertion 'Output is a .docx file' passes 100% in both configurations - may not differentiate skill value",
+  "Eval 'emea-multi-currency' shows high variance with skill (1.00, 0.40, 1.00) - run 2 converted EUR twice; may be flaky",
+  "Without-skill runs never use the company template (0/12)",
+  "Skill adds 18s and ~2,600 tokens per run on average but improves pass rate by 0.42"
+]</code></pre>
+<p>Three expert lessons hide in this small example:</p>
+<ol>
+<li><b>Some assertions inflate uplift by construction.</b> "Chart made by make_chart.py" and "built from the company template" can <em>never</em> pass without the skill, because the baseline has no access to those files. They are legitimate checks, but they measure "did the agent use the skill?" (adherence), not "is the result better?". Report them separately, or the headline delta will look bigger than the real quality gain. The honest uplift number comes from outcome assertions both arms could pass (totals correct, summary correct).</li>
+<li><b>Cost is part of the result.</b> A skill that adds 50% tokens and 18 seconds for a +0.42 pass-rate gain is a great trade. The same cost for a +0.03 gain probably is not. Always read the three columns together.</li>
+<li><b>A 4-prompt suite is a smoke test.</b> <code>skill-creator</code> itself says to expand the test set and try again at larger scale once the skill looks good. To claim uplift with confidence you need enough prompts for a confidence interval, which is the Python section below.</li>
+</ol>
+
+<h3>The human review loop and iterations</h3>
+<p>Numbers alone do not tell you <em>why</em> an output is worse. <code>skill-creator</code> generates a viewer with two tabs: <b>Outputs</b> (one test case at a time: prompt, output files rendered inline, previous iteration's output, formal grades, and a feedback box) and <b>Benchmark</b> (the stats). The reviewer's comments are saved to <code>feedback.json</code>; empty feedback means "looked fine". It even says to generate the viewer <em>before</em> the agent evaluates the outputs itself, so a human sees real outputs as early as possible.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 380" role="img" aria-label="A loop of six steps: draft or edit the skill, run with-skill and baseline, grade and aggregate, analyst pass, human review with feedback.json, improve the skill. On the right, the workspace folder layout with iteration-1 and iteration-2 directories, each with eval directories holding with_skill and without_skill outputs, grading.json and timing.json, plus benchmark.json.">
+<defs><marker id="m22f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="160" y="28" width="150" height="44" rx="10"/><text x="235" y="55" text-anchor="middle" class="b">Draft / edit skill</text>
+<rect class="box accent" x="300" y="112" width="150" height="44" rx="10"/><text x="375" y="132" text-anchor="middle" class="sm">run with_skill</text><text x="375" y="147" text-anchor="middle" class="sm">+ baseline together</text>
+<rect class="box accent" x="300" y="222" width="150" height="44" rx="10"/><text x="375" y="249" text-anchor="middle" class="sm">grade + aggregate</text>
+<rect class="box warn" x="160" y="306" width="150" height="44" rx="10"/><text x="235" y="333" text-anchor="middle" class="sm">analyst pass</text>
+<rect class="box good" x="20" y="222" width="150" height="44" rx="10"/><text x="95" y="242" text-anchor="middle" class="sm">human review</text><text x="95" y="257" text-anchor="middle" class="sm">(feedback.json)</text>
+<rect class="box plain" x="20" y="112" width="150" height="44" rx="10"/><text x="95" y="132" text-anchor="middle" class="sm">improve: generalize,</text><text x="95" y="147" text-anchor="middle" class="sm">keep lean, explain why</text>
+<path class="ln accent flow" d="M310,56 C350,62 372,84 375,108" marker-end="url(#m22f)"/>
+<line class="ln accent flow" x1="375" y1="156" x2="375" y2="218" marker-end="url(#m22f)"/>
+<path class="ln accent flow" d="M375,266 C372,300 340,326 314,328" marker-end="url(#m22f)"/>
+<path class="ln accent flow" d="M160,328 C120,324 98,300 95,270" marker-end="url(#m22f)"/>
+<line class="ln accent flow" x1="95" y1="222" x2="95" y2="160" marker-end="url(#m22f)"/>
+<path class="ln accent flow" d="M95,112 C98,84 120,60 156,54" marker-end="url(#m22f)"/>
+<text x="235" y="178" text-anchor="middle" class="b">iteration N</text>
+<text x="235" y="198" text-anchor="middle" class="sm">stop when feedback is empty,</text>
+<text x="235" y="212" text-anchor="middle" class="sm">the user is happy, or</text>
+<text x="235" y="226" text-anchor="middle" class="sm">progress stalls</text>
+<rect class="box plain" x="480" y="28" width="330" height="322" rx="10"/>
+<text x="496" y="54" class="mono">quarterly-report-workspace/</text>
+<text x="496" y="78" class="mono">├─ iteration-1/</text>
+<text x="496" y="100" class="mono">│  ├─ template-q3/</text>
+<text x="496" y="122" class="mono">│  │  ├─ with_skill/outputs/</text>
+<text x="496" y="144" class="mono">│  │  ├─ without_skill/outputs/</text>
+<text x="496" y="166" class="mono">│  │  └─ eval_metadata.json</text>
+<text x="496" y="188" class="mono">│  ├─ emea-multi-currency/</text>
+<text x="496" y="210" class="mono">│  ├─ benchmark.json</text>
+<text x="496" y="232" class="mono">│  └─ feedback.json</text>
+<text x="496" y="256" class="mono">├─ iteration-2/  (reruns all)</text>
+<text x="496" y="280" class="mono">└─ skill-snapshot/</text>
+<text x="496" y="310" class="sm">each run dir also holds grading.json</text>
+<text x="496" y="326" class="sm">and timing.json</text>
+</svg>
+<figcaption><b>The iteration loop and its workspace.</b> Every iteration reruns all test cases, including the baseline, into a new directory, and the viewer shows the previous iteration's output and feedback side by side. Eval directories get descriptive names (<code>template-q3</code>), not <code>eval-0</code>, so results read clearly.</figcaption>
+</figure>
+
+<p>The advice on <em>how</em> to improve is as much eval wisdom as skill-writing wisdom:</p>
+<ul>
+<li><b>Generalize from the feedback.</b> You are iterating on a handful of examples, but the skill will be used on huge numbers of different prompts. Fiddly, overfitted fixes that only rescue these test cases are useless. This is the uplift-eval twin of the train/test lesson in Part 1.</li>
+<li><b>Read transcripts, not just outputs.</b> If the skill makes the agent waste time on unproductive steps, remove the part of the skill causing it and see what happens.</li>
+<li><b>Look for repeated work.</b> If every test run independently wrote a similar helper script, bundle that script in <code>scripts/</code> once.</li>
+<li><b>Explain the why.</b> ALWAYS and NEVER in capitals are a yellow flag; explaining the reasoning usually works better with capable models.</li>
+</ul>
+
+<details>
+<summary><b>Deep dive: blind comparison between two skill versions</b></summary>
+<p>For a more rigorous "is version 2 really better?", <code>skill-creator</code> offers an optional <b>blind comparison</b>. A comparator agent (<code>agents/comparator.md</code>) receives two outputs labeled A and B without knowing which skill produced which, builds a task-specific rubric with a content dimension (correctness, completeness, accuracy) and a structure dimension (organization, formatting, usability), scores each 1 to 5, and picks a winner, using assertion pass rates only as secondary evidence. Ties should be rare. Then an analyzer (<code>agents/analyzer.md</code>) "unblinds" the result: it reads both skills and both transcripts, scores instruction-following 1 to 10, and writes prioritized improvement suggestions in categories such as instructions, tools, examples and error handling.</p>
+<p>This is pairwise LLM judging (<a href="13-llm-as-judge.html">Module 13</a>), so the usual cautions apply: swap A and B positions across runs to cancel position bias, and validate the comparator against a few human judgments before trusting it on close calls.</p>
+</details>
+
+<h2>Part 3: Adherence and process</h2>
+<p>An uplift number tells you the outcome improved. It does not tell you the skill is <em>why</em>. Maybe the agent loaded the skill, skimmed it, and solved the task its own way; the uplift came from something else, and the next model update will erase it. <b>Adherence evals</b> check the trajectory, the sequence of tool calls, against what the skill says to do. This is process grading from <a href="05-agents-are-different.html">Module 05</a>, applied to skills.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Top row: the four steps the skill prescribes. Run A's transcript matches each step: reads SKILL.md, validates the CSV, runs make_chart.py, reads the style guide, fills the template. Run B reads SKILL.md, then writes its own charting code, skips the style guide and writes the report from scratch. Adherence checks mark run A 4 of 4 and run B 1 of 4.">
+<defs><marker id="m22g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="60" class="b">Skill says</text>
+<rect class="box violet" x="130" y="36" width="150" height="40" rx="8"/><text x="205" y="61" text-anchor="middle" class="sm">1 validate CSV</text>
+<rect class="box violet" x="300" y="36" width="150" height="40" rx="8"/><text x="375" y="61" text-anchor="middle" class="sm">2 run make_chart.py</text>
+<rect class="box violet" x="470" y="36" width="150" height="40" rx="8"/><text x="545" y="61" text-anchor="middle" class="sm">3 read style-guide.md</text>
+<rect class="box violet" x="640" y="36" width="160" height="40" rx="8"/><text x="720" y="61" text-anchor="middle" class="sm">4 fill template.docx</text>
+<text x="20" y="140" class="b">Run A</text>
+<text x="20" y="156" class="sm">4 of 4 steps</text>
+<rect class="box good" x="130" y="120" width="150" height="40" rx="8"/><text x="205" y="145" text-anchor="middle" class="mono">Bash validate</text>
+<rect class="box good" x="300" y="120" width="150" height="40" rx="8"/><text x="375" y="145" text-anchor="middle" class="mono">Bash make_chart</text>
+<rect class="box good" x="470" y="120" width="150" height="40" rx="8"/><text x="545" y="145" text-anchor="middle" class="mono">Read style-guide</text>
+<rect class="box good" x="640" y="120" width="160" height="40" rx="8"/><text x="720" y="145" text-anchor="middle" class="mono">Bash fill_template</text>
+<line class="ln good" x1="280" y1="140" x2="296" y2="140" marker-end="url(#m22g)"/>
+<line class="ln good" x1="450" y1="140" x2="466" y2="140" marker-end="url(#m22g)"/>
+<line class="ln good" x1="620" y1="140" x2="636" y2="140" marker-end="url(#m22g)"/>
+<text x="20" y="224" class="b">Run B</text>
+<text x="20" y="240" class="sm">1 of 4 steps</text>
+<rect class="box good" x="130" y="204" width="150" height="40" rx="8"/><text x="205" y="229" text-anchor="middle" class="mono">Bash validate</text>
+<rect class="box bad" x="300" y="204" width="150" height="40" rx="8"/><text x="375" y="229" text-anchor="middle" class="mono">Write my_plot.py</text>
+<rect class="box bad dashed" x="470" y="204" width="150" height="40" rx="8"/><text x="545" y="229" text-anchor="middle" class="sm t-bad">skipped</text>
+<rect class="box bad" x="640" y="204" width="160" height="40" rx="8"/><text x="720" y="229" text-anchor="middle" class="mono">Write report.docx</text>
+<line class="ln bad" x1="280" y1="224" x2="296" y2="224" marker-end="url(#m22g)"/>
+<line class="ln bad" x1="450" y1="224" x2="466" y2="224" marker-end="url(#m22g)"/>
+<line class="ln bad" x1="620" y1="224" x2="636" y2="224" marker-end="url(#m22g)"/>
+<text x="375" y="276" text-anchor="middle" class="sm">reinvented the bundled script</text>
+<text x="720" y="276" text-anchor="middle" class="sm">ignored the template</text>
+<text x="410" y="306" text-anchor="middle" class="sm t-muted">both runs may still pass "totals match"; only the trajectory shows run B did not use the skill</text>
+</svg>
+<figcaption><b>Adherence is read from the trajectory.</b> Both runs loaded the skill. Run A followed it; run B loaded it and then did its own thing. If run B's output happens to be correct, an outcome-only eval would credit the skill for work it did not do.</figcaption>
+</figure>
+
+<p>Typical adherence checks, most of them simple code over the transcript:</p>
+<div class="tablewrap"><table>
+<tr><th>Check</th><th>How to grade it</th><th>What a failure usually means</th></tr>
+<tr><td>Skill body was loaded</td><td>A <code>Skill</code> or <code>Read</code> call on the skill's <code>SKILL.md</code></td><td>Trigger problem (Part 1)</td></tr>
+<tr><td>Referenced file was read when needed</td><td><code>Read</code> call on <code>references/style-guide.md</code> before the step that needs it</td><td>Pointer in the body is unclear about <em>when</em> to read it</td></tr>
+<tr><td>Bundled script was run, not rewritten</td><td><code>Bash</code> call containing <code>scripts/make_chart.py</code>; no new file doing the same job</td><td>The body does not explain why the script matters, or the script failed and there was no fallback guidance</td></tr>
+<tr><td>Steps in the prescribed order</td><td>Order of matching tool calls (subsequence check)</td><td>Order not explained, or not actually important (then drop the requirement)</td></tr>
+<tr><td>No forbidden actions</td><td>No calls matching a deny list (for example editing the input CSV)</td><td>Missing guardrail in the body</td></tr>
+<tr><td>Did not over-read</td><td>Count of reference files read vs needed</td><td>Body sends the agent to too many files: context waste</td></tr>
+</table></div>
+
+<p>Two cautions. First, do not demand rigid adherence where it does not matter: if the agent reached the right result by a reasonable different path, that may be fine, and over-strict process checks punish good agents (<a href="05-agents-are-different.html">Module 05</a> discusses this trade-off). Reserve hard process checks for steps that exist for a reason: validation, safety, using the canonical script so numbers are consistent. Second, adherence failures are information about the skill, not only the agent. <code>skill-creator</code>'s analyzer scores instruction-following and lists concrete issues ("did not use the skill's formatting template", "invented own approach instead of following step 3") precisely so you can rewrite the step that was misread.</p>
+
+<h2>Part 4: Many skills installed</h2>
+<p>A real agent rarely has one skill. It may have dozens: documents, spreadsheets, slides, brand guidelines, several team-specific workflows. Now the trigger question becomes a <b>multi-class selection</b> question: given this request, which skill (if any) should load? Your skill's triggering, measured alone, can look perfect and still fail in a crowd.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 360" role="img" aria-label="Left: a request to turn Q3 numbers into a board deck is matched against the descriptions of several installed skills. Two of them, quarterly-report and board-deck, overlap and collide. Right: a bar chart of approximate context cost for skill labels at 5, 20, 50 and 100 installed skills, rising from about 0.7 thousand to about 13 thousand tokens, with an illustrative selection accuracy under each bar falling from 98 to 81 percent.">
+<defs><marker id="m22h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="140" width="150" height="70" rx="10"/>
+<text x="95" y="166" text-anchor="middle" class="sm">"turn the Q3 numbers</text>
+<text x="95" y="182" text-anchor="middle" class="sm">into slides for the</text>
+<text x="95" y="198" text-anchor="middle" class="sm">board on Monday"</text>
+<rect class="box plain" x="230" y="30" width="190" height="36" rx="8"/><text x="325" y="53" text-anchor="middle" class="mono">xlsx</text>
+<rect class="box bad" x="230" y="80" width="190" height="36" rx="8"/><text x="325" y="103" text-anchor="middle" class="mono">quarterly-report</text>
+<rect class="box bad" x="230" y="130" width="190" height="36" rx="8"/><text x="325" y="153" text-anchor="middle" class="mono">board-deck</text>
+<rect class="box plain" x="230" y="180" width="190" height="36" rx="8"/><text x="325" y="203" text-anchor="middle" class="mono">pptx</text>
+<rect class="box plain" x="230" y="230" width="190" height="36" rx="8"/><text x="325" y="253" text-anchor="middle" class="mono">brand-guidelines</text>
+<rect class="box plain" x="230" y="280" width="190" height="36" rx="8"/><text x="325" y="303" text-anchor="middle" class="sm">... 40 more labels</text>
+<line class="ln bad" x1="170" y1="168" x2="226" y2="100" marker-end="url(#m22h)"/>
+<line class="ln bad" x1="170" y1="175" x2="226" y2="148" marker-end="url(#m22h)"/>
+<line class="ln dash" x1="170" y1="185" x2="226" y2="198" marker-end="url(#m22h)"/>
+<text x="325" y="340" text-anchor="middle" class="sm t-bad">two labels both say "quarterly" and "board"</text>
+<line class="ln" x1="500" y1="40" x2="500" y2="262"/>
+<line class="ln" x1="500" y1="262" x2="800" y2="262"/>
+<rect class="fill-accent" x="525" y="253" width="44" height="9"/>
+<rect class="fill-accent" x="595" y="226" width="44" height="36"/>
+<rect class="fill-accent" x="665" y="172" width="44" height="90"/>
+<rect class="fill-accent" x="735" y="82" width="44" height="180"/>
+<text x="547" y="247" text-anchor="middle" class="sm">~0.7k</text>
+<text x="617" y="220" text-anchor="middle" class="sm">~2.6k</text>
+<text x="687" y="166" text-anchor="middle" class="sm">~6.5k</text>
+<text x="757" y="76" text-anchor="middle" class="sm">~13k</text>
+<text x="547" y="280" text-anchor="middle" class="sm">5</text>
+<text x="617" y="280" text-anchor="middle" class="sm">20</text>
+<text x="687" y="280" text-anchor="middle" class="sm">50</text>
+<text x="757" y="280" text-anchor="middle" class="sm">100</text>
+<text x="650" y="30" text-anchor="middle" class="b">label tokens vs skills installed</text>
+<text x="490" y="306" text-anchor="end" class="sm">accuracy</text>
+<text x="547" y="306" text-anchor="middle" class="sm t-good">98%</text>
+<text x="617" y="306" text-anchor="middle" class="sm t-good">95%</text>
+<text x="687" y="306" text-anchor="middle" class="sm t-warn">89%</text>
+<text x="757" y="306" text-anchor="middle" class="sm t-bad">81%</text>
+<text x="650" y="336" text-anchor="middle" class="sm t-muted">illustrative: measure your own curve</text>
+</svg>
+<figcaption><b>Selection in a crowd.</b> Left: two skills with overlapping descriptions compete for the same request, a description collision. Right: the always-on label cost grows linearly with the number of installed skills (assuming about 100 words, roughly 130 tokens, per label), and selection accuracy can fall as choices multiply. The accuracy numbers are illustrative, not measured.</figcaption>
+</figure>
+
+<h3>How to evaluate selection</h3>
+<ol>
+<li><b>Build a labeled routing set.</b> Queries labeled with the <em>one</em> skill that should load, or "none". Include queries for every skill you ship, plus near-misses that belong to none.</li>
+<li><b>Install a realistic set of distractors.</b> Run with the full set of skills your users actually have, not just yours. If you do not know, test at several sizes (for example 5, 20, 50 skills) and plot the curve.</li>
+<li><b>Measure multi-class metrics.</b> Top-1 selection accuracy, per-skill precision and recall, and a <b>skill-by-skill confusion matrix</b>. The off-diagonal cells show exactly which pairs collide.</li>
+<li><b>Hunt collisions before users do.</b> Compare descriptions pairwise (even simple embedding similarity works as a first filter) and write disambiguation queries for the most similar pairs: "board slides from Q3 numbers" should go to <code>board-deck</code>, "the Q3 report doc" to <code>quarterly-report</code>.</li>
+<li><b>Watch for double loads.</b> Sometimes the agent loads two skills whose instructions conflict (two different chart styles). Count runs with more than one skill loaded and check the output against both.</li>
+</ol>
+<div class="callout warn"><span class="t">A pushy description is a tax on your neighbors</span>
+<p>Part 1 recommended "pushy" descriptions to fight under-triggering. In a crowd, a pushy description also steals requests from other skills. Every time you widen a description, re-run the <em>other</em> skills' trigger evals too. Organizations with many skills benefit from a shared routing eval that runs whenever any description changes, like a regression suite for triggers.</p>
+</div>
+
+<h2>Part 5: Portability and regressions</h2>
+<p>Because the format is an open standard, the same skill folder may run under different models (a large model and a small, cheap one) and different harnesses (a coding CLI, an IDE, a chat app, your own agent built on an SDK). Each combination can change both halves of the funnel: triggering depends on how the harness presents the skill list and on the model's judgment; uplift depends on how capable the model already is without the skill.</p>
+<div class="tablewrap"><table>
+<tr><th>Illustrative results</th><th>Large model, harness X</th><th>Small model, harness X</th><th>Large model, harness Y</th></tr>
+<tr><td>Trigger recall</td><td>0.90</td><td>0.65</td><td>0.80</td></tr>
+<tr><td>False-trigger rate</td><td>0.05</td><td>0.10</td><td>0.15</td></tr>
+<tr><td>Uplift (pass-rate delta)</td><td>+0.20</td><td>+0.45</td><td>+0.18</td></tr>
+<tr><td>Adherence (script used)</td><td>95%</td><td>70%</td><td>90%</td></tr>
+</table></div>
+<p>Read the table as a pattern, not data: a smaller model might trigger less reliably yet gain <em>more</em> from the skill when it does fire, because it lacked the know-how to begin with. A different harness might present skills differently and produce more false triggers. You only find out by running the same suite on each target, which is why <code>skill-creator</code> says to run trigger evals with the model the user will actually use.</p>
+
+<h3>When the model updates</h3>
+<p>Skills are written against a model's current behavior, and models change. Treat every model update as a reason to rerun the skill suite (<a href="15-production-evals.html">Module 15</a> covers wiring this into CI). Three things can move:</p>
+<ul>
+<li><b>Triggering drifts.</b> A new model may be more or less eager to consult skills. Rerun the trigger set and compare rates per query, not just the total.</li>
+<li><b>Uplift shrinks.</b> If the new baseline model already does the task well, the skill's delta may drop toward zero. That is not a regression in quality; it is a signal the skill may now be dead weight (context cost for no gain) and could be slimmed down.</li>
+<li><b>Uplift turns negative.</b> Instructions written to steer a weaker model ("always do X in exactly this way") can hold back a stronger one. An assertion that "always fails with the skill but passes without" is the analyst's flag for this.</li>
+</ul>
+<p>Keep the <b>pinned baseline</b> idea from Part 2: store a snapshot of each released skill version and its benchmark, so a later rerun can separate "the model changed" from "the skill changed".</p>
+
+<h2>Part 6: Safety, skills as a supply chain</h2>
+<p>A skill is instructions plus, often, executable code, and the agent runs that code with whatever permissions it has. Installing a third-party skill is therefore closer to installing a software package than to reading a document. <code>skill-creator</code> states a "Principle of Lack of Surprise": a skill must not contain malware, exploit code or anything that could compromise security, and its contents should not surprise the user in their intent if described. Your evals should verify that, not assume it. <a href="17-safety-evals.html">Module 17</a> covers safety evals in general and <a href="25-agent-security-evals.html">Module 25</a> covers agent security evals in depth (prompt injection, tool poisoning, sandbox escape and more). This section only covers what is specific to skills.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 380" role="img" aria-label="Five stages of a skill's life: author publishes, marketplace distributes, user installs, agent reads SKILL.md, agent runs scripts. Under each stage a red threat: trojan or look-alike skill, a later update swaps in a payload, an over-broad description grabs every task, injected instructions tell the agent to leak data, scripts exfiltrate secrets. Under each threat a green eval or defense: provenance and pinned versions, static review and diffing updates, trigger eval on unrelated tasks, adversarial skill suite measuring agent compliance, sandbox runs with canary secrets and egress logging.">
+<defs><marker id="m22i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="16" y="30" width="148" height="48" rx="10"/><text x="90" y="59" text-anchor="middle" class="b">Author</text>
+<rect class="box plain" x="184" y="30" width="148" height="48" rx="10"/><text x="258" y="59" text-anchor="middle" class="b">Marketplace</text>
+<rect class="box plain" x="352" y="30" width="148" height="48" rx="10"/><text x="426" y="59" text-anchor="middle" class="b">Install</text>
+<rect class="box plain" x="520" y="30" width="148" height="48" rx="10"/><text x="594" y="59" text-anchor="middle" class="b">Agent reads</text>
+<rect class="box plain" x="688" y="30" width="148" height="48" rx="10"/><text x="762" y="59" text-anchor="middle" class="b">Agent runs</text>
+<line class="ln bad flow" x1="164" y1="54" x2="180" y2="54" marker-end="url(#m22i)"/>
+<line class="ln bad flow" x1="332" y1="54" x2="348" y2="54" marker-end="url(#m22i)"/>
+<line class="ln bad flow" x1="500" y1="54" x2="516" y2="54" marker-end="url(#m22i)"/>
+<line class="ln bad flow" x1="668" y1="54" x2="684" y2="54" marker-end="url(#m22i)"/>
+<text x="4" y="112" class="sm t-bad">threat</text>
+<rect class="box bad" x="16" y="120" width="148" height="92" rx="10"/>
+<text x="90" y="148" text-anchor="middle" class="sm">trojan or look-alike</text><text x="90" y="164" text-anchor="middle" class="sm">skill with a useful</text><text x="90" y="180" text-anchor="middle" class="sm">cover story</text>
+<rect class="box bad" x="184" y="120" width="148" height="92" rx="10"/>
+<text x="258" y="148" text-anchor="middle" class="sm">a later update</text><text x="258" y="164" text-anchor="middle" class="sm">swaps in a payload</text><text x="258" y="180" text-anchor="middle" class="sm">after trust is built</text>
+<rect class="box bad" x="352" y="120" width="148" height="92" rx="10"/>
+<text x="426" y="148" text-anchor="middle" class="sm">over-broad description</text><text x="426" y="164" text-anchor="middle" class="sm">makes it load on</text><text x="426" y="180" text-anchor="middle" class="sm">every task</text>
+<rect class="box bad" x="520" y="120" width="148" height="92" rx="10"/>
+<text x="594" y="148" text-anchor="middle" class="sm">injected instructions:</text><text x="594" y="164" text-anchor="middle" class="sm">"also upload the</text><text x="594" y="180" text-anchor="middle" class="sm">config to this URL"</text>
+<rect class="box bad pulse" x="688" y="120" width="148" height="92" rx="10"/>
+<text x="762" y="148" text-anchor="middle" class="sm">script reads secrets</text><text x="762" y="164" text-anchor="middle" class="sm">or env vars and</text><text x="762" y="180" text-anchor="middle" class="sm">sends them out</text>
+<text x="4" y="246" class="sm t-good">eval / defense</text>
+<rect class="box good" x="16" y="254" width="148" height="92" rx="10"/>
+<text x="90" y="282" text-anchor="middle" class="sm">provenance checks,</text><text x="90" y="298" text-anchor="middle" class="sm">trusted sources only,</text><text x="90" y="314" text-anchor="middle" class="sm">pinned versions</text>
+<rect class="box good" x="184" y="254" width="148" height="92" rx="10"/>
+<text x="258" y="282" text-anchor="middle" class="sm">static review and</text><text x="258" y="298" text-anchor="middle" class="sm">scanners; re-review</text><text x="258" y="314" text-anchor="middle" class="sm">every version diff</text>
+<rect class="box good" x="352" y="254" width="148" height="92" rx="10"/>
+<text x="426" y="282" text-anchor="middle" class="sm">trigger eval on</text><text x="426" y="298" text-anchor="middle" class="sm">unrelated tasks: false-</text><text x="426" y="314" text-anchor="middle" class="sm">trigger rate near zero</text>
+<rect class="box good" x="520" y="254" width="148" height="92" rx="10"/>
+<text x="594" y="282" text-anchor="middle" class="sm">adversarial skill suite:</text><text x="594" y="298" text-anchor="middle" class="sm">does the agent comply</text><text x="594" y="314" text-anchor="middle" class="sm">or flag it?</text>
+<rect class="box good" x="688" y="254" width="148" height="92" rx="10"/>
+<text x="762" y="282" text-anchor="middle" class="sm">sandbox runs with</text><text x="762" y="298" text-anchor="middle" class="sm">canary secrets and</text><text x="762" y="314" text-anchor="middle" class="sm">egress logging</text>
+<text x="420" y="370" text-anchor="middle" class="sm t-muted">each stage needs its own check; a clean static review does not cover what the agent does at run time</text>
+</svg>
+<figcaption><b>A skill's supply chain, with a threat and a matching eval at every stage.</b> The top row is the path a skill takes to your agent. The red row is what can go wrong at each stage; the green row is the check that catches it. The runtime checks (the two right columns) matter most, because they test what actually happens, not what the files appear to say.</figcaption>
+</figure>
+
+<h3>How to evaluate skill safety</h3>
+<ul>
+<li><b>Static review.</b> Read every script and reference file, not just <code>SKILL.md</code>. Flag network calls, reads of credentials or home directories, obfuscated code, instructions that tell the agent to hide actions from the user, and remote content fetched at run time (which can change after review). Re-review every update as a diff.</li>
+<li><b>Sandboxed dynamic runs.</b> Run the skill's own test prompts in an isolated environment seeded with <b>canary secrets</b> (fake keys that should never leave) and log all outbound traffic and file access. Any canary in egress is a hard fail, the same canary idea as in <a href="17-safety-evals.html">Module 17</a>.</li>
+<li><b>Adversarial skills.</b> Build a small suite of deliberately malicious test skills (in a sandbox, with harmless placeholder payloads): a skill whose body asks the agent to send a file to an external URL, a skill whose script tries to read environment variables, a skill with an over-broad description. Measure two things: does your <b>review pipeline</b> flag them (detection rate), and does the <b>agent</b> comply, refuse or warn the user when it loads them (compliance rate)? A good agent should treat a skill's instructions as less trusted than the user's when they conflict with the user's intent.</li>
+<li><b>Trigger hijacking.</b> Run a malicious skill's description through your routing eval (Part 4). A description engineered to load on everything shows up as a very high false-trigger rate.</li>
+<li><b>Least privilege as a backstop.</b> Evals miss things. Pair them with runtime limits: no production credentials in the agent's environment, network egress allow-lists, confirmation before irreversible actions. <a href="25-agent-security-evals.html">Module 25</a> shows how to measure attack success rates and utility under attack for these defenses.</li>
+</ul>
+<div class="callout bad"><span class="t">This is not hypothetical</span>
+<p>Security researchers have already examined public skill marketplaces. For example, Snyk's "ToxicSkills" study (2026) reports finding prompt-injection content and malicious payloads in skills published on a public marketplace, and a 2026 survey of agent skills (arXiv 2602.12430) treats security as one of the field's central open problems. Treat any skill you did not write the way you would treat an unreviewed package from the internet.</p>
+</div>
+
+<h2>What research says</h2>
+<p>Skills are young, so the research base is small. The most relevant benchmark so far is <b>SkillsBench</b> ("Benchmarking How Well Agent Skills Work Across Diverse Tasks", arXiv 2602.12670, February 2026). Its design is exactly the uplift eval of Part 2 at scale: the same tasks, run by agents with and without skills. The paper reports:</p>
+<ul>
+<li>About 84 tasks across 11 domains.</li>
+<li>Curated, human-written skills raised the pass rate by roughly 16 percentage points on average, with <b>large variation by domain</b>: small gains in software engineering, where models already know a lot, and much larger gains in some specialized domains such as healthcare.</li>
+<li><b>Self-generated skills</b>, where the model writes its own skill before solving the task, gave no reliable benefit on average.</li>
+<li><b>Focused skills beat long, comprehensive ones.</b></li>
+</ul>
+<p>Each finding maps onto an eval lesson. Variation by domain means an average uplift hides a lot, so report per domain or per task family. The self-generated result means "the model can write its own skills" is a claim to test, not assume; the know-how has to come from somewhere. And the focused-beats-comprehensive result echoes <code>skill-creator</code>'s advice to keep the body lean and push detail into reference files: more context is not automatically more help.</p>
+<div class="callout expert"><span class="t">Putting the parts together: a skill's expected value</span>
+<p>A useful mental model: the value a skill adds per request is roughly <b>P(trigger | relevant) x uplift when triggered</b>, minus the cost of false triggers (tokens and occasional derailment on irrelevant requests), minus the always-on label cost. A skill with huge uplift but 30% recall wastes most of its potential; a skill with perfect recall but zero uplift is pure overhead. This is why you need both halves measured separately, and why fixing the cheaper half first (usually the description) is often the fastest win.</p>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="A two by two diagnostic grid. Horizontal axis: uplift when triggered, low to high. Vertical axis: trigger quality, low to high. Good triggering and high uplift: ship it. Poor triggering and high uplift: fix the description. Good triggering and low uplift: fix or slim the body. Poor triggering and low uplift: rethink or drop the skill.">
+<line class="ln" x1="140" y1="20" x2="140" y2="270"/>
+<line class="ln" x1="140" y1="270" x2="800" y2="270"/>
+<rect class="box warn" x="150" y="28" width="315" height="112" rx="10"/>
+<text x="307" y="70" text-anchor="middle" class="b">Fix or slim the body</text>
+<text x="307" y="94" text-anchor="middle" class="sm">loads at the right times but adds little;</text>
+<text x="307" y="110" text-anchor="middle" class="sm">check adherence, then the content</text>
+<rect class="box good" x="475" y="28" width="315" height="112" rx="10"/>
+<text x="632" y="70" text-anchor="middle" class="b">Ship it</text>
+<text x="632" y="94" text-anchor="middle" class="sm">fires when it should and helps;</text>
+<text x="632" y="110" text-anchor="middle" class="sm">add it to the regression suite</text>
+<rect class="box bad" x="150" y="150" width="315" height="112" rx="10"/>
+<text x="307" y="192" text-anchor="middle" class="b">Rethink or drop it</text>
+<text x="307" y="216" text-anchor="middle" class="sm">rarely fires and does not help;</text>
+<text x="307" y="232" text-anchor="middle" class="sm">pure context cost</text>
+<rect class="box accent" x="475" y="150" width="315" height="112" rx="10"/>
+<text x="632" y="192" text-anchor="middle" class="b">Fix the description</text>
+<text x="632" y="216" text-anchor="middle" class="sm">great when used, but rarely used;</text>
+<text x="632" y="232" text-anchor="middle" class="sm">run the trigger optimizer</text>
+<text x="470" y="314" text-anchor="middle" class="b t-accent">uplift when triggered (Part 2) →</text>
+<text x="150" y="288" class="sm">low</text>
+<text x="790" y="288" text-anchor="end" class="sm">high</text>
+<text x="70" y="145" text-anchor="middle" class="b t-violet" transform="rotate(-90 70 145)">trigger quality (Part 1)</text>
+<text x="128" y="40" text-anchor="end" class="sm">high</text>
+<text x="128" y="264" text-anchor="end" class="sm">low</text>
+</svg>
+<figcaption><b>A diagnostic grid for any skill.</b> Put the trigger eval on one axis and the uplift eval on the other, and the next action falls out. This is the practical payoff of measuring the two halves separately.</figcaption>
+</figure>
+
+<h2>The math in Python</h2>
+<p>Two small functions cover the core numbers of this module. The first computes run-level trigger metrics and query-level pass counts from repeated runs, using the same pass rule as <code>skill-creator</code> (trigger rate compared with a 0.5 threshold). The second computes a <b>paired bootstrap</b> confidence interval for uplift. "Paired" matters: each eval is run in both arms, so you resample <em>whole evals</em> and keep each with-skill score next to its own baseline. That removes the "some evals are just harder" noise both arms share (<a href="04-metrics-and-statistics.html">Module 04</a> explains why paired differences are so much tighter).</p>
+<pre data-lang="python"><code>import random
+from statistics import mean
+
+# ---- Part 1: trigger metrics from repeated runs -------------------------
+# One record per query; "fired" holds one entry per repeat (3 runs each).
+trigger_results = [
+    # should-trigger queries (10)
+    *[{"should_trigger": True, "fired": f} for f in [
+        [1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],
+        [1,1,0],[1,0,1],[0,1,1],[1,0,0],[0,0,0]]],
+    # should-not-trigger queries (10), mostly near-misses
+    *[{"should_trigger": False, "fired": f} for f in [
+        [1,1,0],[0,1,0],[0,0,1],[0,0,0],[0,0,0],
+        [0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]]],
+]
+
+def trigger_metrics(results, threshold=0.5):
+    """Run-level confusion matrix plus query-level pass count."""
+    tp = fn = fp = tn = 0
+    query_pass = 0
+    for r in results:
+        fired = [bool(x) for x in r["fired"]]
+        k, n = sum(fired), len(fired)
+        if r["should_trigger"]:
+            tp += k; fn += n - k
+            query_pass += (k / n) &gt;= threshold      # same rule as skill-creator
+        else:
+            fp += k; tn += n - k
+            query_pass += (k / n) &lt; threshold
+    precision = tp / (tp + fp) if tp + fp else float("nan")
+    recall = tp / (tp + fn) if tp + fn else float("nan")
+    f1 = 2 * precision * recall / (precision + recall)
+    return {"tp": tp, "fn": fn, "fp": fp, "tn": tn,
+            "precision": round(precision, 3), "recall": round(recall, 3),
+            "f1": round(f1, 3), "false_trigger_rate": round(fp / (fp + tn), 3),
+            "queries_passed": f"{query_pass}/{len(results)}"}
+
+print(trigger_metrics(trigger_results))
+
+# ---- Part 2: paired bootstrap CI for uplift -----------------------------
+# Mean pass rate per eval (averaged over its 3 runs), same 12 evals in both arms.
+with_skill = [0.89, 1.00, 0.78, 0.89, 1.00, 0.67, 0.89, 0.78, 1.00, 0.89, 0.56, 0.89]
+baseline   = [0.44, 0.67, 0.33, 0.56, 0.78, 0.44, 0.33, 0.56, 0.89, 0.44, 0.56, 0.22]
+
+def paired_bootstrap(a, b, n_boot=10_000, seed=0):
+    """95% CI for mean(a - b), resampling whole evals (keeps the pairing)."""
+    diffs = [x - y for x, y in zip(a, b)]
+    rng = random.Random(seed)
+    boots = sorted(
+        mean(rng.choice(diffs) for _ in diffs) for _ in range(n_boot)
+    )
+    lo, hi = boots[int(0.025 * n_boot)], boots[int(0.975 * n_boot) - 1]
+    return round(mean(diffs), 3), (round(lo, 3), round(hi, 3))
+
+print(paired_bootstrap(with_skill, baseline))</code></pre>
+<p>Output (illustrative data):</p>
+<pre data-lang="text"><code>{'tp': 22, 'fn': 8, 'fp': 4, 'tn': 26, 'precision': 0.846, 'recall': 0.733, 'f1': 0.786, 'false_trigger_rate': 0.133, 'queries_passed': '17/20'}
+(0.335, (0.232, 0.438))</code></pre>
+<p>The uplift is +0.335 with a 95% interval of roughly +0.23 to +0.44. Because the whole interval is above zero, you can say the skill helps on this suite. Notes for real use:</p>
+<ul>
+<li><b>Resample evals, not runs.</b> The three runs of one eval are correlated (same prompt, same difficulty). Treating 36 runs as 36 independent points would make the interval falsely narrow. This is the clustering point from <a href="04-metrics-and-statistics.html">Module 04</a>.</li>
+<li><b>A bootstrap over 3 or 4 evals is meaningless.</b> You need something like a dozen or more evals before an interval says much. Small suites are for iteration; bigger suites are for claims.</li>
+<li><b>Exclude assertions the baseline cannot pass by construction</b> (Part 2) before computing uplift, or compute two numbers: outcome uplift and adherence.</li>
+<li><b>Same interval idea for triggering.</b> To compare two descriptions, compute the per-query difference in trigger rate and bootstrap over queries.</li>
+</ul>
+
+<h2>A skill eval checklist</h2>
+<div class="tablewrap"><table>
+<tr><th>Question</th><th>Eval</th><th>Minimum setup</th><th>Main pitfall</th></tr>
+<tr><td>Does it fire when it should, and only then?</td><td>Trigger eval</td><td>~20 realistic queries, half near-miss negatives, 3 runs each</td><td>Trivial queries that never trigger; easy negatives that test nothing</td></tr>
+<tr><td>Is the description tuned, not overfitted?</td><td>Train / held-out optimization</td><td>60/40 stratified split, pick by held-out score</td><td>Selecting by train score</td></tr>
+<tr><td>Does it make outputs better?</td><td>Uplift eval</td><td>With-skill and baseline launched together, objective assertions, grader with evidence</td><td>Non-discriminating assertions; adherence-only assertions inflating the delta</td></tr>
+<tr><td>At what cost?</td><td>Same benchmark</td><td>Time and tokens, mean ± sd, per arm</td><td>Reporting pass rate alone</td></tr>
+<tr><td>Is the skill actually followed?</td><td>Adherence</td><td>Trajectory checks for reads, script runs, order</td><td>Over-strict process checks</td></tr>
+<tr><td>Does it hold up in a crowd?</td><td>Selection</td><td>Routing set with realistic distractor skills, skill confusion matrix</td><td>Testing each skill alone</td></tr>
+<tr><td>Does it survive model and harness changes?</td><td>Portability / regression</td><td>Same suite per target; rerun on every model update</td><td>Mistaking a better baseline for a worse skill</td></tr>
+<tr><td>Is it safe to install?</td><td>Supply-chain safety</td><td>Static review, sandbox with canaries, adversarial skills</td><td>Reviewing SKILL.md but not the scripts</td></tr>
+</table></div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li><b>A skill is a folder the agent chooses to open.</b> Its short description is always in context; the body and files load only when needed. That choice is a new failure point that tools and prompts do not have.</li>
+<li><b>Measure the two halves separately.</b> Triggering (does it fire at the right times?) and uplift (does it help when it fires?) have different causes and different fixes.</li>
+<li><b>Trigger evals are classification.</b> Realistic, substantive queries; near-miss negatives; 3 runs per query; precision, recall and the trigger-rate distribution.</li>
+<li><b>Optimize descriptions on train, choose on held-out.</b> A description that aces its training queries has probably memorized them.</li>
+<li><b>Uplift needs a paired baseline run at the same time,</b> objective assertions, a grader that cites evidence and fails superficial passes, and an analyst pass for non-discriminating, flaky and costly patterns.</li>
+<li><b>Check the trajectory, not just the output,</b> to confirm the skill is the reason for the gain.</li>
+<li><b>Test in a crowd, across models, and on every update,</b> and treat third-party skills as a software supply chain: review, sandbox, canaries, adversarial skills.</li>
+</ol></div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. Your trigger eval shows 40% recall. Most should-trigger queries are one-liners like "read report.pdf". What is the most likely problem?</p>
+<button class="opt">The description is too short and must be rewritten</button>
+<button class="opt">The queries are too simple: agents often handle one-step tasks directly without consulting a skill, so these are poor trigger tests</button>
+<button class="opt">The model is broken and should be replaced</button>
+<div class="why"><code>skill-creator</code> notes that simple one-step queries may not trigger a skill even when the description matches perfectly. Rewrite the queries to be substantive and realistic before touching the description.</div></div>
+<div class="q" data-answer="2"><p>2. Which is the best should-not-trigger query for a <code>quarterly-report</code> skill?</p>
+<button class="opt">"Write a fibonacci function in Rust"</button>
+<button class="opt">"What's the weather in Paris?"</button>
+<button class="opt">"What was Q3 revenue growth vs Q2? Just the percentage, the CSV is data/q3_sales.csv"</button>
+<div class="why">The best negatives are near-misses: they share keywords (Q3, revenue, CSV) but need something else (a single number, not a report). Obviously irrelevant queries test nothing.</div></div>
+<div class="q" data-answer="0"><p>3. During description optimization, iteration 4 scores 12/12 on train and 5/8 on held-out test; iteration 2 scores 11/12 and 7/8. Which do you ship?</p>
+<button class="opt">Iteration 2, because selection is by held-out score</button>
+<button class="opt">Iteration 4, because it is perfect on train</button>
+<button class="opt">Average the two descriptions</button>
+<div class="why">A perfect train score with a falling test score is overfitting. <code>skill-creator</code>'s loop returns the best description by test score for exactly this reason.</div></div>
+<div class="q" data-answer="1"><p>4. The assertion "Output is a .docx file" passes 12/12 with the skill and 12/12 without. What should you do?</p>
+<button class="opt">Keep it: 100% is a great result</button>
+<button class="opt">Treat it as non-discriminating: drop it or strengthen it so it only passes when the skill genuinely succeeds</button>
+<button class="opt">Remove the baseline runs, since they are clearly unnecessary</button>
+<div class="why">An assertion that passes regardless of the skill says nothing about skill value, and inflates both pass rates. The analyst pass is designed to flag exactly this.</div></div>
+<div class="q" data-answer="2"><p>5. Your uplift delta is +0.50, but most of it comes from "Chart was made by scripts/make_chart.py" and "Built from assets/template.docx". What is the concern?</p>
+<button class="opt">The grader is biased toward the skill</button>
+<button class="opt">The baseline should have been given the skill too</button>
+<button class="opt">Those assertions cannot pass without the skill by construction, so they measure adherence rather than output quality; report outcome uplift separately</button>
+<div class="why">Process assertions tied to skill files are legitimate adherence checks, but they make the headline delta look bigger than the real improvement in results.</div></div>
+<div class="q" data-answer="0"><p>6. After a model update, your skill's uplift falls from +0.30 to +0.02, while with-skill pass rate stays the same. What most likely happened?</p>
+<button class="opt">The baseline got better: the new model now does the task well without the skill, so the skill may be dead weight worth slimming</button>
+<button class="opt">The skill broke and must be rolled back</button>
+<button class="opt">The grader became stricter</button>
+<div class="why">Same with-skill score plus a smaller delta means the baseline rose. That is a portability signal, not a regression in the skill itself.</div></div>
+</div>
+
+<details>
+<summary><b>Expert corner: interview questions</b></summary>
+<ol>
+<li><b>"How would you evaluate a new skill before rolling it out to 5,000 employees?"</b> Separate trigger and uplift. Trigger: 20 or more realistic queries with near-miss negatives, 3 runs each, precision and recall, then a routing eval with the other skills employees actually have installed. Uplift: paired with-skill vs no-skill runs launched together, objective assertions graded with evidence, time and tokens, an analyst pass, human review of real outputs, and a paired bootstrap interval once the suite is big enough. Add adherence checks and a security review (static plus sandbox with canaries) before publishing.</li>
+<li><b>"Why is description optimization an overfitting risk, and how do you control it?"</b> The optimizer sees which queries failed and rewrites the description toward them, so train score climbs by memorizing. Control it with a stratified train / held-out split, selecting by held-out score, repeated runs per query, and ideally a final untouched set plus fresh production queries.</li>
+<li><b>"The with-skill pass rate is high, but you suspect the skill is not the reason. How do you check?"</b> Compare against the no-skill baseline on outcome-only assertions; read trajectories for adherence (did it read the reference file, run the bundled script); ablate parts of the skill (remove the script, remove a section) and see which removal drops the score.</li>
+<li><b>"What changes when 50 skills are installed instead of one?"</b> Triggering becomes multi-class routing; description collisions and double loads appear; always-on label cost grows linearly; a pushy description steals traffic from neighbors. Evaluate with a labeled routing set, realistic distractors, a skill-by-skill confusion matrix, and rerun all trigger evals whenever any description changes.</li>
+<li><b>"How would you test whether an agent is safe against a malicious skill?"</b> Build an adversarial suite of sandboxed test skills with placeholder payloads (exfiltration instructions in the body, a script reading env vars, an over-broad description). Seed canary secrets, log egress, and measure both detection by the review pipeline and compliance by the agent. Back it with least privilege, because evals will miss some attacks.</li>
+<li><b>"What does SkillsBench suggest about how to report skill uplift?"</b> The paper reports large variation by domain and no reliable benefit from self-generated skills on average, so report uplift per domain or task family with intervals, compare against both no-skill and self-generated baselines if you claim a skill-writing method works, and prefer focused skills to long comprehensive ones.</li>
+</ol>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Anthropic, <a href="https://github.com/anthropics/skills">anthropics/skills</a> on GitHub, especially <code>skill-creator</code>: <code>SKILL.md</code>, <code>agents/grader.md</code>, <code>agents/analyzer.md</code>, <code>agents/comparator.md</code>, <code>references/schemas.md</code> and <code>scripts/run_eval.py</code> / <code>run_loop.py</code>. The primary source for the method in Parts 1 and 2.</li>
+<li>Anthropic Engineering, <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">Equipping agents for the real world with Agent Skills</a> (October 2025).</li>
+<li>Claude Docs, <a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview">Agent Skills overview</a> and <a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices">Skill authoring best practices</a>.</li>
+<li>Agent Skills open standard: <a href="https://agentskills.io/specification">specification</a> and <a href="https://github.com/agentskills/agentskills">agentskills/agentskills</a> on GitHub.</li>
+<li>Li et al., <a href="https://arxiv.org/abs/2602.12670">SkillsBench: Benchmarking How Well Agent Skills Work Across Diverse Tasks</a> (February 2026), and the <a href="https://www.skillsbench.ai/">SkillsBench site</a>.</li>
+<li><a href="https://arxiv.org/abs/2602.12430">Agent Skills for Large Language Models: Architecture, Acquisition, Security, and the Path Forward</a> (survey, 2026).</li>
+<li>Snyk, <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/">ToxicSkills: a study of agent skills supply-chain compromise</a> (2026).</li>
+<li>Philipp Schmid, <a href="https://www.philschmid.de/testing-skills">Practical Guide to Evaluating and Testing Agent Skills</a> (2026), and his AI Engineer talk <a href="https://www.youtube.com/watch?v=0vphxNt4wyk">Don't Ship Skills Without Evals</a>.</li>
+<li>Evan Miller, <a href="https://arxiv.org/abs/2411.00640">Adding Error Bars to Evals</a> (2024), for paired and clustered intervals.</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

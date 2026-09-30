@@ -33,6 +33,13 @@
       ["21", "harness-evals", "Evaluating the agent harness"],
       ["22", "skills-evals", "Evaluating agent skills"],
       ["23", "memory-evals", "Evaluating agent memory"],
+      ["24", "tools-and-mcp-evals", "Evaluating tools and MCP servers"],
+    ]},
+    { title: "Part VI · Beyond the core", mods: [
+      ["25", "agent-security-evals", "Agent security evals"],
+      ["26", "research-and-real-work", "Deep research and real-work agents"],
+      ["27", "domain-playbook", "Domain evals: health, law, finance, data, robots"],
+      ["28", "governance-and-responsible-ai", "Governance, standards and responsible AI"],
     ]},
   ];
   const ALL = PARTS.flatMap(p => p.mods);

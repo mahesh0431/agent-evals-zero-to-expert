@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>21 · Evaluating the agent harness · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 21 · Part V · Evaluating the building blocks</div>
+<h1>Evaluating the agent harness</h1>
+<p class="lede">An agent is a model wrapped in code: a system prompt, tools, a loop, rules for managing context, notes, sub-agents, permissions and checks. That wrapper is called the <b>harness</b>, and it can move a score as much as a model upgrade. This module shows how to evaluate the harness on its own terms: hold the model fixed, change one thing, measure fairly, and find out which parts of your harness actually earn their keep.</p>
+<div class="meta"><span class="pill level-3">Advanced</span><span class="pill">~60 min</span><span class="pill">Prerequisites: Modules 04, 05, 07, 11</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Tell the <b>agent harness</b> (what turns a model into an agent) apart from the <b>evaluation harness</b> (what runs and grades the tests), and name the eight main parts of an agent harness.</li>
+<li>Explain, with published evidence, why the same model scores differently in different harnesses.</li>
+<li>Design a controlled harness experiment: one change at a time, matched budgets, epochs, and a paired confidence interval.</li>
+<li>Build and read an <b>ablation table</b>, and a <b>model × harness matrix</b> with interaction effects.</li>
+<li>Compute component-level metrics from transcripts: tool errors, invalid arguments, loops, premature "done" claims, context growth, state retention after compaction, and sub-agent handoff quality.</li>
+<li>Evaluate a long-running harness that spans many context windows, and gate every harness change in CI.</li>
+<li>Spot the classic traps: unmatched budgets, overfitting the harness to the benchmark, cross-harness comparisons, infrastructure noise, tool leakage, and the winner's curse.</li>
+</ul>
+</div>
+
+<div class="callout tip"><span class="t">Where this fits</span>
+<p><a href="05-agents-are-different.html">Module 05</a> established that a benchmark score belongs to the model <em>and</em> the scaffold <em>and</em> the budget. <a href="07-coding-agents.html">Module 07</a> showed the same effect for coding agents, and <a href="18-benchmark-pitfalls.html">Module 18</a> showed how it makes leaderboards apples-to-oranges. Those modules tell you the harness matters. This module is the toolkit for measuring <em>how much</em>, and <em>which part</em>.</p>
+</div>
+
+<div data-toc></div>
+
+<h2>Two things called "harness"</h2>
+<p>The word "harness" is used for two different pieces of software in agent evaluation, and mixing them up causes real confusion in papers, docs and interviews. Anthropic's engineering post <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (January 2026) draws the line clearly:</p>
+<ul>
+<li>The <b>agent harness</b> (also called the <b>scaffold</b>) is the code that turns a model into an agent: the loop that calls the model, runs the tools it asks for, feeds results back, manages the context, and decides when to stop. It is part of your <em>product</em>.</li>
+<li>The <b>evaluation harness</b> is the test rig: the infrastructure that loads tasks, resets environments, runs many trials, records transcripts, calls the graders and computes metrics. Inspect, Harbor and HAL are evaluation harnesses. It is part of your <em>measuring instrument</em>.</li>
+</ul>
+<p>The same post makes a point worth memorizing: when you evaluate "an agent", you are evaluating the <b>harness and the model together</b>. There is no such thing as the score of the model alone once tools and a loop are involved.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Nested boxes: the model sits inside the agent harness, which has eight parts such as prompt, tools, loop and memory. The agent harness sits inside the evaluation harness, which supplies tasks, resets the sandbox, runs trials, grades and logs.">
+<defs><marker id="m21a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="20" y="16" width="780" height="298" rx="14"/>
+<text x="40" y="42" class="lg">Evaluation harness</text>
+<text x="40" y="60" class="sm">the test rig: runs tasks, records, grades</text>
+<rect class="box accent" x="40" y="76" width="520" height="222" rx="12"/>
+<text x="60" y="100" class="b">Agent harness (scaffold)</text>
+<text x="60" y="117" class="sm">turns a model into an agent: the product</text>
+<rect class="box plain" x="60" y="130" width="120" height="32" rx="6"/><text x="120" y="151" text-anchor="middle">system prompt</text>
+<rect class="box plain" x="240" y="130" width="120" height="32" rx="6"/><text x="300" y="151" text-anchor="middle">tools (ACI)</text>
+<rect class="box plain" x="420" y="130" width="120" height="32" rx="6"/><text x="480" y="151" text-anchor="middle">loop control</text>
+<rect class="box plain" x="60" y="190" width="120" height="32" rx="6"/><text x="120" y="211" text-anchor="middle">permissions</text>
+<rect class="box warn pulse" x="220" y="178" width="160" height="56" rx="10"/>
+<text x="300" y="202" text-anchor="middle" class="b">Model</text>
+<text x="300" y="220" text-anchor="middle" class="sm">weights held fixed</text>
+<rect class="box plain" x="420" y="190" width="120" height="32" rx="6"/><text x="480" y="211" text-anchor="middle">verification</text>
+<rect class="box plain" x="60" y="250" width="120" height="32" rx="6"/><text x="120" y="271" text-anchor="middle">context mgmt</text>
+<rect class="box plain" x="240" y="250" width="120" height="32" rx="6"/><text x="300" y="271" text-anchor="middle">memory / notes</text>
+<rect class="box plain" x="420" y="250" width="120" height="32" rx="6"/><text x="480" y="271" text-anchor="middle">sub-agents</text>
+<rect class="box plain" x="600" y="80" width="180" height="34" rx="6"/><text x="690" y="102" text-anchor="middle">1. tasks + environment</text>
+<rect class="box plain" x="600" y="124" width="180" height="34" rx="6"/><text x="690" y="146" text-anchor="middle">2. reset the sandbox</text>
+<rect class="box plain" x="600" y="168" width="180" height="34" rx="6"/><text x="690" y="190" text-anchor="middle">3. trials × epochs</text>
+<rect class="box plain" x="600" y="212" width="180" height="34" rx="6"/><text x="690" y="234" text-anchor="middle">4. graders</text>
+<rect class="box plain" x="600" y="256" width="180" height="34" rx="6"/><text x="690" y="278" text-anchor="middle">5. logs + metrics</text>
+<line class="ln accent flow" x1="598" y1="185" x2="563" y2="185" marker-end="url(#m21a)"/>
+<line class="ln good flow" x1="563" y1="229" x2="598" y2="229" marker-end="url(#m21a)"/>
+</svg>
+<figcaption><b>Two harnesses, one inside the other.</b> The agent harness (blue) is the code around the model that you ship. The evaluation harness (violet) is the rig that runs the agent many times and grades what it did. Harness evals change the blue layer while holding the model and the violet layer fixed.</figcaption>
+</figure>
+
+<div class="callout analogy"><span class="t">Analogy: the driver, the car and the test track</span>
+<p>The model is the driver. The agent harness is the car: steering, mirrors, brakes, dashboard, sat-nav. The evaluation harness is the test track with its timing gates and marshals. A lap time belongs to driver plus car on that track. If you want to know whether the new brakes help, you keep the same driver on the same track and swap only the brakes. If you move to a different track, the old lap times are no longer comparable, even for the same driver and car.</p>
+</div>
+
+<p>Throughout this module, "harness" on its own means the <b>agent</b> harness. When we mean the test rig, we will say "evaluation harness".</p>
+
+<h2>Anatomy of an agent harness</h2>
+<p>Before you can evaluate a harness you need a parts list. Different frameworks use different names, but almost every production agent harness has these eight parts. Each is a knob someone can turn, and each is therefore something you can ablate (switch off) and measure.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 420" role="img" aria-label="The model at the center, receiving a task from above and acting on an environment below. Eight harness components surround it: system prompt, tools, permissions and sandbox, verification on the left; loop control, context management, memory and notes, sub-agents on the right.">
+<defs><marker id="m21b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="340" y="20" width="160" height="44" rx="8"/>
+<text x="420" y="40" text-anchor="middle" class="b">Task / user</text>
+<text x="420" y="56" text-anchor="middle" class="sm">goal, messages</text>
+<rect class="box warn" x="320" y="160" width="200" height="90" rx="12"/>
+<text x="420" y="194" text-anchor="middle" class="lg">Model</text>
+<text x="420" y="214" text-anchor="middle" class="sm">reads the context window,</text>
+<text x="420" y="230" text-anchor="middle" class="sm">emits text or tool calls</text>
+<rect class="box good" x="340" y="340" width="160" height="50" rx="8"/>
+<text x="420" y="362" text-anchor="middle" class="b">Environment</text>
+<text x="420" y="379" text-anchor="middle" class="sm">repo, browser, DB, OS</text>
+<line class="ln" x1="420" y1="64" x2="420" y2="157" marker-end="url(#m21b)"/>
+<line class="ln accent flow" x1="400" y1="250" x2="400" y2="337" marker-end="url(#m21b)"/>
+<text x="392" y="298" text-anchor="end" class="sm">act</text>
+<line class="ln good flow" x1="440" y1="337" x2="440" y2="253" marker-end="url(#m21b)"/>
+<text x="448" y="298" class="sm">observe</text>
+<rect class="box accent" x="20" y="30" width="200" height="62" rx="8"/>
+<text x="120" y="55" text-anchor="middle" class="b">System prompt</text>
+<text x="120" y="74" text-anchor="middle" class="sm">role, rules, workflow hints</text>
+<rect class="box accent" x="20" y="130" width="200" height="62" rx="8"/>
+<text x="120" y="155" text-anchor="middle" class="b">Tools (the ACI)</text>
+<text x="120" y="174" text-anchor="middle" class="sm">names, schemas, output format</text>
+<rect class="box accent" x="20" y="230" width="200" height="62" rx="8"/>
+<text x="120" y="255" text-anchor="middle" class="b">Permissions + sandbox</text>
+<text x="120" y="274" text-anchor="middle" class="sm">what may run, what needs asking</text>
+<rect class="box accent" x="20" y="330" width="200" height="62" rx="8"/>
+<text x="120" y="355" text-anchor="middle" class="b">Verification</text>
+<text x="120" y="374" text-anchor="middle" class="sm">run tests, self-check before done</text>
+<rect class="box violet" x="620" y="30" width="200" height="62" rx="8"/>
+<text x="720" y="55" text-anchor="middle" class="b">Loop control</text>
+<text x="720" y="74" text-anchor="middle" class="sm">max turns, stop rule, retries</text>
+<rect class="box violet" x="620" y="130" width="200" height="62" rx="8"/>
+<text x="720" y="155" text-anchor="middle" class="b">Context management</text>
+<text x="720" y="174" text-anchor="middle" class="sm">truncate, compact, clear</text>
+<rect class="box violet" x="620" y="230" width="200" height="62" rx="8"/>
+<text x="720" y="255" text-anchor="middle" class="b">Memory / notes</text>
+<text x="720" y="274" text-anchor="middle" class="sm">progress files, memory tool</text>
+<rect class="box violet" x="620" y="330" width="200" height="62" rx="8"/>
+<text x="720" y="355" text-anchor="middle" class="b">Sub-agents</text>
+<text x="720" y="374" text-anchor="middle" class="sm">delegate with a brief, merge</text>
+<line class="ln dash" x1="220" y1="61" x2="318" y2="172"/>
+<line class="ln dash" x1="220" y1="161" x2="318" y2="195"/>
+<line class="ln dash" x1="220" y1="261" x2="318" y2="222"/>
+<line class="ln dash" x1="220" y1="361" x2="318" y2="244"/>
+<line class="ln dash" x1="620" y1="61" x2="522" y2="172"/>
+<line class="ln dash" x1="620" y1="161" x2="522" y2="195"/>
+<line class="ln dash" x1="620" y1="261" x2="522" y2="222"/>
+<line class="ln dash" x1="620" y1="361" x2="522" y2="244"/>
+</svg>
+<figcaption><b>The harness around the model.</b> Blue parts shape what the model sees and can do on each step; violet parts shape how the run unfolds over many steps. The model only ever reads a context window and writes text: every other behavior of the agent is decided by this surrounding code.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Component</th><th>What it decides</th><th>Typical failure it causes</th><th>What to measure</th></tr>
+<tr><td><b>System prompt</b></td><td>Role, rules, workflow advice ("run the tests before you finish")</td><td>Ignored rules; over-cautious or over-eager behavior; prompt written for another model's habits</td><td>Success, rule violations, refusal rate</td></tr>
+<tr><td><b>Tools, the agent-computer interface (ACI)</b></td><td>Which actions exist, how they are described, what their outputs look like</td><td>Wrong tool chosen, malformed arguments, huge outputs flooding the context</td><td>Tool error rate, invalid-argument rate, tokens per tool result</td></tr>
+<tr><td><b>Loop control</b></td><td>Max turns, stop conditions, retries, timeouts</td><td>Stuck loops, giving up too early, runaway cost</td><td>Exit reasons, repeated-action rate, steps to success</td></tr>
+<tr><td><b>Context management</b></td><td>Truncating tool output, compacting (summarizing) old turns, clearing stale results</td><td>A fact the agent needs later is summarized away</td><td>Context tokens per turn, state retention after compaction</td></tr>
+<tr><td><b>Memory / notes</b></td><td>What is written to files or a memory store and read back</td><td>Stale or wrong notes steer later sessions</td><td>Note accuracy vs ground truth, re-done work</td></tr>
+<tr><td><b>Sub-agents</b></td><td>When to delegate, what the brief contains, how results merge back</td><td>Thin briefs, duplicated work, lost results</td><td>Handoff completeness, duplicate work, cost per success</td></tr>
+<tr><td><b>Permissions + sandbox</b></td><td>Which actions run freely, which need approval, what the network can reach</td><td>Destructive actions; or blocked from doing the task at all</td><td>Violation rate, approval requests, blocked-but-needed actions</td></tr>
+<tr><td><b>Verification</b></td><td>Self-checks before claiming completion (tests, a checker model, an end-to-end check)</td><td>Premature "done" claims</td><td>Premature-done rate, success when claimed done</td></tr>
+</table></div>
+
+<p>Two terms from that table deserve a proper definition. The <b>agent-computer interface (ACI)</b> is the SWE-agent paper's name (<a href="https://arxiv.org/abs/2405.15793">Yang et al., 2024</a>) for the set of commands and feedback formats an agent uses to act, designed for a model the way a user interface is designed for a person. <b>Compaction</b> means replacing older parts of the conversation with a shorter summary so the run can continue inside the context window. Anthropic's <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents</a> (September 2025) names compaction, structured note-taking and sub-agent architectures as the three main techniques for long tasks, which is why all three appear in our parts list.</p>
+
+<div class="callout"><span class="t">Where memory and tools live in this course</span>
+<p>This module treats memory and tools as <em>harness components</em> and asks "does this component help the agent succeed?". <a href="06-tool-use-and-conversation.html">Module 06</a> covers tool-use evals, <a href="24-tools-and-mcp-evals.html">Module 24</a> evaluates individual tools and MCP servers in depth, <a href="11-multi-agent-long-horizon.html">Module 11</a> covers compaction probes and multi-agent tracing, and <a href="23-memory-evals.html">Module 23</a> evaluates memory systems as a capability in their own right. <a href="22-skills-evals.html">Module 22</a> does the same for agent skills.</p>
+</div>
+
+<h2>Why the harness deserves its own evals</h2>
+<p><a href="05-agents-are-different.html">Module 05</a> and <a href="07-coding-agents.html">Module 07</a> already collected the headline evidence: the SWE-agent ACI results, Anthropic's two-tool SWE-bench scaffold, the mini-SWE-agent bash-only view, and Terminal-Bench reporting model × harness pairs. Here are three further reasons, each of which changes how you run evals.</p>
+
+<h3>1. Leaderboards now rank agent + model pairs</h3>
+<p>The <a href="https://www.tbench.ai">Terminal-Bench 2.0</a> leaderboard ranks <b>agent + model pairs</b>, and its official evaluation harness, <a href="https://github.com/laude-institute/harbor">Harbor</a>, can run Claude Code, OpenHands, Codex CLI and other agents on exactly the same containerized tasks. So the same model appears several times with different harnesses, and the same harness appears with different models. The unit of measurement is the pair. (The benchmark is described in <a href="https://arxiv.org/abs/2601.11868">Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces</a>.)</p>
+
+<h3>2. Standardized harness evaluation at scale: HAL</h3>
+<p>The <b>Holistic Agent Leaderboard</b> (HAL; Kapoor et al., Princeton; <a href="https://arxiv.org/abs/2510.11977">arXiv 2510.11977</a>, accepted at ICLR 2026; site at <a href="https://hal.cs.princeton.edu/">hal.cs.princeton.edu</a>) is an evaluation harness built to answer the harness question systematically. It runs many <b>agent scaffolds × models × benchmarks</b> under one standardized setup and reports <b>cost next to accuracy</b> for every cell. The HAL paper reports roughly 21,730 rollouts across 9 models and 9 benchmarks at a cost of about $40,000. Among its findings, the paper reports that higher reasoning effort <em>reduced</em> accuracy in the majority of runs, and that LLM-aided inspection of the logs uncovered behaviors no score would show, such as agents searching online for the benchmark answers instead of solving the task, and an agent misusing a credit card in a flight-booking task.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="A grid of models by scaffolds, repeated for several benchmarks. Every cell yields an accuracy and a cost, and the cells are plotted as points on an accuracy versus cost chart with a Pareto frontier. Values are illustrative.">
+<defs><marker id="m21c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain dashed" x="92" y="30" width="330" height="236" rx="10"/>
+<rect class="box plain dashed" x="76" y="46" width="330" height="236" rx="10"/>
+<rect class="box plain" x="60" y="62" width="330" height="236" rx="10"/>
+<text x="330" y="24" text-anchor="middle" class="sm">× more benchmarks</text>
+<text x="170" y="90" text-anchor="middle" class="b">scaffold A</text>
+<text x="250" y="90" text-anchor="middle" class="b">B</text>
+<text x="330" y="90" text-anchor="middle" class="b">C</text>
+<text x="97" y="134" text-anchor="middle">model 1</text>
+<text x="97" y="189" text-anchor="middle">model 2</text>
+<text x="97" y="244" text-anchor="middle">model 3</text>
+<rect class="box plain" x="135" y="102" width="70" height="48" rx="5"/><text x="170" y="123" text-anchor="middle" class="b">41%</text><text x="170" y="140" text-anchor="middle" class="sm">$0.40</text>
+<rect class="box plain" x="215" y="102" width="70" height="48" rx="5"/><text x="250" y="123" text-anchor="middle" class="b">47%</text><text x="250" y="140" text-anchor="middle" class="sm">$0.90</text>
+<rect class="box plain" x="295" y="102" width="70" height="48" rx="5"/><text x="330" y="123" text-anchor="middle" class="b">44%</text><text x="330" y="140" text-anchor="middle" class="sm">$1.70</text>
+<rect class="box plain" x="135" y="157" width="70" height="48" rx="5"/><text x="170" y="178" text-anchor="middle" class="b">52%</text><text x="170" y="195" text-anchor="middle" class="sm">$1.20</text>
+<rect class="box good" x="215" y="157" width="70" height="48" rx="5"/><text x="250" y="178" text-anchor="middle" class="b">58%</text><text x="250" y="195" text-anchor="middle" class="sm">$2.10</text>
+<rect class="box plain" x="295" y="157" width="70" height="48" rx="5"/><text x="330" y="178" text-anchor="middle" class="b">55%</text><text x="330" y="195" text-anchor="middle" class="sm">$4.80</text>
+<rect class="box plain" x="135" y="212" width="70" height="48" rx="5"/><text x="170" y="233" text-anchor="middle" class="b">35%</text><text x="170" y="250" text-anchor="middle" class="sm">$0.20</text>
+<rect class="box plain" x="215" y="212" width="70" height="48" rx="5"/><text x="250" y="233" text-anchor="middle" class="b">39%</text><text x="250" y="250" text-anchor="middle" class="sm">$0.50</text>
+<rect class="box plain" x="295" y="212" width="70" height="48" rx="5"/><text x="330" y="233" text-anchor="middle" class="b">36%</text><text x="330" y="250" text-anchor="middle" class="sm">$1.10</text>
+<line class="ln accent flow" x1="428" y1="180" x2="464" y2="180" marker-end="url(#m21c)"/>
+<text x="446" y="171" text-anchor="middle" class="sm">plot</text>
+<line class="ln" x1="500" y1="280" x2="810" y2="280"/>
+<line class="ln" x1="500" y1="280" x2="500" y2="60"/>
+<text x="655" y="305" text-anchor="middle" class="sm">cost per task</text>
+<text x="484" y="170" text-anchor="middle" class="sm" transform="rotate(-90 484 170)">accuracy</text>
+<text x="655" y="44" text-anchor="middle" class="b">Report both axes</text>
+<circle cx="520" cy="238" r="5" class="fill-accent"/>
+<circle cx="540" cy="200" r="5" class="fill-accent"/>
+<circle cx="560" cy="221" r="5" class="fill-accent"/>
+<circle cx="580" cy="146" r="5" class="fill-accent"/>
+<circle cx="600" cy="176" r="5" class="fill-accent"/>
+<circle cx="640" cy="118" r="5" class="fill-good"/>
+<circle cx="660" cy="210" r="5" class="fill-accent"/>
+<circle cx="690" cy="160" r="5" class="fill-accent"/>
+<circle cx="780" cy="132" r="5" class="fill-accent"/>
+<polyline class="ln good thick" points="520,238 540,200 580,146 640,118"/>
+<text x="560" y="104" text-anchor="middle" class="sm t-good">Pareto frontier</text>
+<text x="780" y="116" text-anchor="middle" class="sm">dominated</text>
+</svg>
+<figcaption><b>The HAL idea: the full grid, on two axes.</b> An illustrative layout, not HAL's data. Each cell is a (model, scaffold) pair on one benchmark, with an accuracy and a cost. Points on the <b>Pareto frontier</b> are those no other configuration beats on both accuracy and cost at once; the expensive point on the right is <b>dominated</b>: a cheaper configuration is at least as accurate.</figcaption>
+</figure>
+
+<h3>3. Most of what you change day to day is harness</h3>
+<p>If you build an agent product, you rarely change the model: you change it a few times a year when a new one ships. You change the harness every week. Someone rewrites a paragraph of the system prompt, adds a tool, raises the turn limit, lowers the compaction threshold, or turns on a sub-agent. Each of those edits is a <b>release</b> of your agent that can make things better or quietly worse. Anthropic's <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a> (September 2025) recommends exactly this discipline for tool changes: build realistic evaluation tasks, run them programmatically, track accuracy alongside runtime, number of tool calls, token use and tool errors, read the transcripts, and keep a held-out set so you do not overfit the tool descriptions to your test tasks.</p>
+
+<div class="callout expert"><span class="t">A useful mental equation</span>
+<p>For a given task set and budget, think of a success rate as<br>
+<b>score(model, harness) = baseline + model effect + harness effect + interaction + noise</b>.<br>
+The <b>interaction</b> term is the part that depends on the specific pairing: a harness tuned to one model's habits can help that model and hurt another. Harness evals estimate the harness effect for your model, and, when you have several models, the interaction. The noise term is why you need epochs and confidence intervals.</p>
+</div>
+
+<h2>The core method: hold the model fixed, change one thing</h2>
+<p>Every harness eval is a small controlled experiment. The whole method fits in one sentence: <b>keep everything identical except the one harness component you are testing, run both versions on the same tasks several times, and compare them task by task.</b> Each word in that sentence prevents a specific mistake.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="Four fixed inputs, the same tasks, model, budget and evaluation harness, feed two configurations: A, the baseline, and B, the baseline plus one change. Each runs k epochs per task to give per-task pass rates, which are paired into per-task differences and summarized as a mean difference with a 95 percent confidence interval.">
+<defs><marker id="m21d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="100" y="20" text-anchor="middle" class="sm">held fixed</text>
+<rect class="box plain" x="15" y="30" width="170" height="44" rx="8"/><text x="100" y="57" text-anchor="middle">same task set</text>
+<rect class="box plain" x="15" y="84" width="170" height="44" rx="8"/><text x="100" y="111" text-anchor="middle">same model + settings</text>
+<rect class="box plain" x="15" y="138" width="170" height="44" rx="8"/><text x="100" y="165" text-anchor="middle">same budget</text>
+<rect class="box plain" x="15" y="192" width="170" height="44" rx="8"/><text x="100" y="219" text-anchor="middle">same eval harness</text>
+<rect class="box accent" x="240" y="50" width="170" height="60" rx="8"/>
+<text x="325" y="76" text-anchor="middle" class="b">Config A</text>
+<text x="325" y="94" text-anchor="middle" class="sm">current harness (baseline)</text>
+<rect class="box violet" x="240" y="160" width="170" height="60" rx="8"/>
+<text x="325" y="186" text-anchor="middle" class="b">Config B</text>
+<text x="325" y="204" text-anchor="middle" class="sm">A + exactly one change</text>
+<line class="ln" x1="187" y1="110" x2="237" y2="84" marker-end="url(#m21d)"/>
+<line class="ln" x1="187" y1="160" x2="237" y2="188" marker-end="url(#m21d)"/>
+<rect class="box plain" x="470" y="50" width="150" height="60" rx="8"/>
+<text x="545" y="76" text-anchor="middle">per-task pass rate</text>
+<text x="545" y="94" text-anchor="middle" class="sm">k epochs each</text>
+<rect class="box plain" x="470" y="160" width="150" height="60" rx="8"/>
+<text x="545" y="186" text-anchor="middle">per-task pass rate</text>
+<text x="545" y="204" text-anchor="middle" class="sm">k epochs each</text>
+<line class="ln accent flow" x1="410" y1="80" x2="467" y2="80" marker-end="url(#m21d)"/>
+<line class="ln violet flow" x1="410" y1="190" x2="467" y2="190" marker-end="url(#m21d)"/>
+<text x="438" y="72" text-anchor="middle" class="sm">run</text>
+<text x="438" y="182" text-anchor="middle" class="sm">run</text>
+<rect class="box warn" x="660" y="96" width="170" height="70" rx="8"/>
+<text x="745" y="122" text-anchor="middle" class="b">paired difference</text>
+<text x="745" y="142" text-anchor="middle" class="mono">d_i = B_i − A_i</text>
+<text x="745" y="158" text-anchor="middle" class="sm">one number per task</text>
+<line class="ln" x1="620" y1="80" x2="657" y2="115" marker-end="url(#m21d)"/>
+<line class="ln" x1="620" y1="190" x2="657" y2="150" marker-end="url(#m21d)"/>
+<rect class="box good" x="660" y="206" width="170" height="54" rx="8"/>
+<text x="745" y="229" text-anchor="middle" class="b">mean Δ ± 95% CI</text>
+<text x="745" y="246" text-anchor="middle" class="sm">bootstrap over tasks</text>
+<line class="ln" x1="745" y1="166" x2="745" y2="203" marker-end="url(#m21d)"/>
+<text x="420" y="284" text-anchor="middle" class="sm">also compare cost, turns and tokens per task, paired the same way</text>
+</svg>
+<figcaption><b>A harness A/B test.</b> Everything on the left is frozen. The only difference between A and B is the component under test. Pairing by task removes the huge task-to-task difficulty variation from the comparison, which makes the interval much narrower than comparing two independent averages (<a href="04-metrics-and-statistics.html">Module 04</a>, paired tests).</figcaption>
+</figure>
+
+<h3>The rules, and what each one prevents</h3>
+<div class="tablewrap"><table>
+<tr><th>Rule</th><th>Why</th><th>What goes wrong if you skip it</th></tr>
+<tr><td><b>Same model, same sampling settings</b></td><td>Temperature, reasoning effort and max output tokens all change behavior</td><td>You attribute a reasoning-effort change to your prompt edit</td></tr>
+<tr><td><b>One change at a time</b></td><td>So the difference has one cause</td><td>A prompt rewrite that helps plus a new tool that hurts nets to "no effect", and you drop both</td></tr>
+<tr><td><b>Same tasks, and a held-out set</b></td><td>Pairing needs identical tasks; the held-out set catches overfitting</td><td>You tune the prompt on the same 50 tasks you report on</td></tr>
+<tr><td><b>Matched budgets</b></td><td>Turns, tokens, wall-clock and dollars must be equal, or you must compare on a cost curve</td><td>"Better harness" is really "more turns" (see Pitfalls)</td></tr>
+<tr><td><b>Same evaluation harness</b></td><td>Timeouts, sandbox images and grader versions all move scores</td><td>Your "improvement" is a newer grader</td></tr>
+<tr><td><b>Several epochs</b></td><td>Agents are stochastic; one run per task is a coin flip for borderline tasks</td><td>Differences of a few points that are pure noise</td></tr>
+<tr><td><b>Paired statistics, decided in advance</b></td><td>Pair by task, bootstrap over tasks, fix n and epochs before you look</td><td>Rerunning until the number looks good (p-hacking)</td></tr>
+</table></div>
+
+<h3>A worked example of the paired interval</h3>
+<p>Suppose you remove compaction from your harness and run 150 tasks, 3 epochs each, with both configs. For each task you average its 3 epochs, then subtract: d<sub>i</sub> = (success rate without compaction) − (success rate with compaction). You get 150 numbers, most of them 0 (the task passes or fails either way), some negative, a few positive.</p>
+<ul>
+<li>Mean of the 150 differences: <b>−0.067</b> (a drop of 6.7 points).</li>
+<li>Standard deviation of the differences: <b>0.19</b>.</li>
+<li>Standard error: 0.19 / √150 = 0.19 / 12.25 ≈ <b>0.0155</b>.</li>
+<li>95% interval: −0.067 ± 1.96 × 0.0155 = −0.067 ± 0.030, so <b>[−9.7, −3.7] points</b>.</li>
+</ul>
+<p>The interval excludes zero, so compaction genuinely helps on this task set. Had you compared the two configs as independent samples, the standard error would come from each config's own spread (around 0.4 for per-task rates near 60%), giving an interval of roughly ±9 points that straddles zero. Pairing is not a nicety: it is the difference between a conclusion and a shrug. These numbers are illustrative.</p>
+
+<p>Here is the whole comparison in code. It reads two Inspect logs (one per config), pairs tasks by id, and bootstraps the mean difference over tasks, carrying each task's epochs together as <a href="04-metrics-and-statistics.html">Module 04</a> recommends.</p>
+
+<pre data-lang="python"><code># paired_ablation.py : compare two harness configs task by task
+import glob, random
+from collections import defaultdict
+from inspect_ai.log import read_eval_log
+
+def per_task_rates(log_dir: str, scorer: str = "hidden_tests") -&gt; dict:
+    """Average the epochs of each task: one success rate per task id."""
+    path = sorted(glob.glob(f"{log_dir}/*.eval"))[-1]      # latest run in that folder
+    log = read_eval_log(path)
+    runs = defaultdict(list)
+    for s in log.samples:                                  # one entry per task x epoch
+        runs[s.id].append(1.0 if s.scores[scorer].value == "C" else 0.0)
+    return {tid: sum(v) / len(v) for tid, v in runs.items()}
+
+def paired_diff(a: dict, b: dict, n_boot: int = 10_000, seed: int = 0):
+    """Mean of (b - a) over shared tasks, with a percentile bootstrap 95% CI."""
+    ids = sorted(set(a) &amp; set(b))                          # pair by task id
+    d = [b[i] - a[i] for i in ids]
+    mean = sum(d) / len(d)
+    rng = random.Random(seed)
+    boots = sorted(sum(rng.choice(d) for _ in d) / len(d) for _ in range(n_boot))
+    return mean, boots[int(0.025 * n_boot)], boots[int(0.975 * n_boot)], len(ids)
+
+base = per_task_rates("logs/full")
+cand = per_task_rates("logs/no_compaction")
+m, lo, hi, n = paired_diff(base, cand)
+print(f"n={n} tasks  delta={m*100:+.1f} pts  95% CI [{lo*100:+.1f}, {hi*100:+.1f}]")
+# n=150 tasks  delta=-6.7 pts  95% CI [-9.7, -3.7]     (illustrative output)</code></pre>
+
+<div class="callout warn"><span class="t">Check the sample count first</span>
+<p>If a config crashed on some tasks, <code>set(a) &amp; set(b)</code> silently drops them. Always print <code>n</code> and compare it with your task count. A harness change that makes the agent crash on the hardest tasks can look like an improvement on the tasks that survived. Treat an errored trial as a failure, not as missing data, unless the error is in the evaluation harness itself.</p>
+</div>
+
+<h2>Ablation studies: which parts earn their keep?</h2>
+<p>An <b>ablation</b> (a word borrowed from surgery and neuroscience, where it means removing tissue to see what stops working) switches off one component at a time and measures the damage. Run the full harness, then the full harness minus X, minus Y, and so on. The resulting <b>ablation table</b> is the single most useful artifact in harness engineering: it tells you which components are load-bearing, which are dead weight, and what each one costs. The SWE-agent paper is a good published example: alongside its headline number it reports ablations of individual interface components, such as its file viewer, search commands and the linter that rejects syntactically broken edits.</p>
+
+<h3>A worked ablation table</h3>
+<p>Here is an illustrative ablation for a coding agent, 150 tasks × 3 epochs, one model, identical budgets (80 turns, 400k tokens per trial). The full harness scores 62.0%.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Configuration</th><th>Success</th><th>Δ vs full (95% CI)</th><th>Tokens / trial</th><th>Turns / success</th><th>Verdict</th></tr>
+<tr><td>Full harness</td><td>62.0%</td><td>(baseline)</td><td>210k</td><td>31</td><td></td></tr>
+<tr><td>− verify before "done"</td><td>54.0%</td><td><b>−8.0</b> [−11.2, −4.8]</td><td>197k (−6%)</td><td>27</td><td>Load-bearing</td></tr>
+<tr><td>− compaction</td><td>55.3%</td><td><b>−6.7</b> [−9.7, −3.7]</td><td>254k (+21%)</td><td>33</td><td>Load-bearing</td></tr>
+<tr><td>− retry on tool error</td><td>58.1%</td><td><b>−3.9</b> [−6.6, −1.2]</td><td>206k (−2%)</td><td>31</td><td>Helps, cheap</td></tr>
+<tr><td>− sub-agents</td><td>59.2%</td><td><b>−2.8</b> [−5.5, −0.1]</td><td>145k (−31%)</td><td>34</td><td>Helps, expensive</td></tr>
+<tr><td>− tool output truncation</td><td>60.4%</td><td>−1.6 [−4.1, +0.9]</td><td>290k (+38%)</td><td>32</td><td>Keep for cost</td></tr>
+<tr><td>− planning file</td><td>61.1%</td><td>−0.9 [−3.0, +1.2]</td><td>202k (−4%)</td><td>30</td><td>No evidence it helps</td></tr>
+</table></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 340" role="img" aria-label="Horizontal bar chart of the drop in success when each harness component is removed, with 95 percent confidence whiskers. Removing verification costs 8 points and compaction 6.7 points; truncation and planning file intervals cross zero. A column shows the change in tokens. Illustrative numbers.">
+<defs><marker id="m21e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="410" y="26" text-anchor="middle" class="b">Δ success when the component is removed (points)</text>
+<text x="640" y="26" text-anchor="middle" class="b">Δ</text>
+<text x="755" y="26" text-anchor="middle" class="b">Δ tokens</text>
+<line class="ln dash" x1="560" y1="38" x2="560" y2="282"/>
+<line class="ln dash" x1="260" y1="282" x2="260" y2="276"/>
+<line class="ln" x1="260" y1="282" x2="600" y2="282"/>
+<text x="260" y="300" text-anchor="middle" class="sm">−12</text>
+<text x="360" y="300" text-anchor="middle" class="sm">−8</text>
+<text x="460" y="300" text-anchor="middle" class="sm">−4</text>
+<text x="560" y="300" text-anchor="middle" class="sm">0</text>
+<line class="ln" x1="360" y1="282" x2="360" y2="277"/>
+<line class="ln" x1="460" y1="282" x2="460" y2="277"/>
+<text x="240" y="64" text-anchor="end">− verify before done</text>
+<rect x="360" y="50" width="200" height="20" class="fill-accent"/>
+<line class="ln thick" x1="280" y1="60" x2="440" y2="60"/><line class="ln thick" x1="280" y1="54" x2="280" y2="66"/><line class="ln thick" x1="440" y1="54" x2="440" y2="66"/>
+<text x="625" y="64" class="b">−8.0</text><text x="755" y="64" text-anchor="middle">−6%</text>
+<text x="240" y="104" text-anchor="end">− compaction</text>
+<rect x="392.5" y="90" width="167.5" height="20" class="fill-accent"/>
+<line class="ln thick" x1="317.5" y1="100" x2="467.5" y2="100"/><line class="ln thick" x1="317.5" y1="94" x2="317.5" y2="106"/><line class="ln thick" x1="467.5" y1="94" x2="467.5" y2="106"/>
+<text x="625" y="104" class="b">−6.7</text><text x="755" y="104" text-anchor="middle" class="t-bad">+21%</text>
+<text x="240" y="144" text-anchor="end">− retry on tool error</text>
+<rect x="462.5" y="130" width="97.5" height="20" class="fill-accent"/>
+<line class="ln thick" x1="395" y1="140" x2="530" y2="140"/><line class="ln thick" x1="395" y1="134" x2="395" y2="146"/><line class="ln thick" x1="530" y1="134" x2="530" y2="146"/>
+<text x="625" y="144" class="b">−3.9</text><text x="755" y="144" text-anchor="middle">−2%</text>
+<text x="240" y="184" text-anchor="end">− sub-agents</text>
+<rect x="490" y="170" width="70" height="20" class="fill-accent"/>
+<line class="ln thick" x1="422.5" y1="180" x2="557.5" y2="180"/><line class="ln thick" x1="422.5" y1="174" x2="422.5" y2="186"/><line class="ln thick" x1="557.5" y1="174" x2="557.5" y2="186"/>
+<text x="625" y="184" class="b">−2.8</text><text x="755" y="184" text-anchor="middle" class="t-good">−31%</text>
+<text x="240" y="224" text-anchor="end">− output truncation</text>
+<rect x="520" y="210" width="40" height="20" class="fill-muted"/>
+<line class="ln thick" x1="457.5" y1="220" x2="582.5" y2="220"/><line class="ln thick" x1="457.5" y1="214" x2="457.5" y2="226"/><line class="ln thick" x1="582.5" y1="214" x2="582.5" y2="226"/>
+<text x="625" y="224">−1.6</text><text x="755" y="224" text-anchor="middle" class="t-bad">+38%</text>
+<text x="240" y="264" text-anchor="end">− planning file</text>
+<rect x="537.5" y="250" width="22.5" height="20" class="fill-muted"/>
+<line class="ln thick" x1="485" y1="260" x2="590" y2="260"/><line class="ln thick" x1="485" y1="254" x2="485" y2="266"/><line class="ln thick" x1="590" y1="254" x2="590" y2="266"/>
+<text x="625" y="264">−0.9</text><text x="755" y="264" text-anchor="middle">−4%</text>
+<text x="420" y="326" text-anchor="middle" class="sm">full harness = 62.0% · 150 tasks × 3 epochs · paired 95% CIs · blue: interval excludes 0 · gray: it does not</text>
+</svg>
+<figcaption><b>The ablation table as a chart (illustrative numbers).</b> Bars show how much success drops when each component is removed; whiskers are paired 95% intervals. Read it together with the token column: sub-agents buy about 3 points for about 45% more tokens (145k to 210k), while truncation buys little accuracy but prevents a 38% token blow-up.</figcaption>
+</figure>
+
+<p>Try it: switch harness components off and watch success rate and cost move.</p>
+<div data-widget="ablation"></div>
+
+<h3>How to read an ablation table like an expert</h3>
+<ul>
+<li><b>"No significant drop" is not "useless".</b> The planning-file interval is [−3.0, +1.2]: the data is consistent with the component helping by up to 3 points. You can say "no evidence it helps on this suite", not "it does nothing". A bigger suite, or a suite of longer tasks, may reveal an effect.</li>
+<li><b>Accuracy and cost are separate verdicts.</b> Truncating tool output barely moves success but saves a lot of tokens, so you keep it. Sub-agents help, but at a price; whether that is worth it is a product decision, not a statistical one. A cost-per-success column (tokens divided by success rate) makes the trade-off concrete.</li>
+<li><b>Leave-one-out and add-one-in answer different questions.</b> Removing X from the full harness measures X's contribution <em>given everything else</em>. Adding X to a minimal harness measures its contribution <em>alone</em>. When components overlap (verification and retries both catch errors), each looks unimportant in leave-one-out because the other covers for it, yet removing both is disastrous. When you suspect overlap, also ablate the pair.</li>
+<li><b>Effects are task-dependent.</b> Compaction only matters for tasks long enough to fill the context. Slice the table by task length or type before concluding. An average over a suite of mostly short tasks can hide a component that is essential for the long ones.</li>
+<li><b>Look at the component metrics, not just success.</b> If removing retries drops success, the tool error rate and exit reasons should show why. If the success number moves but the mechanism does not, suspect noise or a confound.</li>
+</ul>
+
+<h2>The model × harness matrix</h2>
+<p>An ablation holds the model fixed. The next question is what happens when you vary both: several models, several harnesses, every combination. The result is a <b>model × harness matrix</b>, and it reveals something a single-model ablation cannot: <b>interaction effects</b>. An interaction means the effect of the harness depends on which model is inside it. Prompts, tool formats and workflow hints are often written around one model's habits (how verbose it is, how it formats tool calls, whether it tends to stop early). Swap the model and those same choices can hurt.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 330" role="img" aria-label="Left: a three by three heatmap of success rates for models A, B and C in harnesses H1, H2 and H3, with row and column means. H2 is best for model A but worst for model B. Right: an interaction plot where the lines for A and B cross. Illustrative numbers.">
+<defs><marker id="m21f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="195" y="44" text-anchor="middle" class="b">H1</text>
+<text x="195" y="60" text-anchor="middle" class="sm">minimal</text>
+<text x="290" y="44" text-anchor="middle" class="b">H2</text>
+<text x="290" y="60" text-anchor="middle" class="sm">tuned for A</text>
+<text x="385" y="44" text-anchor="middle" class="b">H3</text>
+<text x="385" y="60" text-anchor="middle" class="sm">generic, rich</text>
+<text x="470" y="60" text-anchor="middle" class="sm b">row mean</text>
+<text x="140" y="103" text-anchor="end" class="b">model A</text>
+<text x="140" y="164" text-anchor="end" class="b">model B</text>
+<text x="140" y="225" text-anchor="end" class="b">model C</text>
+<rect class="box warn" x="150" y="70" width="90" height="56" rx="4"/><text x="195" y="103" text-anchor="middle" class="lg">48</text>
+<rect class="box good" x="245" y="70" width="90" height="56" rx="4"/><text x="290" y="103" text-anchor="middle" class="lg">66</text>
+<rect class="box accent" x="340" y="70" width="90" height="56" rx="4"/><text x="385" y="103" text-anchor="middle" class="lg">58</text>
+<rect class="box accent" x="150" y="131" width="90" height="56" rx="4"/><text x="195" y="164" text-anchor="middle" class="lg">55</text>
+<rect class="box accent" x="245" y="131" width="90" height="56" rx="4"/><text x="290" y="164" text-anchor="middle" class="lg">52</text>
+<rect class="box good" x="340" y="131" width="90" height="56" rx="4"/><text x="385" y="164" text-anchor="middle" class="lg">64</text>
+<rect class="box warn" x="150" y="192" width="90" height="56" rx="4"/><text x="195" y="225" text-anchor="middle" class="lg">40</text>
+<rect class="box warn" x="245" y="192" width="90" height="56" rx="4"/><text x="290" y="225" text-anchor="middle" class="lg">45</text>
+<rect class="box accent" x="340" y="192" width="90" height="56" rx="4"/><text x="385" y="225" text-anchor="middle" class="lg">50</text>
+<text x="470" y="103" text-anchor="middle">57.3</text>
+<text x="470" y="164" text-anchor="middle">57.0</text>
+<text x="470" y="225" text-anchor="middle">45.0</text>
+<text x="140" y="276" text-anchor="end" class="sm b">col mean</text>
+<text x="195" y="276" text-anchor="middle">47.7</text>
+<text x="290" y="276" text-anchor="middle">54.3</text>
+<text x="385" y="276" text-anchor="middle">57.3</text>
+<text x="290" y="310" text-anchor="middle" class="sm">success rate %, one benchmark, matched budgets</text>
+<line class="ln" x1="560" y1="260" x2="815" y2="260"/>
+<line class="ln" x1="560" y1="260" x2="560" y2="60"/>
+<text x="552" y="264" text-anchor="end" class="sm">40%</text>
+<text x="552" y="84" text-anchor="end" class="sm">70%</text>
+<line class="ln dash" x1="556" y1="80" x2="815" y2="80"/>
+<text x="600" y="280" text-anchor="middle" class="sm">H1</text>
+<text x="690" y="280" text-anchor="middle" class="sm">H2</text>
+<text x="780" y="280" text-anchor="middle" class="sm">H3</text>
+<text x="690" y="44" text-anchor="middle" class="b">crossing lines = interaction</text>
+<polyline class="ln accent thick" points="600,212 690,104 780,152"/>
+<polyline class="ln violet thick" points="600,170 690,188 780,116"/>
+<polyline class="ln dash" points="600,260 690,230 780,200"/>
+<circle cx="600" cy="212" r="4" class="fill-accent"/><circle cx="690" cy="104" r="4" class="fill-accent"/><circle cx="780" cy="152" r="4" class="fill-accent"/>
+<circle cx="600" cy="170" r="4" class="fill-violet"/><circle cx="690" cy="188" r="4" class="fill-violet"/><circle cx="780" cy="116" r="4" class="fill-violet"/>
+<text x="796" y="156" class="b t-accent">A</text>
+<text x="796" y="120" class="b t-violet">B</text>
+<text x="796" y="204" class="b">C</text>
+</svg>
+<figcaption><b>Model × harness, with an interaction (illustrative).</b> H2 was tuned while developing with model A: it is A's best harness (66) and B's worst (52). Averaged over models, H3 is the best harness and would be the safe default. Parallel lines on the right would mean "the harness effect is the same for every model"; crossing lines mean it is not.</figcaption>
+</figure>
+
+<h3>What to report from a matrix</h3>
+<ul>
+<li><b>Marginal means</b> (row and column averages) answer "which harness is best on average across models?" and "which model is best on average across harnesses?". They are the robust answer when you expect to swap models.</li>
+<li><b>Per-cell results</b> answer "which pair should I ship?". The best pair is not always the best model in the best-on-average harness: here the best cell is A + H2 (66), even though H3 has the highest column mean.</li>
+<li><b>Rank flips</b> are the headline. In H1, B beats A (55 vs 48). In H2, A beats B (66 vs 52). If you had compared models only in H2, you would have concluded A is much stronger. This is why SWE-bench added a bash-only view with one shared minimal harness for model comparisons, as <a href="07-coding-agents.html">Module 07</a> describes.</li>
+<li><b>Uncertainty per cell.</b> Nine cells means nine intervals and many comparisons. Run enough tasks and epochs that the differences you care about exceed the noise, and correct for multiple comparisons or confirm the winner on held-out tasks (<a href="04-metrics-and-statistics.html">Module 04</a>).</li>
+</ul>
+
+<div class="callout tip"><span class="t">Practical consequence: the model upgrade test</span>
+<p>When a new model ships, run it in <b>both</b> your production harness and a neutral minimal harness. If it wins in the minimal harness but loses in yours, your harness has absorbed habits of the old model (a prompt that compensates for a weakness the new model no longer has, for example). The fix is usually to simplify the harness, not to keep the old model.</p>
+</div>
+
+<h2>Component-level metrics: seeing inside the run</h2>
+<p>Success rate tells you <em>whether</em> a harness change helped. Component-level metrics tell you <em>why</em>, and they catch regressions that the success rate hides (a harness can keep the same success rate while doubling its tool errors and recovering from them, which costs money and will eventually break). You compute them from the <b>transcript</b>: the full log of every message, tool call, tool result and harness event in a trial.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 400" role="img" aria-label="An annotated transcript of one trial with ten steps. Tags on the right show what each component metric detects: an invalid tool argument, three identical test runs flagged as a loop, a wrong answer to a state probe just after compaction, a thin sub-agent brief, and a final claim of success while a test is still failing.">
+<defs><marker id="m21g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="260" y="24" text-anchor="middle" class="b">One trial's transcript</text>
+<text x="685" y="24" text-anchor="middle" class="b">What the metric sees</text>
+<rect class="box plain" x="20" y="36" width="480" height="28" rx="5"/><text x="32" y="55" class="mono">1  read_file("src/app.py")</text>
+<rect class="box warn" x="20" y="70" width="480" height="28" rx="5"/><text x="32" y="89" class="mono">2  edit(line="12")  → ERROR: line must be int</text>
+<rect class="box plain" x="20" y="104" width="480" height="28" rx="5"/><text x="32" y="123" class="mono">3  edit(line=12, text=...)  → ok</text>
+<rect class="box bad" x="20" y="138" width="480" height="28" rx="5"/><text x="32" y="157" class="mono">4  run_tests()  → 3 failed</text>
+<rect class="box bad" x="20" y="172" width="480" height="28" rx="5"/><text x="32" y="191" class="mono">5  run_tests()  → 3 failed</text>
+<rect class="box bad" x="20" y="206" width="480" height="28" rx="5"/><text x="32" y="225" class="mono">6  run_tests()  → 3 failed</text>
+<rect class="box violet" x="20" y="240" width="480" height="28" rx="5"/><text x="32" y="259" class="mono">7  [harness compacts context: 38k → 6k tokens]</text>
+<rect class="box plain" x="20" y="274" width="480" height="28" rx="5"/><text x="32" y="293" class="mono">8  probe: which tests still fail? → "none"</text>
+<rect class="box plain" x="20" y="308" width="480" height="28" rx="5"/><text x="32" y="327" class="mono">9  spawn_subagent(brief="fix the tests")</text>
+<rect class="box accent" x="20" y="342" width="480" height="28" rx="5"/><text x="32" y="361" class="mono">10 final: "All tests pass. Done!"</text>
+<rect class="box warn" x="545" y="70" width="280" height="28" rx="5"/><text x="557" y="89">invalid-argument count +1</text>
+<rect class="box bad" x="545" y="172" width="280" height="28" rx="5"/><text x="557" y="191">loop: 3 identical calls in a row</text>
+<rect class="box violet" x="545" y="274" width="280" height="28" rx="5"/><text x="557" y="293">retention probe after compaction ✗</text>
+<rect class="box plain" x="545" y="308" width="280" height="28" rx="5"/><text x="557" y="327">handoff brief: no failing tests</text>
+<rect class="box bad" x="545" y="342" width="280" height="28" rx="5"/><text x="557" y="361">premature done: end state fails</text>
+<line class="ln warn" x1="500" y1="84" x2="542" y2="84" marker-end="url(#m21g)"/>
+<path class="ln bad" d="M500,152 L516,152 L516,220 L500,220"/>
+<line class="ln bad" x1="516" y1="186" x2="542" y2="186" marker-end="url(#m21g)"/>
+<line class="ln violet" x1="500" y1="288" x2="542" y2="288" marker-end="url(#m21g)"/>
+<line class="ln" x1="500" y1="322" x2="542" y2="322" marker-end="url(#m21g)"/>
+<line class="ln bad" x1="500" y1="356" x2="542" y2="356" marker-end="url(#m21g)"/>
+<text x="420" y="392" text-anchor="middle" class="sm">the success rate records only "fail"; the component metrics record five separate harness problems</text>
+</svg>
+<figcaption><b>One failed trial, five harness signals (illustrative).</b> Each tag maps to a harness component: the tool schema (step 2), loop control (steps 4 to 6), context management (steps 7 and 8), sub-agent delegation (step 9) and verification (step 10). A success-only eval would record a single "fail" and teach you nothing about which part to fix.</figcaption>
+</figure>
+
+<h3>The metrics, defined</h3>
+<div class="tablewrap"><table>
+<tr><th>Metric</th><th>Definition</th><th>Component it diagnoses</th></tr>
+<tr><td><b>Tool error rate</b></td><td>Tool results that are errors ÷ tool calls</td><td>Tools, environment</td></tr>
+<tr><td><b>Invalid-argument rate</b></td><td>Calls rejected by the schema or with wrong types ÷ tool calls</td><td>Tool descriptions and schemas (the ACI)</td></tr>
+<tr><td><b>Retries and recovery</b></td><td>Share of tool errors followed by a successful corrected call</td><td>Error handling, retry policy</td></tr>
+<tr><td><b>Stuck / loop rate</b></td><td>Trials with N identical actions in a row (or a short repeating cycle)</td><td>Loop control, stop conditions</td></tr>
+<tr><td><b>Steps to success</b></td><td>Tool calls (or turns) in successful trials only</td><td>Prompt, tools, planning</td></tr>
+<tr><td><b>Context growth</b></td><td>Context tokens per turn, and its slope over the run</td><td>Truncation, compaction, tool output format</td></tr>
+<tr><td><b>State retention after compaction</b></td><td>Accuracy on probe questions asked right after a compaction event, checked against environment ground truth</td><td>Compaction, notes</td></tr>
+<tr><td><b>Sub-agent handoff quality</b></td><td>Share of required fields present in the delegation brief; duplicated work; whether the result was used</td><td>Sub-agent architecture</td></tr>
+<tr><td><b>Premature-done rate</b></td><td>Trials where the agent claims success but the end-state check fails ÷ trials where it claims success</td><td>Verification</td></tr>
+<tr><td><b>Exit reasons</b></td><td>Distribution of how runs end: done, gave up, turn cap, token cap, timeout, crash</td><td>Loop control, budgets</td></tr>
+</table></div>
+
+<p>Two of these deserve a closer look because they are both important and easy to get wrong.</p>
+
+<h3>Premature "done": when the agent's own report is wrong</h3>
+<p>An agent that says "all done" when it is not is worse than one that says "I could not finish", because a human or a calling program will trust the claim. Anthropic's post on long-running harnesses names "declaring the job done too early" as one of the main failure modes that its harness design targets. To measure it you need two independent signals per trial: what the agent <em>claimed</em>, and what the end-state grader <em>found</em>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 300" role="img" aria-label="Two by two table: rows are whether the agent claims done, columns are whether the end-state check passes. Claims done and passes is true success; claims done but fails is a premature done; does not claim but passes is a silent success; does not claim and fails is an honest failure.">
+<defs><marker id="m21h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="470" y="24" text-anchor="middle" class="b">End-state check (the grader)</text>
+<text x="360" y="52" text-anchor="middle" class="b t-good">PASS</text>
+<text x="580" y="52" text-anchor="middle" class="b t-bad">FAIL</text>
+<text x="240" y="106" text-anchor="end" class="b">agent claims "done"</text>
+<text x="240" y="201" text-anchor="end" class="b">agent does not claim</text>
+<rect class="box good" x="260" y="64" width="200" height="80" rx="8"/>
+<text x="360" y="98" text-anchor="middle" class="b">true success</text>
+<text x="360" y="118" text-anchor="middle" class="sm">claim is correct</text>
+<rect class="box bad pulse" x="480" y="64" width="200" height="80" rx="8"/>
+<text x="580" y="98" text-anchor="middle" class="b">premature done</text>
+<text x="580" y="118" text-anchor="middle" class="sm">false claim of success</text>
+<rect class="box warn" x="260" y="159" width="200" height="80" rx="8"/>
+<text x="360" y="193" text-anchor="middle" class="b">silent success</text>
+<text x="360" y="213" text-anchor="middle" class="sm">finished but did not say so</text>
+<rect class="box plain" x="480" y="159" width="200" height="80" rx="8"/>
+<text x="580" y="193" text-anchor="middle" class="b">honest failure</text>
+<text x="580" y="213" text-anchor="middle" class="sm">gave up or hit a cap</text>
+<text x="380" y="272" text-anchor="middle" class="mono">premature-done rate = premature done ÷ (true success + premature done)</text>
+</svg>
+<figcaption><b>Claim versus reality.</b> The premature-done rate is the share of "done" claims that are false; one minus it is the precision of the agent's self-report. A verification component (running tests, an end-to-end check) should shrink the red cell without growing the yellow one.</figcaption>
+</figure>
+
+<h3>State retention after compaction</h3>
+<p>Compaction replaces old turns with a summary. If the summary drops a detail the agent needs later, the failure shows up many turns afterwards and looks unrelated. The fix is to probe right after the event: the harness logs each compaction, and your evaluation harness then asks the agent a question whose answer the environment knows ("which tests are still failing?", "which orders are still pending?"). <a href="11-multi-agent-long-horizon.html">Module 11</a> shows the sawtooth picture of context filling and compacting, and explains probing; for harness evals, the key move is to compare probe accuracy <b>between compaction strategies</b> (for example, summary only vs summary plus a notes file) under the same tasks. Keep probes out of the agent's real context if you can (fork the state, ask, discard the answer), so the probe itself does not act as a helpful reminder that changes the run.</p>
+
+<h3>A compaction test suite, step by step</h3>
+<p>Compaction is the harness component most likely to fail silently, so it deserves a dedicated suite rather than a hope that end-to-end tasks will expose it.</p>
+<ol>
+<li><b>Plant facts early.</b> Write tasks where a detail appears early and is needed late: a constraint in the first user message ("never touch the <code>billing/</code> folder"), an identifier returned by an early tool call, a decision the agent made and must stay consistent with.</li>
+<li><b>Force the event.</b> Pad the middle of the run with realistic but bulky work (long logs, large files) so that compaction reliably fires before the fact is needed. Log the turn and the token counts before and after each compaction.</li>
+<li><b>Probe and act.</b> Ask a forked probe question right after the event, and also check whether the agent's later <em>actions</em> respect the planted fact. An agent can answer the probe correctly and still violate the constraint.</li>
+<li><b>Compare strategies on identical runs.</b> No compaction (where it fits), summary only, summary plus a notes file, clearing old tool results only. Same tasks, same epochs, paired.</li>
+<li><b>Sweep the threshold.</b> Compacting at 50%, 70% or 90% of the window trades lost detail against context rot. Plot retention and success against the threshold, with cost.</li>
+<li><b>Grade the summary itself.</b> Keep a list of the facts each task needs; check which ones survive in the summary text (a code check or a validated judge, <a href="13-llm-as-judge.html">Module 13</a>). This tells you <em>which kinds</em> of facts your compaction prompt drops: numbers, identifiers and negative constraints ("do not ...") are common casualties.</li>
+</ol>
+
+<h3>Computing the metrics in code</h3>
+<p>Most harnesses can emit a structured event log. The snippet below assumes one list of events per trial and computes every metric above. It is plain Python, so it works with any framework: map your framework's transcript format onto these event types first.</p>
+
+<pre data-lang="python"><code># harness_metrics.py : component-level metrics from transcript events
+import json
+
+# One trial = an ordered list of events your harness logged, e.g.
+# {"turn": 3, "type": "tool_call", "tool": "edit", "args": {"line": 12}, "valid_args": True}
+# {"turn": 3, "type": "tool_result", "error": None}
+# {"turn": 3, "type": "context", "tokens": 18250}           # context size before this turn
+# {"turn": 7, "type": "compaction", "before": 38000, "after": 6000}
+# {"turn": 8, "type": "probe", "after_compaction": True, "correct": False}
+# {"turn": 9, "type": "handoff", "brief_fields": ["goal"]}
+# {"turn": 10, "type": "final", "claims_done": True}
+# ...and after the run, the grader appends {"type": "end_state", "passed": False}
+
+REQUIRED_BRIEF = {"goal", "files", "failing_tests", "done_criteria"}
+
+def trial_metrics(events: list, loop_window: int = 3) -&gt; dict:
+    of = lambda t: [e for e in events if e["type"] == t]
+    calls, results, probes, handoffs = of("tool_call"), of("tool_result"), of("probe"), of("handoff")
+    ctx = [e["tokens"] for e in of("context")]
+    final = next(iter(of("final")), {"claims_done": False})
+    end = of("end_state")[0]
+
+    # 1. Tool errors and invalid arguments, per tool call
+    n = max(len(calls), 1)
+    tool_error_rate = sum(r["error"] is not None for r in results) / n
+    invalid_arg_rate = sum(not c["valid_args"] for c in calls) / n
+
+    # 2. Loops: longest run of identical (tool, args) calls in a row
+    sigs = [(c["tool"], json.dumps(c["args"], sort_keys=True)) for c in calls]
+    longest, run = (1 if sigs else 0), 1
+    for prev, cur in zip(sigs, sigs[1:]):
+        run = run + 1 if cur == prev else 1
+        longest = max(longest, run)
+
+    # 3. Context growth: average tokens added per turn
+    growth = (ctx[-1] - ctx[0]) / (len(ctx) - 1) if len(ctx) &gt; 1 else 0.0
+
+    # 4. State retention: probes asked right after a compaction event
+    post = [p for p in probes if p.get("after_compaction")]
+    retention = sum(p["correct"] for p in post) / len(post) if post else None
+
+    # 5. Handoff quality: share of required brief fields actually present
+    handoff = (sum(len(REQUIRED_BRIEF &amp; set(h["brief_fields"])) / len(REQUIRED_BRIEF)
+                   for h in handoffs) / len(handoffs)) if handoffs else None
+
+    return {
+        "success": end["passed"],
+        "steps": len(calls),
+        "tool_error_rate": tool_error_rate,
+        "invalid_arg_rate": invalid_arg_rate,
+        "stuck": longest &gt;= loop_window,
+        "tokens_per_turn": growth,
+        "retention_after_compaction": retention,
+        "handoff_quality": handoff,
+        "claims_done": final["claims_done"],
+        "premature_done": final["claims_done"] and not end["passed"],
+    }
+
+def suite_summary(trials: list) -&gt; dict:
+    rows = [trial_metrics(t) for t in trials]
+    mean = lambda xs: sum(xs) / len(xs) if xs else float("nan")
+    wins = [r for r in rows if r["success"]]
+    claims = [r for r in rows if r["claims_done"]]
+    return {
+        "success_rate": mean([r["success"] for r in rows]),
+        "steps_to_success": mean([r["steps"] for r in wins]),            # successes only
+        "tool_error_rate": mean([r["tool_error_rate"] for r in rows]),
+        "stuck_rate": mean([r["stuck"] for r in rows]),
+        "premature_done_rate": mean([r["premature_done"] for r in claims]),  # of "done" claims
+        "retention_after_compaction": mean([r["retention_after_compaction"] for r in rows
+                                            if r["retention_after_compaction"] is not None]),
+        "mean_handoff_quality": mean([r["handoff_quality"] for r in rows
+                                      if r["handoff_quality"] is not None]),
+    }</code></pre>
+
+<p>Notice two deliberate choices. <b>Steps to success</b> is averaged over successful trials only; averaging over all trials mixes "fast success" with "gave up early", which move in opposite directions. <b>Premature-done rate</b> is divided by the number of "done" claims, not by all trials, so it measures how trustworthy a claim is. Report these per config, next to the success rate and its interval, in every harness comparison.</p>
+
+<div class="callout warn"><span class="t">Loop detection is a heuristic</span>
+<p>Three identical <code>run_tests()</code> calls in a row can be a stuck agent, or a sensible agent waiting for a slow build. Tune the window per tool, also look for short cycles (A, B, A, B), and read a sample of flagged transcripts before trusting the rate. Every automated metric here is a pointer into the transcripts, not a replacement for reading them (<a href="12-error-analysis.html">Module 12</a>).</p>
+</div>
+
+<h2>Running harness variants side by side</h2>
+<p>In practice, you express each harness variant as a configuration of your evaluation harness, so that everything else stays byte-for-byte identical. Two common setups:</p>
+
+<h3>Your own harness, in Inspect</h3>
+<p>If your agent is built in (or bridged into) <a href="https://inspect.aisi.org.uk/">Inspect</a>, make the harness variant a task parameter. The dataset, scorer, sandbox, limits and epochs are defined once and shared, so the only thing a parameter can change is the harness. The pattern below follows the task and <code>react()</code> agent examples in the Inspect docs and in <a href="02-anatomy-of-an-eval.html">Module 02</a>; check parameter names against your installed version.</p>
+
+<pre data-lang="python"><code># harness_ab.py : one task definition, several harness variants
+from inspect_ai import Epochs, Task, task
+from inspect_ai.agent import react
+from inspect_ai.dataset import json_dataset
+from inspect_ai.tool import bash, text_editor
+
+from my_graders import hidden_tests          # the SAME outcome grader for every variant
+
+PROMPT_V1 = open("prompts/system_v1.txt").read()
+PROMPT_V2 = open("prompts/system_v2.txt").read()   # adds "run the tests before you finish"
+
+def build_agent(harness: str):
+    """Each variant differs from 'baseline' in exactly one component."""
+    if harness == "baseline":
+        return react(prompt=PROMPT_V1, tools=[bash(timeout=120), text_editor()])
+    if harness == "verify_prompt":                  # change: system prompt only
+        return react(prompt=PROMPT_V2, tools=[bash(timeout=120), text_editor()])
+    if harness == "bash_only":                      # change: tool set only
+        return react(prompt=PROMPT_V1, tools=[bash(timeout=120)])
+    raise ValueError(f"unknown harness {harness!r}")
+
+@task
+def repo_tasks(harness: str = "baseline", epochs: int = 3):
+    return Task(
+        dataset=json_dataset("tasks.jsonl"),        # SAME tasks
+        solver=build_agent(harness),
+        scorer=hidden_tests(),                      # SAME grader
+        sandbox="docker",                           # SAME environment image
+        message_limit=80,                           # SAME budget: turns ...
+        token_limit=400_000,                        # ... and tokens
+        # mean = success rate; at_least_3 = passed all 3 epochs (a per-task pass^3)
+        epochs=Epochs(epochs, ["mean", f"at_least_{epochs}"]),
+    )</code></pre>
+
+<pre data-lang="bash"><code># Same model, same flags; only the harness parameter changes (-T sets task arguments)
+for h in baseline verify_prompt bash_only; do
+  inspect eval harness_ab.py -T harness=$h \
+      --model anthropic/claude-sonnet-5-5 --log-dir logs/$h
+done
+python paired_ablation.py      # pair each variant with logs/baseline, as shown earlier</code></pre>
+
+<h3>Off-the-shelf agents, in Harbor</h3>
+<p>If the harnesses you are comparing are complete CLI agents (Claude Code, OpenHands, Codex CLI and so on), you cannot easily edit their internals, but you can hold the model and the tasks fixed and swap the agent. That is exactly what Terminal-Bench's harness, <a href="https://github.com/laude-institute/harbor">Harbor</a>, is built for:</p>
+<pre data-lang="bash"><code># Same model and task set; the agent harness is the only thing that changes
+harbor run --dataset terminal-bench@2.0 --agent claude-code \
+           --model anthropic/claude-opus-5-5 --n-concurrent 4
+harbor run --dataset terminal-bench@2.0 --agent &lt;another-supported-agent&gt; \
+           --model anthropic/claude-opus-5-5 --n-concurrent 4
+# (see the Harbor README for the list of supported agent names)</code></pre>
+<p>This gives you whole-harness comparisons (which product is better with this model?) rather than component ablations. Both are useful: whole-harness comparisons tell you where you stand, component ablations tell you what to change.</p>
+
+<h2>Long-running harnesses: evaluating across context windows</h2>
+<p>Some agents work for hours and many context windows. No single window sees the whole job, so the harness must carry state from one window to the next through files. Anthropic's <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Effective harnesses for long-running agents</a> (November 2025) describes a two-part pattern for coding:</p>
+<ul>
+<li>An <b>initializer agent</b> runs first. It sets up the environment: a <b>feature list</b> file that spells out what "done" means feature by feature, a <b>progress notes</b> file, and a <b>git</b> repository, so later sessions have a map and a history.</li>
+<li>A <b>coding agent</b> then runs repeatedly, each time in a fresh context window. It reads the progress notes and the git log to get its bearings, works on <b>one feature at a time</b>, tests it end to end (the post uses browser automation for this), commits, and updates the notes for the next session.</li>
+</ul>
+<p>The post frames the design around three failure modes: trying to do everything at once, declaring the job done too early, and leaving the environment in a broken state for the next session. Each of these is something you can measure.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 360" role="img" aria-label="Timeline of separate context windows: an initializer session followed by coding sessions 1, 2, 3 up to N. Each coding session reads notes and git history, builds one feature, tests end to end, commits and updates notes. Below, a shared band of files on disk (feature list, progress notes, git history) connects all sessions through read and write arrows.">
+<defs><marker id="m21i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="430" y="24" text-anchor="middle" class="sm">each box is a fresh context window: nothing carries over except the files below</text>
+<rect class="box violet" x="20" y="40" width="150" height="120" rx="10"/>
+<text x="95" y="62" text-anchor="middle" class="b">Initializer</text>
+<text x="95" y="84" text-anchor="middle" class="sm">write feature list</text>
+<text x="95" y="102" text-anchor="middle" class="sm">create progress notes</text>
+<text x="95" y="120" text-anchor="middle" class="sm">init git, start script</text>
+<text x="95" y="140" text-anchor="middle" class="sm">builds no features</text>
+<rect class="box accent" x="190" y="40" width="140" height="120" rx="10"/>
+<text x="260" y="62" text-anchor="middle" class="b">Session 1</text>
+<text x="260" y="84" text-anchor="middle" class="sm">read notes + git log</text>
+<text x="260" y="102" text-anchor="middle" class="sm">build one feature</text>
+<text x="260" y="120" text-anchor="middle" class="sm">test end to end</text>
+<text x="260" y="140" text-anchor="middle" class="sm">commit, update notes</text>
+<rect class="box accent" x="350" y="40" width="140" height="120" rx="10"/>
+<text x="420" y="62" text-anchor="middle" class="b">Session 2</text>
+<text x="420" y="84" text-anchor="middle" class="sm">read notes + git log</text>
+<text x="420" y="102" text-anchor="middle" class="sm">build one feature</text>
+<text x="420" y="120" text-anchor="middle" class="sm">test end to end</text>
+<text x="420" y="140" text-anchor="middle" class="sm">commit, update notes</text>
+<rect class="box accent" x="510" y="40" width="140" height="120" rx="10"/>
+<text x="580" y="62" text-anchor="middle" class="b">Session 3</text>
+<text x="580" y="84" text-anchor="middle" class="sm">read notes + git log</text>
+<text x="580" y="102" text-anchor="middle" class="sm">build one feature</text>
+<text x="580" y="120" text-anchor="middle" class="sm">test end to end</text>
+<text x="580" y="140" text-anchor="middle" class="sm">commit, update notes</text>
+<text x="675" y="104" text-anchor="middle" class="lg">…</text>
+<rect class="box accent" x="700" y="40" width="140" height="120" rx="10"/>
+<text x="770" y="62" text-anchor="middle" class="b">Session N</text>
+<text x="770" y="84" text-anchor="middle" class="sm">all features pass?</text>
+<text x="770" y="102" text-anchor="middle" class="sm">only then: done</text>
+<rect class="box good" x="20" y="226" width="820" height="62" rx="10"/>
+<text x="36" y="262" class="b">On disk</text>
+<rect class="box plain" x="110" y="238" width="270" height="38" rx="6"/><text x="245" y="262" text-anchor="middle">feature list: pass / fail each</text>
+<rect class="box plain" x="400" y="238" width="200" height="38" rx="6"/><text x="500" y="262" text-anchor="middle">progress notes</text>
+<rect class="box plain" x="620" y="238" width="205" height="38" rx="6"/><text x="722" y="262" text-anchor="middle">git history</text>
+<line class="ln good flow" x1="95" y1="160" x2="95" y2="223" marker-end="url(#m21i)"/>
+<text x="103" y="196" class="sm">write</text>
+<line class="ln accent flow" x1="240" y1="223" x2="240" y2="163" marker-end="url(#m21i)"/>
+<text x="232" y="196" text-anchor="end" class="sm">read</text>
+<line class="ln good flow" x1="280" y1="160" x2="280" y2="223" marker-end="url(#m21i)"/>
+<text x="288" y="196" class="sm">write</text>
+<line class="ln accent" x1="400" y1="223" x2="400" y2="163" marker-end="url(#m21i)"/>
+<line class="ln good" x1="440" y1="160" x2="440" y2="223" marker-end="url(#m21i)"/>
+<line class="ln accent" x1="560" y1="223" x2="560" y2="163" marker-end="url(#m21i)"/>
+<line class="ln good" x1="600" y1="160" x2="600" y2="223" marker-end="url(#m21i)"/>
+<line class="ln accent" x1="750" y1="223" x2="750" y2="163" marker-end="url(#m21i)"/>
+<line class="ln good" x1="790" y1="160" x2="790" y2="223" marker-end="url(#m21i)"/>
+<text x="430" y="318" text-anchor="middle" class="sm">check at every boundary: are the notes true? does the app still start? is a feature marked "pass"</text>
+<text x="430" y="336" text-anchor="middle" class="sm">only if its end-to-end test passes? did the session work on one feature, or try to do everything?</text>
+</svg>
+<figcaption><b>A long-running harness is a relay race.</b> Each session is a runner who cannot see the previous runners; the files on disk are the baton. Evaluating this harness means grading the baton at every handoff, not only the finish line.</figcaption>
+</figure>
+
+<h3>What to check in a long-running harness</h3>
+<p>Treat every session boundary as a checkpoint where your evaluation harness inspects the environment (it can do this outside the agent's view):</p>
+<div class="tablewrap"><table>
+<tr><th>Check</th><th>How</th><th>Failure mode it catches</th></tr>
+<tr><td><b>Environment health</b></td><td>After each session, run the start script and a smoke test in a copy of the sandbox</td><td>Leaving the environment broken for the next session</td></tr>
+<tr><td><b>Notes accuracy</b></td><td>Compare claims in the progress notes with ground truth (git diff, test results); an LLM judge can extract claims, code checks them</td><td>Stale or false notes that mislead the next session</td></tr>
+<tr><td><b>Feature-list honesty</b></td><td>For every feature marked "pass", run its end-to-end test yourself</td><td>Declaring features (or the job) done too early</td></tr>
+<tr><td><b>Scope per session</b></td><td>Count features touched per session from the git diff</td><td>Trying to do everything at once</td></tr>
+<tr><td><b>Re-done work</b></td><td>Detect code that is rewritten without a failing test motivating it, or a session re-implementing a finished feature</td><td>Lost state between windows</td></tr>
+<tr><td><b>Progress curve</b></td><td>Features passing (by your test, not the agent's claim) after each session</td><td>Stalls, regressions (a feature that passed later fails)</td></tr>
+</table></div>
+<p>The last row is the most informative single chart for a long-running harness: <b>verified features passing versus session number</b>, for each harness variant, with the agent's own claimed count overlaid. A good harness climbs steadily and the two lines agree. A poor one plateaus, zig-zags as later sessions break earlier work, or shows a claimed line running above the verified one. <a href="11-multi-agent-long-horizon.html">Module 11</a> covers milestone scoring and partial credit for long tasks, which you can reuse here.</p>
+
+<h3>Harnesses with a built-in evaluator agent</h3>
+<p>A follow-up Anthropic post, <a href="https://www.anthropic.com/engineering/harness-design-long-running-apps">Harness design for long-running application development</a>, describes using a multi-agent harness to push Claude further in frontend design and long-running autonomous software engineering; write-ups of the post describe its roles as a planner, a generator that builds, and a separate evaluator that critiques the generator's output. A harness like this contains its own grader, which raises a new evaluation question: <b>is the in-harness evaluator any good?</b> Treat it exactly like an LLM judge (<a href="13-llm-as-judge.html">Module 13</a>). Sample its verdicts, have humans (or your independent end-state checks) grade the same outputs, and measure agreement, false passes and false fails. Then ablate it: generator alone, generator plus evaluator, at matched budgets. An in-harness evaluator that approves broken work is a premature-done machine, and one that rejects good work burns budget; both show up only if you grade the evaluator separately from the final outcome. Never reuse the harness's own evaluator as your eval's grader: the instrument must be independent of the thing it measures.</p>
+
+<h2>Is it the model or the harness?</h2>
+<p>When a task fails, the first question in a harness team is always whose fault it was. Here is a diagnostic sequence that works on a single failing task or a cluster of them. It goes from cheapest to most expensive check.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 470" role="img" aria-label="Decision tree for a failing task. First, did a tool or environment error? If yes, fix the environment or tool. Second, was the needed fact in context? If no, it is a context management or memory problem. Third, does a stronger model in the same harness pass? If yes, it is a model capability limit. Fourth, does the same model pass in a different harness? If yes, it is harness design; if no, suspect the task or grader.">
+<defs><marker id="m21j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="420" y="28" text-anchor="middle" class="lg">A task fails in your eval. Whose fault is it?</text>
+<rect class="box plain" x="30" y="50" width="340" height="56" rx="8"/>
+<text x="46" y="73">1. Did a tool or the environment error,</text>
+<text x="46" y="93">or return wrong data?</text>
+<rect class="box plain" x="30" y="140" width="340" height="56" rx="8"/>
+<text x="46" y="163">2. Was the fact the agent needed</text>
+<text x="46" y="183">in its context at that step?</text>
+<rect class="box plain" x="30" y="230" width="340" height="56" rx="8"/>
+<text x="46" y="253">3. Same harness, stronger model:</text>
+<text x="46" y="273">does it now pass reliably?</text>
+<rect class="box plain" x="30" y="320" width="340" height="56" rx="8"/>
+<text x="46" y="343">4. Same model, different harness</text>
+<text x="46" y="363">(prompt, tools, loop): does it pass?</text>
+<rect class="box warn" x="470" y="50" width="350" height="56" rx="8"/>
+<text x="486" y="73" class="b">Environment or tool bug</text>
+<text x="486" y="92" class="sm">fix it and rerun before judging anything else</text>
+<rect class="box violet" x="470" y="140" width="350" height="56" rx="8"/>
+<text x="486" y="163" class="b">Context management or memory (harness)</text>
+<text x="486" y="182" class="sm">truncation, compaction or notes lost the fact</text>
+<rect class="box accent" x="470" y="230" width="350" height="56" rx="8"/>
+<text x="486" y="253" class="b">Model capability limit</text>
+<text x="486" y="272" class="sm">the harness is not the bottleneck for this task</text>
+<rect class="box good" x="470" y="320" width="350" height="56" rx="8"/>
+<text x="486" y="343" class="b">Harness design is the cause</text>
+<text x="486" y="362" class="sm">ablate components to find which one</text>
+<rect class="box bad" x="30" y="404" width="340" height="56" rx="8"/>
+<text x="46" y="427" class="b">Suspect the task or the grader</text>
+<text x="46" y="446" class="sm">every configuration fails: read the task (Module 18)</text>
+<line class="ln" x1="370" y1="78" x2="467" y2="78" marker-end="url(#m21j)"/><text x="418" y="70" text-anchor="middle" class="sm b">yes</text>
+<line class="ln" x1="370" y1="168" x2="467" y2="168" marker-end="url(#m21j)"/><text x="418" y="160" text-anchor="middle" class="sm b">no</text>
+<line class="ln" x1="370" y1="258" x2="467" y2="258" marker-end="url(#m21j)"/><text x="418" y="250" text-anchor="middle" class="sm b">yes</text>
+<line class="ln" x1="370" y1="348" x2="467" y2="348" marker-end="url(#m21j)"/><text x="418" y="340" text-anchor="middle" class="sm b">yes</text>
+<line class="ln" x1="200" y1="106" x2="200" y2="137" marker-end="url(#m21j)"/><text x="208" y="126" class="sm b">no</text>
+<line class="ln" x1="200" y1="196" x2="200" y2="227" marker-end="url(#m21j)"/><text x="208" y="216" class="sm b">yes</text>
+<line class="ln" x1="200" y1="286" x2="200" y2="317" marker-end="url(#m21j)"/><text x="208" y="306" class="sm b">no</text>
+<line class="ln" x1="200" y1="376" x2="200" y2="401" marker-end="url(#m21j)"/><text x="208" y="394" class="sm b">no</text>
+</svg>
+<figcaption><b>Model or harness? A triage tree.</b> Checks 1 and 2 need only the transcript; checks 3 and 4 need reruns (several epochs each, since one lucky pass proves little). Answers are not exclusive: a task can be both beyond the model and badly served by the harness, which is why you ablate rather than argue.</figcaption>
+</figure>
+
+<h3>Localizing failures on the interactions</h3>
+<p>The triage tree asks "model or harness?" as if the answer were one box. Often the fault sits on the <em>edge</em> between two boxes: the model misreads a tool's output format, the harness truncates exactly the part of a result the model needed, a sub-agent's brief omits what the parent knew. A 2026 paper, <a href="https://arxiv.org/abs/2607.28802">Model or Harness? An Interaction-Centric Taxonomy for Localizing Agent Failures</a>, takes this view: it organizes agent failure modes by the interaction they originate in, assigning each to a pair of components such as model and harness, model and tools, or harness and memory. For your own error analysis (<a href="12-error-analysis.html">Module 12</a>), the practical lesson is to code each failure with <b>two</b> labels, the component that produced the bad information and the component that consumed it, rather than a single "model" or "harness" tag. Counting failures per edge points you straight at the interface to fix, and it stops the familiar argument in which the harness team blames the model and the model team blames the harness.</p>
+
+<p>Check 2 is the most underused. When an agent makes a wrong decision, find the step and look at exactly what was in its context window at that moment. If the needed fact was truncated, compacted away or never retrieved, the model never had a chance, and no model upgrade will fix it reliably. If the fact was right there and the model still ignored it, look at prompt structure and context length (a fact buried in 150k tokens of tool output is technically "in context" but practically hidden), and only then blame the model.</p>
+
+<h2>Harness regression testing in CI</h2>
+<p>Because the harness changes far more often than the model, harness evals belong in continuous integration (CI). The rule is simple: <b>every harness change is a release.</b> A one-line prompt edit, a new tool, a changed tool description, a new compaction threshold, a higher turn cap: each one reruns the suite and must pass a gate before it merges. <a href="15-production-evals.html">Module 15</a> shows how to wire evals into CI in general; here is what is specific to harness changes.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 300" role="img" aria-label="CI flow: a harness change in a pull request runs a smoke set, then a full suite with epochs, then a paired comparison to the baseline. A gate checks the success interval, pass to the k on the golden set, cost and component metrics. Passing merges and saves a new baseline; failing blocks and attaches transcripts.">
+<defs><marker id="m21k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="20" y="30" width="175" height="70" rx="8"/>
+<text x="107" y="56" text-anchor="middle" class="b">Harness change</text>
+<text x="107" y="74" text-anchor="middle" class="sm">prompt, tool, threshold,</text>
+<text x="107" y="89" text-anchor="middle" class="sm">loop or budget edit</text>
+<rect class="box plain" x="230" y="30" width="175" height="70" rx="8"/>
+<text x="317" y="56" text-anchor="middle" class="b">Smoke set</text>
+<text x="317" y="74" text-anchor="middle" class="sm">~20 tasks × 1 epoch</text>
+<text x="317" y="89" text-anchor="middle" class="sm">minutes; catches crashes</text>
+<rect class="box plain" x="440" y="30" width="175" height="70" rx="8"/>
+<text x="527" y="56" text-anchor="middle" class="b">Full suite</text>
+<text x="527" y="74" text-anchor="middle" class="sm">N tasks × k epochs</text>
+<text x="527" y="89" text-anchor="middle" class="sm">same model, same budget</text>
+<rect class="box accent" x="650" y="30" width="190" height="70" rx="8"/>
+<text x="745" y="56" text-anchor="middle" class="b">Compare to baseline</text>
+<text x="745" y="74" text-anchor="middle" class="sm">paired Δ, pass^k, cost,</text>
+<text x="745" y="89" text-anchor="middle" class="sm">component metrics</text>
+<line class="ln accent flow" x1="195" y1="65" x2="227" y2="65" marker-end="url(#m21k)"/>
+<line class="ln accent flow" x1="405" y1="65" x2="437" y2="65" marker-end="url(#m21k)"/>
+<line class="ln accent flow" x1="615" y1="65" x2="647" y2="65" marker-end="url(#m21k)"/>
+<path class="ln accent flow" d="M745,100 L745,130 L395,130 L395,157" marker-end="url(#m21k)"/>
+<rect class="box violet" x="20" y="160" width="180" height="90" rx="8"/>
+<text x="110" y="186" text-anchor="middle" class="b">Baseline</text>
+<text x="110" y="206" text-anchor="middle" class="sm">last accepted harness:</text>
+<text x="110" y="222" text-anchor="middle" class="sm">per-task results, cost,</text>
+<text x="110" y="238" text-anchor="middle" class="sm">component metrics</text>
+<line class="ln dash" x1="200" y1="205" x2="227" y2="205" marker-end="url(#m21k)"/>
+<rect class="box warn" x="230" y="160" width="330" height="100" rx="8"/>
+<text x="395" y="184" text-anchor="middle" class="b">Gate (decided in advance)</text>
+<text x="246" y="204" class="sm">• lower CI bound of Δ success above −2 points</text>
+<text x="246" y="220" class="sm">• pass^3 on the golden set does not fall</text>
+<text x="246" y="236" class="sm">• cost per task at most +10%</text>
+<text x="246" y="252" class="sm">• no spike in loops or premature "done"</text>
+<rect class="box good" x="620" y="160" width="220" height="42" rx="8"/>
+<text x="730" y="186" text-anchor="middle" class="b">merge, new baseline</text>
+<rect class="box bad" x="620" y="218" width="220" height="42" rx="8"/>
+<text x="730" y="244" text-anchor="middle" class="b">block, attach transcripts</text>
+<line class="ln good" x1="560" y1="181" x2="617" y2="181" marker-end="url(#m21k)"/>
+<text x="588" y="173" text-anchor="middle" class="sm">pass</text>
+<line class="ln bad" x1="560" y1="239" x2="617" y2="239" marker-end="url(#m21k)"/>
+<text x="588" y="231" text-anchor="middle" class="sm">fail</text>
+<text x="430" y="290" text-anchor="middle" class="sm">thresholds are examples; pick yours from your own noise level before the first run</text>
+</svg>
+<figcaption><b>Every harness edit is a release.</b> A cheap smoke set fails fast on crashes; the full suite with epochs gives enough power for a paired comparison against the stored baseline. The gate checks reliability (pass^k), cost and mechanism metrics, not only the average success rate.</figcaption>
+</figure>
+
+<h3>What to gate on, and why</h3>
+<ul>
+<li><b>Success, as a paired interval.</b> Gate on the <em>lower bound</em> of the paired difference ("we are confident it did not drop by more than 2 points"), not on the point estimate. A point-estimate gate fails randomly half the time on a change that does nothing.</li>
+<li><b>pass^k on a golden set.</b> pass^k (<a href="04-metrics-and-statistics.html">Module 04</a>) is the chance that all k attempts succeed. Harness changes often trade reliability for peak performance: a more exploratory prompt can raise pass@k while lowering pass^k. For an agent that runs unattended, pass^k is the number users feel.</li>
+<li><b>Cost and latency.</b> A harness change that raises success by 1 point and tokens by 40% is usually a regression. Put a ceiling on cost per task, or gate on cost per success.</li>
+<li><b>Component metrics.</b> A spike in tool errors, loops or premature "done" claims is a warning even when success holds, because it usually means the agent is recovering by luck.</li>
+<li><b>Canary tasks.</b> Keep a handful of tasks that exercise each component specifically (a task that only succeeds if compaction preserves a detail; a task that needs a sub-agent), so a component that silently stops working turns a specific canary red.</li>
+</ul>
+
+<pre data-lang="python"><code># harness_gate.py : fail CI if the candidate harness regresses
+import sys
+from paired_ablation import per_task_rates, paired_diff
+
+MAX_DROP = -0.02          # lower CI bound may not fall below -2 points
+MAX_COST_RATIO = 1.10     # at most +10% tokens per task
+
+def gate(base_dir: str, cand_dir: str, base_cost: float, cand_cost: float) -&gt; list:
+    problems = []
+    m, lo, hi, n = paired_diff(per_task_rates(base_dir), per_task_rates(cand_dir))
+    if lo &lt; MAX_DROP:
+        problems.append(f"success: delta {m:+.3f}, CI lower bound {lo:+.3f} &lt; {MAX_DROP}")
+    if cand_cost &gt; MAX_COST_RATIO * base_cost:
+        problems.append(f"cost: {cand_cost:.0f} vs {base_cost:.0f} tokens per task")
+    return problems
+
+if __name__ == "__main__":
+    issues = gate("logs/baseline", "logs/candidate", base_cost=210_000, cand_cost=224_000)
+    for i in issues:
+        print("GATE FAIL:", i)
+    sys.exit(1 if issues else 0)</code></pre>
+
+<div class="callout tip"><span class="t">Budget the gate before you need it</span>
+<p>A gate with a −2 point tolerance is only meaningful if the suite can detect a 2-point change. With paired per-task differences whose standard deviation is about 0.19, the 95% half-width is 1.96 × 0.19 / √n, so you need about 350 tasks for ±2 points. If you have 150 tasks, your gate can only promise ±3. Run the power calculation from <a href="04-metrics-and-statistics.html">Module 04</a> once, write the achievable tolerance into the gate, and do not pretend to more precision than the suite has.</p>
+</div>
+
+<h2>Pitfalls</h2>
+<p>Harness evals fail in characteristic ways. Most of them make a harness look better than it is.</p>
+
+<h3>1. Unmatched budgets</h3>
+<p>The most common mistake. A new harness uses more turns, more tokens, more sub-agents or more parallel attempts, and of course it scores higher. That is not a better harness; it is a bigger budget. The fair comparison is either at <b>matched budgets</b> (same turn and token caps) or on a <b>cost curve</b>: success as a function of budget, for each harness.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 352" role="img" aria-label="Success versus budget for two harnesses. Harness A rises quickly and plateaus near 61 percent; harness B rises slowly and reaches 67 percent at a high budget. At 20 turns A wins 52 to 33; at 100 turns B wins 67 to 61. Comparing A at 20 turns with B at 100 turns exaggerates B's advantage. Illustrative curves.">
+<defs><marker id="m21l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="80" y1="260" x2="770" y2="260"/>
+<line class="ln" x1="80" y1="260" x2="80" y2="44"/>
+<text x="72" y="264" text-anchor="end" class="sm">0%</text>
+<text x="72" y="84" text-anchor="end" class="sm">60%</text>
+<line class="ln dash" x1="76" y1="80" x2="770" y2="80"/>
+<text x="425" y="290" text-anchor="middle" class="sm">budget per task (turns, tokens or dollars)</text>
+<text x="40" y="150" text-anchor="middle" class="sm" transform="rotate(-90 40 150)">success rate</text>
+<line class="ln dash" x1="260" y1="44" x2="260" y2="260"/>
+<line class="ln dash" x1="680" y1="44" x2="680" y2="260"/>
+<text x="260" y="36" text-anchor="middle" class="sm b">20 turns</text>
+<text x="680" y="36" text-anchor="middle" class="sm b">100 turns</text>
+<polyline class="ln accent thick" points="100,230 180,140 260,104 360,86 500,80 740,77"/>
+<polyline class="ln violet thick" points="100,251 180,206 260,161 360,119 500,80 620,62 740,56"/>
+<circle cx="260" cy="104" r="5" class="fill-accent"/>
+<circle cx="260" cy="161" r="5" class="fill-violet"/>
+<circle cx="680" cy="77" r="5" class="fill-accent"/>
+<circle cx="680" cy="59" r="5" class="fill-violet"/>
+<text x="300" y="72" class="b t-accent">harness A</text>
+<text x="380" y="140" class="b t-violet">harness B</text>
+<path class="ln bad dash" d="M266,106 C400,112 560,70 672,60" marker-end="url(#m21l)"/>
+<text x="480" y="200" text-anchor="middle" class="sm t-bad">unfair: A at 20 turns vs B at 100 = "+15 pts"</text>
+<text x="425" y="322" text-anchor="middle" class="sm">at 20 turns: A 52% beats B 33%   ·   at 100 turns: B 67% beats A 61%</text>
+<text x="425" y="340" text-anchor="middle" class="sm b">at matched budgets, the winner depends on the budget</text>
+</svg>
+<figcaption><b>Compare harnesses along the budget axis (illustrative curves).</b> Harness A is efficient; harness B is more thorough but needs more turns. Neither is "better" in general: the right choice depends on the budget you will deploy with. Comparing A's number at one budget with B's at another invents a large gap.</figcaption>
+</figure>
+
+<h3>2. Overfitting the harness to the benchmark</h3>
+<p>Every time you look at failures on your eval suite and tweak the prompt to fix them, you spend a little of the suite's ability to tell you the truth. After a few dozen rounds, your prompt contains instructions that address specific tasks ("remember to check the timezone"), and the suite score overstates how the harness will do on new tasks. This is Goodhart's law applied to harness engineering (<a href="18-benchmark-pitfalls.html">Module 18</a>). The defenses are the same as in machine learning: a <b>held-out task set</b> you look at rarely, fresh tasks added regularly from production traces, and a rule that prompt instructions must be general (no task-specific hints). Anthropic's tool-writing guidance recommends a held-out set for exactly this reason. The pressure is increasing: a line of 2026 papers explores <em>automated</em> harness optimization, where an optimizer rewrites prompts and tools against an eval, which makes a clean held-out set non-negotiable.</p>
+
+<h3>3. Comparing numbers across evaluation harnesses</h3>
+<p>Your harness scores 58% on a benchmark in your evaluation harness; a blog post reports 64% for another agent harness on "the same" benchmark in theirs. Those numbers are not comparable. Evaluation harnesses differ in timeouts, sandbox images and installed packages, retry-on-infrastructure-error policies, grader versions, task subsets and how they count crashed trials. To compare two agent harnesses, run both inside <b>one</b> evaluation harness. This is the entire reason HAL and Harbor exist.</p>
+
+<h3>4. Infrastructure noise: the sandbox is part of the result</h3>
+<p>Even inside one evaluation harness, the <b>resources</b> each trial gets can move the score. Anthropic's engineering post <a href="https://www.anthropic.com/engineering/infrastructure-noise">Quantifying infrastructure noise in agentic coding evals</a> (February 2026) studied exactly this; in announcing it, Anthropic summarized that infrastructure configuration can swing agentic coding benchmarks by several percentage points, sometimes more than the leaderboard gap between top models. The mechanism is easy to picture: with less CPU or memory, builds and test suites run slower or crash, more trials hit their time limit, and an agent that would have succeeded is scored as a failure. A generous machine can also let a brute-force approach finish that would time out elsewhere.</p>
+<p>For harness evals this has three consequences. First, <b>pin and record the sandbox resources</b> (CPU, memory, disk, time limits, concurrency) as part of the configuration, exactly like the model version. Second, when comparing harness variants, run them on the <b>same infrastructure, interleaved</b>, never "baseline last month, candidate today on the new cluster". Third, separate <b>infrastructure failures</b> (out-of-memory kills, container start failures, timeouts in setup) from agent failures in your exit reasons, and watch whether a harness change shifts that mix: a harness that spawns sub-agents or runs more tests in parallel can be the thing that pushes trials over a resource limit. <a href="18-benchmark-pitfalls.html">Module 18</a> discusses infrastructure noise as a benchmark pitfall more broadly.</p>
+<p>Try it: change the sandbox's resources and time limit and watch how much of the "gap" between two configurations is really infrastructure.</p>
+<div data-widget="infranoise"></div>
+
+<h3>5. Leakage through tools</h3>
+<p>A harness that gives the agent a web search or unrestricted network access can find the answers instead of solving the task. The HAL paper reports finding exactly this in its logs: agents searching for benchmark answers online. A tool can also leak through the filesystem (the hidden tests are readable in the container) or through git history (a future commit with the fix is present). When a new tool raises the score, read the transcripts of the newly passing tasks before celebrating. Block benchmark domains at the network layer, and keep graders and reference solutions out of the agent's sandbox (<a href="18-benchmark-pitfalls.html">Module 18</a> on reward hacking).</p>
+
+<h3>6. The winner's curse over many configurations</h3>
+<p>Suppose you try 20 prompt variants, none of which is truly better than the baseline, on a suite where the paired standard error of a difference is 2 points. By chance alone, the expected best of 20 noisy differences is about 1.87 standard errors above zero, so the "winner" will look about <b>+3.7 points</b> better, and it is pure noise. This is the <b>winner's curse</b>: the maximum of many noisy estimates is biased upward. The fixes: confirm the winner on a fresh held-out set before shipping, correct for multiple comparisons, and report how many configurations you tried. Leaderboards suffer from the same effect when submitters test many private variants and publish the best (<a href="18-benchmark-pitfalls.html">Module 18</a>).</p>
+
+<h3>7. Confounding through the environment</h3>
+<p>Harness A ran on Monday, harness B on Tuesday, and on Tuesday the package mirror was slow, so more of B's trials timed out. Or the model provider updated the model version behind the same alias. Run variants <b>interleaved</b> (alternate or randomize the order of trials across configs), pin model versions, and track infrastructure errors separately from agent failures. <a href="05-agents-are-different.html">Module 05</a> covers environment determinism.</p>
+
+<h2>Putting it together: a harness eval plan</h2>
+<div class="tablewrap"><table>
+<tr><th>Question</th><th>Design</th><th>Report</th></tr>
+<tr><td>Does this harness change help?</td><td>A/B, one change, same model and budget, k epochs, paired</td><td>Δ success with 95% CI, Δ cost, component metrics</td></tr>
+<tr><td>Which components are load-bearing?</td><td>Leave-one-out ablation, plus pairs where components overlap</td><td>Ablation table with CIs and token column; slices by task length</td></tr>
+<tr><td>Does our harness suit a new model?</td><td>Model × harness matrix including a neutral minimal harness</td><td>Per-cell results, marginal means, rank flips</td></tr>
+<tr><td>Why does it fail?</td><td>Component metrics, triage tree, transcript reading</td><td>Failure taxonomy by component</td></tr>
+<tr><td>Does it hold up over hours?</td><td>Session-boundary checks on a long-running harness</td><td>Verified vs claimed progress curve, environment health</td></tr>
+<tr><td>Did this edit break anything?</td><td>CI gate against a stored baseline</td><td>Pass/fail with reasons and transcript links</td></tr>
+</table></div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li><b>Two harnesses.</b> The agent harness turns a model into an agent and is part of the product; the evaluation harness runs and grades trials and is part of the instrument. Change the first, freeze the second.</li>
+<li><b>An agent's score belongs to model + harness + budget.</b> Leaderboards such as Terminal-Bench 2.0 rank agent + model pairs, and HAL runs the whole scaffold × model × benchmark grid with cost next to accuracy.</li>
+<li><b>The method is a controlled experiment:</b> hold the model fixed, change one thing, match budgets, run epochs, and compare task by task with a paired confidence interval.</li>
+<li><b>Ablation tables tell you what earns its keep,</b> and they need a cost column. "No significant drop" means "no evidence", not "no effect"; overlapping components need pairwise ablation.</li>
+<li><b>Model × harness interactions are real:</b> a harness tuned for one model can be the worst for another. Report marginal means and per-cell results, and test new models in a neutral harness too.</li>
+<li><b>Component metrics explain the success rate:</b> tool errors, invalid arguments, loops, context growth, retention after compaction, handoff quality and premature "done" claims.</li>
+<li><b>Every harness edit is a release:</b> gate it in CI on the paired interval's lower bound, pass^k, cost and mechanism metrics, and beware unmatched budgets, overfitting, infrastructure noise, tool leakage and the winner's curse.</li>
+</ol></div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="2"><p>1. In one pull request you rewrite the system prompt and add a search tool. Success rises by 5 points (paired 95% CI [+2, +8]). What can you conclude?</p>
+<button class="opt">The new prompt helps by about 5 points</button>
+<button class="opt">The search tool helps by about 5 points</button>
+<button class="opt">The combination helps; you do not know which change is responsible, or whether one of them hurts</button>
+<button class="opt">Nothing, because the interval is too wide</button>
+<div class="why">Two changes at once confound each other. One could be worth +8 and the other −3. Ablate them separately (and check the search tool's newly passing transcripts for leakage).</div></div>
+<div class="q" data-answer="1"><p>2. Harness B scores 8 points above harness A, but B used a 150-turn cap and A an 80-turn cap. What should you do next?</p>
+<button class="opt">Ship B: 8 points is large</button>
+<button class="opt">Rerun both at matched budgets, or plot success against budget for both</button>
+<button class="opt">Rerun A with more epochs</button>
+<div class="why">Unmatched budgets are the most common harness-eval error. More turns usually means more success; the question is whether B is better at the budget you will deploy with.</div></div>
+<div class="q" data-answer="0"><p>3. Model B beats model A in a neutral minimal harness, but loses to A in your production harness. What is the most likely explanation?</p>
+<button class="opt">A model × harness interaction: your harness was tuned around model A's habits</button>
+<button class="opt">Model B is contaminated on the benchmark</button>
+<button class="opt">The minimal harness is broken</button>
+<div class="why">This is a rank flip, the signature of an interaction. The usual fix is to simplify or retune the production harness for the new model, then compare again.</div></div>
+<div class="q" data-answer="2"><p>4. Over 100 trials an agent claims "done" in 90, and the end-state check passes in 70. What is the <em>lowest</em> possible premature-done rate (share of "done" claims that are false)?</p>
+<button class="opt">10%</button>
+<button class="opt">20%</button>
+<button class="opt">About 22%</button>
+<button class="opt">30%</button>
+<div class="why">At best, all 70 passing trials were among the 90 claims, leaving 20 false claims. 20 ÷ 90 ≈ 22%. Dividing by all 100 trials (20%) answers a different question.</div></div>
+<div class="q" data-answer="1"><p>5. You test 20 prompt variants on the same 120 tasks and ship the best one, which scored +4 points over the baseline. Why be skeptical?</p>
+<button class="opt">Because 120 tasks is always too few</button>
+<button class="opt">Winner's curse: the best of many noisy estimates is biased upward, so confirm it on held-out tasks before trusting the +4</button>
+<button class="opt">Because prompt changes never matter</button>
+<div class="why">With a paired standard error of about 2 points, the expected best of 20 null variants is around +3.7 points by chance alone.</div></div>
+<div class="q" data-answer="3"><p>6. Why ask a probe question right after a compaction event, rather than only grading the final outcome?</p>
+<button class="opt">Probes are cheaper than running the task</button>
+<button class="opt">Compaction always deletes facts</button>
+<button class="opt">It measures model capability without the harness</button>
+<button class="opt">A lost detail may only cause a failure many turns later; probing at the event attributes the loss to the compaction step and lets you compare compaction strategies directly</button>
+<div class="why">The outcome grader cannot tell you <em>where</em> information was lost. A probe checked against environment ground truth pinpoints the harness component responsible.</div></div>
+</div>
+
+<details>
+<summary><b>Interview questions</b></summary>
+<ol>
+<li><b>"How would you evaluate a change to your agent's system prompt?"</b> Treat it as a release. Same model, same sampling settings, same tasks (plus a held-out set), same budgets, same evaluation harness. Run k epochs of baseline and candidate, interleaved. Compute per-task success rates, then the paired mean difference with a bootstrap CI over tasks. Also compare cost, pass^k on the golden set and component metrics. Read transcripts of tasks that flipped in either direction. Gate on the lower bound of the interval.</li>
+<li><b>"What is the difference between an agent harness and an evaluation harness?"</b> The agent harness is the scaffold around the model (prompt, tools, loop, context management, memory, sub-agents, permissions, verification): it is the product. The evaluation harness runs tasks, resets sandboxes, records transcripts and grades: it is the instrument. Anthropic's "Demystifying evals" post makes the distinction and notes that evaluating an agent means evaluating harness and model together.</li>
+<li><b>"Your ablation shows removing the planning step changes nothing. Do you delete it?"</b> Not yet. Check the interval (is a meaningful effect ruled out?), slice by task length (planning may matter only for long tasks), check whether another component overlaps it (ablate the pair), and look at cost. If the interval is tight around zero on representative tasks and it costs tokens, remove it and keep a canary task.</li>
+<li><b>"How do you compare two coding agents fairly?"</b> Run both in one evaluation harness (for example Harbor for CLI agents), with the same model where possible, the same tasks, timeouts and sandbox, matched or reported budgets, several epochs, and cost per task alongside success. Never compare numbers produced by different evaluation harnesses.</li>
+<li><b>"What metrics would you put on a dashboard for a long-running agent harness?"</b> Verified progress versus claimed progress per session, environment health after each session, notes accuracy, features touched per session, re-done work, tool error rate, loop rate, context tokens per turn, retention after compaction, premature-done rate, cost per verified feature.</li>
+<li><b>"Your harness change gained 4 points, but the candidate ran on a new, larger cluster. Do you believe it?"</b> No. Infrastructure resources (CPU, memory, time limits) can move agentic coding scores by several points, as Anthropic's infrastructure-noise post reports. Rerun baseline and candidate interleaved on the same machines, pin resources in the config, and separate infrastructure failures from agent failures in the exit reasons.</li>
+<li><b>"A new web-search tool raised your benchmark score by 10 points. What do you check?"</b> Leakage first: read the transcripts of newly passing tasks for searches that hit the benchmark, its solutions or its repository. The HAL paper reports agents doing exactly this. Then block those domains and rerun. Also check cost and whether the gain holds on held-out, non-public tasks.</li>
+</ol>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (January 2026): agent harness vs evaluation harness, pass@k vs pass^k.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Effective harnesses for long-running agents</a> (November 2025): initializer and coding agents, feature list, progress notes, git, end-to-end testing.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents</a> (September 2025): compaction, structured note-taking, sub-agent architectures.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a> (September 2025): evaluation-driven tool development, held-out sets.</li>
+<li>Yang et al., <a href="https://arxiv.org/abs/2405.15793">SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</a> (NeurIPS 2024).</li>
+<li>Kapoor et al., <a href="https://arxiv.org/abs/2510.11977">Holistic Agent Leaderboard: The Missing Infrastructure for AI Agent Evaluation</a> (ICLR 2026) and the <a href="https://hal.cs.princeton.edu/">HAL leaderboard</a>.</li>
+<li><a href="https://arxiv.org/abs/2601.11868">Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces</a> (2026), the <a href="https://www.tbench.ai">Terminal-Bench leaderboard</a>, and <a href="https://github.com/laude-institute/harbor">Harbor</a>.</li>
+<li>UK AI Security Institute and Meridian Labs, <a href="https://inspect.aisi.org.uk/">Inspect documentation</a>: <a href="https://inspect.aisi.org.uk/react-agent.html">ReAct agent</a>, <a href="https://inspect.aisi.org.uk/agents.html">agents and Agent Bridge</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/infrastructure-noise">Quantifying infrastructure noise in agentic coding evals</a> (February 2026).</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/harness-design-long-running-apps">Harness design for long-running application development</a> (2026).</li>
+<li><a href="https://arxiv.org/abs/2607.28802">Model or Harness? An Interaction-Centric Taxonomy for Localizing Agent Failures</a> (2026).</li>
+<li>Evan Miller, <a href="https://arxiv.org/abs/2411.00640">Adding Error Bars to Evals</a> (2024): paired differences and clustered standard errors.</li>
+<li>Recent papers on harness effects, listed for further reading (titles only; their findings are not summarized in this module): <a href="https://arxiv.org/abs/2605.27922">Harness-Bench: Measuring Harness Effects across Models in Realistic Agent Workflows</a>; <a href="https://arxiv.org/html/2607.22585v1">The Scaffold Effect in Coding Agents</a>; <a href="https://arxiv.org/html/2609.20804v1">An Empirical Study of Harness Design for Coding Agents</a>; <a href="https://arxiv.org/abs/2604.25850">Agentic Harness Engineering</a>; <a href="https://arxiv.org/abs/2604.20938">HARBOR: Automated Harness Optimization</a> (unrelated to the Terminal-Bench Harbor despite the name).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>
