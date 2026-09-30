@@ -35,7 +35,7 @@ Module numbers link to the pages under [`modules/`](modules).
 | Skills | 22 |
 | Memory (write, retrieve, update, forget) | 23 |
 | Long context as memory | 11, 23 |
-| Planning and multi-step control | 05, 11 |
+| Planning and multi-step control (validity, adherence, replanning) | 05, 11, 21 |
 | Guardrails and permission systems | 15, 25 |
 | Agent interoperability (A2A, agent payments) | 11 |
 

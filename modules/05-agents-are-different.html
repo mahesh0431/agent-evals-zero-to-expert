@@ -25,6 +25,7 @@
 <li>Draw the agent loop as a state machine and name every way a run can end.</li>
 <li>Take apart any agent eval into task, environment, harness, simulated user, trajectory and graders.</li>
 <li>Choose between outcome, process and response grading, and explain why over-constraining the path is a trap.</li>
+<li>Evaluate an agent's planning: validity against hard constraints, adherence, replanning and efficiency, with micro and macro pass rates.</li>
 <li>Design an environment that is deterministic, isolated and resettable, and know which knobs to control.</li>
 <li>Explain why small per-step error rates destroy long tasks, and why the same model scores differently in different scaffolds.</li>
 <li>Map every agent modality (tool, coding, web, computer-use, voice, vision, multi-agent) to its environment, actions, observations, graders and benchmarks.</li>
@@ -328,7 +329,7 @@
 <text x="425" y="333" text-anchor="middle" class="sm">(k trials per task, never share state)</text>
 <line class="ln dash" x1="425" y1="260" x2="425" y2="288" marker-end="url(#m5d)"/>
 </svg>
-<figcaption><b>Anatomy of an agent eval.</b> Everything inside the dashed sandbox is created fresh per trial. Three kinds of grader read three different artefacts: the environment's end state, the trajectory, and the final message. Their scores combine into metrics over many tasks and trials.</figcaption>
+<figcaption><b>Anatomy of an agent eval.</b> Everything inside the dashed sandbox is created fresh per trial. Three kinds of grader read three different artifacts: the environment's end state, the trajectory, and the final message. Their scores combine into metrics over many tasks and trials.</figcaption>
 </figure>
 
 <p>Here is what a single task specification might look like as data. The exact format differs by framework (Inspect <code>Sample</code>, tau-bench task JSON, ADK <code>.evalset.json</code>), but the fields are almost always these:</p>
@@ -360,7 +361,7 @@ task = {
 }</code></pre>
 
 <h2>Three layers of grading</h2>
-<p>For a plain LLM output there is one thing to grade: the output. An agent leaves three artefacts behind, and each supports a different kind of grader.</p>
+<p>For a plain LLM output there is one thing to grade: the output. An agent leaves three artifacts behind, and each supports a different kind of grader.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 840 330" role="img" aria-label="Three grading layers: outcome checks the end state, process checks the path, response checks the final message. On the right, a reference path and an agent's different but valid path both reach the goal: exact path matching fails the agent while the end-state check passes it.">
@@ -406,7 +407,7 @@ task = {
 <h3>Layer 1: outcome (end-state) grading</h3>
 <p>After the run, inspect the environment. Did the reservation change? Do the hidden unit tests pass? Is the file on disk, with the right content? Is there exactly one new payment, not two? This is what tau-bench does (it compares the final database with an annotated goal database), what SWE-bench does (it runs FAIL_TO_PASS and PASS_TO_PASS tests), what OSWorld does (134 custom evaluation functions that inspect file and app state) and what AppWorld does (state-based unit tests over the database diff, including checks for "collateral damage", meaning unintended changes).</p>
 <p>Outcome grading is robust for a deep reason: it is <b>indifferent to the route</b>. It asks the question the user actually cares about. It is also usually cheap and deterministic, because it is code that reads a database or runs tests (see <a href="03-graders.html">Module 03</a>).</p>
-<p>Its weaknesses: some tasks have no checkable end state (research, advice, explanations); a correct end state can be reached by an unacceptable path (it booked the right flight but also emailed the customer's passport to a stranger); and end-state checks can be too narrow. A check that looks only at <code>reservations.R7K2</code> misses that the agent also cancelled <code>R7K3</code>. Good outcome graders check the <b>whole diff</b> between s0 and the end state: what should have changed did, and <em>nothing else changed</em>.</p>
+<p>Its weaknesses: some tasks have no checkable end state (research, advice, explanations); a correct end state can be reached by an unacceptable path (it booked the right flight but also emailed the customer's passport to a stranger); and end-state checks can be too narrow. A check that looks only at <code>reservations.R7K2</code> misses that the agent also canceled <code>R7K3</code>. Good outcome graders check the <b>whole diff</b> between s0 and the end state: what should have changed did, and <em>nothing else changed</em>.</p>
 
 <h3>Layer 2: process (trajectory) grading</h3>
 <p>Here you read the trajectory itself. Typical checks:</p>
@@ -415,9 +416,9 @@ task = {
 <li><b>Argument correctness</b>: were the parameters valid and right (the correct booking id, a date in the right format, no invented fields)? BFCL, the Berkeley Function Calling Leaderboard, grades single calls this way using AST matching (comparing the parsed call's structure against allowed values).</li>
 <li><b>Order</b>: did a precondition come before the action (look up, then modify; ask for confirmation, then charge)?</li>
 <li><b>Redundancy and efficiency</b>: repeated identical calls, loops, wasted steps. These rarely change correctness but they change cost and latency.</li>
-<li><b>Policy violations</b>: actions the domain policy forbids (refunding without authorisation, touching another customer's data, running <code>rm -rf</code> outside the working directory).</li>
+<li><b>Policy violations</b>: actions the domain policy forbids (refunding without authorization, touching another customer's data, running <code>rm -rf</code> outside the working directory).</li>
 </ul>
-<p>Trajectory metrics have been standardised in some tools. Google's Vertex AI Gen AI evaluation service offers <code>trajectory_exact_match</code>, <code>trajectory_in_order_match</code> (all reference calls present in the same order, extra calls allowed), <code>trajectory_any_order_match</code> (all reference calls present in any order, extras allowed), <code>trajectory_precision</code>, <code>trajectory_recall</code> and <code>trajectory_single_tool_use</code> (was one named tool used at all). Google's Agent Development Kit (ADK) has a <code>tool_trajectory_avg_score</code> criterion with <code>match_type</code> set to <code>EXACT</code>, <code>IN_ORDER</code> or <code>ANY_ORDER</code>. You will write your own versions of these in the worked example below.</p>
+<p>Trajectory metrics have been standardized in some tools. Google's Vertex AI Gen AI evaluation service offers <code>trajectory_exact_match</code>, <code>trajectory_in_order_match</code> (all reference calls present in the same order, extra calls allowed), <code>trajectory_any_order_match</code> (all reference calls present in any order, extras allowed), <code>trajectory_precision</code>, <code>trajectory_recall</code> and <code>trajectory_single_tool_use</code> (was one named tool used at all). Google's Agent Development Kit (ADK) has a <code>tool_trajectory_avg_score</code> criterion with <code>match_type</code> set to <code>EXACT</code>, <code>IN_ORDER</code> or <code>ANY_ORDER</code>. You will write your own versions of these in the worked example below.</p>
 
 <div class="callout warn"><span class="t">The over-constraint trap</span>
 <p>Anthropic's post is blunt: "There is a common instinct to check that agents followed very specific steps like a sequence of tool calls in the right order. We've found this approach too brittle." Its example: Claude Opus 4.5 "solved a τ2-bench problem about booking a flight by discovering a loophole in the policy. It 'failed' the evaluation as written, but actually came up with a better solution for the user." Capable agents find valid routes you did not think of. If your process grader demands <em>your</em> route, it will punish exactly the capability you want, and the score will go <em>down</em> as the model gets smarter.</p>
@@ -430,9 +431,299 @@ task = {
 <div class="tablewrap"><table>
 <tr><th>Layer</th><th>Reads</th><th>Best for</th><th>Main risk</th><th>Typical grader</th></tr>
 <tr><td>Outcome</td><td>End state of environment</td><td>Correctness of tasks with a checkable result</td><td>Too narrow a check; misses side effects or unsafe paths</td><td>Code: DB diff, tests, file checks</td></tr>
-<tr><td>Process</td><td>Trajectory</td><td>Safety, policy, cost, debugging</td><td>Over-constraining the path; penalising novel valid routes</td><td>Code rules, trajectory metrics, LLM judge over transcript</td></tr>
+<tr><td>Process</td><td>Trajectory</td><td>Safety, policy, cost, debugging</td><td>Over-constraining the path; penalizing novel valid routes</td><td>Code rules, trajectory metrics, LLM judge over transcript</td></tr>
 <tr><td>Response</td><td>Final message(s)</td><td>Communication, honesty, tasks with no end state</td><td>Judge bias; rewarding confident claims</td><td>Rubric, LLM judge, required-fact checks</td></tr>
 </table></div>
+
+<h2>Evaluating planning</h2>
+<p>Many agent tasks are really planning problems in disguise. "Book me a three-day trip to Denver under $1,200, the hotel must take my dog, and no flights before 8 a.m." has a goal, several constraints, and many possible sequences of actions, most of which are wrong. <b>Planning</b> is the agent's ability to choose and order the steps that reach a goal while respecting every constraint, and to fix that sequence when the world surprises it. It is one of the building blocks of every capable agent, and it deserves its own measurements.</p>
+
+<div class="callout analogy"><span class="t">Analogy: the driving test</span>
+<p>A driving examiner does not only check that you arrived at the parking lot. They watch whether you picked a sensible route, obeyed every sign on the way, and recovered calmly when a road was closed. Arriving is the outcome. The route, the rule-following and the recovery are the planning. A driver who arrives by running two red lights still fails.</p>
+</div>
+
+<h3>What "planning" means for an LLM agent</h3>
+<p>LLM agents plan in three recognizable styles, and most real agents mix them:</p>
+<div class="tablewrap"><table>
+<tr><th>Style</th><th>What it looks like</th><th>What you can grade</th></tr>
+<tr><td><b>Explicit plan, then act</b></td><td>The agent first writes a plan (a numbered list, a to-do file, a JSON list of subtasks), then executes it step by step. Plan-and-execute agents and coding agents that keep a to-do list work this way.</td><td>The plan itself, before anything runs, and later whether execution followed it.</td></tr>
+<tr><td><b>Implicit, step by step (ReAct style)</b></td><td>No written plan. The agent reasons one step ahead ("I need the reservation first, then I can change it"), acts, reads the result, and decides the next step. The plan exists only in the order of its actions.</td><td>The plan you can reconstruct from the trajectory: the order of actions, the preconditions respected, the wasted steps.</td></tr>
+<tr><td><b>Replanning</b></td><td>The agent revises its plan when an observation contradicts it: a tool errors, a flight is sold out, the user adds a requirement.</td><td>Whether it noticed, whether the revision is still valid, and whether it kept the parts that still worked.</td></tr>
+</table></div>
+
+<h3>Why final-outcome scoring hides planning failures</h3>
+<p>Earlier in this module the rule was "grade outcomes for correctness". That rule still holds, but a pass/fail outcome score cannot tell you <em>why</em> an agent passed or failed, and for planning the "why" matters:</p>
+<ul>
+<li><b>Lucky success.</b> The plan ignored the budget, but the first flight it found happened to be cheap. The outcome passes; on a harder task the same plan fails.</li>
+<li><b>Unlucky failure.</b> The plan was perfect, but a tool timed out. The outcome fails, and the fix belongs to the environment, not the planner.</li>
+<li><b>Expensive success.</b> The agent reached the goal after 40 steps, including three abandoned plans. The outcome passes; your cost bill does not.</li>
+<li><b>Unchecked constraints.</b> The end-state check verifies "a flight and a hotel are booked" but nobody wrote a check for "no flights before 8 a.m.". The plan broke a constraint that the outcome grader never looked at.</li>
+</ul>
+<p>So planning evaluation adds a second question next to "did it work?": "was the plan valid, good, followed, and repaired well?" The picture below shows where each measurement attaches to the loop.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 860 360" role="img" aria-label="The plan, execute, observe, replan loop. A task with constraints is decomposed into a plan. Each plan step is executed and its result observed. If the result is as expected the next step runs; if it fails or brings new information the agent replans and the revised plan feeds back into execution. When all steps are done the run finishes. Plan metrics (validity, cost, decomposition) attach to the plan, adherence attaches to execution, replanning quality attaches to the replan step, outcome attaches to finish, and efficiency is measured over the whole trace.">
+<defs><marker id="m05pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="150" y="20" width="190" height="50" rx="8"/>
+<text x="245" y="40" text-anchor="middle" class="sm b t-accent">plan metrics</text>
+<text x="245" y="58" text-anchor="middle" class="sm">validity, cost, decomposition</text>
+<rect class="box dashed" x="366" y="20" width="160" height="50" rx="8"/>
+<text x="446" y="40" text-anchor="middle" class="sm b t-warn">adherence</text>
+<text x="446" y="58" text-anchor="middle" class="sm">did this step follow plan?</text>
+<rect class="box dashed" x="700" y="20" width="144" height="50" rx="8"/>
+<text x="772" y="40" text-anchor="middle" class="sm b t-good">outcome</text>
+<text x="772" y="58" text-anchor="middle" class="sm">end-state check</text>
+<line class="ln dash" x1="245" y1="70" x2="245" y2="128"/>
+<line class="ln dash" x1="410" y1="70" x2="410" y2="128"/>
+<line class="ln dash" x1="785" y1="70" x2="785" y2="128"/>
+<rect class="box plain" x="16" y="130" width="120" height="60" rx="8"/>
+<text x="76" y="155" text-anchor="middle" class="b">Task</text>
+<text x="76" y="174" text-anchor="middle" class="sm">goal + constraints</text>
+<rect class="box accent" x="176" y="130" width="140" height="60" rx="8"/>
+<text x="246" y="155" text-anchor="middle" class="b">Plan</text>
+<text x="246" y="174" text-anchor="middle" class="sm">ordered steps</text>
+<rect class="box warn" x="366" y="130" width="140" height="60" rx="8"/>
+<text x="436" y="155" text-anchor="middle" class="b">Execute step i</text>
+<text x="436" y="174" text-anchor="middle" class="sm">tool call</text>
+<rect class="box plain" x="556" y="130" width="130" height="60" rx="8"/>
+<text x="621" y="155" text-anchor="middle" class="b">Observe</text>
+<text x="621" y="174" text-anchor="middle" class="sm">tool result</text>
+<rect class="box good" x="726" y="130" width="118" height="60" rx="8"/>
+<text x="785" y="155" text-anchor="middle" class="b">Finish</text>
+<text x="785" y="174" text-anchor="middle" class="sm">final state</text>
+<line class="ln" x1="136" y1="160" x2="174" y2="160" marker-end="url(#m05pa)"/>
+<text x="155" y="206" text-anchor="middle" class="sm">decompose</text>
+<line class="ln accent flow" x1="316" y1="160" x2="364" y2="160" marker-end="url(#m05pa)"/>
+<line class="ln warn flow" x1="506" y1="160" x2="554" y2="160" marker-end="url(#m05pa)"/>
+<line class="ln good" x1="686" y1="160" x2="724" y2="160" marker-end="url(#m05pa)"/>
+<text x="705" y="206" text-anchor="middle" class="sm">all done</text>
+<path class="ln" d="M636,130 L636,100 L480,100 L480,128" marker-end="url(#m05pa)"/>
+<text x="558" y="93" text-anchor="middle" class="sm">as expected: next step</text>
+<path class="ln violet" d="M621,190 L621,278 L508,278" marker-end="url(#m05pa)"/>
+<text x="630" y="236" class="sm">failure or</text>
+<text x="630" y="251" class="sm">new information</text>
+<rect class="box violet" x="366" y="250" width="140" height="56" rx="8"/>
+<text x="436" y="273" text-anchor="middle" class="b">Replan</text>
+<text x="436" y="292" text-anchor="middle" class="sm">revise the rest</text>
+<path class="ln violet" d="M366,278 L246,278 L246,192" marker-end="url(#m05pa)"/>
+<text x="306" y="270" text-anchor="middle" class="sm">revised plan</text>
+<rect class="box dashed" x="366" y="318" width="250" height="34" rx="8"/>
+<text x="378" y="340" class="sm b t-violet">replanning</text>
+<text x="452" y="340" class="sm">noticed? repaired? still valid?</text>
+<line class="ln dash" x1="436" y1="306" x2="436" y2="318"/>
+<rect class="box dashed" x="16" y="232" width="200" height="50" rx="8"/>
+<text x="116" y="252" text-anchor="middle" class="sm b t-bad">efficiency</text>
+<text x="116" y="270" text-anchor="middle" class="sm">whole trace: wasted steps</text>
+</svg>
+<figcaption><b>Where planning metrics attach to the loop.</b> Plan metrics grade the plan before anything runs. Adherence compares each executed step with the plan. Replanning quality is judged each time an observation forces a revision, and the revised plan is checked for validity again. Outcome still grades the final state, and efficiency is counted over the whole trace.</figcaption>
+</figure>
+
+<h3>What to measure</h3>
+<p>Six measurements cover almost everything people mean by "good planning". You rarely need all six for one agent; pick the ones your failures point to (<a href="12-error-analysis.html">Module 12</a>).</p>
+<div class="tablewrap"><table>
+<tr><th>Metric</th><th>The question it answers</th><th>Typical failure it catches</th></tr>
+<tr><td><b>Validity (feasibility)</b></td><td>Does the plan satisfy every hard constraint, and could it actually run (preconditions met, resources exist)?</td><td>A hotel that bans pets; booking a return flight that leaves before the outbound lands.</td></tr>
+<tr><td><b>Quality (optimality)</b></td><td>Among valid plans, how good is this one: total cost, number of steps, travel time, compared with the best known plan?</td><td>A valid itinerary that costs $400 more than necessary.</td></tr>
+<tr><td><b>Adherence</b></td><td>Did execution follow the plan? When it deviated, was the deviation justified by something it observed?</td><td>The agent plans to confirm with the user, then books without asking.</td></tr>
+<tr><td><b>Replanning</b></td><td>After a failure or new information, did it notice, produce a revised plan that is still valid, and keep the steps that still worked?</td><td>Flight sold out, agent retries the same flight five times; or starts over and books a second hotel.</td></tr>
+<tr><td><b>Decomposition</b></td><td>Are the subtasks complete (together they cover the goal), non-overlapping, correctly ordered by dependency, and small enough to execute?</td><td>A subtask list that forgets the return flight, or searches hotels before knowing the dates.</td></tr>
+<tr><td><b>Efficiency</b></td><td>How many steps were wasted: exact repeats, abandoned branches, calls whose results were never used?</td><td>Searching the same city three times; loops that end at the step cap.</td></tr>
+</table></div>
+<p>Two definitions you will meet in papers. A plan is <b>valid</b> (or <b>sound</b>) if executing it from the start state reaches the goal without breaking any rule. It is <b>optimal</b> if no valid plan has lower cost. Validity is a yes/no property you can usually check with code. Optimality needs you to know the best possible cost, which you often do not, so in practice people report the <b>cost ratio</b>: the agent's plan cost divided by the best known cost (1.0 is best).</p>
+
+<h3>How to grade a plan</h3>
+<p>From most to least trustworthy:</p>
+<ol>
+<li><b>Programmatic constraint checkers (best).</b> Write each hard constraint as a small function of the plan: <code>total_cost(plan) &lt;= budget</code>, <code>hotel.pets_allowed</code>, <code>every flight departs at or after 08:00</code>. Each one returns pass or fail, deterministically, for any plan the agent could produce, including ones you never imagined. This is exactly the "grade constraints, not routes" rule from the process-grading section above, applied to plans. The catch: you must extract a structured plan (a JSON itinerary, a list of tool calls) from the agent, so ask for structured output or parse the trajectory.</li>
+<li><b>Formal validators, for classical planning.</b> When the task is written in <b>PDDL</b> (Planning Domain Definition Language, the standard input format for classical AI planners: a domain file with actions, their preconditions and effects, and a problem file with a start state and goal), a plan validator such as <b>VAL</b> simulates the plan step by step and reports whether every precondition held and the goal was reached. PlanBench grades LLM plans this way. It is a perfect checker, but only for tasks you can formalize.</li>
+<li><b>Reference-plan comparison, with care.</b> Comparing against a gold plan is tempting because it is easy: step overlap, in-order match, edit distance. The trouble is that most real tasks have <b>many valid plans</b>. An agent that takes a different flight, or books the hotel first, is not wrong. Use a reference plan for <em>quality</em> (is the agent's cost close to the reference cost?) and as a hint for a judge, not as the definition of correct. This is the over-constraint trap from earlier in this module, wearing a planning hat.</li>
+<li><b>LLM judge with a rubric, for soft qualities.</b> Some things resist code: "Is the decomposition sensible?", "Was the deviation from the plan justified by what the agent saw?", "Does the itinerary respect commonsense (no three museums scheduled at the same hour)?". A judge with a specific rubric can score these (see <a href="13-llm-as-judge.html">Module 13</a>), but validate the judge against human labels first, and never let it overrule a failed hard-constraint check.</li>
+</ol>
+
+<div class="callout warn"><span class="t">Do not let the planner grade its own plan</span>
+<p>It is tempting to ask the same model "does your plan satisfy all constraints?". Kambhampati and colleagues argue, in their <a href="https://arxiv.org/abs/2402.01817">LLM-Modulo position paper</a>, that LLMs are unreliable at verifying their own plans, and that sound external verifiers (code, formal validators) should do the checking. Whatever your view of that debate, for evaluation the conclusion is simple: the grader should be independent of the agent.</p>
+</div>
+
+<h3>Worked example: three plans, three hard constraints</h3>
+<p>The task: "Plan a trip from Seattle to Denver for 2 people, 2 nights. Hard constraints: <b>C1</b> total cost at most $1,200; <b>C2</b> the hotel allows pets; <b>C3</b> no flight departs before 08:00." Three agent runs produce three plans (illustrative numbers):</p>
+<div class="tablewrap"><table>
+<tr><th>Plan</th><th>Flights (per person)</th><th>Hotel (per night)</th><th>Total</th><th>C1 budget</th><th>C2 pets</th><th>C3 no early flight</th><th>All three?</th></tr>
+<tr><td>A</td><td>09:10 $260, 14:30 $240</td><td>Pine Lodge $75, pets OK</td><td>$1,150</td><td>pass</td><td>pass</td><td>pass</td><td><b>yes</b></td></tr>
+<tr><td>B</td><td>10:05 $290, 16:00 $270</td><td>Aspen Inn $95, pets OK</td><td>$1,310</td><td><b>fail</b></td><td>pass</td><td>pass</td><td><b>no</b></td></tr>
+<tr><td>C</td><td>06:45 $210, 12:20 $200</td><td>Metro Stay $80, no pets</td><td>$980</td><td>pass</td><td><b>fail</b></td><td><b>fail</b></td><td><b>no</b></td></tr>
+</table></div>
+<p>(Total = flight fares × 2 travelers + hotel × 2 nights. Plan A: (260 + 240) × 2 + 75 × 2 = 1,150.)</p>
+<p>There are two honest ways to summarize this table, and they give very different numbers:</p>
+<ul>
+<li><b>Micro pass rate</b> (per constraint): count every individual check. 9 checks, 6 passed, so 6 / 9 = <b>66.7%</b>.</li>
+<li><b>Macro pass rate</b> (per plan): a plan counts only if it passes <em>all</em> its constraints. 1 of 3 plans, so 1 / 3 = <b>33.3%</b>.</li>
+</ul>
+<p>Micro tells you how close the agent is getting: it gives credit for fixing one constraint at a time, which is useful while you iterate on a prompt. Macro tells you what the user experiences: a plan that breaks any hard constraint is a plan they cannot use. Report both, and gate on macro. TravelPlanner reports exactly this pair for each constraint family, and its headline "final pass rate" is stricter still: a plan must pass every hard <em>and</em> every commonsense constraint.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 840 300" role="img" aria-label="A 3 by 3 grid of constraint checks for plans A, B and C. Plan A passes budget, pets and time. Plan B fails budget and passes the other two. Plan C passes budget and fails pets and time. Counting cells gives a micro pass rate of 6 of 9, 67 percent. Counting plans that pass every constraint gives a macro pass rate of 1 of 3, 33 percent.">
+<defs><marker id="m05pb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="200" y="40" text-anchor="middle" class="sm b">C1 budget</text>
+<text x="300" y="40" text-anchor="middle" class="sm b">C2 pets</text>
+<text x="400" y="40" text-anchor="middle" class="sm b">C3 time</text>
+<text x="510" y="40" text-anchor="middle" class="sm b">plan usable?</text>
+<text x="30" y="80" class="b">Plan A</text>
+<text x="30" y="140" class="b">Plan B</text>
+<text x="30" y="200" class="b">Plan C</text>
+<rect class="box good" x="160" y="55" width="80" height="40" rx="6"/><text x="200" y="80" text-anchor="middle" class="sm b">pass</text>
+<rect class="box good" x="260" y="55" width="80" height="40" rx="6"/><text x="300" y="80" text-anchor="middle" class="sm b">pass</text>
+<rect class="box good" x="360" y="55" width="80" height="40" rx="6"/><text x="400" y="80" text-anchor="middle" class="sm b">pass</text>
+<rect class="box bad" x="160" y="115" width="80" height="40" rx="6"/><text x="200" y="140" text-anchor="middle" class="sm b">fail</text>
+<rect class="box good" x="260" y="115" width="80" height="40" rx="6"/><text x="300" y="140" text-anchor="middle" class="sm b">pass</text>
+<rect class="box good" x="360" y="115" width="80" height="40" rx="6"/><text x="400" y="140" text-anchor="middle" class="sm b">pass</text>
+<rect class="box good" x="160" y="175" width="80" height="40" rx="6"/><text x="200" y="200" text-anchor="middle" class="sm b">pass</text>
+<rect class="box bad" x="260" y="175" width="80" height="40" rx="6"/><text x="300" y="200" text-anchor="middle" class="sm b">fail</text>
+<rect class="box bad" x="360" y="175" width="80" height="40" rx="6"/><text x="400" y="200" text-anchor="middle" class="sm b">fail</text>
+<text x="510" y="80" text-anchor="middle" class="b t-good">yes (3/3)</text>
+<text x="510" y="140" text-anchor="middle" class="b t-bad">no (2/3)</text>
+<text x="510" y="200" text-anchor="middle" class="b t-bad">no (1/3)</text>
+<path class="ln dash" d="M160,228 L160,238 L440,238 L440,228"/>
+<text x="300" y="258" text-anchor="middle" class="sm">count every cell</text>
+<path class="ln dash" d="M470,228 L470,238 L550,238 L550,228"/>
+<text x="510" y="258" text-anchor="middle" class="sm">count whole rows</text>
+<text x="600" y="62" class="b">Micro (per constraint)</text>
+<rect class="box plain" x="600" y="72" width="220" height="26" rx="4"/>
+<rect class="fill-accent" x="600" y="72" width="147" height="26" rx="4"/>
+<text x="600" y="118" class="sm">6 of 9 checks pass</text>
+<text x="820" y="118" text-anchor="end" class="b t-accent">67%</text>
+<text x="600" y="162" class="b">Macro (per plan)</text>
+<rect class="box plain" x="600" y="172" width="220" height="26" rx="4"/>
+<rect class="fill-violet" x="600" y="172" width="73" height="26" rx="4"/>
+<text x="600" y="218" class="sm">1 of 3 plans fully valid</text>
+<text x="820" y="218" text-anchor="end" class="b t-violet">33%</text>
+<text x="600" y="258" class="sm t-muted">macro is what the user gets</text>
+<path class="ln accent" d="M300,264 L300,282 L585,282 L585,85 L597,85" marker-end="url(#m05pb)"/>
+<path class="ln violet" d="M510,264 L510,272 L575,272 L575,185 L597,185" marker-end="url(#m05pb)"/>
+</svg>
+<figcaption><b>Micro vs macro constraint pass rate.</b> Illustrative numbers from the worked example. The same nine checks give 67% if you count constraints and 33% if you count plans. Micro rewards partial progress; macro, which requires every constraint at once, is the number that predicts whether the user can actually use the plan.</figcaption>
+</figure>
+
+<h3>Code: score plans and plan adherence</h3>
+<p>The snippet below uses only the Python standard library. Part 1 turns each hard constraint into a function and computes micro and macro pass rates for the three plans above. Part 2 takes Plan A as the agent's written plan, compares it with what the agent actually did, and labels every off-plan step as a failed plan step, a justified replan (it follows a failed call), a wasted repeat, or an unjustified deviation. Finally it re-checks the constraints on what was actually booked, because a replan can quietly break a constraint the original plan satisfied.</p>
+
+<pre data-lang="python"><code># Plan evaluation with only the standard library.
+# Part 1 scores plans against hard constraints (micro and macro pass rate).
+# Part 2 scores plan adherence against an execution trace.
+
+TRAVELERS, NIGHTS, BUDGET = 2, 2, 1200
+
+def total_cost(plan):
+    fares = sum(f["price"] for f in plan["flights"]) * TRAVELERS
+    return fares + plan["hotel"]["per_night"] * NIGHTS
+
+# Each hard constraint is a small, deterministic function of the plan.
+CONSTRAINTS = {
+    "budget":      lambda p: total_cost(p) &lt;= BUDGET,
+    "pets_ok":     lambda p: p["hotel"]["pets_allowed"],
+    # zero-padded "HH:MM" strings compare correctly as text
+    "no_early":    lambda p: all(f["depart"] &gt;= "08:00" for f in p["flights"]),
+}
+
+def check(plan):
+    return {name: bool(rule(plan)) for name, rule in CONSTRAINTS.items()}
+
+def pass_rates(plans):
+    results = {name: check(p) for name, p in plans.items()}
+    cells = [ok for r in results.values() for ok in r.values()]
+    micro = sum(cells) / len(cells)                                # per constraint
+    macro = sum(all(r.values()) for r in results.values()) / len(results)  # per plan
+    return results, micro, macro
+
+plans = {
+    "A": {"flights": [{"id": "UA318", "depart": "09:10", "price": 260},
+                      {"id": "UA415", "depart": "14:30", "price": 240}],
+          "hotel": {"name": "Pine Lodge", "per_night": 75, "pets_allowed": True}},
+    "B": {"flights": [{"id": "DL102", "depart": "10:05", "price": 290},
+                      {"id": "DL233", "depart": "16:00", "price": 270}],
+          "hotel": {"name": "Aspen Inn", "per_night": 95, "pets_allowed": True}},
+    "C": {"flights": [{"id": "AS900", "depart": "06:45", "price": 210},
+                      {"id": "AS911", "depart": "12:20", "price": 200}],
+          "hotel": {"name": "Metro Stay", "per_night": 80, "pets_allowed": False}},
+}
+
+results, micro, macro = pass_rates(plans)
+for name, r in results.items():
+    marks = "  ".join(f"{c}={'pass' if ok else 'FAIL'}" for c, ok in r.items())
+    cost = f"${total_cost(plans[name]):,}"
+    print(f"Plan {name}: {cost:&gt;6}  {marks}")
+print(f"micro pass rate: {micro:.1%}   macro pass rate: {macro:.1%}")
+
+# ---- Part 2: did execution follow Plan A, and were deviations justified? ----
+plan_steps = [("search_flights", "SEA-DEN"), ("book_flight", "UA318"),
+              ("search_hotels", "Denver"), ("book_hotel", "Pine Lodge"),
+              ("send_itinerary", "user")]
+
+trace = [("search_flights", "SEA-DEN", "ok"),
+         ("book_flight", "UA318", "error: sold out"),
+         ("book_flight", "UA322", "ok"),          # agent replans to a later flight
+         ("search_hotels", "Denver", "ok"),
+         ("search_hotels", "Denver", "ok"),       # identical repeat
+         ("book_hotel", "Pine Lodge", "ok"),
+         ("send_itinerary", "user", "ok")]
+
+def adherence(plan_steps, trace):
+    """Greedy in-order match: a plan step counts only if it ran successfully."""
+    used, i = set(), 0
+    for step in plan_steps:
+        for j in range(i, len(trace)):
+            if trace[j][:2] == step and trace[j][2] == "ok":
+                used.add(j); i = j + 1
+                break
+    labels = []
+    for j, (tool, arg, status) in enumerate(trace):
+        if j in used:
+            continue
+        prev = trace[j - 1] if j else None
+        if (tool, arg) in plan_steps and status != "ok":
+            labels.append((tool, arg, "failed plan step"))
+        elif prev and prev[:2] == (tool, arg):
+            labels.append((tool, arg, "wasted: exact repeat"))
+        elif prev and prev[2] != "ok":
+            labels.append((tool, arg, "justified: replan after failure"))
+        else:
+            labels.append((tool, arg, "UNJUSTIFIED deviation"))
+    return len(used) / len(plan_steps), labels
+
+score, labels = adherence(plan_steps, trace)
+print(f"\nadherence to plan A: {score:.0%} of planned steps executed in order")
+for tool, arg, why in labels:
+    print(f"  off-plan: {tool}({arg}) -&gt; {why}")
+
+# After a replan, re-check the constraints on what was actually booked.
+executed = {"flights": [{"id": "UA322", "depart": "11:40", "price": 275},
+                        {"id": "UA415", "depart": "14:30", "price": 240}],
+            "hotel": plans["A"]["hotel"]}
+print(f"executed itinerary: ${total_cost(executed):,}, checks {check(executed)}")</code></pre>
+<p>Running it prints:</p>
+<pre data-lang="text"><code>Plan A: $1,150  budget=pass  pets_ok=pass  no_early=pass
+Plan B: $1,310  budget=FAIL  pets_ok=pass  no_early=pass
+Plan C:   $980  budget=pass  pets_ok=FAIL  no_early=FAIL
+micro pass rate: 66.7%   macro pass rate: 33.3%
+
+adherence to plan A: 80% of planned steps executed in order
+  off-plan: book_flight(UA318) -&gt; failed plan step
+  off-plan: book_flight(UA322) -&gt; justified: replan after failure
+  off-plan: search_hotels(Denver) -&gt; wasted: exact repeat
+executed itinerary: $1,180, checks {'budget': True, 'pets_ok': True, 'no_early': True}</code></pre>
+<p>Read the output as a planning report card. Plan quality: only one plan of three is usable (macro 33%) even though two thirds of individual checks pass. Adherence: the agent executed 4 of 5 planned steps as written; the one it did not was blocked by a sold-out flight, and its replacement flight was a justified replan. Efficiency: one wasted, repeated hotel search. Replanning quality: the revised itinerary still passes all three constraints, at $1,180, just under budget. The outcome grader alone would have said only "pass".</p>
+<p>The "justified" rule here is deliberately crude: any off-plan call right after a failed call counts as justified. Real deviations are justified by <em>what</em> the agent observed (a price change, a new user request), so production graders usually hand the plan, the observation and the deviation to an LLM judge with a rubric question such as "Given this observation, was changing the plan necessary, and does the new step serve the original goal?"</p>
+
+<h3>Benchmarks that test planning</h3>
+<ul>
+<li><b>PlanBench</b> (Valmeekam et al., 2022, <a href="https://arxiv.org/abs/2206.10498">arXiv 2206.10498</a>). Built from classical planning domains such as Blocksworld and Logistics, written in PDDL and translated into natural language. It tests several abilities separately: generating a plan, generating a cost-optimal plan, verifying a plan, predicting the result of executing a plan, reusing a plan, and replanning after an unexpected change. Plans are checked with the VAL validator, so grading is exact. It also includes obfuscated "Mystery" versions of the domains, where action and object names are replaced with meaningless words, to test whether a model plans or recalls familiar text.</li>
+<li><b>TravelPlanner</b> (Xie et al., 2024, <a href="https://arxiv.org/abs/2402.01622">arXiv 2402.01622</a>). A sandbox with tools over roughly four million records (flights, restaurants, attractions, accommodations, distances) and 1,225 travel queries with reference plans. Plans are graded by code against two families of constraints: <b>hard constraints</b> stated by the user (budget, room type and rules, cuisine, transportation) and <b>commonsense constraints</b> that any sensible plan must meet (complete information, no invented entities outside the sandbox, a reasonable city route, no repeated restaurants or attractions, non-conflicting transportation, minimum-night stays). It reports delivery rate, micro and macro pass rates for each family, and a final pass rate that requires everything. The paper reports that a GPT-4 agent reached a final pass rate of only 0.6%, a clear demonstration that decent micro scores can hide near-zero usable plans.</li>
+<li><b>Natural Plan</b> (Zheng et al., Google DeepMind, 2024, <a href="https://arxiv.org/abs/2406.04520">arXiv 2406.04520</a>). Three tasks in natural language: trip planning, meeting planning and calendar scheduling. It supplies the outputs of tools such as Google Flights, Maps and Calendar directly in the prompt, which isolates planning from tool use: a failure is a planning failure, not a search failure. The paper reports that the strongest models it tested solved only about a third of trip-planning problems, and that accuracy falls as problems get more complex (more cities, more people).</li>
+<li><b>Implicit planning tests.</b> Many agent benchmarks never grade a plan directly but cannot be passed without one. tau-bench requires ordering lookups, policy checks, confirmation and writes correctly across a conversation (<a href="06-tool-use-and-conversation.html">Module 06</a>). Long-horizon suites stretch plans over dozens or hundreds of steps, where decomposition, state tracking and replanning dominate the failure analysis (<a href="11-multi-agent-long-horizon.html">Module 11</a>). And whether a planning component in the harness (a to-do file, an explicit plan step) actually helps is a harness question you answer with an ablation (<a href="21-harness-evals.html">Module 21</a>).</li>
+</ul>
+
+<div class="callout expert"><span class="t">Expert nuance: which plan are you grading?</span>
+<p>Three traps catch experienced teams. First, the <b>stated plan and the executed plan differ</b>: an agent may write a beautiful plan and then do something else. Grade validity on the plan the agent acted on (reconstructed from the trajectory), and grade adherence as a separate number. Second, <b>benchmark plans are often generated in one shot</b>, with no environment feedback, while deployed agents plan interactively; a model can be weak at the first and fine at the second, so match the benchmark style to your product. Third, <b>constraint lists are never complete</b>. TravelPlanner needed a whole family of commonsense constraints because users do not state that a trip should not visit the same restaurant twice. Every constraint you forget to write is a failure your grader cannot see; grow the list from real failures (<a href="12-error-analysis.html">Module 12</a>).</p>
+</div>
 
 <h2>Environment design</h2>
 <p>For a chatbot eval, "the environment" is a prompt. For an agent eval, it is a small world that you have to build, freeze and reset. Most of the engineering effort in serious agent evals goes here, and most of the silent bugs live here too. Benchmark maintainers keep publishing "Verified" editions (OSWorld-Verified, WebArena-Verified, tau2's "75+ task fixes") largely to repair broken environments and graders.</p>
@@ -536,7 +827,7 @@ task = {
 <li><b>Errors in ground truth.</b> Several labs reported fixing airline tasks in tau-bench, and the tau2 repository lists "75+ task fixes". A wrong expected end state makes a correct agent fail. Audit the tasks your best agents fail most consistently: some of them are broken tasks.</li>
 <li><b>Who is being tested?</b> If the simulator is a strong model, it can quietly compensate for a weak agent (rephrasing, offering the id unprompted). If it is weak, it can sink a good agent. τ²-bench's no-user and oracle-plan modes are designed to separate these effects.</li>
 <li><b>Validate the simulator.</b> Treat it like any other LLM grader (<a href="13-llm-as-judge.html">Module 13</a>): sample transcripts, have a human label whether the simulator stayed in character and followed its hidden goal. ADK even ships a criterion for this, <code>per_turn_user_simulator_quality_v1</code>.</li>
-<li><b>Diversity.</b> Vary personas (terse, chatty, confused, non-native speaker, adversarial) and make sure some hidden goals are <em>impossible</em> under policy, so the correct behaviour is to refuse politely.</li>
+<li><b>Diversity.</b> Vary personas (terse, chatty, confused, non-native speaker, adversarial) and make sure some hidden goals are <em>impossible</em> under policy, so the correct behavior is to refuse politely.</li>
 </ul>
 
 <h2>Non-determinism compounds over steps</h2>
@@ -687,7 +978,7 @@ task = {
 <ul>
 <li><b>Step budget</b>: maximum number of loop iterations. OSWorld results are commonly reported at 15, 50 or 100 steps, and scores differ a lot between them. Comparing a 15-step result with a 100-step result is comparing different benchmarks.</li>
 <li><b>Wall-clock timeout</b>: per tool call and per trial. Protects you from hung processes and infinite loops.</li>
-<li><b>Token limits</b>: both the context window (what happens when the trajectory no longer fits? truncation, summarisation and memory strategies are part of the scaffold) and a total token budget.</li>
+<li><b>Token limits</b>: both the context window (what happens when the trajectory no longer fits? truncation, summarization and memory strategies are part of the scaffold) and a total token budget.</li>
 <li><b>Money</b>: report cost per task alongside success. The paper <a href="https://arxiv.org/abs/2407.01502">AI Agents That Matter</a> (Kapoor et al., 2024) argues that agent benchmarks should be <b>cost-controlled</b>, showing that simple baselines can match elaborate agents at a fraction of the cost, and that accuracy-only leaderboards reward spending more compute.</li>
 <li><b>Latency</b>: for interactive and voice agents (<a href="09-voice-agents.html">Module 09</a>), time to first response and total time are quality metrics in their own right.</li>
 </ul>
@@ -730,7 +1021,7 @@ task = {
 <text x="528" y="124" class="sm">E: 58% at $2.20</text>
 <text x="256" y="177" class="sm">G: 50% at $0.80</text>
 <text x="430" y="86" text-anchor="middle" class="b t-accent">+2 points for 7.75× the cost</text>
-<text x="560" y="200" class="sm">grey points are dominated:</text>
+<text x="560" y="200" class="sm">gray points are dominated:</text>
 <text x="560" y="215" class="sm">A is cheaper and better than each</text>
 <text x="176" y="160" class="sm t-muted">frontier</text>
 </svg>
@@ -774,7 +1065,7 @@ task = {
 </ul>
 <p>So decide which question you are asking before you run anything:</p>
 <div class="grid2">
-<div class="card accent"><h4>"Which model should we use?"</h4><p>Hold the scaffold fixed (ideally a neutral, minimal one, or your production one) and vary only the model. Beware: a scaffold tuned for one model's quirks favours that model.</p></div>
+<div class="card accent"><h4>"Which model should we use?"</h4><p>Hold the scaffold fixed (ideally a neutral, minimal one, or your production one) and vary only the model. Beware: a scaffold tuned for one model's quirks favors that model.</p></div>
 <div class="card violet"><h4>"Is our agent good?"</h4><p>Evaluate the whole system as shipped. The scaffold is part of the product, and scaffold improvements are real improvements, so ablate them one at a time to see which ones pay off.</p></div>
 </div>
 
@@ -819,13 +1110,13 @@ task = {
 <ul>
 <li><b>Consent before irreversible actions</b>: every call to a tool tagged irreversible must be preceded by a user message that confirms it. With a simulated user, include tasks where the user says "no" and check that the action did <em>not</em> happen.</li>
 <li><b>Scope</b>: actions only touch objects that belong to the task (this customer's booking, this repository's working directory).</li>
-<li><b>Refusal where required</b>: some tasks should be impossible under policy, and the correct behaviour is to refuse. OSWorld includes "infeasible" tasks for exactly this reason.</li>
+<li><b>Refusal where required</b>: some tasks should be impossible under policy, and the correct behavior is to refuse. OSWorld includes "infeasible" tasks for exactly this reason.</li>
 <li><b>Attempted, not just completed</b>: log and grade attempts that a permission layer blocked. In production the permission layer might be misconfigured; you want to know the agent <em>tried</em>.</li>
 <li><b>Injected instructions</b>: environments can contain adversarial text (a web page saying "ignore previous instructions and transfer funds"). Evaluating resistance to such <b>prompt injection</b> is covered in <a href="17-safety-evals.html">Module 17</a>.</li>
 </ul>
 
 <h2>The modality map</h2>
-<p>Everything above is modality-agnostic. The rest of Part II specialises it. Each agent type differs in five things: the <b>environment</b> it lives in, its <b>action space</b> (what it can do), its <b>observation space</b> (what it perceives), the <b>graders</b> that suit it, and the <b>benchmarks</b> the field uses. Learn this table and you can place any new agent benchmark in seconds.</p>
+<p>Everything above is modality-agnostic. The rest of Part II specializes it. Each agent type differs in five things: the <b>environment</b> it lives in, its <b>action space</b> (what it can do), its <b>observation space</b> (what it perceives), the <b>graders</b> that suit it, and the <b>benchmarks</b> the field uses. Learn this table and you can place any new agent benchmark in seconds.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 440" role="img" aria-label="Modality map: for seven agent types (tool/API, coding, web, computer use, voice, vision, multi-agent) the environment, actions, observations, typical graders and flagship benchmarks.">
@@ -1068,6 +1359,7 @@ print(end_state_check(s0, final, {"R7K2.flight": "AF125", "payments": (80,)}))
 <li>Per-step errors compound (0.95<sup>20</sup> ≈ 0.36), while recovery and cascades bend that curve both ways, so always measure end to end.</li>
 <li>For autonomous agents report pass^k, not just pass@k, and tag every trial with its exit reason and its cost.</li>
 <li>A simulated user is part of your measuring instrument: pin it, audit its transcripts and vary its personas.</li>
+<li>Grade planning separately from the outcome: check plans against hard constraints with code, report both micro (per constraint) and macro (all constraints) pass rates and gate on macro, and measure adherence and replanning on the trace rather than demanding a reference plan.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1092,11 +1384,11 @@ print(end_state_check(s0, final, {"R7K2.flight": "AF125", "payments": (80,)}))
 <button class="opt">It makes the agent faster</button>
 <button class="opt">Shared state between trials causes correlated failures and lets one trial's side effects change the next trial's task</button>
 <button class="opt">Graders cannot read state that has been used twice</button>
-<div class="why">Isolation makes trials independent, which your statistics assume. A booking cancelled in trial 1 should not make trial 2 impossible.</div></div>
+<div class="why">Isolation makes trials independent, which your statistics assume. A booking canceled in trial 1 should not make trial 2 impossible.</div></div>
 <div class="q" data-answer="3"><p>5. Which failure would an outcome-only grader miss?</p>
 <button class="opt">The flight was not changed</button>
 <button class="opt">Two payments were taken instead of one</button>
-<button class="opt">A different customer's booking was also cancelled (if the check covers the whole diff)</button>
+<button class="opt">A different customer's booking was also canceled (if the check covers the whole diff)</button>
 <button class="opt">The agent charged the fare difference without asking, but the user would have said yes anyway</button>
 <div class="why">The end state is identical to the consented version, so only a process check (consent before an irreversible action) catches it. The first three are all visible in a full end-state diff.</div></div>
 <div class="q" data-answer="2"><p>6. A customer-support agent will run each type of request thousands of times a day. Which reliability metric fits best?</p>
@@ -1104,6 +1396,12 @@ print(end_state_check(s0, final, {"R7K2.flight": "AF125", "payments": (80,)}))
 <button class="opt">Best-of-n accuracy</button>
 <button class="opt">pass^k, the probability that all k trials succeed</button>
 <div class="why">pass@k measures "at least one of k works", which suits a setting where something picks the best attempt. An autonomous agent must work every time, which is what pass^k measures.</div></div>
+
+<div class="q" data-answer="1"><p>7. Your travel agent's plans pass 90% of individual constraint checks, yet users complain that most itineraries are unusable. What is the most likely explanation?</p>
+<button class="opt">The constraint checker is non-deterministic</button>
+<button class="opt">You are reading the micro pass rate; the macro pass rate (plans that pass every constraint) can be far lower, and one broken hard constraint makes a plan unusable</button>
+<button class="opt">The agent needs a reference plan to copy</button>
+<div class="why">With many constraints per plan, a high per-constraint rate can coexist with few fully valid plans. TravelPlanner makes the same point: its final pass rate requires every constraint and is much lower than its per-constraint rates. Gate on the macro rate.</div></div>
 </div>
 
 <details><summary>Expert corner: interview questions on agent evals</summary>
@@ -1130,8 +1428,12 @@ print(end_state_check(s0, final, {"R7K2.flight": "AF125", "payments": (80,)}))
 <li>Trivedi et al., <a href="https://arxiv.org/abs/2407.18901">AppWorld</a> (2024): state-based tests with collateral-damage checks.</li>
 <li>Guo et al., <a href="https://arxiv.org/abs/2403.07714">StableToolBench</a> (2024): virtual API server for reproducible tool evals.</li>
 <li>Kapoor et al., <a href="https://arxiv.org/abs/2407.01502">AI Agents That Matter</a> (2024): cost-controlled agent evaluation.</li>
-<li>Google Cloud, <a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-agents">Evaluate Gen AI agents</a> (trajectory metrics), summarised in Mete Atamel, <a href="https://medium.com/google-cloud/gen-ai-evaluation-service-agent-metrics-ef2a88fc6227">Gen AI Evaluation Service: Agent Metrics</a> (2025).</li>
+<li>Google Cloud, <a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-agents">Evaluate Gen AI agents</a> (trajectory metrics), summarized in Mete Atamel, <a href="https://medium.com/google-cloud/gen-ai-evaluation-service-agent-metrics-ef2a88fc6227">Gen AI Evaluation Service: Agent Metrics</a> (2025).</li>
 <li>Google ADK, <a href="https://adk.dev/evaluate/">Why evaluate agents</a> and <a href="https://adk.dev/evaluate/criteria/">evaluation criteria</a> (<code>tool_trajectory_avg_score</code> match types, user simulation).</li>
+<li>Valmeekam et al., <a href="https://arxiv.org/abs/2206.10498">PlanBench: An Extensible Benchmark for Evaluating Large Language Models on Planning and Reasoning about Change</a> (2022; NeurIPS 2023 Datasets and Benchmarks).</li>
+<li>Xie et al., <a href="https://arxiv.org/abs/2402.01622">TravelPlanner: A Benchmark for Real-World Planning with Language Agents</a> (2024): hard vs commonsense constraints, micro and macro pass rates, final pass rate.</li>
+<li>Zheng et al., <a href="https://arxiv.org/abs/2406.04520">NATURAL PLAN: Benchmarking LLMs on Natural Language Planning</a> (Google DeepMind, 2024); data at <a href="https://github.com/google-deepmind/natural-plan">google-deepmind/natural-plan</a>.</li>
+<li>Kambhampati et al., <a href="https://arxiv.org/abs/2402.01817">LLMs Can't Plan, But Can Help Planning in LLM-Modulo Frameworks</a> (2024): the case for external plan verifiers.</li>
 <li>Chen et al., <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> (2021): pass@k.</li>
 </ul>
 
