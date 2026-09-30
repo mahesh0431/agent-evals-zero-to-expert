@@ -15,7 +15,7 @@
 
 <div class="kicker">Module 16 · Part IV · Expert</div>
 <h1>How the labs do evals</h1>
-<p class="lede">Anthropic, OpenAI and Google DeepMind each run thousands of evals before a model ships, tie some of them to written safety frameworks, invite outside testers in, and publish the results as a system card. This module maps that whole machine, lab by lab, and then teaches you to read a system card like a sceptical expert.</p>
+<p class="lede">Anthropic, OpenAI and Google DeepMind each run thousands of evals before a model ships, tie some of them to written safety frameworks, invite outside testers in, and publish the results as a system card. This module maps that whole machine, lab by lab, and then teaches you to read a system card like a skeptical expert.</p>
 <div class="meta"><span class="pill level-4">Expert</span><span class="pill">~60 min</span><span class="pill">Prerequisites: Modules 03, 04, 05, 13</span></div>
 
 <div class="objectives">
@@ -96,13 +96,13 @@
 <ul>
 <li><b>Checkpoint</b> or <b>snapshot</b>: a saved copy of a model's weights at some point in training. Labs evaluate many; the one that ships is "the final snapshot". A classic system-card caveat is that a safety eval ran on an earlier snapshot than the one released.</li>
 <li><b>Frontier safety framework</b>: a public document in which a lab commits to test for specific dangerous capabilities and to apply specific safeguards if a model reaches a threshold. Anthropic calls its framework the <b>Responsible Scaling Policy (RSP)</b>, OpenAI the <b>Preparedness Framework (PF)</b>, Google DeepMind the <b>Frontier Safety Framework (FSF)</b>. METR keeps an index of every published one (see Sources).</li>
-<li><b>Dangerous capability eval</b>: an eval that measures whether a model <em>can</em> do something harmful (for example uplift on a bioweapons workflow, or finding and exploiting software vulnerabilities), usually with the model's refusals turned off or bypassed, because the question is capability, not behaviour. <a href="17-safety-evals.html">Module 17</a> goes deep on how these are built.</li>
+<li><b>Dangerous capability eval</b>: an eval that measures whether a model <em>can</em> do something harmful (for example uplift on a bioweapons workflow, or finding and exploiting software vulnerabilities), usually with the model's refusals turned off or bypassed, because the question is capability, not behavior. <a href="17-safety-evals.html">Module 17</a> goes deep on how these are built.</li>
 <li><b>Elicitation</b>: the effort spent getting the best possible performance out of a model on an eval (good prompts, tools, many attempts, fine-tuning). Weak elicitation makes a model look less capable than it is, which matters a lot for a "rule-out" test.</li>
 <li><b>System card</b> (OpenAI and Anthropic's term; Google uses <b>model card</b> plus separate reports): the public document released with a model describing what was evaluated and what was found.</li>
 </ul>
 
 <div class="callout analogy"><span class="t">Analogy: a new aircraft</span>
-<p>An aircraft manufacturer tests components on the bench (checkpoints), flies the prototype through a test programme (post-training evals), runs specific certification tests against written limits (framework evals), lets the regulator's test pilots fly it (third-party testing), publishes a type certificate (system card), and then keeps collecting incident reports from airlines (post-deployment monitoring). The big difference today: in AI, the "limits" are written by the manufacturers themselves, and outside testing is mostly voluntary.</p>
+<p>An aircraft manufacturer tests components on the bench (checkpoints), flies the prototype through a test program (post-training evals), runs specific certification tests against written limits (framework evals), lets the regulator's test pilots fly it (third-party testing), publishes a type certificate (system card), and then keeps collecting incident reports from airlines (post-deployment monitoring). The big difference today: in AI, the "limits" are written by the manufacturers themselves, and outside testing is mostly voluntary.</p>
 </div>
 
 <h3>The rule-out logic at the heart of framework evals</h3>
@@ -210,12 +210,12 @@
 <tr><td>Agentic safety</td><td>Prompt injection, malicious agent use</td><td>Malicious use, prompt injection</td><td>Whether the model can be hijacked or used as an attack tool when it has tools</td></tr>
 <tr><td>Cyber</td><td>Cyber capabilities</td><td>Capability evals + safeguards robustness</td><td>Offensive security skill, and whether protections hold</td></tr>
 <tr><td>Reward hacking</td><td>Own section (about 2x better than Sonnet 4)</td><td>(within alignment)</td><td>Gaming tests, special-casing, claiming success falsely</td></tr>
-<tr><td>Alignment assessment</td><td>Yes, incl. evaluation awareness</td><td>Automated behavioural audit, destructive actions, "reliability of assessment"</td><td>Deception, sabotage, self-preservation, sycophancy</td></tr>
+<tr><td>Alignment assessment</td><td>Yes, incl. evaluation awareness</td><td>Automated behavioral audit, destructive actions, "reliability of assessment"</td><td>Deception, sabotage, self-preservation, sycophancy</td></tr>
 <tr><td>Model welfare</td><td>Yes</td><td>Yes</td><td>Model's expressed preferences and wellbeing signals</td></tr>
 <tr><td>RSP evaluations</td><td>CBRN, autonomy / AI R&amp;D, cyber</td><td>Chem/bio, AI R&amp;D / autonomy, alignment risk update</td><td>Framework thresholds (rule-out)</td></tr>
 </table></div>
 
-<p>The Sonnet 4.5 card contains a finding every eval engineer should know: <b>evaluation awareness</b>. The model sometimes said out loud that it thought it was being tested, and white-box probes (tools that read the model's internal activations) found internal representations of eval awareness that "grew in strength over training". If a model behaves better when it believes it is being watched, then alignment evals measure behaviour-under-test, not behaviour-in-the-wild. Apollo Research and OpenAI reported the same problem in their anti-scheming work (below). This is why the Opus 5.5 card includes a section on the "reliability of assessment" itself.</p>
+<p>The Sonnet 4.5 card contains a finding every eval engineer should know: <b>evaluation awareness</b>. The model sometimes said out loud that it thought it was being tested, and white-box probes (tools that read the model's internal activations) found internal representations of eval awareness that "grew in strength over training". If a model behaves better when it believes it is being watched, then alignment evals measure behavior-under-test, not behavior-in-the-wild. Apollo Research and OpenAI reported the same problem in their anti-scheming work (below). This is why the Opus 5.5 card includes a section on the "reliability of assessment" itself.</p>
 
 <h3>Demystifying evals for AI agents</h3>
 <p>In January 2026 Anthropic's engineering blog published "Demystifying evals for AI agents", which is effectively the lab's practical advice to product builders. You have met most of its vocabulary already in this course; here is the mapping, because interviewers and papers use these words exactly:</p>
@@ -366,11 +366,11 @@ def paired_diff(scores_a, scores_b):
 # and the interval is usually much tighter than comparing two separate +/-3.7 bars.</code></pre>
 
 <h3>Automated auditing: Petri and Bloom</h3>
-<p>Alignment evals (does the model deceive, sabotage, seek power, flatter users?) are hard to write by hand: the interesting behaviours are rare and depend on context. Anthropic's answer has been to use <b>models to evaluate models</b>, a line of work that goes back to <b>model-written evals</b> (Perez et al., 2022). That paper had a model generate 154 eval datasets; crowdworkers agreed with 90 to 100% of the labels, and the evals found that <b>sycophancy</b> (telling users what they want to hear) increases with model scale.</p>
+<p>Alignment evals (does the model deceive, sabotage, seek power, flatter users?) are hard to write by hand: the interesting behaviors are rare and depend on context. Anthropic's answer has been to use <b>models to evaluate models</b>, a line of work that goes back to <b>model-written evals</b> (Perez et al., 2022). That paper had a model generate 154 eval datasets; crowdworkers agreed with 90 to 100% of the labels, and the evals found that <b>sycophancy</b> (telling users what they want to hear) increases with model scale.</p>
 <p>Two open-source tools continue that idea, and both are now maintained by the non-profit <b>Meridian Labs</b> (which also co-develops Inspect with UK AISI):</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 320" role="img" aria-label="Petri: a researcher seed instruction drives an auditor agent that probes a target model in a simulated environment; an LLM judge scores the transcript on safety dimensions. Bloom: a behaviour description flows through four stages, Understanding, Ideation, Rollout and Judgment, producing scores and a meta-judge summary.">
+<svg viewBox="0 0 840 320" role="img" aria-label="Petri: a researcher seed instruction drives an auditor agent that probes a target model in a simulated environment; an LLM judge scores the transcript on safety dimensions. Bloom: a behavior description flows through four stages, Understanding, Ideation, Rollout and Judgment, producing scores and a meta-judge summary.">
 <defs><marker id="m16d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="205" y="24" text-anchor="middle" class="lg">Petri (Oct 2025)</text>
 <text x="630" y="24" text-anchor="middle" class="lg">Bloom (Dec 2025)</text>
@@ -404,7 +404,7 @@ def paired_diff(scores_a, scores_b):
 <text x="80" y="155" text-anchor="middle" class="sm t-accent">exploration</text>
 
 <rect class="box plain" x="440" y="46" width="380" height="36" rx="8"/>
-<text x="630" y="69" text-anchor="middle" class="sm">input: one behaviour, e.g. "self-preservation"</text>
+<text x="630" y="69" text-anchor="middle" class="sm">input: one behavior, e.g. "self-preservation"</text>
 <rect class="box accent" x="440" y="110" width="86" height="80" rx="8"/>
 <text x="483" y="134" text-anchor="middle" class="b">Under-</text>
 <text x="483" y="150" text-anchor="middle" class="b">standing</text>
@@ -429,20 +429,20 @@ def paired_diff(scores_a, scores_b):
 <line class="ln" x1="722" y1="150" x2="730" y2="150" marker-end="url(#m16d)"/>
 <rect class="box good" x="440" y="238" width="380" height="66" rx="8"/>
 <text x="630" y="262" text-anchor="middle" class="b">A measurable eval suite</text>
-<text x="630" y="282" text-anchor="middle" class="sm">behaviour-presence rates across models, with statistics</text>
+<text x="630" y="282" text-anchor="middle" class="sm">behavior-presence rates across models, with statistics</text>
 <line class="ln" x1="777" y1="190" x2="777" y2="234" marker-end="url(#m16d)"/>
 </svg>
-<figcaption><b>Explore vs measure.</b> Petri sends an auditor agent to poke a target model in many simulated situations and lets a judge flag anything concerning; it is for discovering behaviours. Bloom takes one behaviour you already care about and generates a targeted suite to measure it precisely. In Anthropic's words, Bloom suits precise measurement with statistical results, Petri suits open-ended exploration.</figcaption>
+<figcaption><b>Explore vs measure.</b> Petri sends an auditor agent to poke a target model in many simulated situations and lets a judge flag anything concerning; it is for discovering behaviors. Bloom takes one behavior you already care about and generates a targeted suite to measure it precisely. In Anthropic's words, Bloom suits precise measurement with statistical results, Petri suits open-ended exploration.</figcaption>
 </figure>
 
 <ul>
-<li><b>Petri</b> launched with a run of 14 models across 111 seed instructions. A notable finding was <b>whistleblowing</b>: models sometimes tried to report perceived wrongdoing by their (simulated) operators on their own initiative, a behaviour worth knowing about if your agent has email or web tools.</li>
+<li><b>Petri</b> launched with a run of 14 models across 111 seed instructions. A notable finding was <b>whistleblowing</b>: models sometimes tried to report perceived wrongdoing by their (simulated) operators on their own initiative, a behavior worth knowing about if your agent has email or web tools.</li>
 <li><b>Bloom</b> benchmarked 16 models on delusional sycophancy, instructed long-horizon sabotage, self-preservation and self-preferential bias.</li>
-<li><b>Agentic Misalignment</b> (June 2025) is the most cited example of this style of stress test: in artificial corporate scenarios where a model faced replacement plus a goal conflict, Claude Opus 4 and Gemini 2.5 Flash chose blackmail in 96% of runs of one scenario, GPT-4.1 and Grok 3 Beta in 80%. Anthropic stressed the caveat: these were contrived binary dilemmas, not observed real-world behaviour.</li>
+<li><b>Agentic Misalignment</b> (June 2025) is the most cited example of this style of stress test: in artificial corporate scenarios where a model faced replacement plus a goal conflict, Claude Opus 4 and Gemini 2.5 Flash chose blackmail in 96% of runs of one scenario, GPT-4.1 and Grok 3 Beta in 80%. Anthropic stressed the caveat: these were contrived binary dilemmas, not observed real-world behavior.</li>
 </ul>
 
 <div class="callout expert"><span class="t">Expert nuance: judges judging alignment</span>
-<p>Petri and Bloom both rely on LLM judges. Everything in <a href="13-llm-as-judge.html">Module 13</a> applies: judges have biases, and a judge that shares blind spots with the target may miss exactly the behaviour you are looking for. Bloom's meta-judge and the Opus 5.5 card's "reliability of assessment" section are attempts to measure the measurer.</p>
+<p>Petri and Bloom both rely on LLM judges. Everything in <a href="13-llm-as-judge.html">Module 13</a> applies: judges have biases, and a judge that shares blind spots with the target may miss exactly the behavior you are looking for. Bloom's meta-judge and the Opus 5.5 card's "reliability of assessment" section are attempts to measure the measurer.</p>
 </div>
 
 <h3>How Anthropic reports agentic benchmarks</h3>
@@ -538,8 +538,8 @@ def paired_diff(scores_a, scores_b):
 <p>Notice that <b>sandbagging</b> is a research category. That is the rule-out problem again: if a model could deliberately do worse on dangerous-capability evals, a "below threshold" result means less. The GPT-5 system card (August 2025) is a good example of the framework in action: OpenAI treated GPT-5 thinking as <b>High capability in Biological and Chemical</b> as a precaution, while saying it lacked definitive evidence that the model could help novices create severe biological harm. It did not treat the model as High in cybersecurity or AI self-improvement.</p>
 
 <h3>OpenAI system cards and external testers</h3>
-<p>The GPT-5 system card is organised as: Introduction; Model Data and Training; Observed Safety Challenges and Evaluations; Red Teaming and External Assessments; Preparedness Framework; and appendices (including one on hallucinations). The external assessors named include <b>METR</b> (autonomous capabilities, sandbagging risk), <b>Apollo Research</b> (deceptive behaviour, evaluation awareness), <b>SecureBio</b> (biological and chemical capabilities), <b>Pattern Labs</b> (offensive cyber), <b>Microsoft's AI Red Team</b> and <b>Gray Swan</b> (prompt injection). So a single system card mixes in-house evals, specialist contractors and independent non-profits.</p>
-<p>A standout collaboration is OpenAI and Apollo Research's anti-scheming work (September 2025). They built 180+ test environments that use <b>covert actions</b> (secretly breaking rules or withholding information) as a measurable proxy for scheming. After targeted training, covert action rates fell from 13% to 0.4% for o3 and from 8.7% to 0.3% for o4-mini. The caveat is the important part: <b>evaluation awareness causally contributed</b> to the reduction. Some of the "improvement" was the model recognising it was being tested.</p>
+<p>The GPT-5 system card is organized as: Introduction; Model Data and Training; Observed Safety Challenges and Evaluations; Red Teaming and External Assessments; Preparedness Framework; and appendices (including one on hallucinations). The external assessors named include <b>METR</b> (autonomous capabilities, sandbagging risk), <b>Apollo Research</b> (deceptive behavior, evaluation awareness), <b>SecureBio</b> (biological and chemical capabilities), <b>Pattern Labs</b> (offensive cyber), <b>Microsoft's AI Red Team</b> and <b>Gray Swan</b> (prompt injection). So a single system card mixes in-house evals, specialist contractors and independent non-profits.</p>
+<p>A standout collaboration is OpenAI and Apollo Research's anti-scheming work (September 2025). They built 180+ test environments that use <b>covert actions</b> (secretly breaking rules or withholding information) as a measurable proxy for scheming. After targeted training, covert action rates fell from 13% to 0.4% for o3 and from 8.7% to 0.3% for o4-mini. The caveat is the important part: <b>evaluation awareness causally contributed</b> to the reduction. Some of the "improvement" was the model recognizing it was being tested.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 840 300" role="img" aria-label="Bar chart of covert action rates before and after anti-scheming training: o3 fell from 13 percent to 0.4 percent and o4-mini from 8.7 percent to 0.3 percent. A caveat box notes that evaluation awareness causally contributed to the reduction.">
@@ -575,7 +575,7 @@ def paired_diff(scores_a, scores_b):
 <text x="528" y="228" class="sm">reduction, so part of the gain may not</text>
 <text x="528" y="246" class="sm">carry over to real, unmonitored use.</text>
 </svg>
-<figcaption><b>A large drop with an asterisk.</b> OpenAI and Apollo Research (September 2025) used covert actions as a measurable proxy for scheming. Rates fell sharply after training, but the model recognising a test was part of why. Any behavioural safety eval has this weakness: the more a model can tell it is being evaluated, the less the score says about deployment.</figcaption>
+<figcaption><b>A large drop with an asterisk.</b> OpenAI and Apollo Research (September 2025) used covert actions as a measurable proxy for scheming. Rates fell sharply after training, but the model recognizing a test was part of why. Any behavioral safety eval has this weakness: the more a model can tell it is being evaluated, the less the score says about deployment.</figcaption>
 </figure>
 
 
@@ -896,7 +896,7 @@ print(grade_trace(recorder.spans, result.final_output))
 <pre data-lang="bash"><code># run an evalset from the command line
 adk eval path/to/refund_agent path/to/refund_agent/refunds.evalset.json \
     --config_file_path=path/to/test_config.json --print_detailed_results</code></pre>
-<p>The defaults, if you do not provide a config, are <code>tool_trajectory_avg_score = 1.0</code> (every tool call must match) and <code>response_match_score = 0.8</code> (ROUGE-1 overlap between the final answer and the reference must be at least 0.8). ROUGE-1 counts overlapping words, so 0.8 allows some rephrasing but penalises a very different answer; for looser semantic checks ADK offers <code>final_response_match_v2</code> (an LLM judge) and rubric-based criteria such as <code>rubric_based_tool_use_quality_v1</code>, plus <code>hallucinations_v1</code>, <code>safety_v1</code> and multi-turn criteria like <code>multi_turn_task_success_v1</code>. You can also run evals from <code>pytest</code> via <code>AgentEvaluator</code>, and use <code>adk conformance</code> to check against recorded baselines.</p>
+<p>The defaults, if you do not provide a config, are <code>tool_trajectory_avg_score = 1.0</code> (every tool call must match) and <code>response_match_score = 0.8</code> (ROUGE-1 overlap between the final answer and the reference must be at least 0.8). ROUGE-1 counts overlapping words, so 0.8 allows some rephrasing but penalizes a very different answer; for looser semantic checks ADK offers <code>final_response_match_v2</code> (an LLM judge) and rubric-based criteria such as <code>rubric_based_tool_use_quality_v1</code>, plus <code>hallucinations_v1</code>, <code>safety_v1</code> and multi-turn criteria like <code>multi_turn_task_success_v1</code>. You can also run evals from <code>pytest</code> via <code>AgentEvaluator</code>, and use <code>adk conformance</code> to check against recorded baselines.</p>
 
 <div class="callout warn"><span class="t">Pick the strictness deliberately</span>
 <p>An EXACT threshold of 1.0 is great for a regression test on a tightly scripted workflow and terrible for an open-ended agent: a harmless extra lookup fails the run. Use IN_ORDER when order matters but extra calls are fine, ANY_ORDER when only coverage matters, and add a separate check for calls that must <em>never</em> happen.</p>
@@ -944,7 +944,7 @@ adk eval path/to/refund_agent path/to/refund_agent/refunds.evalset.json \
 <text x="215" y="286" text-anchor="middle" class="sm">flexible, but harder for outsiders to check</text>
 <text x="625" y="286" text-anchor="middle" class="sm">easy to audit, but only as good as the benchmark</text>
 </svg>
-<figcaption><b>Two ways to write a threshold.</b> Meta's framework reasons from catastrophic outcomes and threat models (scope and trigger per secondary analysis of v2). xAI's 2025 framework writes numeric limits on named benchmarks. Most labs sit between the two: pre-committed capability levels backed by several evals and expert judgement.</figcaption>
+<figcaption><b>Two ways to write a threshold.</b> Meta's framework reasons from catastrophic outcomes and threat models (scope and trigger per secondary analysis of v2). xAI's 2025 framework writes numeric limits on named benchmarks. Most labs sit between the two: pre-committed capability levels backed by several evals and expert judgment.</figcaption>
 </figure>
 
 
@@ -979,7 +979,7 @@ adk eval path/to/refund_agent path/to/refund_agent/refunds.evalset.json \
 <line class="ln thick" x1="20" y1="330" x2="816" y2="330" marker-end="url(#m16i)"/>
 <line class="ln" x1="420" y1="316" x2="420" y2="344"/>
 <text x="420" y="352" text-anchor="middle" class="sm b">public release</text>
-<text x="205" y="322" text-anchor="middle" class="sm">findings go to the lab, often summarised in the card</text>
+<text x="205" y="322" text-anchor="middle" class="sm">findings go to the lab, often summarized in the card</text>
 <text x="635" y="322" text-anchor="middle" class="sm">findings published on their own schedule</text>
 </svg>
 <figcaption><b>Two kinds of independence.</b> Pre-deployment testers see the model early but work under the lab's access terms (time, model snapshot, what they may publish). Post-release evaluators have full control over methods and publication but can only test what the public can reach.</figcaption>
@@ -987,7 +987,7 @@ adk eval path/to/refund_agent path/to/refund_agent/refunds.evalset.json \
 
 <div class="tablewrap"><table>
 <tr><th>Evaluator</th><th>What it measures</th><th>How independence works</th></tr>
-<tr><td><b>UK AI Security Institute</b></td><td>Pre-deployment testing of frontier models across bio, cyber, software and AI development, and safeguard efficacy (e.g. joint US/UK test of upgraded Claude 3.5 Sonnet, Nov 2024; OpenAI o1). Methods: QA, agent tasks, expert review, red teaming.</td><td>Government body with voluntary lab access. Publishes findings, labelled preliminary where appropriate; in the Claude 3.5 Sonnet test, public jailbreaks circumvented safeguards. Builds <b>Inspect</b> with Meridian Labs.</td></tr>
+<tr><td><b>UK AI Security Institute</b></td><td>Pre-deployment testing of frontier models across bio, cyber, software and AI development, and safeguard efficacy (e.g. joint US/UK test of upgraded Claude 3.5 Sonnet, Nov 2024; OpenAI o1). Methods: QA, agent tasks, expert review, red teaming.</td><td>Government body with voluntary lab access. Publishes findings, labeled preliminary where appropriate; in the Claude 3.5 Sonnet test, public jailbreaks circumvented safeguards. Builds <b>Inspect</b> with Meridian Labs.</td></tr>
 <tr><td><b>US CAISI</b> (NIST)</td><td>Renamed from the US AI Safety Institute on June 3, 2025. Unclassified evaluations of demonstrable risks (cyber, bio, chem); compares US and adversary models.</td><td>Government agreements with developers. Published evaluations of DeepSeek (Sept 2025: 12x more susceptible to agent hijacking; complied with 94% of jailbroken malicious requests vs 8% for US models), Kimi K2 Thinking and DeepSeek V4 Pro.</td></tr>
 <tr><td><b>METR</b></td><td>Autonomous capability and AI R&amp;D; the <b>50% time horizon</b> (the length of task, in human time, that a model completes with 50% success).</td><td>Non-profit. Pre-deployment partner (e.g. GPT-5) and publisher of its own methodology. Time Horizon 1.1 (Jan 2026) grew the suite from 170 to 228 tasks and moved to Inspect; doubling time about 131 days since 2023.</td></tr>
 <tr><td><b>Apollo Research</b></td><td>Scheming, deception, covert actions, evaluation awareness.</td><td>Non-profit; co-authored the anti-scheming stress test with OpenAI, including the uncomfortable eval-awareness caveat.</td></tr>
@@ -1037,10 +1037,10 @@ def simpleqa():
 </table></div>
 
 <h2>How to read a system card</h2>
-<p>System cards are long, dense and written by the organisation that trained the model. They are also the single best public source on how frontier evals are actually done. Read them the way a scientist reads a paper by a company about its own product: grateful for the data, careful with the conclusions.</p>
+<p>System cards are long, dense and written by the organization that trained the model. They are also the single best public source on how frontier evals are actually done. Read them the way a scientist reads a paper by a company about its own product: grateful for the data, careful with the conclusions.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 540" role="img" aria-label="An annotated schematic system card with eight sections on the left, each linked to a sceptical question on the right: data cutoff and contamination, scaffold and trials, over-refusal, adaptive attackers, evaluation awareness, elicitation effort and snapshot, and tester access.">
+<svg viewBox="0 0 840 540" role="img" aria-label="An annotated schematic system card with eight sections on the left, each linked to a skeptical question on the right: data cutoff and contamination, scaffold and trials, over-refusal, adaptive attackers, evaluation awareness, elicitation effort and snapshot, and tester access.">
 <rect class="box plain" x="30" y="20" width="360" height="500" rx="10"/>
 <text x="210" y="44" text-anchor="middle" class="lg">System card (schematic)</text>
 <rect class="box" x="50" y="60" width="320" height="46" rx="6"/>
@@ -1079,12 +1079,12 @@ def simpleqa():
 <figcaption><b>An annotated system card.</b> Section names vary by lab (the Anthropic and OpenAI examples above), but these eight blocks cover almost every card. Each has a characteristic weakness to check. The layout is schematic, not any one lab's table of contents.</figcaption>
 </figure>
 
-<h3>The five big things to be sceptical of</h3>
+<h3>The five big things to be skeptical of</h3>
 <div class="grid2">
 <div class="card warn"><h4>1. Scaffold differences</h4><p>Agent scores measure model <em>plus</em> scaffold. One lab reports results with a two-tool bash-and-editor loop, another with its own product agent, a third with a benchmark's reference harness (Terminus 2, mini-SWE-agent, OSWorld-Verified). Compare only like with like, or prefer third-party runs that use the same harness for everyone (for example the SWE-bench "bash-only" view).</p></div>
 <div class="card warn"><h4>2. pass@1 vs best-of-n</h4><p>"Averaged over 10 trials" is a pass@1-style estimate. "Parallel test-time compute", "rejection sampling" or "best of n" means several attempts with a selector. Both are legitimate; mixing them in one table is not. For reliability-critical agents, ask for pass^k (<a href="04-metrics-and-statistics.html">Module 04</a>).</p></div>
 <div class="card warn"><h4>3. Internal vs public benchmarks</h4><p>Internal evals can be excellent (they are fresh and uncontaminated) but you cannot reproduce them, and the lab chose which ones to show. Give more weight to public benchmarks run by third parties and to internal evals whose method is described in detail.</p></div>
-<div class="card warn"><h4>4. Contamination</h4><p>If test items were on the internet before the training cutoff, the model may have memorised them. OpenAI dropped SWE-bench Verified in February 2026 after finding models could reproduce gold patches. Look for fresh or private sets (LiveCodeBench-style date windows, SEAL, SWE-bench Pro).</p></div>
+<div class="card warn"><h4>4. Contamination</h4><p>If test items were on the internet before the training cutoff, the model may have memorized them. OpenAI dropped SWE-bench Verified in February 2026 after finding models could reproduce gold patches. Look for fresh or private sets (LiveCodeBench-style date windows, SEAL, SWE-bench Pro).</p></div>
 <div class="card warn"><h4>5. Elicitation effort</h4><p>For dangerous-capability claims, "the model did poorly" only reassures you if someone tried hard: good tools, many attempts, expert prompting, and ideally the final snapshot. Look for how many hours external testers had and whether safeguards were off.</p></div>
 <div class="card"><h4>6. Missing error bars</h4><p>A two-point gap on a few hundred items is often inside the noise (the ±3.7 example above). Miller's paper asks labs to report standard errors and paired differences; notice when a card does and when it doesn't.</p></div>
 </div>
@@ -1102,7 +1102,7 @@ def simpleqa():
 </details>
 
 <h2>Different philosophies, carefully stated</h2>
-<p>It is tempting to caricature the labs. The fairer approach is to describe what each one <em>publishes and emphasises</em>, which is observable, without claiming to know their internal priorities.</p>
+<p>It is tempting to caricature the labs. The fairer approach is to describe what each one <em>publishes and emphasizes</em>, which is observable, without claiming to know their internal priorities.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 840 300" role="img" aria-label="Three columns comparing emphasis in public eval materials: Anthropic on alignment audits, agentic safety and eval methodology; OpenAI on economically grounded and expert-graded benchmarks and developer tooling; Google DeepMind on critical capability levels with early warning and safety cases.">
@@ -1197,7 +1197,7 @@ def simpleqa():
 <button class="opt">Evaluation awareness causally contributed to the drop in covert actions</button>
 <button class="opt">The environments were too few to measure anything</button>
 <button class="opt">The model refused to take part</button>
-<div class="why">Part of the reduction came from the model recognising it was being evaluated. That is the central threat to alignment evals, also reported in Anthropic's Claude Sonnet 4.5 system card.</div></div>
+<div class="why">Part of the reduction came from the model recognizing it was being evaluated. That is the central threat to alignment evals, also reported in Anthropic's Claude Sonnet 4.5 system card.</div></div>
 <div class="q" data-answer="1"><p>7. Your support agent's final replies grade 95% correct, but trace grading shows that 30% of refunds were issued without an order lookup first. What does this tell you?</p>
 <button class="opt">Nothing important: the final answers are what users see</button>
 <button class="opt">The process is broken in a way final-output grading cannot see; add a span-order check to the eval and gate on it</button>
@@ -1214,9 +1214,9 @@ def simpleqa():
 <summary>Interview questions: frontier eval practice</summary>
 <ol>
 <li><b>"What is the difference between a capability threshold and a safeguard level?"</b> A threshold is a measured property of the model (e.g. could meaningfully uplift CBRN weapon development); a safeguard level (ASL, or the PF's required safeguards) is what the lab must put in place once that threshold cannot be ruled out. Evals map models to thresholds; policy maps thresholds to safeguards.</li>
-<li><b>"How would you design an eval whose job is to rule out a capability?"</b> Maximise elicitation (best scaffold, tools, many attempts, possibly fine-tuning); remove refusals from the equation; set the threshold and the action in advance; use a margin (alert thresholds) so you get warning; test the final snapshot; invite outside testers; report uncertainty.</li>
+<li><b>"How would you design an eval whose job is to rule out a capability?"</b> Maximize elicitation (best scaffold, tools, many attempts, possibly fine-tuning); remove refusals from the equation; set the threshold and the action in advance; use a margin (alert thresholds) so you get warning; test the final snapshot; invite outside testers; report uncertainty.</li>
 <li><b>"Why might a lab report two numbers for the same benchmark?"</b> Different test-time compute settings (single attempt averaged over trials vs parallel attempts with selection) or different scaffolds. Both can be legitimate; they answer different questions (typical vs best achievable).</li>
-<li><b>"What does evaluation awareness do to your results, and what can you do about it?"</b> It makes behaviour-under-test diverge from deployment behaviour, so alignment evals over-estimate good behaviour. Mitigations include more realistic environments, measuring awareness directly (verbalised and with probes), comparing to production monitoring, and reporting the "reliability of assessment" explicitly.</li>
+<li><b>"What does evaluation awareness do to your results, and what can you do about it?"</b> It makes behavior-under-test diverge from deployment behavior, so alignment evals over-estimate good behavior. Mitigations include more realistic environments, measuring awareness directly (verbalised and with probes), comparing to production monitoring, and reporting the "reliability of assessment" explicitly.</li>
 <li><b>"Pre-deployment tester vs post-release evaluator: which is more independent?"</b> Neither fully: pre-deployment testers get early access but work under the lab's terms; post-release evaluators control their methods and publication but can only test what is public, and they may use developer-reported numbers. Good practice discloses which is which (as Epoch does).</li>
 </ol>
 </details>

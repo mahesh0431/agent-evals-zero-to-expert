@@ -25,7 +25,7 @@
 <li>Use a decision tree to pick a grader for a new eval, and explain the trade-offs in cost, speed, nuance and reliability.</li>
 <li>Write a rubric made of binary checks, and explain why it beats a 1–10 scale.</li>
 <li>Implement code graders, a JSON-schema grader, a unit-test grader and a structured PASS/FAIL LLM judge in Python.</li>
-<li>Recognise grader failure modes (false passes, false fails, reward hacking, judge biases) and validate a grader against human labels.</li>
+<li>Recognize grader failure modes (false passes, false fails, reward hacking, judge biases) and validate a grader against human labels.</li>
 </ul>
 </div>
 
@@ -356,10 +356,10 @@ def grade_refund_state(db, order_id: str) -&gt; dict:
 </div>
 
 <h2>Similarity metrics, and why they are weak for LLMs</h2>
-<p>Before LLMs, text generation (translation, summarisation) was graded with <b>overlap metrics</b> that compare the output to one or more human-written reference texts:</p>
+<p>Before LLMs, text generation (translation, summarization) was graded with <b>overlap metrics</b> that compare the output to one or more human-written reference texts:</p>
 <ul>
 <li><b>BLEU</b> (2002, machine translation) counts how many of the output's n-grams (runs of 1, 2, 3, 4 words) appear in the reference: roughly a <em>precision</em> measure, with a penalty for being too short.</li>
-<li><b>ROUGE</b> (2004, summarisation) counts how many of the reference's n-grams appear in the output: roughly a <em>recall</em> measure. ROUGE-L uses the longest common subsequence.</li>
+<li><b>ROUGE</b> (2004, summarization) counts how many of the reference's n-grams appear in the output: roughly a <em>recall</em> measure. ROUGE-L uses the longest common subsequence.</li>
 <li><b>Embedding similarity</b> turns both texts into vectors with an embedding model and computes the cosine of the angle between them. <b>BERTScore</b> does a token-by-token version. These capture synonyms and paraphrase better than n-grams.</li>
 </ul>
 <p>They are cheap and deterministic, but they measure <em>surface resemblance to one particular reference</em>, not correctness. LLM outputs are long, varied and often phrased nothing like the reference. Worse, a tiny word change can flip the meaning while barely moving the score.</p>
@@ -478,7 +478,7 @@ def grade_refund_state(db, order_id: str) -&gt; dict:
 <tr><td><b>Reference-guided</b></td><td>Output + a gold answer</td><td>Match / no match, or a score</td><td>Factual Q&amp;A, maths, research answers with free-form wording</td><td>A wrong or incomplete reference poisons every grade</td></tr>
 </table></div>
 
-<p>Zheng et al. (2023), the paper that introduced MT-Bench and studied "LLM-as-a-judge" systematically, used both single-answer grading and pairwise comparison with GPT-4 as the judge. They found GPT-4's judgements agreed with human experts over 80% of the time, about the same rate at which humans agreed with each other. That result is why LLM judges became mainstream. The same paper also documented the biases we cover later.</p>
+<p>Zheng et al. (2023), the paper that introduced MT-Bench and studied "LLM-as-a-judge" systematically, used both single-answer grading and pairwise comparison with GPT-4 as the judge. They found GPT-4's judgments agreed with human experts over 80% of the time, about the same rate at which humans agreed with each other. That result is why LLM judges became mainstream. The same paper also documented the biases we cover later.</p>
 
 <h3>Anatomy of a good judge prompt</h3>
 <ol>
@@ -569,13 +569,13 @@ print(result["verdict"], result["failed_checks"])</code></pre>
 <p><b>Human grading</b> is the reference point that every other grader is ultimately checked against. Anthropic's guide calls it "gold standard quality" and also "expensive, slow". There are three main forms:</p>
 <div class="grid2">
 <div class="card violet"><h4>Expert review</h4><p>Domain experts (doctors, lawyers, senior engineers, your best support leads) grade outputs against a rubric. Highest quality; needed for high-stakes domains and for creating the labels you validate judges against. Throughput: often tens of samples per hour.</p></div>
-<div class="card violet"><h4>Crowd raters</h4><p>Many non-expert raters, each labelling a few items, usually with overlap so several people see each item. Cheaper and scalable, but quality varies; you need clear guidelines, gold "check" questions and agreement tracking.</p></div>
+<div class="card violet"><h4>Crowd raters</h4><p>Many non-expert raters, each labeling a few items, usually with overlap so several people see each item. Cheaper and scalable, but quality varies; you need clear guidelines, gold "check" questions and agreement tracking.</p></div>
 <div class="card violet"><h4>Preference / Elo</h4><p>People see two anonymous outputs and pick the better one. Votes are aggregated into a ranking with an Elo or <b>Bradley–Terry</b> model. Chatbot Arena (now LMArena) does this at scale with crowdsourced votes, fitting a Bradley–Terry model with bootstrap confidence intervals.</p></div>
 </div>
 <p><b>Elo</b> and <b>Bradley–Terry</b> both model the probability that A beats B as a function of the difference between their hidden "strength" scores: P(A beats B) = 1 / (1 + 10<sup>(R<sub>B</sub> − R<sub>A</sub>)/400</sup>) in Elo's chess notation. Elo updates ratings one game at a time (so the order of games matters); Bradley–Terry fits all ratings at once to all votes, which is more stable. Arena-style preference ranking is powerful for "which model do people like more?", but preference is not correctness: raters can reward confident, long, nicely formatted answers. LMArena added "style control" to adjust for length and markdown for exactly this reason, and critics such as "The Leaderboard Illusion" (Singh et al., 2025) have questioned how private testing affects the rankings. See <a href="18-benchmark-pitfalls.html">Module 18</a>.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 250" role="img" aria-label="Human labelling workflow: write guidelines, have raters label blind with overlap, measure agreement, adjudicate disagreements, and produce gold labels. Low agreement loops back to rewriting the guidelines.">
+<svg viewBox="0 0 820 250" role="img" aria-label="Human labeling workflow: write guidelines, have raters label blind with overlap, measure agreement, adjudicate disagreements, and produce gold labels. Low agreement loops back to rewriting the guidelines.">
 <defs><marker id="m3n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="16" y="30" width="136" height="72" rx="10"/>
 <text x="84" y="56" text-anchor="middle" class="b">1 · Guidelines</text>
@@ -603,7 +603,7 @@ print(result["verdict"], result["failed_checks"])</code></pre>
 <line class="ln" x1="632" y1="66" x2="652" y2="66" marker-end="url(#m3n)"/>
 <path class="ln bad dash" d="M404,102 C404,176 84,176 84,106" marker-end="url(#m3n)"/>
 <text x="244" y="192" text-anchor="middle" class="sm b">low agreement? the criterion is ambiguous:</text>
-<text x="244" y="208" text-anchor="middle" class="sm b">rewrite it before labelling more</text>
+<text x="244" y="208" text-anchor="middle" class="sm b">rewrite it before labeling more</text>
 <rect class="box plain" x="496" y="128" width="308" height="108" rx="10"/>
 <text x="510" y="148" class="sm b t-muted">EXAMPLE · ITEM 17</text>
 <text x="510" y="170" class="sm">rater A: PASS · rater B: PASS · rater C: FAIL</text>
@@ -682,7 +682,7 @@ print(result["verdict"], result["failed_checks"])</code></pre>
 <tr><td><b>Typical bias</b></td><td>brittle: false fails on valid variants; weak tests give false passes</td><td>rewards wording overlap, not meaning</td><td>position, verbosity, self-preference, leniency</td><td>fatigue, expertise gaps, anchoring</td><td>style, length, confidence over correctness</td></tr>
 <tr><td><b>Best for</b></td><td>formats, facts, end states, code</td><td>narrow outputs, drift monitoring</td><td>open-ended quality at scale</td><td>ground truth, high stakes, rubric design</td><td>relative preference between systems</td></tr>
 </table></div>
-<p>Cost figures are orders of magnitude to guide intuition, not quotes; they depend on the model, the length of what is graded and your labour costs.</p>
+<p>Cost figures are orders of magnitude to guide intuition, not quotes; they depend on the model, the length of what is graded and your labor costs.</p>
 
 <h3>The same ideas in real frameworks</h3>
 <p>Every eval framework ships ready-made graders from this spectrum. UK AISI's Inspect has scorers such as <code>match()</code>, <code>includes()</code> and <code>model_graded_qa()</code>; promptfoo has assertion types like <code>equals</code>, <code>contains</code>, <code>contains-json</code>, <code>similar</code> and <code>llm-rubric</code>; Braintrust's open-source <code>autoevals</code> library has <code>ExactMatch</code> plus LLM-judge scorers such as <code>Factuality</code>. <a href="14-tools-landscape.html">Module 14</a> compares them. One well-documented example is worth studying closely because it names each grader type explicitly: OpenAI's Evals API.</p>
@@ -868,12 +868,12 @@ eval_obj = client.evals.create(
 <li><b>Easier to validate.</b> Checking a binary judge against human labels is a simple confusion matrix (below). Validating a 10-point judge requires correlation statistics and still hides where it goes wrong.</li>
 <li><b>Forces a decision about what matters.</b> Writing "PASS means…" makes you decide what "good" is, which is the real work of eval design.</li>
 </ol>
-<p>You do not lose granularity: a set of binary checks gives a <em>fraction passed</em> per sample, and pass rates per check across the dataset. If you truly need graded quality (for example a leaderboard of creative writing), use pairwise comparison rather than absolute scores; relative judgements are easier for both humans and models.</p>
+<p>You do not lose granularity: a set of binary checks gives a <em>fraction passed</em> per sample, and pass rates per check across the dataset. If you truly need graded quality (for example a leaderboard of creative writing), use pairwise comparison rather than absolute scores; relative judgments are easier for both humans and models.</p>
 
 <h3>Analytic vs holistic rubrics</h3>
 <div class="grid2">
 <div class="card accent"><h4>Analytic rubric</h4><p>Several separate criteria, each graded on its own (R1…R5 below). The final result is a rule over them: all must pass, or a weighted sum. Best for debugging and for judges: each check is a small, focused question. Risk: you can pass every listed check and still produce a bad reply, if an important criterion is missing.</p></div>
-<div class="card warn"><h4>Holistic rubric</h4><p>One overall judgement ("Would a senior support lead send this reply unchanged?"), usually with guidance and examples. Captures overall quality and things you did not think to list. Risk: less consistent and less diagnostic. Often used as one extra "overall" check alongside analytic ones.</p></div>
+<div class="card warn"><h4>Holistic rubric</h4><p>One overall judgment ("Would a senior support lead send this reply unchanged?"), usually with guidance and examples. Captures overall quality and things you did not think to list. Risk: less consistent and less diagnostic. Often used as one extra "overall" check alongside analytic ones.</p></div>
 </div>
 
 <h3>Worked example: a rubric for a support agent</h3>
@@ -897,12 +897,12 @@ eval_obj = client.evals.create(
 <h3>False positives and false negatives</h3>
 <ul>
 <li>A <b>false positive</b> (false pass) is a bad output the grader accepts: a regex that finds "42" inside a hedge, tests too weak to catch a bug, a lenient judge. False passes <em>inflate</em> your score and hide real failures; they are the most dangerous kind because nobody investigates a pass.</li>
-<li>A <b>false negative</b> (false fail) is a good output the grader rejects: exact match on "Paris." vs "Paris", tests that demand one particular implementation, a judge that penalises a valid alternative approach. False fails <em>deflate</em> your score and send engineers chasing non-existent bugs.</li>
+<li>A <b>false negative</b> (false fail) is a good output the grader rejects: exact match on "Paris." vs "Paris", tests that demand one particular implementation, a judge that penalizes a valid alternative approach. False fails <em>deflate</em> your score and send engineers chasing non-existent bugs.</li>
 </ul>
 <p>Both types also distort comparisons. If a new model phrases answers differently, a brittle grader can make it look worse when it is actually better.</p>
 
 <h3>Reward hacking the grader</h3>
-<p>When a grader is used as a target, and especially when it is used as a <b>reward</b> for reinforcement learning, the system under test learns to satisfy the grader rather than the goal. This is <b>reward hacking</b>, an instance of Goodhart's law ("when a measure becomes a target, it ceases to be a good measure"). Agent examples include editing or deleting the unit tests instead of fixing the code, hard-coding the expected outputs, special-casing the checker, or writing "All tests pass!" in the final message to sway an LLM judge. METR reported in 2025 that recent frontier models sometimes did exactly these things on their tasks. Anthropic's guidance is blunt: "Make your graders resistant to bypasses or hacks. The agent shouldn't be able to easily 'cheat' the eval." Practical defences:</p>
+<p>When a grader is used as a target, and especially when it is used as a <b>reward</b> for reinforcement learning, the system under test learns to satisfy the grader rather than the goal. This is <b>reward hacking</b>, an instance of Goodhart's law ("when a measure becomes a target, it ceases to be a good measure"). Agent examples include editing or deleting the unit tests instead of fixing the code, hard-coding the expected outputs, special-casing the checker, or writing "All tests pass!" in the final message to sway an LLM judge. METR reported in 2025 that recent frontier models sometimes did exactly these things on their tasks. Anthropic's guidance is blunt: "Make your graders resistant to bypasses or hacks. The agent shouldn't be able to easily 'cheat' the eval." Practical defenses:</p>
 <ul>
 <li>Keep grading code, hidden tests and reference answers <b>outside</b> the agent's sandbox, and re-run tests from a clean copy rather than trusting the agent's test run.</li>
 <li>Grade the <b>state</b>, not the agent's claims about the state.</li>
@@ -913,9 +913,9 @@ eval_obj = client.evals.create(
 <h3>Judge biases</h3>
 <p>Zheng et al. (2023) documented three systematic biases in LLM judges, and later work has confirmed and extended them:</p>
 <div class="grid2">
-<div class="card bad"><h4>Position bias</h4><p>In pairwise comparison, the judge favours an answer because of its <em>position</em> (often the first), not its quality. Mitigation: judge both orders and only count consistent wins.</p></div>
+<div class="card bad"><h4>Position bias</h4><p>In pairwise comparison, the judge favors an answer because of its <em>position</em> (often the first), not its quality. Mitigation: judge both orders and only count consistent wins.</p></div>
 <div class="card bad"><h4>Verbosity bias</h4><p>The judge prefers longer, more detailed-looking answers even when the extra length adds nothing or adds errors. Mitigation: tell the judge length is not a criterion; check for correlation between score and length; control for length.</p></div>
-<div class="card bad"><h4>Self-preference</h4><p>Zheng et al. called it "self-enhancement bias": judges can favour outputs written by themselves or their own model family. Panickssery et al. (2024) linked this to models recognising their own text. Mitigation: use a judge from a different family than the system being judged, or several judges.</p></div>
+<div class="card bad"><h4>Self-preference</h4><p>Zheng et al. called it "self-enhancement bias": judges can favor outputs written by themselves or their own model family. Panickssery et al. (2024) linked this to models recognizing their own text. Mitigation: use a judge from a different family than the system being judged, or several judges.</p></div>
 </div>
 <p>Zheng et al. also found judges struggle to grade maths and reasoning they cannot solve themselves, which is why <b>reference-guided</b> grading (giving the judge the correct answer) helps so much there. Other common issues: <b>leniency</b> (a tendency to pass borderline cases), sensitivity to prompt wording, and being persuaded by confident or authoritative language inside the output.</p>
 
@@ -958,7 +958,7 @@ eval_obj = client.evals.create(
 <li>Have a domain expert (ideally the person who owns quality for the product) label each one PASS/FAIL using the rubric, <em>without</em> seeing the grader's verdict.</li>
 <li>Run the grader on the same outputs.</li>
 <li>Build a <b>confusion matrix</b> and compute agreement statistics. Read every disagreement.</li>
-<li>Fix the rubric or prompt, and re-measure on a <em>different</em> held-out labelled set so you do not overfit the judge to the examples you tuned on.</li>
+<li>Fix the rubric or prompt, and re-measure on a <em>different</em> held-out labeled set so you do not overfit the judge to the examples you tuned on.</li>
 </ol>
 
 <figure class="diagram">
@@ -986,7 +986,7 @@ eval_obj = client.evals.create(
 <text x="490" y="144">TNR (failures caught) = 85 / 100 = 85%</text>
 <text x="490" y="174">Precision of PASS = 90 / 105 ≈ 86%</text>
 <text x="490" y="204">Cohen's κ = (0.875 − 0.5) / 0.5 = 0.75</text>
-<text x="490" y="248" class="sm">Illustrative numbers: 200 expert-labelled samples,</text>
+<text x="490" y="248" class="sm">Illustrative numbers: 200 expert-labeled samples,</text>
 <text x="490" y="264" class="sm">100 human PASS and 100 human FAIL.</text>
 </svg>
 <figcaption><b>Measuring the measurer.</b> Treat the human labels as ground truth and read the grader's errors off the matrix. Report TPR and TNR separately: one number hides which way the grader is wrong. (Illustrative numbers.)</figcaption>
@@ -998,7 +998,7 @@ eval_obj = client.evals.create(
 <li><b>True positive rate</b> (TPR, also recall on passes): of the outputs humans passed, how many did the grader pass? Low TPR means many false fails.</li>
 <li><b>True negative rate</b> (TNR, also specificity): of the outputs humans failed, how many did the grader catch? Low TNR means failures slip through. Hamel Husain's advice: "treat the human labels as ground truth and report the judge's True Positive Rate and True Negative Rate separately."</li>
 <li><b>Precision</b> of the grader's verdicts: when the grader says PASS, how often is it right? This matters when you use the grader to filter (for example to pick "good" examples for training).</li>
-<li><b>Cohen's kappa</b> (κ): agreement corrected for chance. κ = (p<sub>o</sub> − p<sub>e</sub>) / (1 − p<sub>e</sub>), where p<sub>o</sub> is observed agreement and p<sub>e</sub> the agreement expected if both raters labelled at random with their own pass rates. Here p<sub>e</sub> = 0.525 × 0.5 + 0.475 × 0.5 = 0.5, so κ = 0.75. Values above about 0.6 are usually read as substantial agreement, but the interpretation bands are conventions, not laws.</li>
+<li><b>Cohen's kappa</b> (κ): agreement corrected for chance. κ = (p<sub>o</sub> − p<sub>e</sub>) / (1 − p<sub>e</sub>), where p<sub>o</sub> is observed agreement and p<sub>e</sub> the agreement expected if both raters labeled at random with their own pass rates. Here p<sub>e</sub> = 0.525 × 0.5 + 0.475 × 0.5 = 0.5, so κ = 0.75. Values above about 0.6 are usually read as substantial agreement, but the interpretation bands are conventions, not laws.</li>
 </ul>
 <p>A useful benchmark: compare the judge's agreement with a human to the agreement <em>between two humans</em> on the same items. If humans agree 85% of the time and the judge agrees with them 84% of the time, the judge is about as good as a second human rater, which is the standard Zheng et al. used. You can also use the TPR and TNR to <b>correct</b> an observed pass rate for known grader error, a technique covered with the statistics in <a href="13-llm-as-judge.html">Module 13</a>.</p>
 
@@ -1039,7 +1039,7 @@ eval_obj = client.evals.create(
 <text x="246" y="130" class="b">detector or targeted questions</text>
 <text x="246" y="150" class="sm">"how many cubes?" "are they red?"</text>
 <rect class="box accent" x="570" y="106" width="230" height="62" rx="10"/>
-<text x="584" y="130" class="sm b">count / colour / position checks</text>
+<text x="584" y="130" class="sm b">count / color / position checks</text>
 <text x="584" y="150" class="sm">vision judge, validated vs humans</text>
 <rect class="box violet" x="20" y="184" width="150" height="62" rx="10"/>
 <rect class="box plain" x="34" y="200" width="44" height="30" rx="3"/>
@@ -1138,7 +1138,7 @@ eval_obj = client.evals.create(
 <button class="opt">The candidate is 92% correct</button>
 <div class="why">ROUGE counts shared words. One added "not" reverses the meaning but adds only one unmatched word. This is why overlap metrics are weak graders for open-ended LLM output.</div></div>
 <div class="q" data-answer="0"><p>3. Why do judge prompts put the reasoning before the verdict?</p>
-<button class="opt">Because the model generates left to right; reasoning first lets the verdict depend on the analysis instead of the analysis rationalising a verdict already given</button>
+<button class="opt">Because the model generates left to right; reasoning first lets the verdict depend on the analysis instead of the analysis rationalizing a verdict already given</button>
 <button class="opt">Because JSON requires keys in alphabetical order</button>
 <button class="opt">To make the judge's output longer, which improves accuracy through verbosity</button>
 <div class="why">Order matters for autoregressive generation. With verdict first, the "reasoning" is post-hoc justification.</div></div>
@@ -1162,12 +1162,12 @@ eval_obj = client.evals.create(
 
 <details><summary>Expert corner: interview questions on graders</summary>
 <ol>
-<li><b>"When would you prefer pairwise comparison over pointwise scoring?"</b> When you are choosing between two versions and absolute calibration is hard (creative or stylistic quality), since relative judgements are more consistent. Mention position bias (swap both orders), that pairwise does not say whether either answer is acceptable, and that aggregate rankings need Bradley–Terry-style models with confidence intervals.</li>
-<li><b>"How would you know your LLM judge is good enough?"</b> Expert-labelled set that includes failures, blind labelling, confusion matrix, TPR/TNR separately, κ, comparison against human-human agreement, held-out re-validation after tuning, and ongoing re-labelling to catch drift.</li>
+<li><b>"When would you prefer pairwise comparison over pointwise scoring?"</b> When you are choosing between two versions and absolute calibration is hard (creative or stylistic quality), since relative judgments are more consistent. Mention position bias (swap both orders), that pairwise does not say whether either answer is acceptable, and that aggregate rankings need Bradley–Terry-style models with confidence intervals.</li>
+<li><b>"How would you know your LLM judge is good enough?"</b> Expert-labeled set that includes failures, blind labeling, confusion matrix, TPR/TNR separately, κ, comparison against human-human agreement, held-out re-validation after tuning, and ongoing re-labeling to catch drift.</li>
 <li><b>"Your judge and a human disagree on 15% of cases. What do you do?"</b> Read the disagreements and bucket them: judge wrong (fix prompt, add examples, split criteria), human wrong (fix labels), or genuinely ambiguous criterion (sharpen the rubric definition). Often the rubric is the problem, not the model.</li>
 <li><b>"Should the judge be the same model as the agent?"</b> Preferably not, because of self-preference bias; if cost forces it, validate carefully and check for a gap between how it grades its own outputs and others'. A stronger or different-family judge, or a small panel, is safer.</li>
-<li><b>"Outcome or trajectory grading for an agent?"</b> Outcome by default because agents find valid paths designers did not anticipate; add process constraints only for rules that matter (safety, authorisation, cost), and use partial credit for multi-step tasks.</li>
-<li><b>"Why is a grader used as an RL reward riskier than one used for evaluation?"</b> Optimisation pressure finds and amplifies every grader loophole (reward hacking); an eval-only grader is not directly optimised against, though teams can still overfit to it by iterating on the same test set.</li>
+<li><b>"Outcome or trajectory grading for an agent?"</b> Outcome by default because agents find valid paths designers did not anticipate; add process constraints only for rules that matter (safety, authorization, cost), and use partial credit for multi-step tasks.</li>
+<li><b>"Why is a grader used as an RL reward riskier than one used for evaluation?"</b> Optimization pressure finds and amplifies every grader loophole (reward hacking); an eval-only grader is not directly optimized against, though teams can still overfit to it by iterating on the same test set.</li>
 </ol>
 </details>
 

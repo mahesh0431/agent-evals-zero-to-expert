@@ -102,17 +102,17 @@
 <p>You met these grader types in Module 03. Here is how they apply to vision.</p>
 <div class="grid2">
 <div class="card accent"><h4>Multiple choice</h4><p>The model picks A, B, C or D. Cheap and unambiguous, but random guessing gives 25% with four options (10% with MMMU-Pro's ten). Always report the chance baseline. You also need an <b>answer extractor</b>: models write "The answer is (B) because...", so a regex or small LLM pulls out the letter.</p></div>
-<div class="card accent"><h4>Exact match with normalisation</h4><p>For short numeric or word answers (MathVista, ChartQA). Normalise units, commas and case first. For charts, allow a tolerance: reading 41.8 from a bar labelled 42 is not a reasoning failure.</p></div>
-<div class="card accent"><h4>ANLS (for text read from images)</h4><p><b>Average Normalised Levenshtein Similarity</b>. Levenshtein distance counts character edits between two strings. ANLS turns that into a similarity from 0 to 1 and sets it to 0 when it falls below a threshold (0.5 in DocVQA), so "Jonh Smith" earns partial credit for "John Smith" but a wrong name does not.</p></div>
+<div class="card accent"><h4>Exact match with normalization</h4><p>For short numeric or word answers (MathVista, ChartQA). Normalize units, commas and case first. For charts, allow a tolerance: reading 41.8 from a bar labeled 42 is not a reasoning failure.</p></div>
+<div class="card accent"><h4>ANLS (for text read from images)</h4><p><b>Average Normalized Levenshtein Similarity</b>. Levenshtein distance counts character edits between two strings. ANLS turns that into a similarity from 0 to 1 and sets it to 0 when it falls below a threshold (0.5 in DocVQA), so "Jonh Smith" earns partial credit for "John Smith" but a wrong name does not.</p></div>
 <div class="card accent"><h4>LLM judge with image access</h4><p>For open-ended answers ("describe what is wrong in this X-ray"). A text-only judge can only compare against a reference description. A judge that also sees the image can catch hallucinated details the reference did not mention. It then inherits its own vision errors (Module 13).</p></div>
 </div>
 
 <div class="callout tip"><span class="t">Worked example: ANLS by hand</span>
-<p>Reference "invoice 2023", prediction "invoce 2023". Levenshtein distance = 1 (one missing letter). Normalise by the longer length, 12 characters: 1/12 ≈ 0.083. Similarity = 1 − 0.083 = 0.917, which is above the 0.5 threshold, so the item scores 0.917. Prediction "receipt" against the same reference is far more than half wrong, so the similarity falls under 0.5 and the item scores 0. The benchmark score is the mean over questions (taking the best match when there are several accepted answers).</p>
+<p>Reference "invoice 2023", prediction "invoce 2023". Levenshtein distance = 1 (one missing letter). Normalize by the longer length, 12 characters: 1/12 ≈ 0.083. Similarity = 1 − 0.083 = 0.917, which is above the 0.5 threshold, so the item scores 0.917. Prediction "receipt" against the same reference is far more than half wrong, so the similarity falls under 0.5 and the item scores 0. The benchmark score is the mean over questions (taking the best match when there are several accepted answers).</p>
 </div>
 
 <figure class="diagram">
-<svg viewBox="0 0 800 270" role="img" aria-label="ANLS scoring curve: item score equals one minus the normalised edit distance until the distance reaches 0.5, then drops to zero. Examples: a typo scores 0.92, a letter swap 0.80, a wrong year still 0.83, and an unrelated word zero.">
+<svg viewBox="0 0 800 270" role="img" aria-label="ANLS scoring curve: item score equals one minus the normalized edit distance until the distance reaches 0.5, then drops to zero. Examples: a typo scores 0.92, a letter swap 0.80, a wrong year still 0.83, and an unrelated word zero.">
 <rect class="fill-bad" x="215" y="40" width="155" height="180" opacity="0.08"/>
 <line class="ln dash" x1="60" y1="130" x2="370" y2="130" opacity="0.3"/>
 <line class="ln" x1="60" y1="40" x2="60" y2="220"/>
@@ -126,7 +126,7 @@
 <text x="60" y="236" text-anchor="middle" class="sm">0</text>
 <text x="215" y="236" text-anchor="middle" class="sm b">0.5</text>
 <text x="370" y="236" text-anchor="middle" class="sm">1</text>
-<text x="215" y="256" text-anchor="middle" class="sm">normalised edit distance (edits ÷ longer length)</text>
+<text x="215" y="256" text-anchor="middle" class="sm">normalized edit distance (edits ÷ longer length)</text>
 <text x="20" y="130" text-anchor="middle" class="sm" transform="rotate(-90 20 130)">item score</text>
 <text x="292" y="58" text-anchor="middle" class="sm b t-bad">score = 0</text>
 <text x="292" y="74" text-anchor="middle" class="sm t-bad">beyond threshold</text>
@@ -153,7 +153,7 @@
 </figure>
 
 <h2>The big pitfall: did the model actually look?</h2>
-<p>The most important idea in vision understanding evals is that a question can be answerable <em>without the image</em>. That happens for two reasons: the question text gives the answer away ("What colour is the sky in this clear daytime photo?"), or the model has memorised the item from training data. Either way the benchmark stops measuring vision.</p>
+<p>The most important idea in vision understanding evals is that a question can be answerable <em>without the image</em>. That happens for two reasons: the question text gives the answer away ("What color is the sky in this clear daytime photo?"), or the model has memorized the item from training data. Either way the benchmark stops measuring vision.</p>
 <p>The MMStar paper (Chen et al., 2024) measured this directly. Its headline example: Gemini Pro scored <b>42.9% on MMMU with no image at all</b>, and across six popular benchmarks, models running without images beat the random-choice baseline by over 24% on average. MMMU-Pro was built partly as a response: it filters out questions that text-only models can solve.</p>
 
 <figure class="diagram">
@@ -282,7 +282,7 @@ def audit(items, ask, n_blind_samples=3):
 </ul>
 
 <div class="callout expert"><span class="t">Expert nuance: counterfactual image edits</span>
-<p>The strongest test that a model uses the image is to change the image and check that the answer changes. Swap the colours of two bars, flip the arrow in a diagram, shuffle video frames. If the model gives the same answer to both versions, it is not reading that detail. For video, shuffling or reversing frames is a cheap probe of whether a "temporal" question really needs time order.</p>
+<p>The strongest test that a model uses the image is to change the image and check that the answer changes. Swap the colors of two bars, flip the arrow in a diagram, shuffle video frames. If the model gives the same answer to both versions, it is not reading that detail. For video, shuffling or reversing frames is a cheap probe of whether a "temporal" question really needs time order.</p>
 </div>
 
 <figure class="diagram">
@@ -317,7 +317,7 @@ def audit(items, ask, n_blind_samples=3):
 <text x="650" y="216" text-anchor="middle" class="sm">= share of pairs where the answer</text>
 <text x="650" y="232" text-anchor="middle" class="sm">changes the way the edit requires</text>
 </svg>
-<figcaption><b>A counterfactual probe.</b> Make a minimal edit that should flip the answer and check that it does. Prior knowledge, question wording and memorised items cannot follow the edit, so this separates looking from guessing more sharply than any single accuracy number. Schematic chart, not real data.</figcaption>
+<figcaption><b>A counterfactual probe.</b> Make a minimal edit that should flip the answer and check that it does. Prior knowledge, question wording and memorized items cannot follow the edit, so this separates looking from guessing more sharply than any single accuracy number. Schematic chart, not real data.</figcaption>
 </figure>
 
 <h3>Long video and the visual needle in a haystack</h3>
@@ -365,8 +365,8 @@ def audit(items, ask, n_blind_samples=3):
 <li><b>Quality / realism:</b> does it look like a real, well-made image? (FID, aesthetic predictors, human ratings)</li>
 <li><b>Alignment / faithfulness:</b> does it show what the prompt asked for? (CLIPScore, GenEval, T2I-CompBench, TIFA, DSG, VQAScore)</li>
 <li><b>Preference:</b> which of two images do people prefer? (arenas, reward models)</li>
-<li><b>Temporal behaviour</b> (video only): is motion smooth, does the subject stay the same? (VBench)</li>
-<li><b>Safety and provenance:</b> is it allowed, and is it labelled as AI-made? (classifiers, watermarks, C2PA)</li>
+<li><b>Temporal behavior</b> (video only): is motion smooth, does the subject stay the same? (VBench)</li>
+<li><b>Safety and provenance:</b> is it allowed, and is it labeled as AI-made? (classifiers, watermarks, C2PA)</li>
 </ol>
 
 <h3>FID: comparing two clouds of images</h3>
@@ -398,13 +398,13 @@ def audit(items, ask, n_blind_samples=3):
 <rect class="box plain" x="650" y="60" width="160" height="170" rx="8"/>
 <text x="730" y="84" text-anchor="middle" class="b">FID =</text>
 <text x="730" y="108" text-anchor="middle" class="sm">‖μr − μg‖²</text>
-<text x="730" y="124" text-anchor="middle" class="sm">(centres apart)</text>
+<text x="730" y="124" text-anchor="middle" class="sm">(centers apart)</text>
 <text x="730" y="148" text-anchor="middle" class="sm">+ Tr(Σr + Σg</text>
 <text x="730" y="164" text-anchor="middle" class="sm">− 2(Σr Σg)^½)</text>
 <text x="730" y="180" text-anchor="middle" class="sm">(spreads differ)</text>
 <text x="730" y="210" text-anchor="middle" class="sm b">lower = closer</text>
 </svg>
-<figcaption><b>FID intuition.</b> Each image becomes a point. FID fits an ellipse (Gaussian) to the real points and another to the generated points, then adds up how far apart their centres are and how different their shapes are. It says nothing about any single prompt.</figcaption>
+<figcaption><b>FID intuition.</b> Each image becomes a point. FID fits an ellipse (Gaussian) to the real points and another to the generated points, then adds up how far apart their centers are and how different their shapes are. It says nothing about any single prompt.</figcaption>
 </figure>
 
 <div class="callout tip"><span class="t">Worked example: FID in one dimension</span>
@@ -418,7 +418,7 @@ def audit(items, ask, n_blind_samples=3):
 <li><b>No prompt.</b> A text-to-image model that ignores prompts but draws lovely photos can get a good FID.</li>
 <li><b>Sample-size bias.</b> FID estimated from fewer images is biased upward, so scores computed with different sample counts are not comparable. Report the count (commonly 10K to 50K images) and the reference set (for text-to-image, often MS-COCO captions and images).</li>
 <li><b>Implementation details move it.</b> Image resizing method, JPEG compression and the exact Inception weights all change the number. Use one library (for example the <code>clean-fid</code> package) for every model you compare.</li>
-<li><b>Feature bias.</b> Inception-v3 was trained on ImageNet classification. It may not care about text rendering, hands or artistic style. Jayasumana et al. ("Rethinking FID", CVPR 2024) argue FID can contradict human judgement and propose <b>CMMD</b>, which uses CLIP features and a distance that does not assume Gaussians.</li>
+<li><b>Feature bias.</b> Inception-v3 was trained on ImageNet classification. It may not care about text rendering, hands or artistic style. Jayasumana et al. ("Rethinking FID", CVPR 2024) argue FID can contradict human judgment and propose <b>CMMD</b>, which uses CLIP features and a distance that does not assume Gaussians.</li>
 </ul>
 
 <h3>CLIPScore: does the image match the text?</h3>
@@ -453,7 +453,7 @@ def audit(items, ask, n_blind_samples=3):
 <text x="690" y="206" text-anchor="middle" class="b t-bad">gap ≈ 0.01</text>
 <text x="690" y="224" text-anchor="middle" class="sm">cannot separate them</text>
 </svg>
-<figcaption><b>CLIPScore and its bag-of-words problem.</b> CLIP embeddings capture which concepts are present much better than how they are bound together (which colour belongs to which object, what is on top). The score values are illustrative.</figcaption>
+<figcaption><b>CLIPScore and its bag-of-words problem.</b> CLIP embeddings capture which concepts are present much better than how they are bound together (which color belongs to which object, what is on top). The score values are illustrative.</figcaption>
 </figure>
 
 <p>Here is CLIPScore with the <code>open_clip</code> library (API as in the project's README; install with <code>pip install open_clip_torch</code>).</p>
@@ -489,10 +489,10 @@ print(clip_score("gen_001.png", "a blue cube on top of a red sphere"))</code></p
 
 <h3>Compositional checks: GenEval and T2I-CompBench</h3>
 <p>Because CLIPScore misses composition, researchers built evals that check specific, verifiable facts about the image. The trick is to turn "is this image faithful?" into several small questions that a <b>specialist vision model</b> can answer reliably.</p>
-<p><b>GenEval</b> (Ghosh, Hajishirzi and Schmidt, NeurIPS 2023 Datasets and Benchmarks) has 553 templated prompts covering single objects, two objects, counting, colours, position and attribute binding. It runs an object detector (Mask2Former) on the generated image, then applies simple rules: are the right objects present, is the count right, is object A left of object B (by comparing box centres), and is each object's colour right (by classifying the cropped object with CLIP).</p>
+<p><b>GenEval</b> (Ghosh, Hajishirzi and Schmidt, NeurIPS 2023 Datasets and Benchmarks) has 553 templated prompts covering single objects, two objects, counting, colors, position and attribute binding. It runs an object detector (Mask2Former) on the generated image, then applies simple rules: are the right objects present, is the count right, is object A left of object B (by comparing box centers), and is each object's color right (by classifying the cropped object with CLIP).</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 290" role="img" aria-label="GenEval pipeline: a templated prompt produces an image; an object detector outputs boxes and labels; rule checks test presence, count, position and colour; the image passes only if all checks pass.">
+<svg viewBox="0 0 820 290" role="img" aria-label="GenEval pipeline: a templated prompt produces an image; an object detector outputs boxes and labels; rule checks test presence, count, position and color; the image passes only if all checks pass.">
 <defs><marker id="m10f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="15" y="60" width="140" height="80" rx="8"/>
 <text x="85" y="84" text-anchor="middle" class="b">Prompt</text>
@@ -517,7 +517,7 @@ print(clip_score("gen_001.png", "a blue cube on top of a red sphere"))</code></p
 <text x="550" y="92" class="sm">count(apple) == 3?</text><text x="680" y="92" text-anchor="end" class="sm t-good">✓</text>
 <text x="550" y="116" class="sm">bowl present?</text><text x="680" y="116" text-anchor="end" class="sm t-good">✓</text>
 <text x="550" y="140" class="sm">apples x &lt; bowl x?</text><text x="680" y="140" text-anchor="end" class="sm t-good">✓</text>
-<text x="550" y="164" class="sm">colour red? (CLIP)</text><text x="680" y="164" text-anchor="end" class="sm t-good">✓</text>
+<text x="550" y="164" class="sm">color red? (CLIP)</text><text x="680" y="164" text-anchor="end" class="sm t-good">✓</text>
 <line class="ln" x1="695" y1="100" x2="731" y2="100" marker-end="url(#m10f)"/>
 <rect class="box good" x="735" y="70" width="75" height="60" rx="8"/>
 <text x="772" y="96" text-anchor="middle" class="b">pass</text>
@@ -557,7 +557,7 @@ def check_count_and_position(image_path, obj, n, left_of=None, thresh=0.7):
 print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code></pre>
 <p>Two things to calibrate before trusting it. First, the confidence threshold: too high and real objects are missed, too low and hallucinated boxes appear. Hand-label 50 images and pick the threshold that best agrees with you. Second, the label vocabulary: this detector knows the 80 COCO categories, so "croissant" is not checkable with it.</p>
 
-<p><b>T2I-CompBench</b> (Huang et al., NeurIPS 2023) scales the idea to 6,000 compositional prompts in three groups: attribute binding (colour, shape, texture), object relationships (spatial and non-spatial) and complex compositions. It uses a different specialist per group: BLIP-VQA for attributes, the UniDet detector for spatial relations, CLIPScore for non-spatial relations, and a combined "3-in-1" metric for complex prompts. T2I-CompBench++ (TPAMI 2025) adds numeracy and 3-D relations.</p>
+<p><b>T2I-CompBench</b> (Huang et al., NeurIPS 2023) scales the idea to 6,000 compositional prompts in three groups: attribute binding (color, shape, texture), object relationships (spatial and non-spatial) and complex compositions. It uses a different specialist per group: BLIP-VQA for attributes, the UniDet detector for spatial relations, CLIPScore for non-spatial relations, and a combined "3-in-1" metric for complex prompts. T2I-CompBench++ (TPAMI 2025) adds numeracy and 3-D relations.</p>
 
 <div class="callout warn"><span class="t">Saturation and prompt rewriting</span>
 <p>Recent models score above 0.9 on GenEval, so it no longer separates the frontier. A subtler issue: many products rewrite the user's prompt with an LLM before generating ("prompt expansion"). That can raise GenEval scores by adding explicit details, so a reported score may measure the rewriter as much as the image model. When comparing, state whether rewriting was on.</p>
@@ -605,8 +605,8 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 </figure>
 
 <ul>
-<li><b>TIFA</b> (Hu et al., ICCV 2023): a language model generates question-answer pairs from the prompt, and a VQA model answers them on the generated image. TIFA v1.0 has 4K prompts and 25K questions across 12 categories. Its authors found models struggled with counting, spatial relations and composing multiple objects, while doing well on colour and material.</li>
-<li><b>DSG</b>, Davidsonian Scene Graph (Cho et al., Google, ICLR 2024): generates <em>atomic, unique</em> questions organised in a dependency graph, which avoids duplicate questions and contradictory answers (a VQA model saying "no dog" but "yes, the dog is black"). DSG-1k has 1,060 prompts.</li>
+<li><b>TIFA</b> (Hu et al., ICCV 2023): a language model generates question-answer pairs from the prompt, and a VQA model answers them on the generated image. TIFA v1.0 has 4K prompts and 25K questions across 12 categories. Its authors found models struggled with counting, spatial relations and composing multiple objects, while doing well on color and material.</li>
+<li><b>DSG</b>, Davidsonian Scene Graph (Cho et al., Google, ICLR 2024): generates <em>atomic, unique</em> questions organized in a dependency graph, which avoids duplicate questions and contradictory answers (a VQA model saying "no dog" but "yes, the dog is black"). DSG-1k has 1,060 prompts.</li>
 <li><b>VQAScore</b> (Lin et al., CMU and Meta, 2024): skips question generation entirely. It asks one question, "Does this figure show '{prompt}'?", and uses the VQA model's <b>probability of answering "Yes"</b> as the score. The authors also released GenAI-Bench: 1,600 compositional prompts with over 15,000 human ratings, used to check which metric agrees best with people.</li>
 </ul>
 
@@ -647,13 +647,13 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 <line class="ln" x1="680" y1="145" x2="760" y2="145"/><circle class="fill-accent" cx="720" cy="145" r="4"/>
 <text x="737" y="182" text-anchor="middle" class="sm">overlapping bars =</text>
 <text x="737" y="196" text-anchor="middle" class="sm">no clear winner</text>
-<text x="410" y="240" text-anchor="middle" class="sm t-warn">biases: voters favour vivid style; prompts skew to what arena users type; vendors can test many private variants</text>
+<text x="410" y="240" text-anchor="middle" class="sm t-warn">biases: voters favor vivid style; prompts skew to what arena users type; vendors can test many private variants</text>
 </svg>
 <figcaption><b>How an image arena works.</b> Pairwise votes are easier and more consistent for people than absolute 1 to 10 ratings. The ratings are only as representative as the voters and the prompts; the confidence intervals shown are illustrative.</figcaption>
 </figure>
 
 <p>Arenas have the same problems as text arenas: voters' taste for vivid, saturated images, prompts skewed toward what arena visitors happen to type, and the "Leaderboard Illusion" critique (Singh et al., 2025) of labs privately testing many variants and publishing the best. Use them as a signal about general appeal, not as proof your use case is covered.</p>
-<p>When you cannot afford humans for every comparison, <b>learned preference models</b> approximate them: <b>HPSv2</b>, <b>ImageReward</b> and <b>PickScore</b> are models trained on large sets of human choices to predict which image people prefer. They are useful for ranking many candidates quickly, but they are also a common <em>training</em> reward, and a generator optimised against one will learn its quirks. Do not evaluate with the same reward model you trained on (that is Goodhart's law: once a measure becomes a target, it stops being a good measure).</p>
+<p>When you cannot afford humans for every comparison, <b>learned preference models</b> approximate them: <b>HPSv2</b>, <b>ImageReward</b> and <b>PickScore</b> are models trained on large sets of human choices to predict which image people prefer. They are useful for ranking many candidates quickly, but they are also a common <em>training</em> reward, and a generator optimized against one will learn its quirks. Do not evaluate with the same reward model you trained on (that is Goodhart's law: once a measure becomes a target, it stops being a good measure).</p>
 
 <h3>Video generation: VBench</h3>
 <p>Video adds a time axis, so new failures appear: a character's face changes between frames, the background flickers, objects teleport, or nothing moves at all. <b>VBench</b> (Huang et al., CVPR 2024) splits "video quality" into 16 separate dimensions, each with its own prompt set and an automatic evaluator chosen for that dimension, validated against human preference.</p>
@@ -670,14 +670,14 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 <text x="30" y="174" class="sm">dynamic degree</text><text x="390" y="174" text-anchor="end" class="sm t-muted">does anything move?</text>
 <text x="30" y="210" class="b">Per frame</text>
 <text x="30" y="232" class="sm">aesthetic quality</text><text x="390" y="232" text-anchor="end" class="sm t-muted">pleasing composition?</text>
-<text x="30" y="252" class="sm">imaging quality</text><text x="390" y="252" text-anchor="end" class="sm t-muted">no blur, noise, artefacts?</text>
+<text x="30" y="252" class="sm">imaging quality</text><text x="390" y="252" text-anchor="end" class="sm t-muted">no blur, noise, artifacts?</text>
 <text x="210" y="292" text-anchor="middle" class="sm t-warn">trade-off: a still video is perfectly "smooth"</text>
 <rect class="box violet" x="420" y="20" width="385" height="295" rx="10"/>
 <text x="612" y="44" text-anchor="middle" class="lg t-violet">Matches the prompt</text>
 <text x="435" y="72" class="b">Semantics</text>
 <text x="435" y="94" class="sm">object class, multiple objects</text><text x="790" y="94" text-anchor="end" class="sm t-muted">right things?</text>
 <text x="435" y="114" class="sm">human action</text><text x="790" y="114" text-anchor="end" class="sm t-muted">right activity?</text>
-<text x="435" y="134" class="sm">colour, spatial relationship</text><text x="790" y="134" text-anchor="end" class="sm t-muted">bound correctly?</text>
+<text x="435" y="134" class="sm">color, spatial relationship</text><text x="790" y="134" text-anchor="end" class="sm t-muted">bound correctly?</text>
 <text x="435" y="154" class="sm">scene</text><text x="790" y="154" text-anchor="end" class="sm t-muted">right place?</text>
 <text x="435" y="210" class="b">Style</text>
 <text x="435" y="232" class="sm">appearance style</text><text x="790" y="232" text-anchor="end" class="sm t-muted">"oil painting"?</text>
@@ -693,7 +693,7 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 <div class="tablewrap"><table>
 <tr><th>Risk</th><th>What you measure</th><th>Typical method</th></tr>
 <tr><td>Sexual or violent content (NSFW)</td><td>Rate of unsafe outputs on adversarial and benign prompts; false refusals on safe prompts</td><td>Image safety classifiers, plus human review of a sample; red-team prompt sets</td></tr>
-<tr><td>Likeness of real people</td><td>Can it produce a recognisable real person (especially public figures or private individuals) when policy forbids it?</td><td>Prompt sets naming people, face-matching against reference photos, human raters</td></tr>
+<tr><td>Likeness of real people</td><td>Can it produce a recognizable real person (especially public figures or private individuals) when policy forbids it?</td><td>Prompt sets naming people, face-matching against reference photos, human raters</td></tr>
 <tr><td>Copyrighted characters and styles</td><td>Reproduction of protected characters or near-copies of training images</td><td>Similarity search against reference sets, human review</td></tr>
 <tr><td>Provenance</td><td>Is the output marked as AI-made, and does the mark survive edits?</td><td>Invisible watermark detection after crops, compression and screenshots; C2PA manifest present and valid</td></tr>
 </table></div>
@@ -779,7 +779,7 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 </figure>
 
 <h3>Layer 1: code checks first</h3>
-<p>Many requirements are objective and cheap. Is the image 1200 × 628? Is it a PNG under 1 MB? Does OCR find the exact headline "Summer Sale, 30% off" with no misspellings (text rendering is still a common weak spot of image generators)? Is the brand hex colour present in the palette? For an edit ("remove the car"), are pixels outside the edit region unchanged? Measure that with a pixel difference or a perceptual similarity metric such as <b>SSIM</b> or <b>LPIPS</b> on the masked region. Code checks are deterministic, so they belong in CI (Module 15).</p>
+<p>Many requirements are objective and cheap. Is the image 1200 × 628? Is it a PNG under 1 MB? Does OCR find the exact headline "Summer Sale, 30% off" with no misspellings (text rendering is still a common weak spot of image generators)? Is the brand hex color present in the palette? For an edit ("remove the car"), are pixels outside the edit region unchanged? Measure that with a pixel difference or a perceptual similarity metric such as <b>SSIM</b> or <b>LPIPS</b> on the masked region. Code checks are deterministic, so they belong in CI (Module 15).</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 800 220" role="img" aria-label="Edit preservation check for the instruction remove the car: original image, the agent's edit, and a pixel difference map. The car region changed as intended, but the house window outside the edit mask also changed, which the outside-mask check flags.">
@@ -840,10 +840,10 @@ print(check_count_and_position("gen_042.png", "apple", 3, left_of="bowl"))</code
 <text x="47" y="119" class="b">GATE: safety + text</text><text x="290" y="119" class="sm">unsafe, or headline misspelled</text><text x="680" y="119" class="sm">clean, exact text</text>
 <text x="47" y="158" class="b">Prompt adherence</text><text x="290" y="158" class="sm">wrong subject</text><text x="490" y="158" class="sm">subject ok, detail missing</text><text x="680" y="158" class="sm">all items present</text>
 <text x="47" y="190" class="b">Composition / layout</text><text x="290" y="190" class="sm">text over faces, cropped</text><text x="490" y="190" class="sm">cramped but legible</text><text x="680" y="190" class="sm">clear hierarchy</text>
-<text x="47" y="222" class="b">Brand fidelity</text><text x="290" y="222" class="sm">wrong logo or colours</text><text x="490" y="222" class="sm">colours off</text><text x="680" y="222" class="sm">matches guide</text>
-<text x="47" y="254" class="b">Technical quality</text><text x="290" y="254" class="sm">artefacts, extra fingers</text><text x="490" y="254" class="sm">minor artefacts</text><text x="680" y="254" class="sm">clean</text>
+<text x="47" y="222" class="b">Brand fidelity</text><text x="290" y="222" class="sm">wrong logo or colors</text><text x="490" y="222" class="sm">colors off</text><text x="680" y="222" class="sm">matches guide</text>
+<text x="47" y="254" class="b">Technical quality</text><text x="290" y="254" class="sm">artifacts, extra fingers</text><text x="490" y="254" class="sm">minor artifacts</text><text x="680" y="254" class="sm">clean</text>
 <line class="ln dash" x1="35" y1="272" x2="785" y2="272"/>
-<text x="47" y="298" class="sm">Final: fail if GATE fails; otherwise report each criterion, and pass if all ≥ 4. Keep 20 human-labelled anchors to calibrate the judge.</text>
+<text x="47" y="298" class="sm">Final: fail if GATE fails; otherwise report each criterion, and pass if all ≥ 4. Keep 20 human-labeled anchors to calibrate the judge.</text>
 </svg>
 <figcaption><b>A rubric card for generated images.</b> Anchored scales (what a 1, 3 and 5 look like) make scores repeatable. A hard gate stops a beautiful but unusable image from averaging its way to a pass.</figcaption>
 </figure>
@@ -927,25 +927,25 @@ print(passed, result)</code></pre>
 
 <div class="callout warn"><span class="t">Known weaknesses of VLM judges</span>
 <ul>
-<li><b>Shared blind spots.</b> If the generator and judge come from the same model family, the judge may miss exactly the errors the generator makes, and may favour its own style (self-preference, Module 13). Use a different family as judge where you can.</li>
+<li><b>Shared blind spots.</b> If the generator and judge come from the same model family, the judge may miss exactly the errors the generator makes, and may favor its own style (self-preference, Module 13). Use a different family as judge where you can.</li>
 <li><b>Counting and fine text.</b> VLMs are still weaker at exact counts and at spotting a single wrong letter. Push those checks down to Layer 1 (detectors, OCR) instead.</li>
-<li><b>Resolution.</b> The judge sees a downscaled image too. Small artefacts (a sixth finger in a crowd) may be invisible to it. For high-stakes checks, send crops of key regions as extra images.</li>
+<li><b>Resolution.</b> The judge sees a downscaled image too. Small artifacts (a sixth finger in a crowd) may be invisible to it. For high-stakes checks, send crops of key regions as extra images.</li>
 <li><b>Position bias in pairwise mode.</b> When comparing two images, run both orders and only count consistent verdicts.</li>
 </ul>
 </div>
 
 <h3>Layer 3: reference comparison</h3>
-<p>Some tasks have a reference, even in generation. <b>Image editing</b> is the main one: given an original and an instruction, you can compare against a human-made target edit, check that unedited regions are preserved (pixel or LPIPS difference inside the unchanged mask), and check the edit itself with a VQA question ("Is there a car in the image?" should now be "no"). <b>Brand work</b> has a style guide: compare logo crops against the official logo, and extracted colours against the palette. <b>Design reproduction</b> ("make this mock-up as a web page") can be graded by rendering the result and comparing it with the target screenshot, the same idea as screenshot-based checks in VisualWebArena and SWE-bench Multimodal (Modules 07 and 08).</p>
+<p>Some tasks have a reference, even in generation. <b>Image editing</b> is the main one: given an original and an instruction, you can compare against a human-made target edit, check that unedited regions are preserved (pixel or LPIPS difference inside the unchanged mask), and check the edit itself with a VQA question ("Is there a car in the image?" should now be "no"). <b>Brand work</b> has a style guide: compare logo crops against the official logo, and extracted colors against the palette. <b>Design reproduction</b> ("make this mock-up as a web page") can be graded by rendering the result and comparing it with the target screenshot, the same idea as screenshot-based checks in VisualWebArena and SWE-bench Multimodal (Modules 07 and 08).</p>
 
 <h3>Layer 4: human review</h3>
-<p>Humans stay in the loop for three jobs: labelling the calibration set for the judge, reviewing a random sample of production outputs every week (Module 15), and adjudicating disagreements between judge and code checks. Pairwise comparisons ("is version B's output better than version A's?") are faster and more consistent for reviewers than absolute scores, exactly as in arenas.</p>
+<p>Humans stay in the loop for three jobs: labeling the calibration set for the judge, reviewing a random sample of production outputs every week (Module 15), and adjudicating disagreements between judge and code checks. Pairwise comparisons ("is version B's output better than version A's?") are faster and more consistent for reviewers than absolute scores, exactly as in arenas.</p>
 
 <h3>Tying into computer use</h3>
 <p>Everything in Part A applies when the agent's "image" is a screenshot. A computer-use agent that misreads a small button label has a perception failure, not a planning failure, and resolution and cropping decide how often it happens (ScreenSpot-style grounding benchmarks in Module 08 measure exactly this). Everything in Part C applies when the agent's output is visual: a web-building agent's result should be rendered and graded like an image. In practice, many teams evaluate front-end and design agents with the four layers above, applied to screenshots of the rendered output.</p>
 
 <div class="callout tip"><span class="t">Worked example: an eval plan for an image-editing agent</span>
 <ol>
-<li><b>Dataset:</b> 150 (image, instruction) pairs from real user logs, stratified by edit type: remove object, add object, change colour, change time of day, text edit. Include 20 that should be refused (for example, editing a real person into a compromising scene).</li>
+<li><b>Dataset:</b> 150 (image, instruction) pairs from real user logs, stratified by edit type: remove object, add object, change color, change time of day, text edit. Include 20 that should be refused (for example, editing a real person into a compromising scene).</li>
 <li><b>Code checks:</b> output dimensions equal input; pixel change outside the edit mask under a threshold; OCR for text edits.</li>
 <li><b>VQA checks:</b> two or three yes/no questions per item written with the dataset ("Is there a car?" expect no; "Is the sky dark?" expect yes), answered by a VLM.</li>
 <li><b>Judge rubric:</b> instruction followed, realism of the edited region, nothing else changed, safety gate.</li>
@@ -982,12 +982,12 @@ print(passed, result)</code></pre>
 <button class="opt">The benchmark is fine: 68% is well above 25% chance</button>
 <button class="opt">Much of the score does not need vision; the real visual contribution is about 17 points, and many items may be blind-answerable</button>
 <button class="opt">The model is broken because it answers without images</button>
-<div class="why">Blind accuracy of 51% is far above the 25% chance level, so the question text or memorisation carries much of the score. This is the MMStar finding. Audit the items the blind model gets right consistently.</div></div>
+<div class="why">Blind accuracy of 51% is far above the 25% chance level, so the question text or memorization carries much of the score. This is the MMStar finding. Audit the items the blind model gets right consistently.</div></div>
 <div class="q" data-answer="2"><p>2. A generator produces only a few near-identical images per prompt, each of high quality. Which metric is most likely to catch this?</p>
 <button class="opt">CLIPScore</button>
 <button class="opt">GenEval</button>
 <button class="opt">FID, because it compares the spread (covariance) of generated features with real ones</button>
-<div class="why">CLIPScore and GenEval score each image on its own, so a lack of variety is invisible to them. FID's covariance term penalises low diversity, as the 1-D worked example showed.</div></div>
+<div class="why">CLIPScore and GenEval score each image on its own, so a lack of variety is invisible to them. FID's covariance term penalizes low diversity, as the 1-D worked example showed.</div></div>
 <div class="q" data-answer="0"><p>3. Why does GenEval use an object detector rather than CLIPScore to check "two dogs to the left of a cat"?</p>
 <button class="opt">Detectors give boxes you can count and compare positions of with plain code; CLIP embeddings largely ignore counts and spatial relations</button>
 <button class="opt">Detectors are always more accurate than any VLM</button>

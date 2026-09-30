@@ -650,7 +650,7 @@ harbor run --dataset terminal-bench@2.0 --agent claude-code \
 </div>
 
 <h3>Flaky tests</h3>
-<p>A <b>flaky test</b> passes or fails on the same code depending on timing, randomness, network or ordering. Flaky tests add noise to both F2P and P2P, and noise can look like a regression or an improvement. Standard defences:</p>
+<p>A <b>flaky test</b> passes or fails on the same code depending on timing, randomness, network or ordering. Flaky tests add noise to both F2P and P2P, and noise can look like a regression or an improvement. Standard defenses:</p>
 <ul>
 <li>When building the benchmark, run the gold solution several times (3 to 5) and <b>drop any test whose result varies</b>.</li>
 <li>Run the grader with network disabled and random seeds fixed, so behavior cannot depend on the outside world.</li>

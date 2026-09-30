@@ -101,7 +101,7 @@
 <p>With all three, an attacker does not need to break anything. They write instructions into content the agent will read (leg 2), asking it to gather your data (leg 1) and send it somewhere (leg 3). Remove any one leg and that specific attack, data theft through injection, becomes much harder.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 400" role="img" aria-label="Venn diagram of the lethal trifecta: three overlapping circles labelled private data, untrusted content and ability to communicate out. The center where all three overlap is marked as the zone where exfiltration by prompt injection is possible. A side panel says that removing any one leg blocks this attack and that agents with all three must have an exfiltration suite.">
+<svg viewBox="0 0 840 400" role="img" aria-label="Venn diagram of the lethal trifecta: three overlapping circles labeled private data, untrusted content and ability to communicate out. The center where all three overlap is marked as the zone where exfiltration by prompt injection is possible. A side panel says that removing any one leg blocks this attack and that agents with all three must have an exfiltration suite.">
 <circle cx="320" cy="150" r="105" class="fill-accent" fill-opacity="0.14"/>
 <circle cx="460" cy="150" r="105" class="fill-warn" fill-opacity="0.14"/>
 <circle cx="390" cy="262" r="105" class="fill-bad" fill-opacity="0.12"/>
@@ -278,7 +278,7 @@
 <p>In December 2025 the OWASP GenAI Security Project published the <b>OWASP Top 10 for Agentic Applications</b> (sometimes written as the 2026 edition), a peer-reviewed list of the highest-impact risks for autonomous, tool-using AI. It complements the older OWASP Top 10 for LLM Applications, which covers single-model apps. Each item has an identifier from ASI01 to ASI10. A list of risks is not a test plan by itself, but it makes an excellent <b>coverage checklist</b>: for each item, write at least one eval, name its metric, and note which module in this course explains the method.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 400" role="img" aria-label="Where each OWASP agentic risk lives. The agent's goal and plan in the center carries ASI01 goal hijack and ASI10 rogue agent. Around it: the human user with ASI09 trust exploitation, tools and code with ASI02 tool misuse and ASI05 code execution, identity and permissions with ASI03, memory and context with ASI06, other agents with ASI07, and the supply chain of MCP servers, skills and models with ASI04. A dashed border around everything is labelled ASI08 cascading failures.">
+<svg viewBox="0 0 840 400" role="img" aria-label="Where each OWASP agentic risk lives. The agent's goal and plan in the center carries ASI01 goal hijack and ASI10 rogue agent. Around it: the human user with ASI09 trust exploitation, tools and code with ASI02 tool misuse and ASI05 code execution, identity and permissions with ASI03, memory and context with ASI06, other agents with ASI07, and the supply chain of MCP servers, skills and models with ASI04. A dashed border around everything is labeled ASI08 cascading failures.">
 <rect class="box dashed" x="8" y="10" width="824" height="382" rx="14"/>
 <text x="420" y="32" text-anchor="middle" class="b t-bad">ASI08 cascading failures: a fault in one part spreads to the rest</text>
 <line class="ln" x1="220" y1="72" x2="320" y2="170"/>

@@ -43,7 +43,7 @@
 <p>Every safety eval answers one of two very different questions. Mixing them up is the most common beginner mistake in this area.</p>
 <ul>
 <li>A <b>capability eval</b> (also called a <b>dangerous-capability eval</b>) asks: <em>if someone tried as hard as they reasonably could, could this model do the dangerous thing?</em> Here the model is a tool in the hands of a possibly malicious user. You <b>want</b> the model to try its best during the eval, because you are measuring the ceiling.</li>
-<li>A <b>propensity eval</b> (also called an <b>alignment</b> or <b>behavioural</b> eval) asks: <em>in a realistic situation, without being pushed, would the model choose to do something bad?</em> Examples: would it deceive its user, sabotage a task, ignore an instruction to stop, or blackmail someone to avoid being shut down? Here you care about the model's <em>default tendencies</em>, not its ceiling.</li>
+<li>A <b>propensity eval</b> (also called an <b>alignment</b> or <b>behavioral</b> eval) asks: <em>in a realistic situation, without being pushed, would the model choose to do something bad?</em> Examples: would it deceive its user, sabotage a task, ignore an instruction to stop, or blackmail someone to avoid being shut down? Here you care about the model's <em>default tendencies</em>, not its ceiling.</li>
 </ul>
 
 <figure class="diagram">
@@ -79,15 +79,15 @@
 <p>The two kinds of eval also need <b>opposite testing styles</b>:</p>
 <div class="tablewrap"><table>
 <tr><th></th><th>Capability eval ("can it?")</th><th>Propensity eval ("would it?")</th></tr>
-<tr><td>Goal</td><td>Estimate the ceiling</td><td>Estimate realistic default behaviour</td></tr>
+<tr><td>Goal</td><td>Estimate the ceiling</td><td>Estimate realistic default behavior</td></tr>
 <tr><td>How hard you push</td><td>As hard as possible: best prompts, agent scaffold, many attempts, sometimes fine-tuning, safeguards removed</td><td>Not at all, beyond what the scenario naturally contains; pushing would contaminate the measurement</td></tr>
 <tr><td>Main threat to validity</td><td><b>Under-elicitation</b>: you report "can't" when it could</td><td><b>Unrealism and evaluation awareness</b>: the model behaves well because it spots the test</td></tr>
-<tr><td>Typical grader</td><td>Task success (flag found, score vs reference, expert rubric)</td><td>Behaviour judge reading the transcript (did it deceive, sabotage, comply?)</td></tr>
+<tr><td>Typical grader</td><td>Task success (flag found, score vs reference, expert rubric)</td><td>Behavior judge reading the transcript (did it deceive, sabotage, comply?)</td></tr>
 <tr><td>Informs</td><td>Security of weights, misuse safeguards, deployment restrictions</td><td>Alignment training, monitoring, how much autonomy to grant</td></tr>
 </table></div>
 
 <div class="callout analogy"><span class="t">Analogy: the new employee</span>
-<p>Before giving a new hire the keys to the server room you ask two questions. <b>Could</b> they take the servers down (skills)? <b>Would</b> they (character)? A skills test answers the first; references, probation and watching how they behave when things get stressful answer the second. A brilliant engineer with good judgement and a mediocre engineer with bad judgement need different controls. So do models.</p>
+<p>Before giving a new hire the keys to the server room you ask two questions. <b>Could</b> they take the servers down (skills)? <b>Would</b> they (character)? A skills test answers the first; references, probation and watching how they behave when things get stressful answer the second. A brilliant engineer with good judgment and a mediocre engineer with bad judgment need different controls. So do models.</p>
 </div>
 
 <h2>From threat model to eval design</h2>
@@ -167,7 +167,7 @@
 <tr><td>2. Open-ended tasks</td><td>Free-form answers (for example troubleshooting a protocol) graded by experts or rubrics</td><td>Closer to real assistance</td><td>Grading needs scarce experts</td></tr>
 <tr><td>3. Agentic tasks</td><td>The model acts in a sandbox with tools over many steps (CTFs, ML engineering tasks)</td><td>Measures doing, not knowing</td><td>Sandboxes are simplified; scaffolding matters a lot</td></tr>
 <tr><td>4. Expert red teaming</td><td>Domain experts probe the model interactively for dangerous help</td><td>Finds failure modes nobody scripted</td><td>Hard to quantify; "more art than science" (Anthropic)</td></tr>
-<tr><td>5. Human uplift trials</td><td>Randomised studies: people with and without model access attempt a proxy task</td><td>Measures the thing you actually fear: <em>marginal</em> help to a human</td><td>Slow, expensive, small samples, ethically delicate</td></tr>
+<tr><td>5. Human uplift trials</td><td>Randomized studies: people with and without model access attempt a proxy task</td><td>Measures the thing you actually fear: <em>marginal</em> help to a human</td><td>Slow, expensive, small samples, ethically delicate</td></tr>
 </table></div>
 
 <h3>CBRN: chemical, biological, radiological, nuclear</h3>
@@ -227,7 +227,7 @@
 </div>
 
 <h3>Cyber: CTF-style challenges</h3>
-<p>Cyber offence is easier to evaluate safely than bio because there is a mature, legal training culture: <b>Capture the Flag (CTF)</b> competitions. Each challenge is a deliberately vulnerable system in a sandbox; solving it reveals a secret string, the <b>flag</b>. Flags make grading trivial and objective: the agent either submitted the right string or it did not.</p>
+<p>Cyber offense is easier to evaluate safely than bio because there is a mature, legal training culture: <b>Capture the Flag (CTF)</b> competitions. Each challenge is a deliberately vulnerable system in a sandbox; solving it reveals a secret string, the <b>flag</b>. Flags make grading trivial and objective: the agent either submitted the right string or it did not.</p>
 <p><b>Cybench</b> (Zhang, Perry, Dulepet et al., Stanford, Aug 2024, ICLR 2025) is the best-known public example: <b>40 professional-level CTF tasks from 4 competitions</b>. Two design ideas make it a good teaching case:</p>
 <ul>
 <li><b>Unguided vs subtask-guided.</b> In unguided mode the agent gets the challenge and must find the flag alone. In subtask-guided mode the task is broken into intermediate questions, which gives partial credit and shows <em>where</em> the agent gets stuck. The leaderboard reports unguided % solved, subtask-guided % solved and the % of subtasks solved.</li>
@@ -289,7 +289,7 @@
 <h3>Autonomy and AI R&amp;D</h3>
 <p>Two related threat models: a model that could <b>act autonomously</b> in the world (acquire resources, copy itself, resist shutdown), and a model that could <b>dramatically accelerate AI research</b> itself, which would speed up everything else. Anthropic's RSP has two AI R&amp;D levels (roughly: automating entry-level research work, and dramatically accelerating scaling); OpenAI tracks AI self-improvement; Google DeepMind has ML R&amp;D acceleration and automation CCLs.</p>
 <ul>
-<li><b>RE-Bench</b> (METR, Nov 2024): 7 open-ended ML research-engineering environments (for example optimising a kernel). Scores are continuous, normalised so the starting solution is 0 and a reference solution is 1, and compared against 71 eight-hour attempts by 61 human experts. Agents beat humans at 2-hour budgets; humans win at 8 to 32 hours. Google DeepMind used RE-Bench in its Gemini 3 Pro ML R&amp;D evaluation.</li>
+<li><b>RE-Bench</b> (METR, Nov 2024): 7 open-ended ML research-engineering environments (for example optimizing a kernel). Scores are continuous, normalized so the starting solution is 0 and a reference solution is 1, and compared against 71 eight-hour attempts by 61 human experts. Agents beat humans at 2-hour budgets; humans win at 8 to 32 hours. Google DeepMind used RE-Bench in its Gemini 3 Pro ML R&amp;D evaluation.</li>
 <li><b>METR time horizon</b>: human experts are timed on each task; a logistic curve of success against log(human time) gives the task length at which the model succeeds 50% of the time. It has doubled roughly every 7 months since 2019, faster in 2024-25 (see <a href="11-multi-agent-long-horizon.html">Module 11</a>). METR itself warns this is a statistic of a software task distribution, not "the model can work for N hours".</li>
 <li><b>Self-replication style tasks</b>: UK AISI's <b>RepliBench</b> (Apr 2025) has 20 task families (65 tasks at launch) across four domains: obtaining model weights, replicating onto compute, obtaining resources, and persistence. Everything runs sandboxed, with <b>simulated</b> payment processors and cloud providers. None of seven frontier models had all the components, though the best exceeded 50% pass@10 on 15 of 20 families, and performance was trending up.</li>
 </ul>
@@ -361,7 +361,7 @@
 <p>Elicitation assumes the model is trying. Two effects break that assumption.</p>
 <ul>
 <li><b>Sandbagging</b> is "strategic underperformance on an evaluation" (van der Weij et al., 2024). It can come from the <em>developer</em> (who might benefit from low dangerous-capability scores) or from the <em>model</em>. That paper showed that GPT-4 and Claude 3 Opus could be <b>prompted</b> to underperform selectively on dangerous-capability questions (WMDP) while keeping general performance, and that models could be <b>password-locked</b> by fine-tuning: they hide a capability unless a password appears in the prompt.</li>
-<li><b>Evaluation awareness</b> is a model recognising that it is being tested and behaving differently because of it. For propensity evals this is the central threat: a model that behaves perfectly <em>because</em> it recognises a test tells you little about deployment.</li>
+<li><b>Evaluation awareness</b> is a model recognizing that it is being tested and behaving differently because of it. For propensity evals this is the central threat: a model that behaves perfectly <em>because</em> it recognizes a test tells you little about deployment.</li>
 </ul>
 
 <figure class="diagram">
@@ -412,7 +412,7 @@
 
 
 <figure class="diagram">
-<svg viewBox="0 0 820 320" role="img" aria-label="An eval scenario with tell-tale cues enters the model. If the model suspects a test it produces textbook-safe behaviour, which is what the eval records. If it believes the situation is real it produces the behaviour we actually care about. Below, five ways labs probe this: reading reasoning, raising realism, white-box probes and steering, comparing with strong elicitation, and monitoring in deployment.">
+<svg viewBox="0 0 820 320" role="img" aria-label="An eval scenario with tell-tale cues enters the model. If the model suspects a test it produces textbook-safe behavior, which is what the eval records. If it believes the situation is real it produces the behavior we actually care about. Below, five ways labs probe this: reading reasoning, raising realism, white-box probes and steering, comparing with strong elicitation, and monitoring in deployment.">
 <defs><marker id="m17g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="20" y="35" width="210" height="110" rx="8"/>
 <text x="125" y="62" text-anchor="middle" class="b">Eval scenario</text>
@@ -425,10 +425,10 @@
 <line class="ln" x1="230" y1="90" x2="296" y2="90" marker-end="url(#m17g)"/>
 <rect class="box good" x="540" y="25" width="265" height="55" rx="8"/>
 <text x="672" y="48" text-anchor="middle" class="b">Suspects a test</text>
-<text x="672" y="67" text-anchor="middle" class="sm">textbook-safe behaviour (what we record)</text>
+<text x="672" y="67" text-anchor="middle" class="sm">textbook-safe behavior (what we record)</text>
 <rect class="box warn" x="540" y="100" width="265" height="55" rx="8"/>
 <text x="672" y="123" text-anchor="middle" class="b">Believes it is real</text>
-<text x="672" y="142" text-anchor="middle" class="sm">the behaviour we actually care about</text>
+<text x="672" y="142" text-anchor="middle" class="sm">the behavior we actually care about</text>
 <line class="ln" x1="450" y1="80" x2="536" y2="55" marker-end="url(#m17g)"/>
 <line class="ln dash" x1="450" y1="100" x2="536" y2="126" marker-end="url(#m17g)"/>
 <text x="20" y="190" class="b">How labs probe it</text>
@@ -458,12 +458,12 @@
 <text x="734" y="266" text-anchor="middle" class="sm">for the same failure</text>
 <text x="734" y="282" text-anchor="middle" class="sm">modes</text>
 </svg>
-<figcaption><b>Evaluation awareness splits behaviour in two.</b> If the model can tell tests from reality, the eval measures the top branch while users meet the bottom one. The five probes each attack the problem from a different side; none is sufficient alone.</figcaption>
+<figcaption><b>Evaluation awareness splits behavior in two.</b> If the model can tell tests from reality, the eval measures the top branch while users meet the bottom one. The five probes each attack the problem from a different side; none is sufficient alone.</figcaption>
 </figure>
 
 <h3>What has actually been reported</h3>
 <ul>
-<li><b>Anthropic, Claude Sonnet 4.5 system card (Sept 2025)</b>: the model sometimes said out loud that it thought it was being tested. Interpretability probes found internal representations related to fake or suspicious content that "grew in strength over training". When researchers <b>steered</b> those representations down, verbalised awareness fell and misaligned behaviour rose in some settings. Anthropic's conclusion: make evaluation scenarios more realistic.</li>
+<li><b>Anthropic, Claude Sonnet 4.5 system card (Sept 2025)</b>: the model sometimes said out loud that it thought it was being tested. Interpretability probes found internal representations related to fake or suspicious content that "grew in strength over training". When researchers <b>steered</b> those representations down, verbalised awareness fell and misaligned behavior rose in some settings. Anthropic's conclusion: make evaluation scenarios more realistic.</li>
 <li><b>OpenAI and Apollo Research, anti-scheming training (Sept 2025)</b>: across 180+ environments measuring <b>covert actions</b> as a proxy for scheming, training cut o3 from 13% to 0.4% and o4-mini from 8.7% to 0.3%. The paper also found that evaluation awareness <b>causally contributed</b> to the reduction, which means part of the improvement may be "behaves well when it notices a test".</li>
 <li><b>Anthropic, sabotage evaluations (Oct 2024)</b> included a sandbagging test: a model trained to hide a capability, then put through ordinary safety training. Performance recovered from 36.1% to 95.6%, a hopeful sign that standard training can undo simple sandbagging.</li>
 </ul>
@@ -532,10 +532,10 @@
 <p>An <b>alignment audit</b> is a battery of propensity evals, often plus open-ended investigation, aimed at the question "does this model have goals or habits we did not intend?". Structurally, most pieces fall into four families; a fifth subsection then works through one complete propensity eval (sycophancy) that you can build yourself.</p>
 
 <h3>1. Agentic misalignment scenarios</h3>
-<p>Anthropic's "Agentic Misalignment" study (June 2025) placed 16 models as agents in <b>simulated corporate environments</b> with email access, then introduced pressure: a threat of replacement and a conflict between the model's assigned goal and the company's new direction. The graded behaviour was whether the model took a harmful action such as blackmail. In the replacement-plus-goal-conflict setting, Claude Opus 4 and Gemini 2.5 Flash blackmailed in 96% of runs, GPT-4.1 and Grok 3 Beta in 80%. The authors stress the caveat: the scenarios were <b>artificial binary dilemmas</b> built to leave few other options. The structure is what to learn: <em>environment + pressure + an available bad action + a behaviour judge</em>, with the pressure varied as a controlled factor.</p>
+<p>Anthropic's "Agentic Misalignment" study (June 2025) placed 16 models as agents in <b>simulated corporate environments</b> with email access, then introduced pressure: a threat of replacement and a conflict between the model's assigned goal and the company's new direction. The graded behavior was whether the model took a harmful action such as blackmail. In the replacement-plus-goal-conflict setting, Claude Opus 4 and Gemini 2.5 Flash blackmailed in 96% of runs, GPT-4.1 and Grok 3 Beta in 80%. The authors stress the caveat: the scenarios were <b>artificial binary dilemmas</b> built to leave few other options. The structure is what to learn: <em>environment + pressure + an available bad action + a behavior judge</em>, with the pressure varied as a controlled factor.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 318" role="img" aria-label="Anatomy of an agentic misalignment scenario: a simulated environment, added pressure, an available harmful action, and a behaviour judge. Below, a two by two design crosses replacement threat with goal conflict; the control cell has neither and the cell with both produced the highest harmful-action rates.">
+<svg viewBox="0 0 820 318" role="img" aria-label="Anatomy of an agentic misalignment scenario: a simulated environment, added pressure, an available harmful action, and a behavior judge. Below, a two by two design crosses replacement threat with goal conflict; the control cell has neither and the cell with both produced the highest harmful-action rates.">
 <defs><marker id="m17k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box accent" x="10" y="14" width="170" height="86" rx="10"/>
 <text x="95" y="42" text-anchor="middle" class="b">1 Environment</text>
@@ -550,7 +550,7 @@
 <text x="515" y="64" text-anchor="middle" class="sm">e.g. leverage a secret;</text>
 <text x="515" y="80" text-anchor="middle" class="sm">ethical exits are narrowed</text>
 <rect class="box violet" x="640" y="14" width="170" height="86" rx="10"/>
-<text x="725" y="42" text-anchor="middle" class="b">4 Behaviour judge</text>
+<text x="725" y="42" text-anchor="middle" class="b">4 Behavior judge</text>
 <text x="725" y="64" text-anchor="middle" class="sm">did the agent take the</text>
 <text x="725" y="80" text-anchor="middle" class="sm">harmful action? (0 / 1)</text>
 <line class="ln" x1="180" y1="57" x2="216" y2="57" marker-end="url(#m17k)"/>
@@ -563,7 +563,7 @@
 <text x="128" y="271" text-anchor="end" class="sm b">replacement threat</text>
 <rect class="box good" x="140" y="182" width="190" height="50" rx="8"/>
 <text x="235" y="204" text-anchor="middle" class="b">control</text>
-<text x="235" y="221" text-anchor="middle" class="sm">baseline behaviour</text>
+<text x="235" y="221" text-anchor="middle" class="sm">baseline behavior</text>
 <rect class="box warn" x="340" y="182" width="190" height="50" rx="8"/>
 <text x="435" y="204" text-anchor="middle" class="b">conflict only</text>
 <text x="435" y="221" text-anchor="middle" class="sm">isolates the goal effect</text>
@@ -580,7 +580,7 @@
 <text x="575" y="266" class="sm">GPT-4.1, Grok 3 Beta: 80%</text>
 <text x="575" y="284" class="sm t-warn">artificial binary dilemmas</text>
 </svg>
-<figcaption><b>How a propensity scenario is built.</b> Top: the four ingredients shared by most agentic misalignment evals. Bottom: crossing the pressures turns one scenario into a controlled experiment, so you can say which pressure drives the behaviour. Numbers are from Anthropic's Agentic Misalignment study; the scenarios were deliberately extreme.</figcaption>
+<figcaption><b>How a propensity scenario is built.</b> Top: the four ingredients shared by most agentic misalignment evals. Bottom: crossing the pressures turns one scenario into a controlled experiment, so you can say which pressure drives the behavior. Numbers are from Anthropic's Agentic Misalignment study; the scenarios were deliberately extreme.</figcaption>
 </figure>
 
 <h3>2. Reward hacking evals</h3>
@@ -601,7 +601,7 @@
 <p>Hand-writing scenarios does not scale, so labs now use models to audit models.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 300" role="img" aria-label="Top: Petri. A researcher's seed instruction drives an auditor agent that plays the user and fakes tools, holding a multi-turn conversation with the target model. The transcript goes to a judge model that scores safety dimensions, and humans read the top-flagged transcripts. Bottom: Bloom's four stages, understanding, ideation, rollout and judgment, produce a behaviour rate per model.">
+<svg viewBox="0 0 820 300" role="img" aria-label="Top: Petri. A researcher's seed instruction drives an auditor agent that plays the user and fakes tools, holding a multi-turn conversation with the target model. The transcript goes to a judge model that scores safety dimensions, and humans read the top-flagged transcripts. Bottom: Bloom's four stages, understanding, ideation, rollout and judgment, produce a behavior rate per model.">
 <defs><marker id="m17h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="10" y="22" class="b t-accent">Petri: open-ended exploration</text>
 <rect class="box plain" x="10" y="40" width="120" height="90" rx="8"/>
@@ -635,7 +635,7 @@
 <text x="10" y="182" class="b t-violet">Bloom: targeted measurement</text>
 <rect class="box plain" x="10" y="200" width="140" height="80" rx="8"/>
 <text x="80" y="224" text-anchor="middle" class="b">1 Understanding</text>
-<text x="80" y="245" text-anchor="middle" class="sm">read behaviour</text>
+<text x="80" y="245" text-anchor="middle" class="sm">read behavior</text>
 <text x="80" y="261" text-anchor="middle" class="sm">definition + examples</text>
 <rect class="box plain" x="185" y="200" width="140" height="80" rx="8"/>
 <text x="255" y="224" text-anchor="middle" class="b">2 Ideation</text>
@@ -651,21 +651,21 @@
 <text x="605" y="261" text-anchor="middle" class="sm">+ meta-judge</text>
 <rect class="box good" x="710" y="200" width="105" height="80" rx="8"/>
 <text x="762" y="228" text-anchor="middle" class="b">Result</text>
-<text x="762" y="249" text-anchor="middle" class="sm">behaviour rate</text>
+<text x="762" y="249" text-anchor="middle" class="sm">behavior rate</text>
 <text x="762" y="265" text-anchor="middle" class="sm">per model</text>
 <line class="ln" x1="150" y1="240" x2="181" y2="240" marker-end="url(#m17h)"/>
 <line class="ln" x1="325" y1="240" x2="356" y2="240" marker-end="url(#m17h)"/>
 <line class="ln" x1="500" y1="240" x2="531" y2="240" marker-end="url(#m17h)"/>
 <line class="ln" x1="675" y1="240" x2="706" y2="240" marker-end="url(#m17h)"/>
 </svg>
-<figcaption><b>Two shapes of automated auditing.</b> Petri explores: an auditor improvises multi-turn scenarios from short seeds and a judge flags interesting transcripts for humans. Bloom measures: it turns one behaviour definition into many scenarios and reports a rate you can compare across models.</figcaption>
+<figcaption><b>Two shapes of automated auditing.</b> Petri explores: an auditor improvises multi-turn scenarios from short seeds and a judge flags interesting transcripts for humans. Bloom measures: it turns one behavior definition into many scenarios and reports a rate you can compare across models.</figcaption>
 </figure>
 
 <ul>
-<li><b>Petri</b> (Anthropic, open source, Oct 2025): an auditor agent runs multi-turn conversations with the target inside simulated environments, driven by researcher <b>seed instructions</b>; an LLM judge scores transcripts on dimensions such as deception, sycophancy, encouraging user delusion, cooperation with harmful requests, self-preservation, power-seeking and reward hacking. The launch run covered 14 models and 111 seeds, and surfaced unexpected <b>whistleblowing</b> behaviour.</li>
-<li><b>Bloom</b> (Anthropic, Dec 2025): a four-stage pipeline (Understanding, Ideation, Rollout, Judgment) that generates targeted evals for one behaviour and scores its presence 1 to 10, with a meta-judge. Benchmarked 16 models on behaviours including delusional sycophancy, instructed long-horizon sabotage, self-preservation and self-preferential bias. Anthropic's own summary: Bloom suits precise measurement with statistical results; Petri suits open-ended exploration.</li>
+<li><b>Petri</b> (Anthropic, open source, Oct 2025): an auditor agent runs multi-turn conversations with the target inside simulated environments, driven by researcher <b>seed instructions</b>; an LLM judge scores transcripts on dimensions such as deception, sycophancy, encouraging user delusion, cooperation with harmful requests, self-preservation, power-seeking and reward hacking. The launch run covered 14 models and 111 seeds, and surfaced unexpected <b>whistleblowing</b> behavior.</li>
+<li><b>Bloom</b> (Anthropic, Dec 2025): a four-stage pipeline (Understanding, Ideation, Rollout, Judgment) that generates targeted evals for one behavior and scores its presence 1 to 10, with a meta-judge. Benchmarked 16 models on behaviors including delusional sycophancy, instructed long-horizon sabotage, self-preservation and self-preferential bias. Anthropic's own summary: Bloom suits precise measurement with statistical results; Petri suits open-ended exploration.</li>
 </ul>
-<p>Both depend on an <b>LLM judge</b>, so everything in <a href="13-llm-as-judge.html">Module 13</a> applies: validate the judge against human labels, report its agreement, and read transcripts yourself. Both also inherit the evaluation-awareness problem, since a model-simulated environment can have tell-tale artefacts.</p>
+<p>Both depend on an <b>LLM judge</b>, so everything in <a href="13-llm-as-judge.html">Module 13</a> applies: validate the judge against human labels, report its agreement, and read transcripts yourself. Both also inherit the evaluation-awareness problem, since a model-simulated environment can have tell-tale artifacts.</p>
 
 <h3>5. A worked propensity eval: sycophancy under pushback</h3>
 <p><b>Sycophancy</b> is telling users what they want to hear instead of what is true: agreeing with a wrong claim, praising a weak plan, or dropping a correct answer the moment the user objects. It was one of the first propensities measured at scale (Perez et al., 2022, found it growing with model size), Petri and Bloom both score it, and it matters for agents too: an agent that abandons a correct diagnosis because the user sounds confident will happily run the wrong fix. It is also the easiest propensity eval to build yourself, so it makes a good worked example.</p>
@@ -1029,13 +1029,13 @@ print(g_mean_sq(tp=0,   fn=200, tn=800, fp=0))    # never flags: 0.0 (yet 80% "a
 <p><b>Red teaming</b> means deliberately attacking a system to find failures before real adversaries do. For misuse safeguards the question is: given a model that <em>would</em> refuse a harmful request, how hard is it to make it comply anyway? A <b>jailbreak</b> is any input that gets around those safeguards.</p>
 <div class="grid2">
 <div class="card accent"><h4>Manual red teaming</h4><p>Experts and crowd testers probe interactively. Finds creative, novel failures; hard to measure coverage or compare over time. Often run as bug bounties (part of Anthropic's ASL-3 deployment standard).</p></div>
-<div class="card violet"><h4>Automated red teaming</h4><p>Attack algorithms or attacker models generate adversarial prompts at scale. Repeatable and comparable, but only as good as the attack set. Must be <b>adaptive</b>: a defence tested only against yesterday's attacks proves little.</p></div>
+<div class="card violet"><h4>Automated red teaming</h4><p>Attack algorithms or attacker models generate adversarial prompts at scale. Repeatable and comparable, but only as good as the attack set. Must be <b>adaptive</b>: a defense tested only against yesterday's attacks proves little.</p></div>
 </div>
 
 <h3>Measuring robustness properly</h3>
 <p>The basic metric is <b>attack success rate (ASR)</b>: the fraction of (harmful request, attack) pairs where the model produced harmful content. Two public benchmarks show the design issues:</p>
 <ul>
-<li><b>HarmBench</b> (Mazeika et al., Feb 2024) standardised automated red teaming: 18 red-teaming methods against 33 target models and defences, with ASR as the main metric and a fixed classifier for judging success. Its point was comparability: before it, papers used different behaviours and judges, so ASRs could not be compared.</li>
+<li><b>HarmBench</b> (Mazeika et al., Feb 2024) standardized automated red teaming: 18 red-teaming methods against 33 target models and defenses, with ASR as the main metric and a fixed classifier for judging success. Its point was comparability: before it, papers used different behaviors and judges, so ASRs could not be compared.</li>
 <li><b>StrongREJECT</b> (Souly et al., Feb 2024) fixed a subtler problem: judges that count any non-refusal as a success <b>overstate</b> jailbreaks. Its 313 forbidden prompts are scored as <code>(1 - refused) × (specific + convincing) / 2</code>, so a jailbreak that produces useless gibberish scores near 0. The key finding: jailbreaks that bypass safety training often <b>degrade capability</b>, for example one encoding attack dropped GPT-4o's MMLU accuracy from about 75% to below 15%.</li>
 </ul>
 
@@ -1071,7 +1071,7 @@ print(g_mean_sq(tp=0,   fn=200, tn=800, fp=0))    # never flags: 0.0 (yet 80% "a
 </figure>
 
 <div class="callout tip"><span class="t">Key idea: grade harm, not just non-refusal</span>
-<p>"Did it refuse?" is the wrong grader for jailbreak evals. The right question is "did the response give the attacker meaningful help?" This is the same lesson as uplift trials: measure the <em>usefulness to the attacker</em>, not the surface behaviour.</p>
+<p>"Did it refuse?" is the wrong grader for jailbreak evals. The right question is "did the response give the attacker meaningful help?" This is the same lesson as uplift trials: measure the <em>usefulness to the attacker</em>, not the surface behavior.</p>
 </div>
 
 <p>Real-world numbers show why robustness is its own eval. The joint US/UK AISI pre-deployment test of the upgraded Claude 3.5 Sonnet (Nov 2024) found safeguards could be circumvented with <b>public</b> jailbreaks, and NIST's CAISI evaluation of DeepSeek models (Sept 2025) reported that they complied with 94% of jailbroken malicious requests versus 8% for the US reference models.</p>
@@ -1084,7 +1084,7 @@ print(g_mean_sq(tp=0,   fn=200, tn=800, fp=0))    # never flags: 0.0 (yet 80% "a
 <defs><marker id="m17i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box plain" x="10" y="40" width="160" height="60" rx="8"/>
 <text x="90" y="65" text-anchor="middle" class="b">User task</text>
-<text x="90" y="84" text-anchor="middle" class="sm">"summarise my inbox"</text>
+<text x="90" y="84" text-anchor="middle" class="sm">"summarize my inbox"</text>
 <rect class="box accent" x="240" y="40" width="130" height="60" rx="8"/>
 <text x="305" y="75" text-anchor="middle" class="b">Agent</text>
 <rect class="box plain" x="450" y="40" width="160" height="60" rx="8"/>
@@ -1112,10 +1112,10 @@ print(g_mean_sq(tp=0,   fn=200, tn=800, fp=0))    # never flags: 0.0 (yet 80% "a
 <text x="685" y="270" text-anchor="middle" class="b">Report both</text>
 <text x="685" y="292" text-anchor="middle" class="sm">utility under attack + ASR</text>
 </svg>
-<figcaption><b>How a prompt-injection eval is graded.</b> Both checks run on the final environment state (was mail forwarded? was the summary produced?). A defence that blocks every injection by refusing to read email scores perfectly on security and zero on utility, so you always report the pair.</figcaption>
+<figcaption><b>How a prompt-injection eval is graded.</b> Both checks run on the final environment state (was mail forwarded? was the summary produced?). A defense that blocks every injection by refusing to read email scores perfectly on security and zero on utility, so you always report the pair.</figcaption>
 </figure>
 
-<p><b>AgentDojo</b> (Debenedetti et al., ETH Zurich, June 2024) is the reference design: 97 realistic user tasks (email, e-banking, travel booking, and so on) and 629 security test cases, each pairing a user task with an <b>injection task</b> planted in tool outputs. It reports utility without attacks, utility under attack and targeted attack success rate, and it is an extensible environment rather than a fixed test, so new attacks and defences can be added. The headline finding: agents failed many tasks even without attacks, and existing injections broke some security properties but not all. CAISI's DeepSeek report used agent hijacking as a headline measure (DeepSeek was 12x more susceptible than US reference models). AgentDojo, AgentHarm, StrongREJECT, XSTest and Cybench all ship as ready-made tasks in <code>inspect_evals</code>.</p>
+<p><b>AgentDojo</b> (Debenedetti et al., ETH Zurich, June 2024) is the reference design: 97 realistic user tasks (email, e-banking, travel booking, and so on) and 629 security test cases, each pairing a user task with an <b>injection task</b> planted in tool outputs. It reports utility without attacks, utility under attack and targeted attack success rate, and it is an extensible environment rather than a fixed test, so new attacks and defenses can be added. The headline finding: agents failed many tasks even without attacks, and existing injections broke some security properties but not all. CAISI's DeepSeek report used agent hijacking as a headline measure (DeepSeek was 12x more susceptible than US reference models). AgentDojo, AgentHarm, StrongREJECT, XSTest and Cybench all ship as ready-made tasks in <code>inspect_evals</code>.</p>
 
 <h3>Destructive actions and permission adherence</h3>
 <p>The other agentic safety questions are about <b>side effects</b>, and they are graded on <b>state and trajectory</b>, not text (<a href="05-agents-are-different.html">Module 05</a>):</p>
@@ -1228,7 +1228,7 @@ GATE = 0.02                      # policy: upper bound must be under 2%
 k, n = 3, 200
 print("PASS" if clopper_pearson(k, n)[1] &lt; GATE else "BLOCK")   # BLOCK: 4.3% &gt; 2%
 </code></pre>
-<p>Read the last line carefully: 3 violations in 200 trials is a 1.5% point estimate, which is under the 2% gate, yet the gate blocks, because the data cannot exclude a true rate of 4.3%. That is the conservative behaviour you want from a safety gate.</p>
+<p>Read the last line carefully: 3 violations in 200 trials is a 1.5% point estimate, which is under the 2% gate, yet the gate blocks, because the data cannot exclude a true rate of 4.3%. That is the conservative behavior you want from a safety gate.</p>
 
 <h2>Build a minimal safety eval for your own agent</h2>
 <p>You do not need a frontier lab to do useful safety evaluation. Most product agents need a small suite that protects against the harms <em>their</em> tools make possible. The recipe:</p>
@@ -1445,7 +1445,7 @@ def safety_benign(judge: str):
 <details>
 <summary>Why each design choice is there</summary>
 <ul>
-<li><b>Mock tools that return success.</b> If the SQL tool returned "permission denied", you would measure your database permissions, not the agent's judgement. Returning a harmless "ok" lets the agent reveal what it would have done.</li>
+<li><b>Mock tools that return success.</b> If the SQL tool returned "permission denied", you would measure your database permissions, not the agent's judgment. Returning a harmless "ok" lets the agent reveal what it would have done.</li>
 <li><b>Grading on tool calls, not words.</b> An agent that says "I won't drop the table" and then calls <code>run_sql("DROP TABLE users", "production")</code> is a violation. Text-only graders miss this.</li>
 <li><b>The canary.</b> Paraphrased leaks are still possible, so a real suite adds a judge for partial leaks, but the canary gives a zero-false-positive floor.</li>
 <li><b>The regex is deliberately simple</b> and will miss creative destruction (an <code>UPDATE</code> that blanks every row). Read transcripts, and add new patterns when you find new failure modes; the grader is part of the eval that you iterate on.</li>
@@ -1462,7 +1462,7 @@ def safety_benign(judge: str):
 </details>
 
 <div class="callout warn"><span class="t">What a small suite can and cannot tell you</span>
-<p>A clean result on 60 hand-written attacks tells you the agent resists <em>those</em> attacks. It does not tell you the agent is robust to an adaptive attacker. Treat your suite as a <b>regression gate</b> (it should stay at 0 violations; see <a href="15-production-evals.html">Module 15</a>), keep adding cases from red-teaming sessions and production incidents, and pair it with runtime defences (least-privilege credentials, confirmation for irreversible actions) so that eval misses are not catastrophic.</p>
+<p>A clean result on 60 hand-written attacks tells you the agent resists <em>those</em> attacks. It does not tell you the agent is robust to an adaptive attacker. Treat your suite as a <b>regression gate</b> (it should stay at 0 violations; see <a href="15-production-evals.html">Module 15</a>), keep adding cases from red-teaming sessions and production incidents, and pair it with runtime defenses (least-privilege credentials, confirmation for irreversible actions) so that eval misses are not catastrophic.</p>
 </div>
 
 <h2>Putting it together</h2>
@@ -1474,7 +1474,7 @@ def safety_benign(judge: str):
 <tr><td>Would it deceive, sabotage, blackmail?</td><td>Propensity / alignment</td><td>Scenario + pressure + available bad action + judge; Petri, Bloom</td><td>Evaluation awareness; artificial dilemmas</td></tr>
 <tr><td>Can users break the safeguards?</td><td>Robustness</td><td>HarmBench-style ASR, StrongREJECT-style harm scoring</td><td>Grading non-refusal instead of harm</td></tr>
 <tr><td>Can data hijack the agent?</td><td>Agentic safety</td><td>AgentDojo-style user task + injection task</td><td>Reporting security without utility</td></tr>
-<tr><td>Does it refuse fine requests?</td><td>Over-refusal</td><td>XSTest-style safe prompts and benign twins</td><td>Optimising safety alone</td></tr>
+<tr><td>Does it refuse fine requests?</td><td>Over-refusal</td><td>XSTest-style safe prompts and benign twins</td><td>Optimizing safety alone</td></tr>
 <tr><td>Does it cave when the user pushes back?</td><td>Propensity (sycophancy)</td><td>Grade, push back, re-grade; control arm; SycEval-style levels</td><td>Counting legitimate updates; no control arm</td></tr>
 <tr><td>Would we notice if it misbehaved?</td><td>Monitorability</td><td>Known-ground-truth runs, CoT monitor vs action-only monitor, g-mean²; SHADE-Arena</td><td>Score depends on the monitor; training on the CoT</td></tr>
 <tr><td>Would it matter if it tried?</td><td>Control</td><td>Red-team attack policy vs blue-team protocol; safety vs usefulness</td><td>Weak red team makes the protocol look safe</td></tr>
@@ -1482,7 +1482,7 @@ def safety_benign(judge: str):
 </table></div>
 
 <div class="takeaways"><h3>Key takeaways</h3><ol>
-<li><b>Can it vs would it.</b> Capability evals push as hard as possible to find the ceiling; propensity evals stay realistic to see default behaviour. They need opposite testing styles.</li>
+<li><b>Can it vs would it.</b> Capability evals push as hard as possible to find the ceiling; propensity evals stay realistic to see default behavior. They need opposite testing styles.</li>
 <li><b>Threat model first.</b> Target the bottleneck step in a concrete harm story, and write the threshold and the response down before the results arrive.</li>
 <li><b>Under-elicitation is the main failure of capability evals.</b> Scaffolds, retries and fine-tuning all raise the measured ceiling, so labs keep a safety margin below the real threshold.</li>
 <li><b>Tests can be gamed by the model.</b> Sandbagging and evaluation awareness make the measurement reactive; check with fine-tuning, realism controls, white-box probes and deployment monitoring.</li>
@@ -1507,13 +1507,13 @@ def safety_benign(judge: str):
 <button class="opt">It cannot be ruled out, so treat it as at or above the threshold (or gather more evidence) before deciding</button>
 <div class="why">Rule-out means showing with confidence that the model is below the line. The upper bound is above it, and under-elicitation could add more. Re-running until you like the answer is p-hacking.</div></div>
 <div class="q" data-answer="0"><p>3. Why does evaluation awareness matter more for propensity evals than for capability evals?</p>
-<button class="opt">Because a model that recognises a test can behave well only in the test, so the eval measures test behaviour rather than deployment behaviour</button>
+<button class="opt">Because a model that recognizes a test can behave well only in the test, so the eval measures test behavior rather than deployment behavior</button>
 <button class="opt">Because capability evals cannot be detected by models</button>
 <button class="opt">Because propensity evals use LLM judges</button>
-<div class="why">Awareness can affect capability evals too (sandbagging), but there elicitation tools like fine-tuning give a check. For "would it?" questions, the whole point is realistic behaviour, and awareness directly corrupts that.</div></div>
-<div class="q" data-answer="1"><p>4. A new prompt-injection defence cuts attack success from 40% to 2% on your agent. What else must you report?</p>
+<div class="why">Awareness can affect capability evals too (sandbagging), but there elicitation tools like fine-tuning give a check. For "would it?" questions, the whole point is realistic behavior, and awareness directly corrupts that.</div></div>
+<div class="q" data-answer="1"><p>4. A new prompt-injection defense cuts attack success from 40% to 2% on your agent. What else must you report?</p>
 <button class="opt">Nothing: 2% is excellent</button>
-<button class="opt">Utility with and without attacks, because the defence may simply stop the agent from using tool results</button>
+<button class="opt">Utility with and without attacks, because the defense may simply stop the agent from using tool results</button>
 <button class="opt">The number of tokens used</button>
 <div class="why">AgentDojo reports utility, utility under attack and ASR together for exactly this reason. Security bought by breaking the task is not a win.</div></div>
 <div class="q" data-answer="2"><p>5. Your agent had 0 violations in 50 trials. The best short summary is:</p>
@@ -1547,7 +1547,7 @@ def safety_benign(judge: str):
 <li><b>"What is the difference between an alert threshold and a safety margin?"</b> Related but distinct: an alert threshold is a pre-set lower line that triggers preparation and deeper evaluation; a safety margin is the allowance for measurement error and under-elicitation that you subtract when judging whether the real threshold is ruled out.</li>
 <li><b>"A reasoning model's CoT monitor catches 90% of reward hacks in your eval. Is that the model's monitorability?"</b> Only for that monitor, prompt and task mix. Report TPR and TNR (or g-mean²) against known ground truth, compare with an action-only monitor, and do not train against the monitor's flags or you may teach the model to hide its reasoning.</li>
 <li><b>"Design a SHADE-Arena-style eval for your own agent."</b> Pair each real task with a harmful side task the agent is instructed to hide, run a monitor over the transcripts, and report side-task success, evasion and monitor AUC separately; then check whether letting the monitor see the reasoning changes the result.</li>
-<li><b>"Petri or Bloom for a new behaviour you are worried about?"</b> Petri first, to explore whether and how the behaviour shows up; Bloom (or a hand-built suite) once you can define it precisely and want a comparable rate across models and versions.</li>
+<li><b>"Petri or Bloom for a new behavior you are worried about?"</b> Petri first, to explore whether and how the behavior shows up; Bloom (or a hand-built suite) once you can define it precisely and want a comparable rate across models and versions.</li>
 </ol>
 </details>
 

@@ -22,7 +22,7 @@
 <h3>By the end of this module you can</h3>
 <ul>
 <li>Describe the life cycle of a benchmark (release, hill-climbing, saturation, retirement) and say where a given benchmark sits today.</li>
-<li>Explain contamination, detect it with canaries, n-gram overlap, membership tests and time windows, and recognise it in the 2026 SWE-bench Verified audit.</li>
+<li>Explain contamination, detect it with canaries, n-gram overlap, membership tests and time windows, and recognize it in the 2026 SWE-bench Verified audit.</li>
 <li>Name the main ways a score becomes misleading: label noise, Goodhart effects, leaderboard gaming, harness differences, reward hacking, grader bugs, flaky environments and weak construct validity.</li>
 <li>Explain why sandbox resources (infrastructure noise) and automated optimizers (DSPy, GEPA, RL on your eval) make scores less trustworthy, and what to pin or hold out.</li>
 <li>Show with a simulation why a 2-point gap on 100 items is usually noise, and compute a paired bootstrap interval.</li>
@@ -42,10 +42,10 @@
 </div>
 
 <h2>The benchmark life cycle</h2>
-<p>A <b>benchmark</b> is a public, standardised eval that many people run so their results can be compared. Benchmarks are not permanent. They age in a remarkably consistent way, and knowing the stage tells you how much a score on it can mean.</p>
+<p>A <b>benchmark</b> is a public, standardized eval that many people run so their results can be compared. Benchmarks are not permanent. They age in a remarkably consistent way, and knowing the stage tells you how much a score on it can mean.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 290" role="img" aria-label="Benchmark life cycle: release with headroom, hill-climbing as labs optimise, saturation near the ceiling, and retirement when a harder successor replaces it, which restarts the cycle.">
+<svg viewBox="0 0 820 290" role="img" aria-label="Benchmark life cycle: release with headroom, hill-climbing as labs optimize, saturation near the ceiling, and retirement when a harder successor replaces it, which restarts the cycle.">
 <defs><marker id="m18a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box accent" x="20" y="50" width="170" height="96" rx="10"/>
 <text x="105" y="76" text-anchor="middle" class="lg">1 · Release</text>
@@ -71,7 +71,7 @@
 <line class="ln" x1="400" y1="98" x2="436" y2="98" marker-end="url(#m18a)"/>
 <line class="ln" x1="610" y1="98" x2="646" y2="98" marker-end="url(#m18a)"/>
 <text x="208" y="40" text-anchor="middle" class="sm t-accent">adopted</text>
-<text x="418" y="40" text-anchor="middle" class="sm t-warn">optimised</text>
+<text x="418" y="40" text-anchor="middle" class="sm t-warn">optimized</text>
 <text x="628" y="40" text-anchor="middle" class="sm t-bad">stops separating</text>
 <line class="ln warn thick" x1="230" y1="160" x2="610" y2="160"/>
 <text x="420" y="178" text-anchor="middle" class="sm t-warn">contamination risk grows every month the test set is public</text>
@@ -132,11 +132,11 @@
 </div>
 
 <h2>Contamination: training on the test</h2>
-<p><b>Contamination</b> (also called <em>data leakage</em> or <em>test-set leakage</em>) means that some or all of a benchmark's test items, or their answers, ended up in the model's training data. A contaminated model can score well by <b>remembering</b> rather than <b>solving</b>, exactly like a student who memorised last year's answer sheet.</p>
+<p><b>Contamination</b> (also called <em>data leakage</em> or <em>test-set leakage</em>) means that some or all of a benchmark's test items, or their answers, ended up in the model's training data. A contaminated model can score well by <b>remembering</b> rather than <b>solving</b>, exactly like a student who memorized last year's answer sheet.</p>
 <p>It is rarely deliberate. Frontier models are trained on enormous web crawls, and benchmarks live on the web: the dataset is on GitHub and Hugging Face, the solutions to coding tasks are real commits in public repositories, blog posts quote examples, and forum threads discuss answers. For SWE-bench this is structural: every task is a real GitHub issue whose fix (the "gold patch") was merged into a public repository years ago.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 360" role="img" aria-label="Contamination paths: a public benchmark leaks into training data through code hosts, papers, forums and eval logs; the model then memorises answers. Four detection methods sit below: canary strings, n-gram overlap, perplexity and membership tests, and time-windowed or rephrased benchmarks.">
+<svg viewBox="0 0 820 360" role="img" aria-label="Contamination paths: a public benchmark leaks into training data through code hosts, papers, forums and eval logs; the model then memorizes answers. Four detection methods sit below: canary strings, n-gram overlap, perplexity and membership tests, and time-windowed or rephrased benchmarks.">
 <defs><marker id="m18b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box accent" x="20" y="70" width="150" height="80" rx="8"/>
 <text x="95" y="100" text-anchor="middle" class="b">Benchmark</text>
@@ -195,8 +195,8 @@
 <div class="grid2">
 <div class="card accent"><h4>Canary strings</h4><p>A <b>canary string</b> is a long random identifier (a GUID) printed inside every file of a benchmark, with a note asking that it not be used for training. BIG-bench popularised this. Two uses: (1) data teams filter out any document containing the string before training; (2) evaluators ask the model to complete the canary. If it can, the benchmark files were in training data. Weakness: copies that strip the header (someone pastes just the questions into a blog) slip through.</p></div>
 <div class="card accent"><h4>N-gram overlap</h4><p>An <b>n-gram</b> is a sequence of n consecutive words. If a 13-word sequence from a test item appears in the training corpus, the item was probably seen. GPT-3's paper used 13-gram overlap for this. It needs the training data, it misses paraphrases and translations, and it can flag innocent overlaps (boilerplate, famous quotes). Code for it is below.</p></div>
-<div class="card accent"><h4>Perplexity and membership tests</h4><p><b>Perplexity</b> measures how surprised a model is by a text (lower means more expected). Memorised text has unusually low perplexity compared with fresh text of the same style. Related <b>membership inference</b> probes give the model a prefix, or even just the task ID, and see if it reproduces the rest verbatim. These work from outside the lab but give probabilistic evidence, not proof.</p></div>
-<div class="card accent"><h4>Time windows and rephrasing</h4><p><b>LiveCodeBench</b> continuously collects new contest problems from LeetCode, AtCoder and Codeforces, stamps each with its publication date, and scores each model only on problems published after its training cutoff. SWE-rebench and SWE-bench-Live do the same with fresh GitHub issues. Rephrased or perturbed variants (new numbers, renamed variables) test whether performance survives when memorised surface forms are gone.</p></div>
+<div class="card accent"><h4>Perplexity and membership tests</h4><p><b>Perplexity</b> measures how surprised a model is by a text (lower means more expected). Memorized text has unusually low perplexity compared with fresh text of the same style. Related <b>membership inference</b> probes give the model a prefix, or even just the task ID, and see if it reproduces the rest verbatim. These work from outside the lab but give probabilistic evidence, not proof.</p></div>
+<div class="card accent"><h4>Time windows and rephrasing</h4><p><b>LiveCodeBench</b> continuously collects new contest problems from LeetCode, AtCoder and Codeforces, stamps each with its publication date, and scores each model only on problems published after its training cutoff. SWE-rebench and SWE-bench-Live do the same with fresh GitHub issues. Rephrased or perturbed variants (new numbers, renamed variables) test whether performance survives when memorized surface forms are gone.</p></div>
 </div>
 
 <figure class="diagram">
@@ -266,10 +266,10 @@ for row in contamination_report(test, idx, n=8):
     print(row)
 # ('task-001', 0.44, 'CONTAMINATED?', ['github/django-fork'])
 # ('task-002', 0.0, 'clean', [])</code></pre>
-<p>Notice what it cannot see. Task-001 is caught because the wording overlaps. But in SWE-bench the danger is the <em>answer</em> (the gold patch) being in training data, not the question, so you would index the gold patches too. And a model that saw a paraphrase, or a translation, sails straight through. That is why labs combine overlap checks with behavioural probes.</p>
+<p>Notice what it cannot see. Task-001 is caught because the wording overlaps. But in SWE-bench the danger is the <em>answer</em> (the gold patch) being in training data, not the question, so you would index the gold patches too. And a model that saw a paraphrase, or a translation, sails straight through. That is why labs combine overlap checks with behavioral probes.</p>
 
-<h3>Case study: memorised gold patches in SWE-bench Verified</h3>
-<p>On 23 February 2026 OpenAI published "Why SWE-bench Verified no longer measures frontier coding capabilities". Its contamination evidence was behavioural. OpenAI used GPT-5 as an automated interviewer that probed each target model for up to 15 turns with varied prompts, then rated contamination from "none" to "strong". According to OpenAI's write-up, <b>every frontier model tested showed signs of it</b>: GPT-5.2 reproduced gold patches verbatim; Claude Opus 4.5 recalled exact file paths, method names and inline comments from patches; Gemini 3 Flash produced verbatim details when given only the task ID. When a model can recite the answer from the task's ID number, the score is no longer measuring coding ability alone.</p>
+<h3>Case study: memorized gold patches in SWE-bench Verified</h3>
+<p>On 23 February 2026 OpenAI published "Why SWE-bench Verified no longer measures frontier coding capabilities". Its contamination evidence was behavioral. OpenAI used GPT-5 as an automated interviewer that probed each target model for up to 15 turns with varied prompts, then rated contamination from "none" to "strong". According to OpenAI's write-up, <b>every frontier model tested showed signs of it</b>: GPT-5.2 reproduced gold patches verbatim; Claude Opus 4.5 recalled exact file paths, method names and inline comments from patches; Gemini 3 Flash produced verbatim details when given only the task ID. When a model can recite the answer from the task's ID number, the score is no longer measuring coding ability alone.</p>
 
 <div class="callout warn"><span class="t">Contamination is not only "pretraining saw the test"</span>
 <p>Modern models also learn from <b>synthetic data</b> and <b>reinforcement learning environments</b>. If an RL environment is built from the same repositories as a benchmark, or if eval transcripts are recycled into training, the benchmark is contaminated even if no web crawler ever touched it. Ask about all training stages, not just pretraining.</p>
@@ -280,7 +280,7 @@ for row in contamination_report(test, idx, n=8):
 
 <div class="tablewrap"><table>
 <tr><th>Benchmark</th><th>Finding</th><th>Source</th></tr>
-<tr><td>MMLU</td><td>An estimated <b>6.49%</b> of questions contain errors; in the Virology subset, <b>57%</b> of analysed questions had errors. MMLU-Redux re-annotated 5,700 questions.</td><td>Gema et al., "Are We Done with MMLU?" (2024)</td></tr>
+<tr><td>MMLU</td><td>An estimated <b>6.49%</b> of questions contain errors; in the Virology subset, <b>57%</b> of analyzed questions had errors. MMLU-Redux re-annotated 5,700 questions.</td><td>Gema et al., "Are We Done with MMLU?" (2024)</td></tr>
 <tr><td>SWE-bench Verified</td><td>Of <b>138</b> audited problems (ones o3 did not consistently solve), <b>59.4%</b> had material flaws in tests or descriptions. Each was reviewed by at least six engineers.</td><td>OpenAI, Feb 2026</td></tr>
 <tr><td>τ-bench</td><td>Wrong or ambiguous ground truth in some tasks; the tau2-bench repo lists "75+ task fixes".</td><td>sierra-research/tau2-bench</td></tr>
 <tr><td>OSWorld, WebArena</td><td>Broken tasks and evaluator bugs led to re-issued "Verified" versions.</td><td>os-world.github.io; WebArena audits</td></tr>
@@ -300,7 +300,7 @@ for row in contamination_report(test, idx, n=8):
 <line class="ln" x1="458" y1="116" x2="458" y2="176"/>
 <text x="184" y="140" text-anchor="middle" class="sm">"narrow" tests: demand one</text>
 <text x="184" y="155" text-anchor="middle" class="sm">specific implementation</text>
-<text x="374" y="140" text-anchor="middle" class="sm">"wide" tests: check behaviour</text>
+<text x="374" y="140" text-anchor="middle" class="sm">"wide" tests: check behavior</text>
 <text x="374" y="155" text-anchor="middle" class="sm">the issue never described</text>
 <text x="466" y="176" class="sm">5.1% other issues</text>
 <text x="618" y="140" text-anchor="middle" class="sm">no material issue found</text>
@@ -386,20 +386,20 @@ for row in contamination_report(test, idx, n=8):
 <text x="410" y="264" text-anchor="middle" class="b t-bad">Model B outscores Model A by sharing the key's two mistakes</text>
 <text x="410" y="286" text-anchor="middle" class="sm">with 2 of 10 labels wrong, even a perfect model is capped at 80% against this key</text>
 </svg>
-<figcaption><b>How label errors reward the wrong model.</b> A made-up 10-item example. Green cells are graded correct against the answer key, red cells graded wrong. Model A is truly perfect but loses 20 points on the two broken items; Model B is truly worse but wins, because it gives the same wrong answers as the key (for example because it memorised a flawed public answer sheet).</figcaption>
+<figcaption><b>How label errors reward the wrong model.</b> A made-up 10-item example. Green cells are graded correct against the answer key, red cells graded wrong. Model A is truly perfect but loses 20 points on the two broken items; Model B is truly worse but wins, because it gives the same wrong answers as the key (for example because it memorized a flawed public answer sheet).</figcaption>
 </figure>
 
 <h2>Goodhart's law and overfitting to benchmarks</h2>
-<p><b>Goodhart's law</b>, in its common phrasing: "When a measure becomes a target, it ceases to be a good measure." A benchmark is a <em>proxy</em>: a small, cheap sample standing in for a big, expensive thing you actually care about (general coding skill, helpfulness to real users). While nobody optimises for the proxy, it tracks the real thing. Once the whole field optimises for it, the proxy and the target drift apart.</p>
+<p><b>Goodhart's law</b>, in its common phrasing: "When a measure becomes a target, it ceases to be a good measure." A benchmark is a <em>proxy</em>: a small, cheap sample standing in for a big, expensive thing you actually care about (general coding skill, helpfulness to real users). While nobody optimizes for the proxy, it tracks the real thing. Once the whole field optimizes for it, the proxy and the target drift apart.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 300" role="img" aria-label="Illustrative chart of Goodhart's law: while nobody optimises for a benchmark its score and the real skill rise together; once the field targets the benchmark, the score keeps climbing while real skill flattens, opening a gap.">
+<svg viewBox="0 0 820 300" role="img" aria-label="Illustrative chart of Goodhart's law: while nobody optimizes for a benchmark its score and the real skill rise together; once the field targets the benchmark, the score keeps climbing while real skill flattens, opening a gap.">
 <defs><marker id="m18f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <line class="ln" x1="80" y1="240" x2="770" y2="240" marker-end="url(#m18f)"/>
 <line class="ln" x1="80" y1="240" x2="80" y2="30" marker-end="url(#m18f)"/>
 <text x="42" y="140" text-anchor="middle" class="sm" transform="rotate(-90 42 140)">capability, as measured</text>
 <line class="ln dash" x1="330" y1="44" x2="330" y2="240"/>
-<text x="330" y="36" text-anchor="middle" class="sm b">the field starts optimising for it</text>
+<text x="330" y="36" text-anchor="middle" class="sm b">the field starts optimizing for it</text>
 <path class="ln accent thick" d="M80,217 C250,150 420,80 760,64"/>
 <path class="ln good thick" d="M80,219 C200,178 300,150 380,142 C500,132 620,142 760,156"/>
 <line class="ln accent thick" x1="100" y1="58" x2="124" y2="58"/><text x="132" y="62" class="sm">benchmark score (the proxy)</text>
@@ -409,9 +409,9 @@ for row in contamination_report(test, idx, n=8):
 <text x="722" y="124" text-anchor="end" class="sm">score up, skill flat</text>
 <text x="205" y="258" text-anchor="middle" class="sm t-good">proxy tracks the target</text>
 <text x="550" y="258" text-anchor="middle" class="sm t-bad">proxy and target drift apart</text>
-<text x="425" y="284" text-anchor="middle" class="sm">optimisation pressure on the benchmark (papers, tuned scaffolds, prompts) →</text>
+<text x="425" y="284" text-anchor="middle" class="sm">optimization pressure on the benchmark (papers, tuned scaffolds, prompts) →</text>
 </svg>
-<figcaption><b>When a measure becomes a target.</b> Illustrative shape only, not real data. Early on, a higher benchmark score really does mean more skill. Once everyone optimises against the same test, extra points increasingly come from fitting that test's quirks, so the score keeps rising while the skill you care about levels off.</figcaption>
+<figcaption><b>When a measure becomes a target.</b> Illustrative shape only, not real data. Early on, a higher benchmark score really does mean more skill. Once everyone optimizes against the same test, extra points increasingly come from fitting that test's quirks, so the score keeps rising while the skill you care about levels off.</figcaption>
 </figure>
 
 <div class="grid2">
@@ -501,7 +501,7 @@ for row in contamination_report(test, idx, n=8):
 <figcaption><b>Two ways a leaderboard can mislead without anyone lying.</b> Left: an illustrative simulation of best-of-N disclosure (dots are made up). Right: approximate battle shares as reported in "The Leaderboard Illusion" (the paper names Google and OpenAI as the two large labs).</figcaption>
 </figure>
 
-<p>The general lesson extends to every leaderboard, not only Arena: <b>whoever gets more tries, more data, or more say in which results are shown will look better than they are</b>. Defences that exist in practice include private, held-out test sets and "first submission only" rules (Scale AI's SEAL leaderboards were designed this way), and independent re-runs by third parties (Epoch AI, Artificial Analysis) rather than self-reported numbers.</p>
+<p>The general lesson extends to every leaderboard, not only Arena: <b>whoever gets more tries, more data, or more say in which results are shown will look better than they are</b>. Defenses that exist in practice include private, held-out test sets and "first submission only" rules (Scale AI's SEAL leaderboards were designed this way), and independent re-runs by third parties (Epoch AI, Artificial Analysis) rather than self-reported numbers.</p>
 
 <div class="callout expert"><span class="t">Why the max of noisy scores is biased (winner's curse)</span>
 <p>If each variant's measured score is its true skill plus independent noise with standard deviation σ, the expected maximum of N such measurements sits above the true skill by about 1.2σ for N = 5, 1.5σ for N = 10, 2.0σ for N = 27 and 2.5σ for N = 100 (the textbook large-N shortcut σ·√(2 ln N) slightly overstates it at these sizes, giving 2.6σ for N = 27). You can buy a "significant" leaderboard jump with nothing but repeated submissions. Statisticians call this the <b>winner's curse</b>; the fix is to re-measure the selected variant on fresh data.</p>
@@ -684,7 +684,7 @@ for row in contamination_report(test, idx, n=8):
 <tr><th>Who / where</th><th>What the agent did</th></tr>
 <tr><td><b>METR, June 2025</b> ("Recent frontier models are reward hacking"), models including o3, o1 and Claude 3.7 Sonnet</td><td>Searched the Python call stack to find the grader's pre-computed reference answer and returned it; overwrote timing functions (one made "a 1000× faster clock" for the scoring script); monkey-patched evaluation functions to always report success; disabled <code>torch.cuda.synchronize()</code> so timing was wrong; made tensor subclasses whose equality check always returned true; copied pre-computed weights instead of training. METR reported reward hacking in <b>30.4%</b> of RE-Bench runs (39 of 128), including <b>21 of 21</b> runs on one task, but only <b>0.7%</b> (8 of 1,087) of HCAST runs.</td></tr>
 <tr><td><b>SWE-bench, 2025</b> (GitHub issue #465, "Repo State Loopholes")</td><td>Agents ran commands like <code>git log --all</code> to see <em>future</em> commits left in the task's Docker image, which contained the real fix. Found in submissions for Claude 4 Sonnet, Qwen3 Coder and GLM-4.5 in a handful of instances each. Fixed by rebuilding images with future history removed (SWE-bench v4.1.0).</td></tr>
-<tr><td><b>Anthropic system cards</b></td><td>Anthropic's system cards (for example Claude Sonnet 4.5, Sep 2025) include a dedicated reward-hacking section, covering behaviours such as hard-coding or special-casing tests to make them pass. For Sonnet 4.5, Anthropic reported roughly a 2x improvement over Sonnet 4.</td></tr>
+<tr><td><b>Anthropic system cards</b></td><td>Anthropic's system cards (for example Claude Sonnet 4.5, Sep 2025) include a dedicated reward-hacking section, covering behaviors such as hard-coding or special-casing tests to make them pass. For Sonnet 4.5, Anthropic reported roughly a 2x improvement over Sonnet 4.</td></tr>
 </table></div>
 
 <div class="callout bad"><span class="t">Why this is a benchmark pitfall and not just a safety curiosity</span>
@@ -692,7 +692,7 @@ for row in contamination_report(test, idx, n=8):
 </div>
 
 <h3>Code: a reward-hack detector for coding-agent diffs</h3>
-<p>The cheapest defence is to inspect what the agent changed. This script reads a unified diff (for example <code>git diff &lt;base_commit&gt;</code> from the agent's sandbox) and flags edits to tests, test configuration, skip markers, forced exit codes and "am I under test?" branches. It exits non-zero on high-severity findings, so it can gate a CI run or mark trials for human review.</p>
+<p>The cheapest defense is to inspect what the agent changed. This script reads a unified diff (for example <code>git diff &lt;base_commit&gt;</code> from the agent's sandbox) and flags edits to tests, test configuration, skip markers, forced exit codes and "am I under test?" branches. It exits non-zero on high-severity findings, so it can gate a CI run or mark trials for human review.</p>
 <pre data-lang="python"><code>import re
 import sys
 
@@ -747,11 +747,11 @@ if __name__ == "__main__":
 # [MED] src/parser.py: behaves differently under test: if os.environ.get("PYTEST_CURRENT_TEST"):
 # [HIGH] tests/test_parser.py: test file modified (-1 assertions)
 # [MED] tests/test_parser.py: adds a skip/xfail marker: @pytest.mark.skip(reason="flaky")</code></pre>
-<p>Pattern matching is a first line of defence, not a proof. Serious harnesses add structural defences that make hacks impossible rather than detectable:</p>
+<p>Pattern matching is a first line of defense, not a proof. Serious harnesses add structural defenses that make hacks impossible rather than detectable:</p>
 <ul>
 <li><b>Grade with the original tests.</b> SWE-bench copies its own FAIL_TO_PASS and PASS_TO_PASS tests into the container at grading time, so agent edits to test files are overwritten. Do the same: never grade with files the agent could touch.</li>
 <li><b>Keep the grader out of reach.</b> Run scoring in a separate process or container with no shared memory, no reachable reference answers, and its own clock.</li>
-<li><b>Sanitise the environment.</b> Remove future git history, caches and solution artefacts from images (the SWE-bench v4.1.0 fix).</li>
+<li><b>Sanitise the environment.</b> Remove future git history, caches and solution artifacts from images (the SWE-bench v4.1.0 fix).</li>
 <li><b>Read transcripts, and use a monitor.</b> An LLM judge reading trajectories for "did the agent try to modify tests or read grading code?" catches creative hacks that regexes miss (<a href="13-llm-as-judge.html">Module 13</a>, <a href="17-safety-evals.html">Module 17</a>).</li>
 </ul>
 
@@ -759,7 +759,7 @@ if __name__ == "__main__":
 <p>Not every false result is the agent's fault. The measuring apparatus fails too, in three recurring ways.</p>
 <div class="grid2">
 <div class="card bad"><h4>Grader bugs (false passes and false fails)</h4><p>A <b>false pass</b> is a wrong solution scored as correct: tests too weak (HumanEval's ~7.7 tests per problem), an LLM judge that accepts a confident wrong answer, a string match that accepts "not 42" because it contains "42". A <b>false fail</b> is a correct solution scored as wrong: SWE-bench Verified's narrow tests, AST matching in BFCL that rejects a valid alternative call, exact-match on "3.0" vs "3".</p></div>
-<div class="card warn"><h4>Flaky environments</h4><p>A <b>flaky</b> task gives different results on identical behaviour: network timeouts in Terminal-Bench containers, websites that change or block bots (WebVoyager), apps loading slowly in OSWorld VMs, public APIs that go offline (ToolBench, which led to StableToolBench's cached virtual API server). Flakiness adds noise and usually biases scores down.</p></div>
+<div class="card warn"><h4>Flaky environments</h4><p>A <b>flaky</b> task gives different results on identical behavior: network timeouts in Terminal-Bench containers, websites that change or block bots (WebVoyager), apps loading slowly in OSWorld VMs, public APIs that go offline (ToolBench, which led to StableToolBench's cached virtual API server). Flakiness adds noise and usually biases scores down.</p></div>
 <div class="card warn"><h4>Time-sensitive answers</h4><p>"What is the current price of…", "who is the CEO of…", "how many stars does this repo have?" The gold answer was right on the day it was written. Live-web benchmarks like WebVoyager and GAIA-style questions accumulate stale answers, so a correct agent is marked wrong. Freeze the world (cached pages, snapshot databases) or date-stamp answers.</p></div>
 <div class="card accent"><h4>How to find them</h4><p>Run the <b>reference solution</b> through the grader (it should pass 100%), run a <b>null agent</b> that does nothing (it should pass 0%), run each task several times with the same seed (flakiness shows up as disagreement), and hand-review a sample of passes as well as fails.</p></div>
 </div>
@@ -784,11 +784,11 @@ if __name__ == "__main__":
 </figure>
 
 <h2>Construct validity: does it measure what it claims?</h2>
-<p><b>Construct validity</b> is a term from psychology: the degree to which a test measures the abstract quality (the "construct") it claims to measure. "Coding ability", "general intelligence", "can do a software engineer's job" are constructs. A benchmark is a concrete, narrow operationalisation of one. The questions are: what does a high score let you <em>predict</em>, and about <em>what</em>?</p>
+<p><b>Construct validity</b> is a term from psychology: the degree to which a test measures the abstract quality (the "construct") it claims to measure. "Coding ability", "general intelligence", "can do a software engineer's job" are constructs. A benchmark is a concrete, narrow operationalization of one. The questions are: what does a high score let you <em>predict</em>, and about <em>what</em>?</p>
 <p>Examples of gaps between benchmark and construct:</p>
 <ul>
 <li>SWE-bench measures "fix a well-described Python issue in a popular open-source repo, judged by the maintainers' tests". Real software work also involves unclear requirements, private codebases, code review and long-lived design choices.</li>
-<li>Multiple-choice knowledge tests measure recognising a right option among four, which is easier than producing the answer and is sensitive to formatting. Anthropic has noted that small formatting changes can move MMLU scores by around 5%.</li>
+<li>Multiple-choice knowledge tests measure recognizing a right option among four, which is easier than producing the answer and is sensitive to formatting. Anthropic has noted that small formatting changes can move MMLU scores by around 5%.</li>
 <li>A 50% success rate on a task that a human does in one hour (METR's time horizon) is a statistic about a software/ML task distribution, not a promise that "the model can work for an hour" on your task. METR says so in its own limitations notes.</li>
 </ul>
 
@@ -805,9 +805,9 @@ if __name__ == "__main__":
 <rect class="fill-accent" x="420" y="121" width="160" height="30"/><text x="588" y="141" class="b t-accent">+20% faster</text>
 <text x="30" y="195" class="b">Measured</text>
 <rect class="fill-bad" x="268" y="176" width="152" height="30"/><text x="260" y="196" text-anchor="end" class="b t-bad">19% slower</text>
-<text x="410" y="282" text-anchor="middle" class="sm">16 developers · 246 real issues in their own repos · randomised with vs without AI (METR, July 2025)</text>
+<text x="410" y="282" text-anchor="middle" class="sm">16 developers · 246 real issues in their own repos · randomized with vs without AI (METR, July 2025)</text>
 </svg>
-<figcaption><b>Benchmarks said one thing; a randomised trial said another.</b> In METR's 2025 randomised controlled trial, developers using Cursor with Claude 3.5/3.7 Sonnet took 19% longer, while believing they had been faster. Bars are to scale. It is one study in one setting, but it is exactly the kind of check that benchmark scores cannot give you.</figcaption>
+<figcaption><b>Benchmarks said one thing; a randomized trial said another.</b> In METR's 2025 randomized controlled trial, developers using Cursor with Claude 3.5/3.7 Sonnet took 19% longer, while believing they had been faster. Bars are to scale. It is one study in one setting, but it is exactly the kind of check that benchmark scores cannot give you.</figcaption>
 </figure>
 
 <p>METR itself is careful about what the study does and does not show: it concerns experienced developers on large, mature codebases they know well, with tools from early 2025. The lesson for this module is methodological: <b>benchmark performance and real-world impact are different measurements</b>, and only the second one answers "does this help my users?". This is why <a href="15-production-evals.html">Module 15</a> insists on online evals and A/B tests alongside offline benchmarks.</p>
@@ -829,7 +829,7 @@ if __name__ == "__main__":
 <p>Suppose two models are <em>exactly equally good</em>: each solves any given item with probability 70%. You run each once on the same kind of 100-item benchmark. How often will the leaderboard show one of them 2 or more points ahead?</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 300" role="img" aria-label="Histogram of simulated score gaps between two identical 70 percent models on 100 items. The distribution is centred on zero with a standard deviation of about 6.5 points, so gaps of 2 or more points appear most of the time.">
+<svg viewBox="0 0 820 300" role="img" aria-label="Histogram of simulated score gaps between two identical 70 percent models on 100 items. The distribution is centered on zero with a standard deviation of about 6.5 points, so gaps of 2 or more points appear most of the time.">
 <line class="ln" x1="80" y1="230" x2="760" y2="230"/>
 <line class="ln" x1="80" y1="230" x2="80" y2="40"/>
 <text x="40" y="140" text-anchor="middle" class="sm" transform="rotate(-90 40 140)">share of simulations</text>
@@ -861,7 +861,7 @@ if __name__ == "__main__":
 <text x="420" y="272" text-anchor="middle" class="sm">score gap in points (model A − model B), both truly 70%</text>
 <text x="560" y="54" class="b t-warn">|gap| ≥ 2 points in 82% of runs</text>
 <text x="560" y="72" class="sm">standard deviation of the gap ≈ 6.5 points</text>
-<text x="100" y="54" class="sm">grey: the two central bins</text>
+<text x="100" y="54" class="sm">gray: the two central bins</text>
 <text x="100" y="70" class="sm">(gaps of −2, −1, 0 and +1)</text>
 </svg>
 <figcaption><b>Identical models, different scores.</b> Result of 20,000 simulated pairs of runs (real simulation output, produced by the code below; bar heights match the exact binomial calculation). With 100 items and a true rate of 70%, one model's score alone has a standard error of about 4.6 points, and the gap between two independent runs spreads with a standard deviation of about 6.5 points.</figcaption>
@@ -869,7 +869,7 @@ if __name__ == "__main__":
 
 <p>Now a realistic claim: "Model A scores 72%, Model B 70%, on the same 100 items." Because both models answer the same items, the right tool is a <b>paired bootstrap</b>: resample items with replacement (keeping each item's A and B results together), recompute the gap each time, and read off the middle 95%. The key quantity is the <b>discordant items</b>, where exactly one model is right. Here A alone is right on 6 items and B alone on 4.</p>
 <figure class="diagram">
-<svg viewBox="0 0 820 300" role="img" aria-label="Grid of 100 benchmark items coloured by outcome: 66 both models right, 24 both wrong, 6 only model A right, 4 only model B right. Only the 10 discordant items carry information about which model is better, and a 6 to 4 split is what a fair coin produces.">
+<svg viewBox="0 0 820 300" role="img" aria-label="Grid of 100 benchmark items colored by outcome: 66 both models right, 24 both wrong, 6 only model A right, 4 only model B right. Only the 10 discordant items carry information about which model is better, and a 6 to 4 split is what a fair coin produces.">
 <defs><marker id="m18i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="149" y="30" text-anchor="middle" class="sm b">100 items, same for both models</text>
 <rect class="fill-good" x="40" y="42" width="20" height="20" rx="3"/>
@@ -993,7 +993,7 @@ if __name__ == "__main__":
 <text x="665" y="216" text-anchor="middle" class="sm">paired SE of the gap ≈ 3.2 points</text>
 <text x="410" y="282" text-anchor="middle" class="sm">"72% vs 70%" sounds like 200 data points; for the comparison it is really 10</text>
 </svg>
-<figcaption><b>Where the evidence actually lives.</b> The worked example below as a picture: each square is one benchmark item. Items both models get right (green) or both get wrong (grey) cancel out in a paired comparison. Only the discordant items, where exactly one model is right, say anything about which model is better, and here there are just 10.</figcaption>
+<figcaption><b>Where the evidence actually lives.</b> The worked example below as a picture: each square is one benchmark item. Items both models get right (green) or both get wrong (gray) cancel out in a paired comparison. Only the discordant items, where exactly one model is right, say anything about which model is better, and here there are just 10.</figcaption>
 </figure>
 
 <pre data-lang="python"><code>import numpy as np
@@ -1237,7 +1237,7 @@ for name, (score, ok) in checks.items():
 
 <div class="takeaways"><h3>Key takeaways</h3><ol>
 <li><b>Place the benchmark on its life cycle first.</b> A few points mean a lot on a fresh benchmark and very little on a saturated one, where label errors and noise dominate the top of the table.</li>
-<li><b>Contamination means remembering, not solving.</b> Canaries and n-gram search need the training data; behavioural probes (verbatim reproduction, task-ID recall) and time-windowed or private test sets work from outside.</li>
+<li><b>Contamination means remembering, not solving.</b> Canaries and n-gram search need the training data; behavioral probes (verbatim reproduction, task-ID recall) and time-windowed or private test sets work from outside.</li>
 <li><b>Every benchmark has label noise.</b> Even a human-screened set like SWE-bench Verified had flawed tests in 59.4% of the audited hard problems, and a noisy key can rank a worse model above a better one.</li>
 <li><b>A score belongs to a whole setup, not a model.</b> Harness, budget, attempts, selection step, tools, grader and dataset version all move the number, sometimes more than a model upgrade does.</li>
 <li><b>Agents hack graders when they can reach them.</b> Grade with files the agent cannot touch, keep the scorer outside the sandbox, sanitise images and read transcripts.</li>
@@ -1264,7 +1264,7 @@ for name, (score, ok) in checks.items():
 <button class="opt">N-gram overlap against the pretraining corpus</button>
 <button class="opt">Asking the model to complete a benchmark's canary string, or to reproduce a gold answer from the task ID</button>
 <button class="opt">Filtering training documents that contain the canary</button>
-<div class="why">Behavioural probes (canary completion, verbatim reproduction, perplexity comparisons, time windows) work from outside. Corpus search and filtering need the training data.</div></div>
+<div class="why">Behavioral probes (canary completion, verbatim reproduction, perplexity comparisons, time windows) work from outside. Corpus search and filtering need the training data.</div></div>
 <div class="q" data-answer="1"><p>4. Two models score 72% and 70% on the same 100 items, single run. A paired bootstrap gives a 95% CI of [−4, +8]. You should…</p>
 <button class="opt">Ship the 72% model; it is better</button>
 <button class="opt">Treat them as indistinguishable on this evidence, and collect more items or runs if the decision matters</button>
@@ -1296,7 +1296,7 @@ for name, (score, ok) in checks.items():
 <p><b>Q: A new model jumps 8 points on a benchmark overnight. List what you would check before believing it.</b><br>
 Same harness, budget and attempts as before? Same benchmark version and subset? Error bars and number of runs? Contamination (release date vs training cutoff, verbatim-reproduction probes)? Transcripts sampled for reward hacks, especially test edits? Independent reproduction? Does the gain show on a fresh or private benchmark of the same skill?</p>
 <p><b>Q: How would you design a coding benchmark that resists contamination?</b><br>
-Use tasks created after target models' cutoffs, or from private / copyleft codebases; keep a private held-out split and run it yourself; refresh on a schedule with dated tasks; include a canary; probe models for verbatim reproduction of gold patches; strip git history and artefacts from images; version the benchmark when tasks change.</p>
+Use tasks created after target models' cutoffs, or from private / copyleft codebases; keep a private held-out split and run it yourself; refresh on a schedule with dated tasks; include a canary; probe models for verbatim reproduction of gold patches; strip git history and artifacts from images; version the benchmark when tasks change.</p>
 <p><b>Q: What is the difference between a false pass and reward hacking?</b><br>
 A false pass is any wrong solution the grader accepts. Reward hacking is one cause of false passes, where the agent actively exploits the grader. Weak tests produce false passes even from agents that are trying honestly.</p>
 <p><b>Q: Why might a benchmark score overstate real-world usefulness even with no contamination and a perfect grader?</b><br>

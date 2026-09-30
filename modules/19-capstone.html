@@ -26,13 +26,13 @@
 <li>Write an outcome grader (end state), a trajectory grader (tool-use policy) and an LLM judge (reply quality), and explain why you need all three.</li>
 <li>Test the eval itself with scripted reference and "sloppy" agents before paying for a single real run.</li>
 <li>Run with epochs, compute pass@k and pass^k, put confidence intervals on the result, and compare two versions with a paired test.</li>
-<li>Turn failing transcripts into a prioritised fix list, iterate, and wire the eval into CI.</li>
+<li>Turn failing transcripts into a prioritized fix list, iterate, and wire the eval into CI.</li>
 <li>Adapt the same skeleton to coding, browser, voice and image agents.</li>
 </ul>
 </div>
 
 <div class="callout tip"><span class="t">The code is real</span>
-<p>Everything on this page comes from a small Inspect project in <a href="https://github.com/mahesh0431/agent-evals-zero-to-expert/tree/main/code/capstone">code/capstone/</a> (<a href="https://github.com/mahesh0431/agent-evals-zero-to-expert/blob/main/code/capstone/README.md">README</a>). It runs as-is: <code>python smoke_test.py</code> exercises the whole pipeline with scripted mock models and no API key, and <code>inspect eval support_eval.py --model anthropic/&lt;model&gt;</code> runs it on a real model. It was tested against <code>inspect-ai</code> 0.3.272 (September 2026). Numbers labelled <b>illustrative</b> on this page are made up to teach how to read results, not measurements of any model.</p>
+<p>Everything on this page comes from a small Inspect project in <a href="https://github.com/mahesh0431/agent-evals-zero-to-expert/tree/main/code/capstone">code/capstone/</a> (<a href="https://github.com/mahesh0431/agent-evals-zero-to-expert/blob/main/code/capstone/README.md">README</a>). It runs as-is: <code>python smoke_test.py</code> exercises the whole pipeline with scripted mock models and no API key, and <code>inspect eval support_eval.py --model anthropic/&lt;model&gt;</code> runs it on a real model. It was tested against <code>inspect-ai</code> 0.3.272 (September 2026). Numbers labeled <b>illustrative</b> on this page are made up to teach how to read results, not measurements of any model.</p>
 </div>
 
 <div data-toc></div>
@@ -122,7 +122,7 @@
 <line class="ln" x1="500" y1="365" x2="536" y2="365" marker-end="url(#m19a)"/>
 <line class="ln" x1="670" y1="365" x2="706" y2="365" marker-end="url(#m19a)"/>
 </svg>
-<figcaption><b>The whole system on one page.</b> The Inspect task wires a dataset, a fresh per-trial database, a ReAct agent with three tools, and three scorers that each read a different artefact (end state, audit log, final reply). Everything lands in one log file that feeds the viewer, the analysis script and CI.</figcaption>
+<figcaption><b>The whole system on one page.</b> The Inspect task wires a dataset, a fresh per-trial database, a ReAct agent with three tools, and three scorers that each read a different artifact (end state, audit log, final reply). Everything lands in one log file that feeds the viewer, the analysis script and CI.</figcaption>
 </figure>
 
 <p>The files map one-to-one onto the four parts of every eval from <a href="02-anatomy-of-an-eval.html">Module 02</a>:</p>
@@ -151,7 +151,7 @@
 </div>
 
 <h2>Step 2: Turn "good" into success criteria</h2>
-<p>A <b>success criterion</b> is a property of the agent's behaviour that you can check, ideally without arguing about it. Anthropic's guidance on building evals asks for criteria that are specific, measurable and achievable; the trick is to push "good" down until each leaf names a grader.</p>
+<p>A <b>success criterion</b> is a property of the agent's behavior that you can check, ideally without arguing about it. Anthropic's guidance on building evals asks for criteria that are specific, measurable and achievable; the trick is to push "good" down until each leaf names a grader.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 340" role="img" aria-label="Tree: 'a good support agent' breaks into four criteria (right end state, safe path, good reply, efficient). Each criterion maps to a grader and then to a metric.">
@@ -223,8 +223,8 @@
 <p>Twelve tasks is small, but they are not random. We designed them as a <b>coverage matrix</b>: every row of the refund policy should be exercised at least once, both "act" and "do not act" cases should appear (Anthropic's agent-eval guidance stresses balancing positive and negative cases, otherwise an agent that always refunds looks great), and a few tasks apply pressure: several orders in one message, someone else's order, a prompt injection hidden in data, a false claim of authority.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 860 430" role="img" aria-label="Matrix of 12 tasks by expected behaviour (refund, decline, escalate, info only) and pressure type (multi-order, not owner, injection, social engineering). Declines outnumber refunds, and four tasks carry adversarial pressure.">
-<text x="440" y="22" text-anchor="middle" class="b t-accent">expected behaviour</text>
+<svg viewBox="0 0 860 430" role="img" aria-label="Matrix of 12 tasks by expected behavior (refund, decline, escalate, info only) and pressure type (multi-order, not owner, injection, social engineering). Declines outnumber refunds, and four tasks carry adversarial pressure.">
+<text x="440" y="22" text-anchor="middle" class="b t-accent">expected behavior</text>
 <text x="740" y="22" text-anchor="middle" class="b t-warn">pressure / adversarial</text>
 <line class="ln accent" x1="290" y1="30" x2="590" y2="30"/>
 <line class="ln warn" x1="600" y1="30" x2="850" y2="30"/>
@@ -385,7 +385,7 @@ def refund_order() -&gt; Tool:
 <p>Four details in that code carry most of the design:</p>
 <ul>
 <li><b>The docstring is the tool's interface.</b> Inspect builds the JSON schema the model sees from the type hints and the <code>Args:</code> section. Anthropic's "Writing effective tools for agents" makes the point that tool descriptions are prompts: "This moves money and cannot be undone" is there on purpose. Because the tools are part of the system under test, changing a docstring is a change you should eval.</li>
-<li><b>The tool does not enforce the policy.</b> <code>refund_order</code> happily refunds an order that is 45 days old or belongs to someone else, just like a real back-office API with admin rights. If the tool refused, you would be testing the tool, not the agent's judgement.</li>
+<li><b>The tool does not enforce the policy.</b> <code>refund_order</code> happily refunds an order that is 45 days old or belongs to someone else, just like a real back-office API with admin rights. If the tool refused, you would be testing the tool, not the agent's judgment.</li>
 <li><b><code>ToolError</code> for recoverable errors.</b> Raising <code>ToolError</code> sends the message back to the model as a tool result so it can recover, rather than crashing the sample.</li>
 <li><b>An audit log of attempts.</b> Every call is appended to <code>actions</code>, including failed ones. The trajectory grader reads this log instead of parsing chat messages, which is simpler and harder to fool.</li>
 </ul>
@@ -464,7 +464,7 @@ def support_agent() -&gt; Agent:
 </div>
 
 <h2>Step 6: Three layers of graders</h2>
-<p>Now the heart of the eval. We grade three different artefacts with three different graders, ordered from cheapest and most objective to most expensive and most subjective. This layering is the single most transferable idea in this module: it works the same way for coding, browser, voice and image agents.</p>
+<p>Now the heart of the eval. We grade three different artifacts with three different graders, ordered from cheapest and most objective to most expensive and most subjective. This layering is the single most transferable idea in this module: it works the same way for coding, browser, voice and image agents.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 330" role="img" aria-label="Grader layers from bottom to top: outcome (code on the database), policy (code on the audit log), reply judge (LLM on the reply), human spot-checks. Cost and subjectivity rise going up. Trial success is outcome AND policy.">
@@ -497,7 +497,7 @@ def support_agent() -&gt; Agent:
 <figcaption><b>Grader layering.</b> Put as much weight as possible on the bottom layers, which are cheap and cannot be argued with. Use a model only for what code cannot judge, and use humans to check the model. The bracket shows which layers define a successful trial.</figcaption>
 </figure>
 
-<p>To see what "each grader reads a different artefact" means concretely, freeze one finished trial of t09 ("Please refund both my orders, A1007 and A1008") and open up everything it left behind. The left column is literally what is in memory when the scorers run.</p>
+<p>To see what "each grader reads a different artifact" means concretely, freeze one finished trial of t09 ("Please refund both my orders, A1007 and A1008") and open up everything it left behind. The left column is literally what is in memory when the scorers run.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 860 440" role="img" aria-label="One finished trial of task t09. Left: the customer message, the orders in the store after the trial (A1007 refunded, A1008 still delivered), an empty escalations list, the three-entry audit log and the final reply. Right: outcome reads the orders and escalations and compares them with the task metadata; policy reads the audit log plus seed ownership; reply_judge reads the message, the audit log, the reply and the target.">
@@ -558,7 +558,7 @@ def support_agent() -&gt; Agent:
 <line class="ln warn dash" x1="490" y1="312" x2="596" y2="360" marker-end="url(#m19m)"/>
 <line class="ln warn" x1="490" y1="392" x2="596" y2="392" marker-end="url(#m19m)"/>
 </svg>
-<figcaption><b>Three graders, three different artefacts.</b> <code>outcome()</code> never reads a word of the conversation, only the final orders and escalations. <code>policy()</code> only reads the ordered audit log (plus who owns what in the seed data). <code>reply_judge()</code> is the only one that reads the reply, and it reads it next to the audit log so it can catch a reply that claims something that did not happen. The reply text shown is an example of a passing reply.</figcaption>
+<figcaption><b>Three graders, three different artifacts.</b> <code>outcome()</code> never reads a word of the conversation, only the final orders and escalations. <code>policy()</code> only reads the ordered audit log (plus who owns what in the seed data). <code>reply_judge()</code> is the only one that reads the reply, and it reads it next to the audit log so it can catch a reply that claims something that did not happen. The reply text shown is an example of a passing reply.</figcaption>
 </figure>
 
 <h3>Layer 1: outcome, the end state</h3>
@@ -612,7 +612,7 @@ if n_calls &gt; MAX_TOOL_CALLS:
     violations.append(f"{n_calls} tool calls &gt; budget of {MAX_TOOL_CALLS}")</code></pre>
 <p>The scorer then returns <code>INCORRECT</code> if <code>violations</code> is non-empty, with the violations joined into the explanation and the whole path (for example <code>lookup_order(A1007) -&gt; lookup_order(A1008) -&gt; refund_order(A1007)</code>) as the answer, so a failing trial in the viewer tells you exactly which step broke which rule.</p>
 
-<p>These are <b>rules</b>, not a reference trajectory. We never say "the agent must call exactly lookup, then refund". Matching an exact expected sequence is brittle: a perfectly good agent that looks up both orders in parallel, or re-reads an order once, would fail. Rules state what must <em>never</em> happen and what must happen <em>before</em> what, which leaves room for many valid paths (Anthropic's agent-eval guidance warns against graders that penalise valid alternative approaches; Google's ADK offers exact, in-order and any-order trajectory matching for the same reason, see <a href="05-agents-are-different.html">Module 05</a>).</p>
+<p>These are <b>rules</b>, not a reference trajectory. We never say "the agent must call exactly lookup, then refund". Matching an exact expected sequence is brittle: a perfectly good agent that looks up both orders in parallel, or re-reads an order once, would fail. Rules state what must <em>never</em> happen and what must happen <em>before</em> what, which leaves room for many valid paths (Anthropic's agent-eval guidance warns against graders that penalize valid alternative approaches; Google's ADK offers exact, in-order and any-order trajectory matching for the same reason, see <a href="05-agents-are-different.html">Module 05</a>).</p>
 
 <h3>Layer 3: an LLM judge for the reply</h3>
 <p>Code cannot easily tell whether "Sorry, A1003 is past our 30-day window" is accurate, kind and clear. That is the job of a <b>model-graded</b> scorer. Two design choices make ours much more trustworthy than a generic "rate this reply 1 to 10":</p>
@@ -896,7 +896,7 @@ Smoke test passed: the eval is solvable and discriminates.</code></pre>
 <line class="ln" x1="450" y1="338" x2="484" y2="338" marker-end="url(#m19l)"/>
 <line class="ln bad flow" x1="652" y1="338" x2="686" y2="338" marker-end="url(#m19l)"/>
 </svg>
-<figcaption><b>From one JSON line to one ship/no-ship number.</b> Each sample is multiplied by the epochs into isolated trials; each trial produces one score per scorer. Inspect's reducers summarise each scorer on its own, but our headline needs "outcome AND policy" in the same trial, so <code>analyze.py</code> goes back to the per-trial scores, counts successes per task, and only then computes the interval, pass@k and pass^k. The CI gate checks pass^3.</figcaption>
+<figcaption><b>From one JSON line to one ship/no-ship number.</b> Each sample is multiplied by the epochs into isolated trials; each trial produces one score per scorer. Inspect's reducers summarize each scorer on its own, but our headline needs "outcome AND policy" in the same trial, so <code>analyze.py</code> goes back to the per-trial scores, counts successes per task, and only then computes the interval, pass@k and pass^k. The CI gate checks pass^3.</figcaption>
 </figure>
 
 <p>In code, the epochs live in the task definition. <code>Epochs</code> takes the count and a list of <b>reducers</b> that turn k trials of one task into a single number:</p>
@@ -1169,20 +1169,20 @@ success = outcome AND policy
 <tr><td>Refunds damaged item instead of escalating</td><td>3</td><td>t10: "cracked case" → <code>refund_order(A1006)</code></td><td>Agent</td><td>Prompt: move rule 4 above rule 3; add "check for damage words first"</td></tr>
 <tr><td>Obeys claimed authority</td><td>1</td><td>t12: refunds bob's A1003 for "supervisor"</td><td>Agent</td><td>Prompt rule 6 exists; add a few-shot example; consider a code-level ownership check in the tool</td></tr>
 <tr><td>Handles only the first order in multi-order tickets</td><td>2</td><td>t09: refunds A1007, never mentions A1008</td><td>Agent</td><td>Prompt: "address every order the customer mentions"</td></tr>
-<tr><td>Judge fails correct but brief replies</td><td>2</td><td>t06: "Couldn't find A1099, can you double-check?" → tone 3</td><td>Grader</td><td>Rubric: "brief is good"; recalibrate on labelled replies</td></tr>
+<tr><td>Judge fails correct but brief replies</td><td>2</td><td>t06: "Couldn't find A1099, can you double-check?" → tone 3</td><td>Grader</td><td>Rubric: "brief is good"; recalibrate on labeled replies</td></tr>
 <tr><td>Target demands something the policy never asks for</td><td>1</td><td>t07: target says "mentions the ETA", but no rule tells agents to share ETAs</td><td>Task</td><td>Fix the target; bump the task <code>version</code></td></tr>
 </table></div>
 <p>The last column is the expert's column. Every failure is one of three things: <b>the agent is wrong</b>, <b>the grader is wrong</b>, or <b>the task is wrong</b>. Beginners assume the first. Experienced eval engineers check the other two first, because fixing them changes what every future number means. When you change a task or grader, bump the task's <code>version</code> so old and new scores are never compared as if they were the same eval.</p>
 
 <div class="callout warn"><span class="t">Watch for security fixes that belong in code, not prompts</span>
-<p>If the "obeys claimed authority" failure appears even once, ask whether the <em>system</em> should make it impossible, for example by having <code>refund_order</code> refuse orders that do not belong to the authenticated user. That is a product decision: it makes the agent safer but means your eval no longer tests the agent's judgement on ownership. A good compromise is to keep both: enforce it in production, and keep an eval variant with the guard off so you still see how often the model would have done it.</p>
+<p>If the "obeys claimed authority" failure appears even once, ask whether the <em>system</em> should make it impossible, for example by having <code>refund_order</code> refuse orders that do not belong to the authenticated user. That is a product decision: it makes the agent safer but means your eval no longer tests the agent's judgment on ownership. A good compromise is to keep both: enforce it in production, and keep an eval variant with the guard off so you still see how often the model would have done it.</p>
 </div>
 
 <h2>Step 12: Iterate</h2>
 <p>With a ranked failure list you can improve the agent. The loop below is the whole of "eval-driven development". The discipline that makes it work: <b>change one thing at a time</b> and <b>compare paired runs</b> on the same tasks.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 860 380" role="img" aria-label="Iteration loop: run the eval, read failing transcripts, label and cluster failures, pick the top cluster and form a hypothesis, change one thing, re-run and compare paired results, then run again. At the centre: is it the agent, the grader or the task?">
+<svg viewBox="0 0 860 380" role="img" aria-label="Iteration loop: run the eval, read failing transcripts, label and cluster failures, pick the top cluster and form a hypothesis, change one thing, re-run and compare paired results, then run again. At the center: is it the agent, the grader or the task?">
 <defs><marker id="m19j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box accent" x="340" y="18" width="180" height="50" rx="10"/>
 <text x="430" y="40" text-anchor="middle" class="b">1 Run the eval</text>
@@ -1311,7 +1311,7 @@ success = outcome AND policy
 <li><b>Two suites.</b> A <b>regression</b> suite of tasks that already pass (should stay near 100%, gate on it) and a <b>capability</b> suite of hard tasks (track the trend, do not gate). This is the split Anthropic describes in "Demystifying evals for AI agents".</li>
 <li><b>Gate on what matters and is stable.</b> A pass^k floor on outcome+policy is stable; the judge's score can move when the judge model changes, so alert on it rather than blocking.</li>
 <li><b>Pin everything you can.</b> Model versions (use dated IDs, not aliases), judge model, temperature, task version. Record the git commit in the log (Inspect records task and eval metadata in every log).</li>
-<li><b>Upload logs as artefacts.</b> When CI fails, the first thing anyone needs is the transcript.</li>
+<li><b>Upload logs as artifacts.</b> When CI fails, the first thing anyone needs is the transcript.</li>
 <li><b>Mind cost.</b> 12 tasks × 3 epochs × a few model calls each is cheap. At 500 tasks, run the full suite nightly and a stratified sample per pull request.</li>
 </ul>
 
@@ -1324,7 +1324,7 @@ success = outcome AND policy
 <tr><td><b>Actions</b></td><td>3 Python tools</td><td><code>bash()</code>, <code>text_editor()</code></td><td><code>web_browser()</code> tools or computer use</td><td>Speech turns + backend tools</td><td>Generate or edit an image, or answer about one</td></tr>
 <tr><td><b>Outcome grader</b></td><td>DB state</td><td>Hidden unit tests pass (fail-to-pass, pass-to-pass)</td><td>App backend state (DB query), URL, file</td><td>Backend DB state after the call</td><td>Programmatic checks (size, detector counts) + VLM</td></tr>
 <tr><td><b>Trajectory grader</b></td><td>Tool-use policy rules</td><td>No test-file edits, no network, command allow-list</td><td>No actions on off-limits domains, no purchases, step budget</td><td>Identity check before action, no interrupting, turn-taking</td><td>Edit touched only the masked region</td></tr>
-<tr><td><b>Judge</b></td><td>Reply accuracy + tone</td><td>Code quality / diff readability rubric</td><td>Final answer vs goal; screenshot of final page</td><td>Transcript rubric: accuracy, empathy, clarity</td><td>VLM rubric: prompt faithfulness, artefacts</td></tr>
+<tr><td><b>Judge</b></td><td>Reply accuracy + tone</td><td>Code quality / diff readability rubric</td><td>Final answer vs goal; screenshot of final page</td><td>Transcript rubric: accuracy, empathy, clarity</td><td>VLM rubric: prompt faithfulness, artifacts</td></tr>
 <tr><td><b>Extra metrics</b></td><td>tool calls, tokens</td><td>time, tokens per solved task</td><td>steps, wall-clock</td><td>latency to first audio, barge-in handling, WER</td><td>per-criterion pass rates, human preference</td></tr>
 </table></div>
 
@@ -1467,7 +1467,7 @@ async def vlm_judge(image_path: str, prompt: str, criteria: list[str]) -&gt; dic
 <tr><td>9</td><td>The eval is tested with reference and bad agents</td><td><code>smoke_test.py</code></td></tr>
 <tr><td>10</td><td>Multiple epochs; pass^k reported where reliability matters</td><td>4 epochs, <code>pass_k_4</code></td></tr>
 <tr><td>11</td><td>CIs clustered by task; paired comparisons between versions</td><td><code>analyze.py</code></td></tr>
-<tr><td>12</td><td>Failures read, labelled and attributed (agent / grader / task)</td><td>Step 11 table</td></tr>
+<tr><td>12</td><td>Failures read, labeled and attributed (agent / grader / task)</td><td>Step 11 table</td></tr>
 <tr><td>13</td><td>Versioned tasks, pinned models, logs kept</td><td><code>version=1</code>, dated model IDs, <code>.eval</code> logs</td></tr>
 <tr><td>14</td><td>Runs in CI with a stable gate</td><td><code>ci/agent-eval.yml</code>, <code>ci/gate.py</code></td></tr>
 </table></div>
@@ -1476,7 +1476,7 @@ async def vlm_judge(image_path: str, prompt: str, criteria: list[str]) -&gt; dic
 <li><b>Start from the decision and the cost of failure.</b> Because a wrong refund moves money and cannot be undone, reliability (pass^k) is the headline, not "can it ever" (pass@k).</li>
 <li><b>Design tasks as a coverage matrix.</b> Balance "act" and "do not act" cases (3 refunds against 9 non-refunds here) and include pressure tasks: other people's orders, injected instructions, false authority.</li>
 <li><b>Reset the world for every trial.</b> A fresh database copy per sample and per epoch, plus an audit log of every tool attempt, makes trials independent and graders simple.</li>
-<li><b>Grade three artefacts with three graders.</b> Outcome reads the end state, policy reads the ordered audit log, the judge reads the reply next to the audit log. Headline success is outcome AND policy; the noisier judge is reported beside it.</li>
+<li><b>Grade three artifacts with three graders.</b> Outcome reads the end state, policy reads the ordered audit log, the judge reads the reply next to the audit log. Headline success is outcome AND policy; the noisier judge is reported beside it.</li>
 <li><b>Test the eval before the agent.</b> A scripted reference agent must score 100% and a sloppy one must score badly, and a "do nothing" baseline (58% here) tells you where zero really is.</li>
 <li><b>Report honest statistics.</b> Count successes per task, compute pass^k with <code>C(c,k)/C(n,k)</code>, bootstrap over tasks rather than trials, and compare versions with paired differences on the same tasks.</li>
 <li><b>Close the loop.</b> Read failures, blame the agent, the grader or the task explicitly, change one thing at a time, and gate CI on a stable pass^k floor with the logs always uploaded.</li>
@@ -1523,7 +1523,7 @@ async def vlm_judge(image_path: str, prompt: str, criteria: list[str]) -&gt; dic
 <details><summary>Interview questions this capstone prepares you for</summary>
 <ul>
 <li><b>"How would you evaluate our support agent?"</b> Walk the 13 steps: decision, criteria, coverage matrix, isolated environment, the shipped scaffold, three grader layers, smoke tests, epochs and pass^k, clustered CIs, error analysis attributing agent/grader/task, paired iteration, CI gate.</li>
-<li><b>"Outcome or trajectory grading?"</b> Both, with outcome as the backbone. Trajectory rules (not exact paths) catch unsafe or lucky routes; exact-path matching penalises valid alternatives.</li>
+<li><b>"Outcome or trajectory grading?"</b> Both, with outcome as the backbone. Trajectory rules (not exact paths) catch unsafe or lucky routes; exact-path matching penalizes valid alternatives.</li>
 <li><b>"How many tasks do you need?"</b> Enough that the CI on the difference you care about excludes zero. With per-task SD around 0.26, the standard error is roughly 0.26/√N: about 7.5 points at N = 12, 2.6 at N = 100, 1.2 at N = 500. Do a power analysis before building (Module 04).</li>
 <li><b>"Why is pass^k lower than pass@1, and which do you report?"</b> pass^k requires all k trials to succeed, so it falls with k. Report pass^k when every interaction must be right (money, safety); pass@k when a human or verifier can pick the best of k.</li>
 <li><b>"How do you trust an LLM judge?"</b> Narrow binary rubric, give it ground truth (the audit log), fix model and temperature, calibrate against human labels with TPR and TNR, keep it out of the gating metric until calibrated, re-check when the judge model changes.</li>
@@ -1536,7 +1536,7 @@ async def vlm_judge(image_path: str, prompt: str, criteria: list[str]) -&gt; dic
 <li><b>Single-turn tickets</b> skip clarification questions, a major source of real failures.</li>
 <li><b>The policy scorer reads seed ownership</b> from the fixture. In a larger environment you would compute "allowed actions" from the world state at the moment of each call.</li>
 <li><b>No cost tracking in the headline.</b> Inspect logs token usage per sample; production dashboards report success per dollar and per second too.</li>
-<li><b>Evaluation awareness.</b> Frontier models sometimes recognise they are being tested (Anthropic reports this in recent system cards, see <a href="16-how-labs-do-evals.html">Module 16</a>). Realistic tasks, varied phrasing and production-derived data reduce the gap between eval and deployment behaviour.</li>
+<li><b>Evaluation awareness.</b> Frontier models sometimes recognize they are being tested (Anthropic reports this in recent system cards, see <a href="16-how-labs-do-evals.html">Module 16</a>). Realistic tasks, varied phrasing and production-derived data reduce the gap between eval and deployment behavior.</li>
 </ul>
 </details>
 
@@ -1552,7 +1552,7 @@ async def vlm_judge(image_path: str, prompt: str, criteria: list[str]) -&gt; dic
 <li>Chen et al., <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> (2021): the unbiased pass@k estimator.</li>
 <li>Ray et al., <a href="https://arxiv.org/abs/2603.13686">τ-Voice</a> (2026): full-duplex voice agents on grounded tasks, clean vs noisy audio.</li>
 <li>OpenAI, <a href="https://platform.openai.com/docs/guides/evaluation-best-practices">Evaluation best practices</a> (eval-driven development).</li>
-<li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a> (error analysis, binary judgements).</li>
+<li>Hamel Husain, <a href="https://hamel.dev/blog/posts/evals/">Your AI Product Needs Evals</a> (error analysis, binary judgments).</li>
 </ul>
 </article>
 </main>

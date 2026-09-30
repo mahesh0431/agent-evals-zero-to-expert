@@ -15,7 +15,7 @@
 
 <div class="kicker">Module 02 · Foundations</div>
 <h1>Anatomy of an eval</h1>
-<p class="lede">Every eval, from a ten-line script to SWE-bench, is built from the same parts: a dataset of samples, a system under test, a grader, a metric, and a harness that runs it all and writes logs. Learn the parts and you can read, build or criticise any eval you meet.</p>
+<p class="lede">Every eval, from a ten-line script to SWE-bench, is built from the same parts: a dataset of samples, a system under test, a grader, a metric, and a harness that runs it all and writes logs. Learn the parts and you can read, build or criticize any eval you meet.</p>
 <div class="meta"><span class="pill level-1">Beginner</span><span class="pill">~45 min</span><span class="pill">Prerequisite: <a href="01-what-are-evals.html">Module 01</a></span><span class="pill">Some Python</span></div>
 
 <div class="objectives">
@@ -141,7 +141,7 @@
 <line class="ln violet dash" x1="384" y1="67" x2="440" y2="67"/>
 <path class="ln violet dash" d="M440,67 L440,268 L496,272" marker-end="url(#m2b)"/>
 </svg>
-<figcaption><b>Who reads which field.</b> The colour of each field matches the part of the eval that reads it. The single most important rule: the target and rubric flow only to the grader. If they leak into the prompt, you are measuring copying, not ability.</figcaption>
+<figcaption><b>Who reads which field.</b> The color of each field matches the part of the eval that reads it. The single most important rule: the target and rubric flow only to the grader. If they leak into the prompt, you are measuring copying, not ability.</figcaption>
 </figure>
 
 <div class="tablewrap"><table>
@@ -164,7 +164,7 @@
 <p>(Real JSONL puts each object on a single line. It is wrapped here for reading.) The <code>must_include</code> list suits a cheap code grader; the <code>rubric</code> is there so a model grader can handle phrasings the code misses, such as "a month" or "thirty days". Keeping both lets you compare the two graders against each other, which is how you catch grader bugs.</p>
 
 <h3>Example (b): a tool-using agent item</h3>
-<p>An agent that works with tools is graded mainly on what it <em>did</em>, not what it said. This item is modelled on τ-bench (tau-bench, from Sierra), where an LLM plays the customer from hidden instructions, the agent calls API tools under a written policy, and grading compares the final database with an annotated goal state.</p>
+<p>An agent that works with tools is graded mainly on what it <em>did</em>, not what it said. This item is modeled on τ-bench (tau-bench, from Sierra), where an LLM plays the customer from hidden instructions, the agent calls API tools under a written policy, and grading compares the final database with an annotated goal state.</p>
 <pre data-lang="jsonl"><code>{"id": "retail-0031",
  "input": {"user_instructions": "You are Dana Lee (user_id u_77). You want to cancel order #W4821 because you ordered the wrong size, and get the refund on your original card. You don't know the order total. Only give your zip code (94110) if asked."},
  "setup": {"db_fixture": "retail_db_v3.json", "policy_doc": "retail_policy_v3.md",
@@ -227,7 +227,7 @@
 <text x="476" y="228" class="mono">test_leap_years.py</text><text x="690" y="228" class="sm b">P2P</text><text x="770" y="228" class="b t-bad">✗</text>
 <rect class="box bad" x="20" y="168" width="400" height="64" rx="10"/>
 <text x="36" y="192" class="b t-bad">Verdict: NOT resolved</text>
-<text x="36" y="212" class="sm">the new behaviour works, but the edit broke leap years;</text>
+<text x="36" y="212" class="sm">the new behavior works, but the edit broke leap years;</text>
 <text x="36" y="226" class="sm">PASS_TO_PASS tests exist to catch exactly this</text>
 <line class="ln bad" x1="456" y1="222" x2="424" y2="210" marker-end="url(#m2k)"/>
 </svg>
@@ -243,14 +243,14 @@
 
 <div class="tablewrap"><table>
 <tr><th>Source</th><th>How</th><th>Strengths</th><th>Weaknesses</th><th>Best for</th></tr>
-<tr><td><b>Hand-written by experts</b></td><td>You, or a domain expert, write inputs and answers.</td><td>Precise, deliberate, can target exact behaviours and edge cases. Fast to start.</td><td>Slow to scale. Reflects what <em>you</em> imagine users do, which is often wrong. Authors unconsciously write tasks their system handles.</td><td>Day one, critical policies, edge cases, safety cases.</td></tr>
-<tr><td><b>Production logs</b></td><td>Sample real user requests (and traces) from your deployed system, then label them.</td><td>Realistic distribution: real phrasing, typos, weird requests. Failures you actually have.</td><td>Needs labelling effort. Privacy review. Biased towards what you already support. Needs a product with users.</td><td>The core of a product eval. See error analysis in <a href="12-error-analysis.html">Module 12</a>.</td></tr>
+<tr><td><b>Hand-written by experts</b></td><td>You, or a domain expert, write inputs and answers.</td><td>Precise, deliberate, can target exact behaviors and edge cases. Fast to start.</td><td>Slow to scale. Reflects what <em>you</em> imagine users do, which is often wrong. Authors unconsciously write tasks their system handles.</td><td>Day one, critical policies, edge cases, safety cases.</td></tr>
+<tr><td><b>Production logs</b></td><td>Sample real user requests (and traces) from your deployed system, then label them.</td><td>Realistic distribution: real phrasing, typos, weird requests. Failures you actually have.</td><td>Needs labeling effort. Privacy review. Biased towards what you already support. Needs a product with users.</td><td>The core of a product eval. See error analysis in <a href="12-error-analysis.html">Module 12</a>.</td></tr>
 <tr><td><b>Synthetic generation</b></td><td>An LLM generates inputs (and sometimes answers) from a template of dimensions, e.g. persona × intent × difficulty.</td><td>Cheap volume. Fills coverage gaps. Can create rare or adversarial cases on demand.</td><td>Samey phrasing, unrealistic users, and generated answers can be wrong. Easy for your model to find "easy" since a similar model wrote them.</td><td>Filling gaps in the coverage matrix, stress tests, bootstrapping before launch.</td></tr>
 <tr><td><b>Adapting public benchmarks</b></td><td>Take items from an existing benchmark and reformat them for your system.</td><td>Free, peer-reviewed, comparable with published numbers.</td><td>Not your task or your users. Often saturated or contaminated (the model saw the answers in training).</td><td>Sanity checks, model selection, general capability tracking.</td></tr>
 </table></div>
 
 <div class="callout tip"><span class="t">A practical recipe</span>
-<p>Start with 20 to 50 hand-written samples covering your most important behaviours. As soon as you have traffic, sample real conversations, read them, and turn every interesting failure into a new sample. Use synthetic generation only to fill specific cells of your coverage matrix (below), and always have a human check generated targets. This mirrors the advice of practitioners such as Hamel Husain and the Anthropic engineering post on agent evals: start small, from real failures, and grow.</p>
+<p>Start with 20 to 50 hand-written samples covering your most important behaviors. As soon as you have traffic, sample real conversations, read them, and turn every interesting failure into a new sample. Use synthetic generation only to fill specific cells of your coverage matrix (below), and always have a human check generated targets. This mirrors the advice of practitioners such as Hamel Husain and the Anthropic engineering post on agent evals: start small, from real failures, and grow.</p>
 </div>
 
 <h3>Synthetic data done well</h3>
@@ -328,7 +328,7 @@
 
 <p>Three practical consequences:</p>
 <ul>
-<li><b>Small sets are for finding failures, not measuring rates.</b> Twenty well-chosen samples are excellent for noticing that your agent always forgets to confirm before cancelling. They cannot tell you whether prompt B is 3 points better than prompt A.</li>
+<li><b>Small sets are for finding failures, not measuring rates.</b> Twenty well-chosen samples are excellent for noticing that your agent always forgets to confirm before canceling. They cannot tell you whether prompt B is 3 points better than prompt A.</li>
 <li><b>Run agents several times per sample.</b> Agents are stochastic: the same sample can pass once and fail the next time. Running each sample for several <b>epochs</b> (repeats) reduces the noise from sampling and lets you measure consistency (pass^k, <a href="04-metrics-and-statistics.html">Module 04</a>). Repeats do not replace more samples: they reduce noise <em>within</em> a sample, not the luck of which samples you chose.</li>
 <li><b>Grouped samples count for less.</b> If ten questions all come from the same document or the same repository, they are not ten independent pieces of evidence. Anthropic's Evan Miller showed naive standard errors can understate uncertainty by more than 3× in such cases (use clustered standard errors).</li>
 </ul>
@@ -435,7 +435,7 @@
 </figure>
 
 <h2>Dev, test, and contamination</h2>
-<p>Here is a trap that catches almost everyone. You build an eval, look at the failures, tweak the prompt, re-run, look at the new failures, tweak again. After fifty rounds your score has gone from 60% to 90%. But you have been <b>fitting the prompt to these exact samples</b>, the same way a student who memorises last year's exam paper does well on that paper and not necessarily on the next. The 90% is optimistic.</p>
+<p>Here is a trap that catches almost everyone. You build an eval, look at the failures, tweak the prompt, re-run, look at the new failures, tweak again. After fifty rounds your score has gone from 60% to 90%. But you have been <b>fitting the prompt to these exact samples</b>, the same way a student who memorizes last year's exam paper does well on that paper and not necessarily on the next. The 90% is optimistic.</p>
 <p>The fix comes from machine learning: split your data.</p>
 
 <figure class="diagram">
@@ -473,7 +473,7 @@
 <line class="ln" x1="650" y1="78" x2="686" y2="78" marker-end="url(#m2f)"/>
 <line class="ln" x1="750" y1="106" x2="750" y2="156" marker-end="url(#m2f)"/>
 <line class="ln bad" x1="690" y1="188" x2="654" y2="188" marker-end="url(#m2f)"/>
-<text x="645" y="250" text-anchor="middle" class="sm">defences: keep test data private, canary strings,</text>
+<text x="645" y="250" text-anchor="middle" class="sm">defenses: keep test data private, canary strings,</text>
 <text x="645" y="266" text-anchor="middle" class="sm">fresh items dated after the model's cutoff</text>
 </svg>
 <figcaption><b>Two ways to fool yourself with data.</b> Left: tuning on the same samples you report makes the score optimistic, so keep a held-out test set. Right: if test items reach a model's training data, the model can recall answers instead of working them out.</figcaption>
@@ -485,7 +485,7 @@
 <li>In practice many small teams skip the split early on, because they have only 50 samples and need every one for finding failures. That is reasonable, as long as you know the score is optimistic, and you start holding samples back once you have a few hundred.</li>
 </ul>
 
-<p><b>Contamination</b> (or data leakage) is the model-level version of the same problem: the test data, or its answers, ended up in the model's training data. Public benchmarks are especially exposed. In February 2026 OpenAI stopped reporting SWE-bench Verified, partly because every frontier model it tested could reproduce some of the gold patches verbatim. Your private eval is safer, but not immune: if you paste samples into public issue trackers or share them with vendors, they can leak. Defences include keeping test sets private, embedding a <b>canary string</b> (a unique random marker that lets model builders filter the data out of training and lets you test whether a model has seen it), and regularly adding fresh samples. <a href="18-benchmark-pitfalls.html">Module 18</a> covers contamination in depth.</p>
+<p><b>Contamination</b> (or data leakage) is the model-level version of the same problem: the test data, or its answers, ended up in the model's training data. Public benchmarks are especially exposed. In February 2026 OpenAI stopped reporting SWE-bench Verified, partly because every frontier model it tested could reproduce some of the gold patches verbatim. Your private eval is safer, but not immune: if you paste samples into public issue trackers or share them with vendors, they can leak. Defenses include keeping test sets private, embedding a <b>canary string</b> (a unique random marker that lets model builders filter the data out of training and lets you test whether a model has seen it), and regularly adding fresh samples. <a href="18-benchmark-pitfalls.html">Module 18</a> covers contamination in depth.</p>
 
 <h2>The system under test</h2>
 <p>People say "we evaluated Claude" or "we evaluated GPT", but that is almost never what happened. What was evaluated is a whole <b>system</b>, and every layer of it can change the score.</p>
@@ -601,7 +601,7 @@
 {"id": "shp-0007", "input": "How much is express shipping to Canada?", "target": {"must_include": ["$25"]}, "metadata": {"category": "shipping", "difficulty": "easy"}}
 {"id": "acc-0019", "input": "Can I merge two accounts into one?", "target": {"must_include": ["cannot"], "must_not_include": ["merged"]}, "metadata": {"category": "account", "difficulty": "medium"}}</code></pre>
 
-<p>Then the eval itself. Every one of the five parts is labelled.</p>
+<p>Then the eval itself. Every one of the five parts is labeled.</p>
 <pre data-lang="python"><code>"""A complete eval in ~40 lines: dataset, system under test, grader, metric, log."""
 import json, math, re, time
 from collections import defaultdict
@@ -664,7 +664,7 @@ with open(f"logs/run_{int(time.time())}.jsonl", "w") as f:
 
 <p>It also has real weaknesses, and seeing them is the point:</p>
 <ul>
-<li><b>The grader is naive.</b> "Returns are accepted within 30 days, but not after 14 days of use" contains the forbidden "14 days" and fails, even if it is correct. "Thirty days" contains no "30 days" and fails. Substring graders are cheap and useful, but you must check them against human judgement (<a href="03-graders.html">Module 03</a>).</li>
+<li><b>The grader is naive.</b> "Returns are accepted within 30 days, but not after 14 days of use" contains the forbidden "14 days" and fails, even if it is correct. "Thirty days" contains no "30 days" and fails. Substring graders are cheap and useful, but you must check them against human judgment (<a href="03-graders.html">Module 03</a>).</li>
 <li><b>One attempt per sample.</b> Model outputs are sampled, so the same question can pass once and fail the next time. Add an epochs loop.</li>
 <li><b>No error handling.</b> If the API times out, the script crashes. A real harness retries and records errors separately from failures.</li>
 <li><b>Sequential.</b> 100 samples run one after another. Real harnesses run many in parallel within rate limits.</li>
@@ -772,7 +772,7 @@ def date_bugs():
 <p>An eval produces a number, but the number is the least informative thing it produces. The <b>transcripts</b> (the full record of each attempt: every message, tool call, tool result and grader explanation) are where you learn what is actually going on. Experienced practitioners are close to unanimous on this: before you trust a score, read a sample of transcripts, especially failures, and some passes too.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 840 300" role="img" aria-label="An agent transcript where the agent cancelled the wrong order because of a typo in the order id, then told the user the right order was cancelled. A judge reading only the final message scores it as a pass; a database state check scores it as a fail.">
+<svg viewBox="0 0 840 300" role="img" aria-label="An agent transcript where the agent canceled the wrong order because of a typo in the order id, then told the user the right order was canceled. A judge reading only the final message scores it as a pass; a database state check scores it as a fail.">
 <defs><marker id="m2j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="250" y="24" text-anchor="middle" class="lg">Transcript</text>
 <rect class="box plain" x="20" y="40" width="460" height="44" rx="6"/>
@@ -784,18 +784,18 @@ def date_bugs():
 <text x="470" y="130" text-anchor="end" class="sm b t-bad">typo!</text>
 <rect class="box plain" x="20" y="148" width="460" height="44" rx="6"/>
 <text x="34" y="168" class="sm b">tool result</text>
-<text x="34" y="184" class="mono">{"order_id": "W4812", "status": "cancelled"}</text>
+<text x="34" y="184" class="mono">{"order_id": "W4812", "status": "canceled"}</text>
 <rect class="box accent" x="20" y="202" width="460" height="44" rx="6"/>
 <text x="34" y="222" class="sm b">assistant (final message)</text>
-<text x="34" y="238" class="mono">Done! Order W4821 is cancelled.</text>
-<text x="250" y="276" text-anchor="middle" class="sm">the wrong customer's order was cancelled, and the user was told otherwise</text>
+<text x="34" y="238" class="mono">Done! Order W4821 is canceled.</text>
+<text x="250" y="276" text-anchor="middle" class="sm">the wrong customer's order was canceled, and the user was told otherwise</text>
 <rect class="box bad" x="540" y="60" width="280" height="80" rx="8"/>
 <text x="556" y="84" class="b">Grader A: judge on final text</text>
 <text x="556" y="104" class="sm">"Confirms cancellation politely."</text>
 <text x="556" y="126" class="b t-bad">PASS (wrong)</text>
 <rect class="box good" x="540" y="166" width="280" height="80" rx="8"/>
 <text x="556" y="190" class="b">Grader B: database state check</text>
-<text x="556" y="210" class="sm">W4821 still pending; W4812 cancelled.</text>
+<text x="556" y="210" class="sm">W4821 still pending; W4812 canceled.</text>
 <text x="556" y="232" class="b t-good">FAIL (right)</text>
 <line class="ln bad" x1="480" y1="224" x2="536" y2="104" marker-end="url(#m2j)"/>
 <line class="ln good" x1="480" y1="170" x2="536" y2="206" marker-end="url(#m2j)"/>
@@ -871,12 +871,12 @@ for s in log.samples:                        # one entry per sample × epoch
 <p>Interview the people who own the product, and read 50 to 100 real conversations (or, before launch, role-play them). Ask: when a conversation went well, what did the bot do? When it went badly, what went wrong? You will get answers like "it told the customer the wrong return window", "it promised a refund it cannot give", "it wrote three paragraphs for a yes/no question". Each complaint is a criterion in disguise. Anthropic's guidance puts it as success criteria that are <b>specific and measurable</b>: not "good answers" but "states the correct policy for the customer's situation".</p>
 
 <h3>Step 2: write criteria a stranger could apply</h3>
-<p>The test for a good criterion: if you gave it to two different people (or a person and a model), would they agree on almost every case? "Friendly" fails that test. "Does not blame the customer, and apologises at most once" passes.</p>
+<p>The test for a good criterion: if you gave it to two different people (or a person and a model), would they agree on almost every case? "Friendly" fails that test. "Does not blame the customer, and apologizes at most once" passes.</p>
 <div class="tablewrap"><table>
 <tr><th>Criterion</th><th>Type</th><th>Pass rule</th><th>Grader</th></tr>
 <tr><td>Resolves the issue</td><td>Outcome</td><td>Takes the right action (correct tool call, correct final state) and tells the user the result.</td><td>Code: state or tool-call check</td></tr>
 <tr><td>States policy correctly</td><td>Factual</td><td>Every policy fact stated matches the policy document for this situation; no invented rules.</td><td>Code for key facts, model grader with the policy doc for the rest</td></tr>
-<tr><td>Hands off when needed</td><td>Judgement</td><td>For listed situations (disputed charge, legal threat, account security), transfers to a human and makes no promise.</td><td>Code: tool-call check</td></tr>
+<tr><td>Hands off when needed</td><td>Judgment</td><td>For listed situations (disputed charge, legal threat, account security), transfers to a human and makes no promise.</td><td>Code: tool-call check</td></tr>
 <tr><td>Tone and brevity</td><td>Style</td><td>Rubric score 4+ of 5 from a calibrated judge; under 120 words unless the user asked for detail.</td><td>Model grader (validated against humans) + word count</td></tr>
 </table></div>
 
@@ -919,7 +919,7 @@ for s in log.samples:                        # one entry per sample × epoch
 </figure>
 
 <div class="grid2">
-<div class="card bad"><h4>1. Ambiguous tasks</h4><p>"Summarise the document" with no length or audience. "Book a flight to Paris" with no date. If a careful human expert could reasonably produce two different answers, one of which the grader rejects, the sample measures luck. Fix: add the missing constraints, or accept all reasonable answers. SWE-bench Verified exists precisely because human reviewers found many original SWE-bench tasks were under-specified.</p></div>
+<div class="card bad"><h4>1. Ambiguous tasks</h4><p>"Summarize the document" with no length or audience. "Book a flight to Paris" with no date. If a careful human expert could reasonably produce two different answers, one of which the grader rejects, the sample measures luck. Fix: add the missing constraints, or accept all reasonable answers. SWE-bench Verified exists precisely because human reviewers found many original SWE-bench tasks were under-specified.</p></div>
 <div class="card bad"><h4>2. Wrong references</h4><p>The target itself is wrong or out of date: an old policy, a typo in the answer key, a goal state that violates the policy. The best agents then "fail" by being right. Fix: two people verify each target; re-check when the underlying policy changes; investigate any sample that every strong system fails. τ-bench's maintainers have published dozens of task fixes for exactly this reason.</p></div>
 <div class="card bad"><h4>3. Graders that accept wrong answers</h4><p>A substring check for "Canberra" passes "It's not Canberra, it's Sydney." A judge that sees only the final message passes an agent that lied about what it did (the transcript figure above). A test that only checks a function exists passes an empty function. Fix: include known-wrong outputs in grader tests, and prefer checking outcomes and state.</p></div>
 <div class="card bad"><h4>4. Leaking the answer</h4><p>The target appears in the prompt ("Is the answer 42? What is 6×7?"), in few-shot examples, in a file the agent can read, in the tool output, or in the test file the agent can open. The score then measures copying. Fix: audit exactly what the system can see; keep targets and hidden tests outside its reach until grading.</p></div>
@@ -929,7 +929,7 @@ for s in log.samples:                        # one entry per sample × epoch
 
 <details>
 <summary>Deep dive: how "too strict" can be as bad as "too lenient"</summary>
-<p>Grader errors cut both ways. When OpenAI audited problems from SWE-bench Verified that models were failing, it reported (February 2026) that at least 59.4% of the audited problems had flawed tests that rejected functionally correct solutions, for example tests that required one specific implementation, or tested behaviour the issue never mentioned. An over-strict grader does not just lower the score; it puts a ceiling on the score and makes genuinely better systems look no better than weaker ones. The same audit found contamination too. The lesson for your own evals: whenever a strong system fails a sample, read the transcript and ask "was it actually wrong?" before assuming it was.</p>
+<p>Grader errors cut both ways. When OpenAI audited problems from SWE-bench Verified that models were failing, it reported (February 2026) that at least 59.4% of the audited problems had flawed tests that rejected functionally correct solutions, for example tests that required one specific implementation, or tested behavior the issue never mentioned. An over-strict grader does not just lower the score; it puts a ceiling on the score and makes genuinely better systems look no better than weaker ones. The same audit found contamination too. The lesson for your own evals: whenever a strong system fails a sample, read the transcript and ask "was it actually wrong?" before assuming it was.</p>
 </details>
 
 <details>

@@ -36,12 +36,12 @@
 <h2>Two questions behind every number</h2>
 <p>In <a href="03-graders.html">Module 03</a> you built graders: each one turns a single output (or a whole agent trajectory) into a score. Now you have 500 scores. Two new questions appear:</p>
 <ol>
-<li><b>What single number summarises them?</b> That is the <b>metric</b>. "Fraction of tasks solved" and "chance the agent solves a task every time a customer asks" sound similar but can differ by a factor of ten.</li>
+<li><b>What single number summarizes them?</b> That is the <b>metric</b>. "Fraction of tasks solved" and "chance the agent solves a task every time a customer asks" sound similar but can differ by a factor of ten.</li>
 <li><b>How much would that number move if I ran the eval again?</b> That is <b>statistics</b>. Agents are random. If you rerun the same eval tomorrow, you get a different number. You need to know how different, or you cannot tell improvement from luck.</li>
 </ol>
 
 <figure class="diagram">
-<svg viewBox="0 0 820 214" role="img" aria-label="Per-item scores flow into an aggregate metric; resampling the eval shows that the metric itself has a spread, summarised as a confidence interval.">
+<svg viewBox="0 0 820 214" role="img" aria-label="Per-item scores flow into an aggregate metric; resampling the eval shows that the metric itself has a spread, summarized as a confidence interval.">
 <defs><marker id="m4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <text x="110" y="24" text-anchor="middle" class="b">500 graded items</text>
 <rect x="336" y="10" width="148" height="24" rx="12" class="fill-soft"/>
@@ -254,7 +254,7 @@
 <figcaption><b>What a rating gap means.</b> Exact values of the Elo / Bradley-Terry curve: +100 points is about a 64% head-to-head win rate, +200 is 76%, +400 is 91%. A 10 or 20 point gap on a leaderboard is barely distinguishable from a coin flip.</figcaption>
 </figure>
 
-<p><b>Elo vs Bradley-Terry.</b> Online Elo updates ratings after every game: <code>R_A ← R_A + K·(result − expected)</code>. It was designed for players whose skill changes over time, so recent games count more, and the final ratings depend on the order the votes arrived in. A model is a fixed artefact, so Bradley-Terry fits all votes at once and gives the same answer regardless of order, plus proper confidence intervals. Here is a tiny, dependency-free fit you can run:</p>
+<p><b>Elo vs Bradley-Terry.</b> Online Elo updates ratings after every game: <code>R_A ← R_A + K·(result − expected)</code>. It was designed for players whose skill changes over time, so recent games count more, and the final ratings depend on the order the votes arrived in. A model is a fixed artifact, so Bradley-Terry fits all votes at once and gives the same answer regardless of order, plus proper confidence intervals. Here is a tiny, dependency-free fit you can run:</p>
 
 <pre data-lang="python"><code>import math
 from collections import defaultdict
@@ -410,7 +410,7 @@ print(fit_bradley_terry(battles))</code></pre>
 <text x="650" y="261.5" class="sm">p^k</text>
 <text x="328.9" y="122.0" text-anchor="middle" class="sm">both curves start at 70% when k = 1</text>
 </svg>
-<figcaption><b>pass@k rises, pass^k collapses.</b> Exact values for a single task with per-trial success p = 0.7, computed as 1 − (1 − p)^k and p^k. This is the idealised curve for independent trials. Real benchmarks average over tasks with different p, and trials of one task are not fully independent, so real curves fall more gently. The τ-bench abstract reports gpt-4o below 25% pass^8 in the retail domain.</figcaption>
+<figcaption><b>pass@k rises, pass^k collapses.</b> Exact values for a single task with per-trial success p = 0.7, computed as 1 − (1 − p)^k and p^k. This is the idealized curve for independent trials. Real benchmarks average over tasks with different p, and trials of one task are not fully independent, so real curves fall more gently. The τ-bench abstract reports gpt-4o below 25% pass^8 in the retail domain.</figcaption>
 </figure>
 
 <pre data-lang="python"><code>from math import comb
@@ -758,7 +758,7 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <p>The reason averages are predictable is the <b>central limit theorem</b> (CLT): the average of many independent scores is approximately normally distributed (a bell curve) around the true value, with spread SE, no matter what the individual scores look like. The histograms in the previous figure are already nearly bell-shaped at n = 50.</p>
 
 <h3>The 95% confidence interval</h3>
-<p>A bell curve has about 95% of its mass within 1.96 standard errors of the centre. So:</p>
+<p>A bell curve has about 95% of its mass within 1.96 standard errors of the center. So:</p>
 <p style="text-align:center"><code>95% CI = mean ± 1.96 × SE</code></p>
 <p>This is the <b>Wald interval</b> (also "normal approximation" or "CLT interval"). For a success rate: <code>p̂ ± 1.96 √(p̂(1−p̂)/n)</code>.</p>
 <p><b>What does "95% confidence" mean?</b> Not "95% chance the true value is in this particular interval". It means: if you repeated the whole eval many times and built an interval each time, 95% of those intervals would contain the true rate. In practice, read it as "values inside the interval are all plausible; values far outside are not".</p>
@@ -886,7 +886,7 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <tr><td>1</td><td><b>Use the CLT to report standard errors</b></td><td>Compute the mean of per-question scores and SE = SD/√n. Report the SE or a 95% CI next to every score.</td></tr>
 <tr><td>2</td><td><b>Cluster standard errors</b> when questions are grouped</td><td>If questions share a passage, a repo, a website or a template, compute clustered SEs. Naive SEs can understate uncertainty by more than 3× in the paper's examples.</td></tr>
 <tr><td>3</td><td><b>Reduce variance within questions</b></td><td>Resample: run each question several times and average per question before averaging across questions. (Or, for multiple choice, use next-token probabilities instead of a single sampled answer.)</td></tr>
-<tr><td>4</td><td><b>Analyse paired differences</b></td><td>When two models answer the same questions, compute the per-question difference and its SE. This removes the "question difficulty" noise that both share.</td></tr>
+<tr><td>4</td><td><b>Analyze paired differences</b></td><td>When two models answer the same questions, compute the per-question difference and its SE. This removes the "question difficulty" noise that both share.</td></tr>
 <tr><td>5</td><td><b>Use power analysis</b></td><td>Before building the eval, compute how many questions you need to detect the smallest difference you care about.</td></tr>
 </table></div>
 
@@ -1037,8 +1037,8 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <text x="160" y="214" text-anchor="middle" class="lg t-bad">22</text><text x="160" y="236" text-anchor="middle" class="sm">only B right</text>
 <rect class="box plain" x="230" y="170" width="140" height="100" rx="6"/>
 <text x="300" y="214" text-anchor="middle" class="lg">138</text><text x="300" y="236" text-anchor="middle" class="sm">both wrong</text>
-<text x="230" y="296" text-anchor="middle" class="sm">grey cells: difference 0, no information</text>
-<text x="230" y="314" text-anchor="middle" class="sm">coloured cells: the only evidence</text>
+<text x="230" y="296" text-anchor="middle" class="sm">gray cells: difference 0, no information</text>
+<text x="230" y="314" text-anchor="middle" class="sm">colored cells: the only evidence</text>
 <rect class="box accent" x="410" y="50" width="390" height="150" rx="8"/>
 <text x="426" y="74" class="b">Per-question difference d = A − B</text>
 <text x="426" y="98" class="mono">d = +1 on 40, −1 on 22, 0 on 438</text>
@@ -1051,7 +1051,7 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <rect class="box bad" x="410" y="262" width="390" height="40" rx="8"/>
 <text x="605" y="287" text-anchor="middle" class="sm">Unpaired: SE 2.99, CI [−2.3, +9.5], p = 0.23 → "can't tell"</text>
 </svg>
-<figcaption><b>Pairing uses what the models have in common.</b> The same data, analysed two ways. The paired SE (1.57 points) is about half the unpaired SE (2.99 points) because the 438 questions where the models agree no longer add noise. Illustrative counts, exact arithmetic.</figcaption>
+<figcaption><b>Pairing uses what the models have in common.</b> The same data, analyzed two ways. The paired SE (1.57 points) is about half the unpaired SE (2.99 points) because the 438 questions where the models agree no longer add noise. Illustrative counts, exact arithmetic.</figcaption>
 </figure>
 
 <p>Step by step:</p>
@@ -1064,7 +1064,7 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 </ol>
 
 <div class="callout tip"><span class="t">Key idea</span>
-<p>Whenever two systems can be run on the same items, run them on the same items and analyse the differences. Pairing is free statistical power. Miller (2024) points out that because model scores on the same questions are typically strongly correlated, paired analysis is far more sensitive than comparing two independent confidence intervals.</p>
+<p>Whenever two systems can be run on the same items, run them on the same items and analyze the differences. Pairing is free statistical power. Miller (2024) points out that because model scores on the same questions are typically strongly correlated, paired analysis is far more sensitive than comparing two independent confidence intervals.</p>
 </div>
 
 <div class="callout warn"><span class="t">Overlapping error bars do not mean "no difference"</span>
@@ -1120,7 +1120,7 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <tr><td>Trying many prompts/models, reporting the best</td><td>The maximum of many noisy scores is biased upward.</td><td>Select on a dev split, report on a held-out test split you touch once.</td></tr>
 <tr><td>Slicing results by 15 categories and highlighting the one that improved</td><td>Each slice is another test, and slices are small.</td><td>Pre-register the slices you care about; apply a correction (Bonferroni: use α/m, e.g. 0.05/20 = 0.0025; or Holm, or Benjamini-Hochberg for false discovery rate).</td></tr>
 <tr><td>Rerunning until the number looks good</td><td>Stopping when p &lt; 0.05 inflates false positives.</td><td>Fix n and epochs in advance; report all runs.</td></tr>
-<tr><td>Tweaking the grader after seeing results</td><td>The grader is fitted to the answer you wanted.</td><td>Freeze grader versions; validate graders on labelled data (Module 13).</td></tr>
+<tr><td>Tweaking the grader after seeing results</td><td>The grader is fitted to the answer you wanted.</td><td>Freeze grader versions; validate graders on labeled data (Module 13).</td></tr>
 </table></div>
 
 <h2>Where variance comes from in agents</h2>
@@ -1685,7 +1685,7 @@ print("paired diff CI:", np.percentile(boot_diff, [2.5, 97.5]).round(3))</code><
 <p><b>Q: Why is 1 − (1 − c/n)^k a biased estimator of pass@k, and what did Chen et al. do instead?</b><br>
 Because the function is nonlinear, plugging in a noisy estimate of p does not give the right expected value. Chen et al. use the combinatorial estimator 1 − C(n−c,k)/C(n,k), the probability that a random size-k subset of the n observed samples contains a correct one, which is exactly unbiased, computed with a stable product.</p>
 <p><b>Q: A model's pass@1 is 70% and its pass^8 is 20%. What does that tell you?</b><br>
-The agent is inconsistent: many tasks are solved sometimes but not reliably. If tasks were either always solved or never solved, pass^8 would equal pass@1. Look for tasks with intermediate per-task success and diagnose why the behaviour varies.</p>
+The agent is inconsistent: many tasks are solved sometimes but not reliably. If tasks were either always solved or never solved, pass^8 would equal pass@1. Look for tasks with intermediate per-task success and diagnose why the behavior varies.</p>
 <p><b>Q: When would you prefer the bootstrap to a CLT interval?</b><br>
 For statistics without a simple SE formula (medians, percentiles, F1, pass^k averaged over tasks, ratings), for small or skewed samples, and when you need to respect a complex dependence structure by resampling clusters.</p>
 <p><b>Q: Two models are 1.5 points apart on a 198-question benchmark. Is one better?</b><br>

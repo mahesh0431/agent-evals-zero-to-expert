@@ -42,7 +42,7 @@
 <rect class="box plain" x="10" y="50" width="120" height="90" rx="10"/>
 <text x="70" y="82" text-anchor="middle" class="b">Dataset</text>
 <text x="70" y="102" text-anchor="middle" class="sm">inputs +</text>
-<text x="70" y="117" text-anchor="middle" class="sm">expected behaviour</text>
+<text x="70" y="117" text-anchor="middle" class="sm">expected behavior</text>
 <rect class="box accent" x="192" y="50" width="150" height="90" rx="10"/>
 <text x="267" y="82" text-anchor="middle" class="b">System under test</text>
 <text x="267" y="102" text-anchor="middle" class="sm">model + prompt +</text>
@@ -119,12 +119,12 @@
 <text x="610" y="266" text-anchor="middle" class="sm">1 input → a distribution of outputs, many acceptable</text>
 <text x="610" y="284" text-anchor="middle" class="sm">stochastic, graded, reported as a rate</text>
 </svg>
-<figcaption><b>Why evals are statistics, not assertions.</b> Run the same agent on the same request five times and you can get five different trajectories. An eval estimates the <em>probability</em> of good behaviour.</figcaption>
+<figcaption><b>Why evals are statistics, not assertions.</b> Run the same agent on the same request five times and you can get five different trajectories. An eval estimates the <em>probability</em> of good behavior.</figcaption>
 </figure>
 
 <div class="tablewrap"><table>
 <tr><th></th><th>Unit test</th><th>Eval</th></tr>
-<tr><td>Output space</td><td>One correct answer</td><td>Many acceptable answers, many wrong ones, and grey zones</td></tr>
+<tr><td>Output space</td><td>One correct answer</td><td>Many acceptable answers, many wrong ones, and gray zones</td></tr>
 <tr><td>Determinism</td><td>Same input, same result</td><td>Sampling makes results vary run to run; you need repeats and error bars</td></tr>
 <tr><td>Result</td><td>Pass / fail</td><td>A rate, a score, a distribution, a ranking</td></tr>
 <tr><td>Target</td><td>100% passing, always</td><td>Often well below 100%; you care about the <em>trend</em> and <em>where</em> it fails</td></tr>
@@ -508,12 +508,12 @@ for c, ok in zip(CASES, results):
 <tr><td><b>Environment / sandbox</b></td><td>The world the agent acts in: a Docker container, a browser, a VM, a simulated user.</td></tr>
 <tr><td><b>Outcome</b></td><td>The final state of the environment after an agent trial (was the refund actually issued in the database?). Anthropic's agent-eval guide separates the outcome from the transcript that produced it.</td></tr>
 <tr><td><b>Suite</b></td><td>A collection of evals run together, e.g. a regression suite on every change and a capability suite weekly.</td></tr>
-<tr><td><b>Benchmark</b></td><td>A public, standardised eval used to compare systems (SWE-bench, OSWorld, τ-bench, MMMU…).</td></tr>
+<tr><td><b>Benchmark</b></td><td>A public, standardized eval used to compare systems (SWE-bench, OSWorld, τ-bench, MMMU…).</td></tr>
 </table></div>
 
 <div class="takeaways"><h3>Key takeaways</h3><ol>
 <li>An eval is a <b>fixed dataset</b> run through a <b>system under test</b>, scored by a <b>grader</b> and aggregated into a <b>metric</b>. Only the system should change between runs.</li>
-<li>AI systems are stochastic, so an eval estimates a <b>probability</b> of good behaviour. Numbers need repeats and error bars before you trust a difference.</li>
+<li>AI systems are stochastic, so an eval estimates a <b>probability</b> of good behavior. Numbers need repeats and error bars before you trust a difference.</li>
 <li>The grader is a measuring instrument with its own error rate. Measure it before you believe it.</li>
 <li>Capability evals should be hard (headroom to improve); regression evals should sit near 100% (any drop is a signal).</li>
 <li>Agent evals grade the <b>trajectory</b> (what it did) and the <b>outcome</b> (the final state of the environment), plus cost, latency and safety.</li>
@@ -534,7 +534,7 @@ for c, ok in zip(CASES, results):
 <button class="opt">Whether the output exactly matches the reference</button>
 <div class="why">Change any of the three (system, data, grader) and the number changes. Always report all three.</div></div>
 <div class="q" data-answer="0"><p>3. A regression eval should usually score…</p>
-<button class="opt">Near 100%: it guards behaviour you already have</button>
+<button class="opt">Near 100%: it guards behavior you already have</button>
 <button class="opt">Around 50%, for maximum statistical power</button>
 <button class="opt">As low as possible, to leave room to improve</button>
 <div class="why">Capability evals are meant to be hard (headroom). Regression evals protect what already works, so any drop is a signal.</div></div>

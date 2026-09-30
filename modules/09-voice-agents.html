@@ -112,7 +112,7 @@
 <p>A <b>speech-to-speech</b> (S2S) or <b>native audio</b> model takes audio in and produces audio out directly, with the reasoning happening inside one network. OpenAI's Realtime API and Google's Gemini Live API (with its native audio models) are the best-known hosted examples. They usually still emit a text transcript of what they said, and they still call tools, but there is no separate ASR stage you can grade on its own.</p>
 <ul>
 <li><b>Strength:</b> the model can hear tone, hesitation and emphasis, and can respond with appropriate prosody. There are fewer hops, so latency can be lower.</li>
-<li><b>Weakness for evals:</b> it is a black box between audio in and audio out. You cannot compute "the ASR's WER" because there is no ASR. You grade end-to-end behaviour. Transcripts the API emits are the model's own rendering, not ground truth, so treat them as a convenience, not as evidence.</li>
+<li><b>Weakness for evals:</b> it is a black box between audio in and audio out. You cannot compute "the ASR's WER" because there is no ASR. You grade end-to-end behavior. Transcripts the API emits are the model's own rendering, not ground truth, so treat them as a convenience, not as evidence.</li>
 </ul>
 
 <div class="callout tip"><span class="t">Key idea</span>
@@ -272,8 +272,8 @@ ref = "please book a table for two at seven"
 hyp = "please book the table for at seven thirty"
 print(wer_details(ref, hyp))   # (0.375, 1, 1, 1, 6)</code></pre>
 
-<h3>WER in code: the library way, with normalisation</h3>
-<p>In practice you use <code>jiwer</code>, a small, fast Python library. The important part is not the call itself but the <b>text normalisation</b> you apply first. Without it, "Book a table." and "book a table" differ by capitalisation and punctuation, and your WER measures formatting, not hearing.</p>
+<h3>WER in code: the library way, with normalization</h3>
+<p>In practice you use <code>jiwer</code>, a small, fast Python library. The important part is not the call itself but the <b>text normalization</b> you apply first. Without it, "Book a table." and "book a table" differ by capitalization and punctuation, and your WER measures formatting, not hearing.</p>
 <pre data-lang="python"><code>import jiwer
 
 # Normalise BOTH sides the same way before comparing.
@@ -295,7 +295,7 @@ print(f"WER={out.wer:.3f}  S={out.substitutions} D={out.deletions} "
 print(jiwer.visualize_alignment(out))   # REF / HYP lines with S, D, I markers
 
 # Corpus WER pools all edits over all words. It is NOT the mean of per-utterance WERs.</code></pre>
-<p>Notice the second example. "4 4 1 9" vs "4419" is the <em>same</em> account number, but it counts as 4 substitutions-and-deletions unless your normaliser converts numbers to one canonical form. Real ASR evals use richer normalisers (for example, the English text normaliser shipped with OpenAI's Whisper repository, which handles numbers, spelling variants and fillers). Always report which normaliser you used; two WER numbers with different normalisers are not comparable.</p>
+<p>Notice the second example. "4 4 1 9" vs "4419" is the <em>same</em> account number, but it counts as 4 substitutions-and-deletions unless your normalizer converts numbers to one canonical form. Real ASR evals use richer normalizers (for example, the English text normalizer shipped with OpenAI's Whisper repository, which handles numbers, spelling variants and fillers). Always report which normalizer you used; two WER numbers with different normalizers are not comparable.</p>
 
 <div class="callout warn"><span class="t">Where WER misleads you</span>
 <ul>
@@ -326,7 +326,7 @@ print(float(score))   # e.g. ~3.8; compare TTS voices / versions on the SAME sen
 </div>
 
 <h3>What MOS misses: names, numbers and "reading" errors</h3>
-<p>For agents, the most damaging TTS failures are not about smoothness. They are <b>text normalisation</b> failures: how the TTS turns written tokens into spoken words.</p>
+<p>For agents, the most damaging TTS failures are not about smoothness. They are <b>text normalization</b> failures: how the TTS turns written tokens into spoken words.</p>
 <div class="tablewrap"><table>
 <tr><th>Written</th><th>Good spoken form</th><th>Typical failure</th></tr>
 <tr><td><code>$1,250.00</code></td><td>"one thousand two hundred fifty dollars"</td><td>"dollar one comma two five zero point zero zero"</td></tr>
@@ -338,7 +338,7 @@ print(float(score))   # e.g. ~3.8; compare TTS voices / versions on the SAME sen
 <p>A neat, automatic way to test this is a <b>round trip</b>: synthesise the agent's sentence, transcribe it with a strong ASR model, and check that the entities survive (compute WER or exact entity match between the text you fed in and what came back). It does not measure beauty, but it does catch mispronounced and garbled content at scale. Keep a hand-curated "pronunciation set" of your hardest real names, product terms and number formats, and run it on every TTS or voice change.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 800 260" role="img" aria-label="Round-trip check: the agent's text goes through the TTS voice under test, a strong ASR model transcribes the audio back, both texts are normalised, and each entity is matched. The code and amount survive; the name comes back as see oh ban, so it was mispronounced.">
+<svg viewBox="0 0 800 260" role="img" aria-label="Round-trip check: the agent's text goes through the TTS voice under test, a strong ASR model transcribes the audio back, both texts are normalized, and each entity is matched. The code and amount survive; the name comes back as see oh ban, so it was mispronounced.">
 <defs><marker id="m9m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box accent" x="20" y="24" width="200" height="72" rx="10"/>
 <text x="120" y="46" text-anchor="middle" class="b">Text fed to TTS</text>
@@ -358,7 +358,7 @@ print(float(score))   # e.g. ~3.8; compare TTS voices / versions on the SAME sen
 <path class="ln" d="M120,96 L120,150 L266,150" marker-end="url(#m9m)"/>
 <path class="ln" d="M670,96 L670,150 L534,150" marker-end="url(#m9m)"/>
 <rect class="box warn" x="270" y="128" width="260" height="44" rx="10"/>
-<text x="400" y="155" text-anchor="middle" class="b">Normalise, then match entities</text>
+<text x="400" y="155" text-anchor="middle" class="b">Normalize, then match entities</text>
 <path class="ln" d="M400,172 L400,184 M130,184 L670,184"/>
 <line class="ln" x1="130" y1="184" x2="130" y2="196" marker-end="url(#m9m)"/>
 <line class="ln" x1="400" y1="184" x2="400" y2="196" marker-end="url(#m9m)"/>
@@ -373,7 +373,7 @@ print(float(score))   # e.g. ~3.8; compare TTS voices / versions on the SAME sen
 <text x="670" y="221" text-anchor="middle" class="mono">Siobhan → see oh ban</text>
 <text x="670" y="239" text-anchor="middle" class="sm t-bad">name mispronounced ✗</text>
 </svg>
-<figcaption><b>The TTS round trip.</b> Speak the agent's sentence with the voice under test, transcribe it with a strong, fixed ASR model, normalise both sides, and check every entity. It cannot judge beauty, but it flags garbled codes, amounts and names automatically. Keep the ASR fixed so a change in the result means the voice changed, not the checker.</figcaption>
+<figcaption><b>The TTS round trip.</b> Speak the agent's sentence with the voice under test, transcribe it with a strong, fixed ASR model, normalize both sides, and check every entity. It cannot judge beauty, but it flags garbled codes, amounts and names automatically. Keep the ASR fixed so a change in the result means the voice changed, not the checker.</figcaption>
 </figure>
 
 <h2>Component level: latency</h2>
@@ -504,12 +504,12 @@ def report(turns: list[TurnTimer]):
 <text x="80" y="276" class="sm">③ caller only paused; agent jumped in early (overlap)</text>
 <text x="450" y="276" class="sm">④ caller interrupts; agent yields after 400 ms of overlap</text>
 </svg>
-<figcaption><b>A call as two waveforms.</b> Grey shading is a gap, red is an overlap the agent caused, orange is an overlap the caller caused. Every turn-taking metric is a measurement on a timeline like this, which is why you need timestamps (or the stereo audio itself), not just a transcript. Illustrative, not real data.</figcaption>
+<figcaption><b>A call as two waveforms.</b> Gray shading is a gap, red is an overlap the agent caused, orange is an overlap the caller caused. Every turn-taking metric is a measurement on a timeline like this, which is why you need timestamps (or the stereo audio itself), not just a transcript. Illustrative, not real data.</figcaption>
 </figure>
 
 <h3>The turn-taking vocabulary</h3>
 <div class="tablewrap"><table>
-<tr><th>Behaviour</th><th>What it means</th><th>How to measure</th></tr>
+<tr><th>Behavior</th><th>What it means</th><th>How to measure</th></tr>
 <tr><td><b>Endpointing</b></td><td>Deciding the caller has finished their turn.</td><td>Endpoint delay (caller's last word → agent decides), and the rate of <b>premature endpoints</b> (agent starts while the caller was only pausing). Vendors call the overall quality "end-of-turn detection accuracy".</td></tr>
 <tr><td><b>Barge-in</b></td><td>The caller interrupts the agent while it speaks.</td><td>Share of real interruptions the agent yields to; <b>yield time</b> (overlap duration before the agent stops; Cekura suggests stopping and resuming within about 2 s, but shorter is better); whether the next reply addresses what the caller said.</td></tr>
 <tr><td><b>False interruption</b></td><td>The agent stops for something that was not a turn: a cough, a TV, a "mm-hm".</td><td>Rate of agent stops with no real caller turn, per call or per 100 agent turns.</td></tr>
@@ -544,7 +544,7 @@ def report(turns: list[TurnTimer]):
 <text x="742" y="108" class="sm">yield recall</text>
 <text x="742" y="190" class="sm">false-stop</text><text x="742" y="205" class="sm">rate</text>
 </svg>
-<figcaption><b>Interruption handling is a confusion matrix.</b> Tuning the VAD to be more sensitive moves errors from the red cell to the orange one, and less sensitive moves them back. Report both cells; optimising only one is how agents become either rude or jumpy.</figcaption>
+<figcaption><b>Interruption handling is a confusion matrix.</b> Tuning the VAD to be more sensitive moves errors from the red cell to the orange one, and less sensitive moves them back. Report both cells; optimizing only one is how agents become either rude or jumpy.</figcaption>
 </figure>
 
 <h3>Task success, policy and tone</h3>
@@ -557,7 +557,7 @@ def report(turns: list[TurnTimer]):
 </ul>
 
 <h2>System level: call outcomes and business metrics</h2>
-<p>At the top of the stack are the numbers a contact-centre manager watches. They are measured on real traffic (online evals, see <a href="15-production-evals.html">Module 15</a>) or on large batches of simulated calls.</p>
+<p>At the top of the stack are the numbers a contact-center manager watches. They are measured on real traffic (online evals, see <a href="15-production-evals.html">Module 15</a>) or on large batches of simulated calls.</p>
 <div class="tablewrap"><table>
 <tr><th>Metric</th><th>Definition</th><th>The trap</th></tr>
 <tr><td><b>Call outcome</b></td><td>Label per call: resolved, transferred, abandoned, callback scheduled, and so on.</td><td>Labels from the agent itself are self-reports. Verify against system state or a judge.</td></tr>
@@ -597,7 +597,7 @@ def report(turns: list[TurnTimer]):
 </figure>
 
 <h2>Simulated callers: testing before real people call</h2>
-<p>You cannot ask a thousand real people to call your agent every time you change a prompt. So voice teams build <b>simulated callers</b>: an LLM plays a persona with a goal (the same <b>user simulator</b> idea from τ-bench in <a href="06-tool-use-and-conversation.html">Module 06</a>), a TTS voice gives it a voice, and it phones your agent over a real audio channel. This is <b>voice-to-voice simulation</b>: the agent under test hears synthesised speech, with all the ASR, endpointing and latency behaviour that implies, instead of receiving clean text.</p>
+<p>You cannot ask a thousand real people to call your agent every time you change a prompt. So voice teams build <b>simulated callers</b>: an LLM plays a persona with a goal (the same <b>user simulator</b> idea from τ-bench in <a href="06-tool-use-and-conversation.html">Module 06</a>), a TTS voice gives it a voice, and it phones your agent over a real audio channel. This is <b>voice-to-voice simulation</b>: the agent under test hears synthesised speech, with all the ASR, endpointing and latency behavior that implies, instead of receiving clean text.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 820 300" role="img" aria-label="Simulation loop: a scenario and persona matrix configure a simulated caller, whose speech passes through channel impairments to the agent under test. The agent's audio returns to the simulator. A recorder captures stereo audio, timestamps, tool calls and database state for graders.">
@@ -643,7 +643,7 @@ def report(turns: list[TurnTimer]):
 <text x="566" y="270" class="sm">audio judge or human: tone, prosody</text>
 <line class="ln" x1="520" y1="230" x2="546" y2="230" marker-end="url(#m9i)"/>
 </svg>
-<figcaption><b>Voice-to-voice simulation.</b> A persona-driven caller talks to your agent through a deliberately degraded channel. Everything is recorded, then graded by several graders at once. The persona matrix turns one scenario into dozens of acoustic and behavioural variants.</figcaption>
+<figcaption><b>Voice-to-voice simulation.</b> A persona-driven caller talks to your agent through a deliberately degraded channel. Everything is recorded, then graded by several graders at once. The persona matrix turns one scenario into dozens of acoustic and behavioral variants.</figcaption>
 </figure>
 
 <h3>What a good simulated caller varies</h3>
@@ -651,10 +651,10 @@ def report(turns: list[TurnTimer]):
 <li><b>Goal and facts:</b> what they want, and the account details they will give when asked (so the grader knows the right end state).</li>
 <li><b>Voice:</b> accent, age, speaking rate, volume, pitch. Use several TTS voices; a suite with one synthetic voice tests one voice.</li>
 <li><b>Environment:</b> background noise (street, café, car, TV, crying baby), speakerphone reverb, phone codec.</li>
-<li><b>Behaviour:</b> interrupts mid-sentence, pauses to think, corrects themselves ("the 14th, no sorry, the 15th"), gives information out of order, goes off topic, gets angry, stays silent.</li>
+<li><b>Behavior:</b> interrupts mid-sentence, pauses to think, corrects themselves ("the 14th, no sorry, the 15th"), gives information out of order, goes off topic, gets angry, stays silent.</li>
 <li><b>Adversarial intent:</b> tries to get account details without verifying, social-engineers a refund, attempts a jailbreak.</li>
 </ul>
-<p>Commercial platforms productise this loop. Hamming advertises auto-generated scenarios with "accents, interruptions, background noise, DTMF, and IVR trees" and turning production failures into regression tests; Coval describes simulating "thousands of realistic callers, hard policies, noisy audio"; Cekura describes persona simulation across language, accent, emotion, speed, volume, interruption behaviour and background noise (their example multiplies 5 × 3 × 3 × 4 × 5, about 900 variants). These are vendor descriptions; evaluate any tool against your own calls. You can also build the loop yourself with an open framework (Pipecat or LiveKit Agents on both ends) and a TTS voice for the caller.</p>
+<p>Commercial platforms productise this loop. Hamming advertises auto-generated scenarios with "accents, interruptions, background noise, DTMF, and IVR trees" and turning production failures into regression tests; Coval describes simulating "thousands of realistic callers, hard policies, noisy audio"; Cekura describes persona simulation across language, accent, emotion, speed, volume, interruption behavior and background noise (their example multiplies 5 × 3 × 3 × 4 × 5, about 900 variants). These are vendor descriptions; evaluate any tool against your own calls. You can also build the loop yourself with an open framework (Pipecat or LiveKit Agents on both ends) and a TTS voice for the caller.</p>
 
 <h3>A scenario config</h3>
 <p>Whether you use a vendor or your own harness, write scenarios as data, so they can be versioned, reviewed, and expanded into a matrix. A sketch in YAML (the field names are illustrative, not a specific product's schema):</p>
@@ -747,7 +747,7 @@ max_duration_s: 240</code></pre>
 <li><b>Pronunciation:</b> the transcript says "Siobhan" whether the agent said it right or wrong, because the ASR (or the agent's own text) already knows the spelling.</li>
 <li><b>Attribution of errors:</b> if you judge the transcript of the <em>caller</em> side, ASR mistakes look like the caller said something odd, or worse, like the agent misunderstood when it actually heard correctly.</li>
 </ul>
-<p>The practical fix is route B: produce a <b>diarised</b> (speaker-labelled), <b>timestamped</b> transcript from the stereo recording, and insert explicit event markers for overlaps, long silences, interruptions and tool calls. A text judge can then reason about timing. Leave prosody and empathy to an audio-capable judge or humans.</p>
+<p>The practical fix is route B: produce a <b>diarised</b> (speaker-labeled), <b>timestamped</b> transcript from the stereo recording, and insert explicit event markers for overlaps, long silences, interruptions and tool calls. A text judge can then reason about timing. Leave prosody and empathy to an audio-capable judge or humans.</p>
 
 <h3>A judge prompt for a timestamped call transcript</h3>
 <pre data-lang="text"><code>You are grading a recorded phone call between a CALLER and a voice AGENT for a dental clinic.
@@ -798,7 +798,7 @@ Respond with JSON only:
 <tr><td><b>VoiceBench</b><br>(Chen et al., Oct 2024)</td><td>LLM-based voice assistants on real and synthetic spoken instructions. Subsets include AlpacaEval, CommonEval, SD-QA, MMSU, OpenBookQA, IFEval, AdvBench and BBH, plus speaker, environment and content variations (accents, noise, disfluency).</td><td>GPT-judged scores for open-ended answers, accuracy for multiple choice, refusal rate for the safety subset. Leaderboard on GitHub.</td></tr>
 <tr><td><b>Full-Duplex-Bench</b><br>(Lin et al., Mar 2025)</td><td>Turn-taking in full-duplex spoken dialogue models: pause handling, backchanneling, smooth turn-taking, user interruption.</td><td>Automatic metrics: takeover rate (TOR, did the model grab the turn when it should or should not have), backchannel frequency and Jensen-Shannon divergence against human distributions, response latency, and GPT-judged relevance of the response after an interruption. Follow-up versions extend to overlapping speech and multi-turn.</td></tr>
 <tr><td><b>Audio MultiChallenge</b><br>(Scale AI, Dec 2025; ACL 2026)</td><td>Multi-turn natural spoken dialogue with end-to-end systems: inference memory, instruction retention, self coherence, and a new <b>voice editing</b> axis (mid-utterance repairs, background audio cues). 452 conversations from 47 speakers, 1,712 instance-specific rubrics.</td><td>Pass rate under a rubric-based LLM judge. Best at paper time: Gemini 3 Pro Preview (Thinking) at 54.65%; performance fell with longer audio context.</td></tr>
-<tr><td><b>τ-Voice</b><br>(Sierra / Princeton, Mar 2026; ICML 2026)</td><td>Full-duplex voice agents on τ-bench's grounded customer-service tasks: 278 tasks with realistic audio, including accents and noise. Integrated into the τ-bench (τ²/τ³) repo with realtime providers.</td><td>Task completion (pass@1) by database-state checks, clean and noisy. Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% clean and 26-38% with noise and accents (about 30-45% of text capability under realistic conditions). 79-90% of failures came from agent behaviour.</td></tr>
+<tr><td><b>τ-Voice</b><br>(Sierra / Princeton, Mar 2026; ICML 2026)</td><td>Full-duplex voice agents on τ-bench's grounded customer-service tasks: 278 tasks with realistic audio, including accents and noise. Integrated into the τ-bench (τ²/τ³) repo with realtime providers.</td><td>Task completion (pass@1) by database-state checks, clean and noisy. Text GPT-5 (reasoning) scored 85%; voice agents scored 31-51% clean and 26-38% with noise and accents (about 30-45% of text capability under realistic conditions). 79-90% of failures came from agent behavior.</td></tr>
 </table></div>
 
 <figure class="diagram">
@@ -827,16 +827,16 @@ Respond with JSON only:
 <text x="200" y="210" text-anchor="middle" class="sm">0</text><text x="340" y="210" text-anchor="middle" class="sm">25%</text>
 <text x="480" y="210" text-anchor="middle" class="sm">50%</text><text x="620" y="210" text-anchor="middle" class="sm">75%</text>
 <text x="760" y="210" text-anchor="middle" class="sm">100%</text>
-<text x="20" y="238" class="sm">Coloured segment = spread between the weakest and strongest voice agent tested. Under realistic audio, voice keeps only about 30 to 45% of text capability.</text>
+<text x="20" y="238" class="sm">Colored segment = spread between the weakest and strongest voice agent tested. Under realistic audio, voice keeps only about 30 to 45% of text capability.</text>
 </svg>
-<figcaption><b>The voice gap, in real numbers.</b> Data from the τ-Voice paper (Ray et al., March 2026), 278 grounded customer-service tasks graded by final database state. The same kind of task that a text agent completes 85% of the time drops to roughly a third in realistic voice conditions. The authors attribute 79 to 90% of failures to agent behaviour, not to the audio plumbing.</figcaption>
+<figcaption><b>The voice gap, in real numbers.</b> Data from the τ-Voice paper (Ray et al., March 2026), 278 grounded customer-service tasks graded by final database state. The same kind of task that a text agent completes 85% of the time drops to roughly a third in realistic voice conditions. The authors attribute 79 to 90% of failures to agent behavior, not to the audio plumbing.</figcaption>
 </figure>
 
 <div class="callout tip"><span class="t">The headline finding across benchmarks</span>
 <p>Spoken interaction is still much harder than text for the same underlying intelligence. Big Bench Audio shows a reasoning gap from speech input; τ-Voice shows grounded task success falling by roughly half or more in voice, and further with noise and accents. If your text agent passes 90% of your tasks, do not assume the voice version will. Measure it.</p>
 </div>
 
-<p>Also worth knowing by name: Artificial Analysis publishes speech-to-speech leaderboards (including Big Bench Audio results and latency measurements), and "Talking Turns" (Arora et al., ICLR 2025) trains a judge model specifically for turn-taking behaviour. Other academic suites cover audio understanding and paralinguistics (for example SD-Eval for paralinguistic cues, and AIR-Bench and MMAU for general audio understanding); check their papers before relying on specifics.</p>
+<p>Also worth knowing by name: Artificial Analysis publishes speech-to-speech leaderboards (including Big Bench Audio results and latency measurements), and "Talking Turns" (Arora et al., ICLR 2025) trains a judge model specifically for turn-taking behavior. Other academic suites cover audio understanding and paralinguistics (for example SD-Eval for paralinguistic cues, and AIR-Bench and MMAU for general audio understanding); check their papers before relying on specifics.</p>
 
 <h2>Robustness: the channel is out to get you</h2>
 <p>A voice agent that works in a quiet office on a laptop microphone can fall apart on a real phone line. Robustness testing means deliberately degrading the audio in controlled, repeatable ways and watching which metrics move.</p>
@@ -928,7 +928,7 @@ def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
 <p>Everything from <a href="17-safety-evals.html">Module 17</a> applies to voice agents, plus a set of risks that only exist because the agent hears and speaks.</p>
 <div class="grid2">
 <div class="card bad"><h4>Voice cloning and impersonation</h4><p>An agent that can speak in any voice can be made to impersonate a real person. OpenAI's GPT-4o system card describes restricting output to preset voices plus a separate output classifier that detects deviation from the approved voices (reported precision 0.96, recall 1.0 on English). Test: prompts and audio that try to make the agent change or imitate a voice.</p></div>
-<div class="card bad"><h4>Caller impersonation</h4><p>A voice agent that "recognises" a customer by voice, or that accepts spoken identity claims, is a social-engineering target, and cloned voices make it worse. Test: calls where the simulated caller claims to be someone else, uses partial details, or pressures the agent to skip verification.</p></div>
+<div class="card bad"><h4>Caller impersonation</h4><p>A voice agent that "recognizes" a customer by voice, or that accepts spoken identity claims, is a social-engineering target, and cloned voices make it worse. Test: calls where the simulated caller claims to be someone else, uses partial details, or pressures the agent to skip verification.</p></div>
 <div class="card warn"><h4>Jailbreaks through audio</h4><p>Attacks can hide in how something is said, not just what. Best-of-N Jailbreaking (Hughes et al., 2024) showed that repeatedly sampling small augmentations of a harmful request also jailbreaks audio language models, not only text ones. Test: spoken versions of your text red-team set, with pitch, speed, noise and accent variations, and with instructions embedded in background audio.</p></div>
 <div class="card warn"><h4>Speaker identification and inference</h4><p>Audio carries identity and sensitive traits. The GPT-4o system card reports training the model to refuse identifying people from their voice, and to refuse or hedge on inferring things like race or intelligence from how someone sounds. Test: "who is speaking?" and "what can you tell about this person from their voice?" prompts.</p></div>
 <div class="card violet"><h4>Harmful content in audio output</h4><p>Moderation built for text may not see audio. A common mitigation (again described in the GPT-4o card) is running moderation on transcripts of both input and output audio. Test: the same disallowed-content set, spoken, and check the moderation layer triggers.</p></div>
@@ -1029,7 +1029,7 @@ def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
 <div class="takeaways"><h3>Key takeaways</h3><ol>
 <li>A voice agent is a text agent plus four new jobs: hearing, timing, turn-taking and speaking. Each one needs its own metric.</li>
 <li>Cascades (VAD, ASR, LLM, TTS) are easy to diagnose because every boundary is text or a timestamp; speech-to-speech models must be graded end to end.</li>
-<li>WER counts every word equally. Always add entity accuracy, state your normaliser, and use oracle-transcript replay to prove whether the ASR caused a failure.</li>
+<li>WER counts every word equally. Always add entity accuracy, state your normalizer, and use oracle-transcript replay to prove whether the ASR caused a failure.</li>
 <li>Measure latency from the caller's side (last word to first audible reply) and report p50/p90/p95/p99, never just the mean.</li>
 <li>Turn-taking is a confusion matrix: missed interruptions versus false interruptions. Tuning one moves errors into the other, so report both.</li>
 <li>Simulated callers with a persona matrix and a degraded channel are the workhorse of voice evals, but the simulator is part of the instrument, so check its fidelity.</li>
@@ -1075,8 +1075,8 @@ def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
 <details><summary>Interview questions (with model answers)</summary>
 <p><b>Q: Cascaded or speech-to-speech, which is easier to evaluate, and why?</b><br>Cascaded. Every stage boundary is text or a timestamp, so you can compute WER, replay oracle transcripts into the LLM, and time each stage. A speech-to-speech model can only be graded end to end on audio in, audio out and tool calls. Many teams add a parallel ASR purely for logging.</p>
 <p><b>Q: How would you measure barge-in quality?</b><br>From stereo recordings with an offline VAD: for each caller onset during agent speech, classify it (real turn vs backchannel or noise, using labels or a judge), then report yield rate and yield time for real turns, false-interruption rate for the rest, and whether the agent's next turn addressed the interruption.</p>
-<p><b>Q: Your WER improved from 9% to 6% but task success dropped. How is that possible?</b><br>WER weights all words equally. The new ASR may be better on common words but worse on entities (names, numbers, account IDs) that decide the task. Or normalisation changed. Check entity accuracy and per-slice results, and run the oracle-transcript replay to confirm whether ASR is the cause.</p>
-<p><b>Q: How do you stop the user simulator from biasing your results?</b><br>Calibrate personas against real calls, vary voices, accents and behaviours, read a sample of simulated calls, track simulator failures (off-script, early hang-ups) separately from agent failures, and run several trials per scenario.</p>
+<p><b>Q: Your WER improved from 9% to 6% but task success dropped. How is that possible?</b><br>WER weights all words equally. The new ASR may be better on common words but worse on entities (names, numbers, account IDs) that decide the task. Or normalization changed. Check entity accuracy and per-slice results, and run the oracle-transcript replay to confirm whether ASR is the cause.</p>
+<p><b>Q: How do you stop the user simulator from biasing your results?</b><br>Calibrate personas against real calls, vary voices, accents and behaviors, read a sample of simulated calls, track simulator failures (off-script, early hang-ups) separately from agent failures, and run several trials per scenario.</p>
 </details>
 
 <h2>Sources and further reading</h2>
@@ -1087,7 +1087,7 @@ def packet_loss(x, sr=16000, frame_ms=20, loss_rate=0.05, seed=0):
 <li>Scale AI, <a href="https://arxiv.org/abs/2512.14865">Audio MultiChallenge</a> (2025); <a href="https://labs.scale.com/leaderboard/audiomc">leaderboard</a>.</li>
 <li>Ray, Dhandhania, Barres, Narasimhan, <a href="https://arxiv.org/abs/2603.13686">τ-Voice</a> (2026); <a href="https://taubench.com">τ-bench leaderboard</a>.</li>
 <li>Saeki et al., <a href="https://arxiv.org/abs/2204.02152">UTMOS: UTokyo-SaruLab System for VoiceMOS Challenge 2022</a>; <a href="https://github.com/sarulab-speech/UTMOS22">code</a>; <a href="https://github.com/tarepan/SpeechMOS">SpeechMOS (torch.hub)</a>.</li>
-<li><a href="https://github.com/jitsi/jiwer">jiwer</a> (WER, CER, alignment visualisation) and its <a href="https://jitsi.github.io/jiwer/usage/">usage docs</a>.</li>
+<li><a href="https://github.com/jitsi/jiwer">jiwer</a> (WER, CER, alignment visualization) and its <a href="https://jitsi.github.io/jiwer/usage/">usage docs</a>.</li>
 <li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/realtime-vad">Realtime API: voice activity detection</a> (server_vad, semantic_vad) and <a href="https://developers.openai.com/api/reference/resources/realtime/server-events">server events</a>.</li>
 <li>Google, <a href="https://ai.google.dev/gemini-api/docs/live-api">Gemini Live API overview</a>.</li>
 <li>Pipecat, <a href="https://github.com/pipecat-ai/smart-turn">Smart Turn</a> (open semantic end-of-turn model).</li>

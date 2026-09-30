@@ -39,7 +39,7 @@
 <p>Hamel Husain and Shreya Shankar, who teach the most widely followed practitioner course on this, put the point bluntly. In their Evals FAQ they report spending "60-80% of our development time on error analysis and evaluation", and they advise against generic, off-the-shelf metrics as a starting point. Hamel's earlier essay <em>Your AI Product Needs Evals</em> says "You must remove all friction from the process of looking at data." The method they teach is called <b>error analysis</b>, and it is borrowed from qualitative research in the social sciences.</p>
 
 <div class="callout analogy"><span class="t">Analogy: the doctor, not the thermometer</span>
-<p>A thermometer gives you a number (a generic metric). A good doctor first examines the patient, forms a diagnosis, and <em>then</em> decides which tests to order. Error analysis is the examination. Evaluators are the tests you order once you know what you are looking for. Ordering every test in the catalogue without examining the patient is expensive and tells you little.</p>
+<p>A thermometer gives you a number (a generic metric). A good doctor first examines the patient, forms a diagnosis, and <em>then</em> decides which tests to order. Error analysis is the examination. Evaluators are the tests you order once you know what you are looking for. Ordering every test in the catalog without examining the patient is expensive and tells you little.</p>
 </div>
 
 <figure class="diagram">
@@ -355,7 +355,7 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <p>Frequency is not the only input. Multiply mentally by <b>severity</b> (a wrongly issued $900 refund costs real money; a slightly stiff tone does not) and by <b>ease of fix</b>. A useful rule: the top of your list is whatever is frequent <em>and</em> costly <em>and</em> not trivially fixed by a prompt change.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 800 300" role="img" aria-label="Prioritisation chart of the refund agent's nine failure modes by frequency and severity. Refund outside policy and wrong order selected are both frequent and high severity, so they are attacked first; missing escalation is rare but critical.">
+<svg viewBox="0 0 800 300" role="img" aria-label="Prioritization chart of the refund agent's nine failure modes by frequency and severity. Refund outside policy and wrong order selected are both frequent and high severity, so they are attacked first; missing escalation is rare but critical.">
 <rect class="fill-bad" x="300" y="40" width="240" height="110" opacity="0.08"/>
 <rect class="fill-warn" x="80" y="40" width="220" height="56" opacity="0.08"/>
 <line class="ln dash" x1="300" y1="40" x2="300" y2="250" opacity="0.4"/>
@@ -390,9 +390,9 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <text x="580" y="196" class="sm"><tspan class="b">7</tspan>  Policy check skipped</text>
 <text x="580" y="218" class="sm"><tspan class="b">8</tspan>  Misclassified intent</text>
 <text x="580" y="240" class="sm"><tspan class="b">9</tspan>  Incomplete confirmation</text>
-<text x="580" y="274" class="sm t-muted">colour = planned grader</text>
+<text x="580" y="274" class="sm t-muted">color = planned grader</text>
 </svg>
-<figcaption><b>Frequency is only half of priority.</b> The worked example's nine failure modes (counts from later in this module), placed by how often they occur and how much damage each does. Frequent and severe modes (top right) come first. Missing escalation (5) is rare but lets a $900 refund through, so it still earns a guard. Colours follow the bar chart below: blue code check, violet LLM judge, green direct fix. Severity ratings are the team's judgement, not data.</figcaption>
+<figcaption><b>Frequency is only half of priority.</b> The worked example's nine failure modes (counts from later in this module), placed by how often they occur and how much damage each does. Frequent and severe modes (top right) come first. Missing escalation (5) is rare but lets a $900 refund through, so it still earns a guard. Colors follow the bar chart below: blue code check, violet LLM judge, green direct fix. Severity ratings are the team's judgment, not data.</figcaption>
 </figure>
 
 <h3>When to stop reading: theoretical saturation</h3>
@@ -527,9 +527,9 @@ with open("synthetic_inputs.jsonl", "w") as f:
 <p><b>Validate judges.</b> An LLM judge is a classifier, and classifiers make mistakes. Before you trust it, compare its verdicts against your domain expert's labels on traces the judge was not tuned on. The FAQ recommends train, dev and test splits of your labeled traces and reporting the judge's <b>true positive rate</b> (TPR: of the traces the human passed, how many the judge passed) and <b>true negative rate</b> (TNR: of the traces the human failed, how many the judge failed). Your error analysis labels are exactly the ground truth you need. <a href="13-llm-as-judge.html">Module 13</a> does this in depth, including how to correct the measured pass rate for judge error.</p>
 
 <figure class="diagram">
-<svg viewBox="0 0 800 280" role="img" aria-label="Judge validation: 180 labelled traces are split into train for few-shot examples, dev for tuning the judge prompt, and test for measuring once. On 72 test traces the judge agrees with the human on 42 passes and 24 fails, giving a true positive rate of 93 percent and a true negative rate of 89 percent.">
+<svg viewBox="0 0 800 280" role="img" aria-label="Judge validation: 180 labeled traces are split into train for few-shot examples, dev for tuning the judge prompt, and test for measuring once. On 72 test traces the judge agrees with the human on 42 passes and 24 fails, giving a true positive rate of 93 percent and a true negative rate of 89 percent.">
 <defs><marker id="m12l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
-<text x="20" y="24" class="b">Human-labelled traces from error analysis (n = 180)</text>
+<text x="20" y="24" class="b">Human-labeled traces from error analysis (n = 180)</text>
 <rect class="box accent" x="20" y="36" width="180" height="38" rx="8"/>
 <text x="110" y="60" text-anchor="middle" class="sm b">train · few-shot examples</text>
 <rect class="box violet" x="204" y="36" width="280" height="38" rx="8"/>

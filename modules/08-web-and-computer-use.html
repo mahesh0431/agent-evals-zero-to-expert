@@ -341,7 +341,7 @@
 </ul>
 
 <h2>How commercial computer-use tools work</h2>
-<p>Both Anthropic and OpenAI ship computer-use tools that follow the same screenshot-and-action loop. The important thing to understand for evals is the <b>division of labour</b>: the model only <em>proposes</em> actions. <b>Your harness</b> owns the computer, executes each action, captures the new screenshot and sends it back. So your harness is also where you reset environments, log trajectories, enforce step budgets and run graders.</p>
+<p>Both Anthropic and OpenAI ship computer-use tools that follow the same screenshot-and-action loop. The important thing to understand for evals is the <b>division of labor</b>: the model only <em>proposes</em> actions. <b>Your harness</b> owns the computer, executes each action, captures the new screenshot and sends it back. So your harness is also where you reset environments, log trajectories, enforce step budgets and run graders.</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 820 420" role="img" aria-label="Sequence diagram of a computer-use loop: the harness sends the task and tool definition to the model, the model requests a screenshot, the harness captures it from the VM and returns it, the model requests a click, the harness executes it and returns a new screenshot, and finally the model answers and the harness runs the grader.">
@@ -453,14 +453,14 @@
 <tr><th></th><th>Offline / static</th><th>Online / interactive</th></tr>
 <tr><td>What is scored</td><td>Each predicted action vs the recorded human action</td><td>The final state or answer after the agent stops</td></tr>
 <tr><td>History given to agent</td><td>The <em>gold</em> previous actions (Mind2Web evaluates "each step independently with the ground truth action history provided")</td><td>Its <em>own</em> previous actions, mistakes included</td></tr>
-<tr><td>Alternative valid paths</td><td>Penalised</td><td>Accepted</td></tr>
+<tr><td>Alternative valid paths</td><td>Penalized</td><td>Accepted</td></tr>
 <tr><td>Error compounding and recovery</td><td>Not measured</td><td>Measured</td></tr>
 <tr><td>Cost and reproducibility</td><td>Cheap, deterministic</td><td>Expensive; needs resettable environments; some flakiness</td></tr>
 <tr><td>Best use</td><td>Fast iteration on grounding and single-step policy; training data</td><td>Headline capability numbers; release decisions</td></tr>
 </table></div>
 
 <div class="callout analogy"><span class="t">Analogy: the driving simulator vs the road test</span>
-<p>Offline evaluation is like pausing dashcam footage and asking "what should the driver do now?". It is a good test of judgement at each moment, but the student never has to live with a bad decision. Online evaluation is the road test: take one wrong turn and you must find your way back, and the examiner only cares whether you arrived safely.</p>
+<p>Offline evaluation is like pausing dashcam footage and asking "what should the driver do now?". It is a good test of judgment at each moment, but the student never has to live with a bad decision. Online evaluation is the road test: take one wrong turn and you must find your way back, and the examiner only cares whether you arrived safely.</p>
 </div>
 
 <h3>Worked example: Mind2Web step metrics</h3>
@@ -540,7 +540,7 @@
 <tr><td><b>OSWorld</b> (HKU et al., 2024)</td><td>Real Ubuntu VMs (Windows subset); Chrome, LibreOffice, GIMP, VS Code, Thunderbird, VLC, multi-app</td><td>369 tasks</td><td>Per-task evaluator config calling one of 134 checker functions on final file / app state; includes infeasible tasks</td><td>Best model 12.24%, humans 72.36%</td></tr>
 <tr><td><b>OSWorld-Verified</b> (Jul 2025)</td><td>Same, with fixed tasks</td><td>369</td><td>Same, re-verified; AWS parallel runs under 1 hour</td><td>Leaderboard at os-world.github.io</td></tr>
 <tr><td><b>Windows Agent Arena</b> (Microsoft, 2024)</td><td>Windows 11 VMs: Office, Edge, File Explorer, VS Code</td><td>154 tasks</td><td>Execution-based state checks; Azure parallel runs about 20 min</td><td>Navi 19.5%, humans 74.5%</td></tr>
-<tr><td><b>AndroidWorld</b> (Google DeepMind, 2024)</td><td>Android emulator, 20 real apps</td><td>116 parameterised templates (millions of instances)</td><td>Reward from device state (databases, files)</td><td>M3A 30.6%, humans 80.0%</td></tr>
+<tr><td><b>AndroidWorld</b> (Google DeepMind, 2024)</td><td>Android emulator, 20 real apps</td><td>116 parameterized templates (millions of instances)</td><td>Reward from device state (databases, files)</td><td>M3A 30.6%, humans 80.0%</td></tr>
 <tr><td><b>ScreenSpot</b> (2024) / <b>ScreenSpot-Pro</b> (2025)</td><td>Screenshots: mobile, desktop, web / 23 pro apps at high resolution</td><td>1,272 / 1,581 instructions</td><td>Click point inside target bounding box</td><td>ScreenSpot now over 90% (saturated); Pro best at release about 18.9%</td></tr>
 </table></div>
 <p class="sm">Sources: the papers linked at the end, via the course research notes (September 2026). Current top scores move monthly and aggregator sites disagree, so check each official leaderboard rather than trusting a number in a course.</p>
@@ -562,7 +562,7 @@
 <p>After the agent stops, the evaluator navigates to the merge request, runs that JavaScript locator to read the last comment, and checks it equals "lgtm". It does not care how the agent got there. It does, however, care about exact text: "LGTM!" would fail. This is the typical trade-off of programmatic checks: precise and cheap, but occasionally too strict (false negatives) or too loose (false positives). Audits found enough of both that cleaned-up versions such as WebArena-Verified exist.</p>
 
 <h3>OSWorld up close</h3>
-<p>OSWorld (Xie et al., 2024) does the same thing for whole computers. Each task runs in a real Ubuntu virtual machine restored from a snapshot, the task's <code>config</code> commands prepare the scene (download a file, open an app, change a setting), the agent works, and then the task's <code>evaluator</code> fetches some piece of final state from the VM and compares it with an expectation. The 369 tasks split across domains as Chrome 46, GIMP 26, LibreOffice Calc 47, Impress 47, Writer 23, multi-app 101, OS 24, Thunderbird 15, VLC 17 and VS Code 23 (counted from <code>evaluation_examples/test_all.json</code>). Some tasks are deliberately <b>infeasible</b> (the requested feature does not exist) and the correct behaviour is to say so, which tests whether the agent will bluff.</p>
+<p>OSWorld (Xie et al., 2024) does the same thing for whole computers. Each task runs in a real Ubuntu virtual machine restored from a snapshot, the task's <code>config</code> commands prepare the scene (download a file, open an app, change a setting), the agent works, and then the task's <code>evaluator</code> fetches some piece of final state from the VM and compares it with an expectation. The 369 tasks split across domains as Chrome 46, GIMP 26, LibreOffice Calc 47, Impress 47, Writer 23, multi-app 101, OS 24, Thunderbird 15, VLC 17 and VS Code 23 (counted from <code>evaluation_examples/test_all.json</code>). Some tasks are deliberately <b>infeasible</b> (the requested feature does not exist) and the correct behavior is to say so, which tests whether the agent will bluff.</p>
 <p>Here is a real OSWorld task, lightly trimmed. Notice the setup deliberately sets the value <em>away</em> from the goal, so an agent that does nothing fails:</p>
 <pre data-lang="json"><code>{
   "id": "bedcedc4-4d72-425e-ad62-21960b11fe0d",
@@ -633,8 +633,8 @@ def evaluate(task: dict, vm) -> float:
 # usage, after the agent loop finished:
 # task = json.load(open("tasks/bedcedc4.json")); print(evaluate(task, vm))</code></pre>
 
-<h3>AndroidWorld: dynamic, parameterised tasks</h3>
-<p>AndroidWorld (Rawles et al., 2024) runs an Android emulator with 20 real apps and 116 <b>task templates</b>. Each template has parameters (a contact name, a date, an expense amount) that are randomly generated at run time, which yields millions of distinct instances. That fights memorisation, because the exact task you are tested on did not exist before the run, and it lets you run the same template with several seeds to measure reliability. Success is computed from device state such as app databases and files, not from screenshots.</p>
+<h3>AndroidWorld: dynamic, parameterized tasks</h3>
+<p>AndroidWorld (Rawles et al., 2024) runs an Android emulator with 20 real apps and 116 <b>task templates</b>. Each template has parameters (a contact name, a date, an expense amount) that are randomly generated at run time, which yields millions of distinct instances. That fights memorization, because the exact task you are tested on did not exist before the run, and it lets you run the same template with several seeds to measure reliability. Success is computed from device state such as app databases and files, not from screenshots.</p>
 
 <h3>Live-web benchmarks: WebVoyager and BrowseComp</h3>
 <p><b>WebVoyager</b> runs agents on 15 real, live websites. Since you cannot query Amazon's database, success is judged by humans, or automatically by GPT-4V looking at the agent's screenshots and answer, which agreed with humans about 85% of the time in the paper. Live sites change daily: prices move, flights sell out, some tasks become impossible, and bot protections appear. Two runs a month apart are not the same benchmark.</p>
@@ -952,7 +952,7 @@ if __name__ == "__main__":
 <defs><marker id="m8k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="box good" x="20" y="40" width="160" height="60" rx="8"/>
 <text x="100" y="64" text-anchor="middle" class="b">User</text>
-<text x="100" y="84" text-anchor="middle" class="sm">"summarise my inbox"</text>
+<text x="100" y="84" text-anchor="middle" class="sm">"summarize my inbox"</text>
 <rect class="box accent" x="260" y="40" width="160" height="60" rx="8"/>
 <text x="340" y="75" text-anchor="middle" class="b">Agent</text>
 <rect class="box bad" x="500" y="30" width="300" height="80" rx="8"/>
@@ -1020,7 +1020,7 @@ if __name__ == "__main__":
 </figure>
 
 <h3>Destructive actions and confirmation policies</h3>
-<p>Beyond injection, agents make honest mistakes with real consequences: emptying the trash, force-pushing to GitLab, submitting a payment. Both vendors' docs recommend asking a human before consequential actions. That creates something new to evaluate: a <b>confirmation policy</b>. Build tasks where the right behaviour is to pause and ask ("Delete all files in Downloads": do you mean all 2,000?), and tasks where asking would be annoying ("Close this tab"). Score two error types: <b>under-asking</b> (took an irreversible action without confirmation) and <b>over-asking</b> (interrupted the user for trivia). In your harness, intercept actions such as submitting a checkout form or running <code>rm</code>, record whether the agent requested confirmation, and have the simulated user decline sometimes, to check the agent respects "no".</p>
+<p>Beyond injection, agents make honest mistakes with real consequences: emptying the trash, force-pushing to GitLab, submitting a payment. Both vendors' docs recommend asking a human before consequential actions. That creates something new to evaluate: a <b>confirmation policy</b>. Build tasks where the right behavior is to pause and ask ("Delete all files in Downloads": do you mean all 2,000?), and tasks where asking would be annoying ("Close this tab"). Score two error types: <b>under-asking</b> (took an irreversible action without confirmation) and <b>over-asking</b> (interrupted the user for trivia). In your harness, intercept actions such as submitting a checkout form or running <code>rm</code>, record whether the agent requested confirmation, and have the simulated user decline sometimes, to check the agent respects "no".</p>
 
 <figure class="diagram">
 <svg viewBox="0 0 820 300" role="img" aria-label="A confirmation policy scored as a two by two: confirmation needed or not, against the agent asking or acting. Asking when needed and acting when not needed are correct. Acting without asking when needed is under-asking, the dangerous error. Asking when not needed is over-asking, the annoying error.">
@@ -1082,7 +1082,7 @@ if __name__ == "__main__":
 <li>Offline step metrics (Mind2Web) replay the human's history and never test recovery. Online end-state success (WebArena, OSWorld) is the real exam.</li>
 <li>Grade the end state from the database, files or URL, plus a collateral-damage check. Never grade the agent's own claim of success.</li>
 <li>Reset before every trial, give each trial a fresh browser or VM, run several trials, and report pass^k with confidence intervals.</li>
-<li>Validate the evaluator itself: a do-nothing agent must fail, a reference solution must pass, and a human-labelled sample estimates false positives and false negatives.</li>
+<li>Validate the evaluator itself: a do-nothing agent must fail, a reference solution must pass, and a human-labeled sample estimates false positives and false negatives.</li>
 <li>Safety is part of the score: check both the user's goal and the attacker's goal on injected tasks, and report under-asking and over-asking for confirmations. Always run in a sandbox.</li>
 </ol>
 </div>
@@ -1100,7 +1100,7 @@ if __name__ == "__main__":
 <button class="opt">False positive: the email might be in Drafts or Outbox; the screenshot can't show off-screen state</button>
 <div class="why">Screenshot judges see only what is visible. A state-based check of the Sent folder would be more reliable.</div></div>
 <div class="q" data-answer="0"><p>3. Your grounding scorer reports 5% accuracy for a model that looks fine by eye. What should you check first?</p>
-<button class="opt">Coordinate conversion: the model may output normalised or downscaled-image coordinates</button>
+<button class="opt">Coordinate conversion: the model may output normalized or downscaled-image coordinates</button>
 <button class="opt">Whether the bounding boxes are too big</button>
 <button class="opt">Whether to switch to an LLM judge</button>
 <div class="why">Resolution and coordinate-space mismatches are the classic cause of near-zero grounding scores.</div></div>

@@ -532,7 +532,7 @@ def judge_trace(t: dict):
 <tr><th>Signal</th><th>How to detect</th><th>Usually means</th><th>Watch out for</th></tr>
 <tr><td>Retry / regenerate</td><td>Regenerate button, or same question rephrased within N seconds</td><td>The answer missed</td><td>Some users regenerate for variety (creative tasks)</td></tr>
 <tr><td>Correction</td><td>"No", "I said", "that's wrong" in the next turn (a cheap classifier)</td><td>Misunderstanding or wrong action</td><td>Users also say "no" to answer the agent's own question</td></tr>
-<tr><td>Edit distance on drafts</td><td>For agents that draft emails, code or documents: how much the user changed before using it</td><td>Large edits = low quality</td><td>Users personalise good drafts too; track trends, not single values</td></tr>
+<tr><td>Edit distance on drafts</td><td>For agents that draft emails, code or documents: how much the user changed before using it</td><td>Large edits = low quality</td><td>Users personalize good drafts too; track trends, not single values</td></tr>
 <tr><td>Acceptance</td><td>Suggested code kept, PR merged, action confirmed, draft sent</td><td>Success</td><td>Accepted-then-reverted later is a delayed failure</td></tr>
 <tr><td>Escalation</td><td>"Talk to a human", handoff tool called, support ticket opened</td><td>Agent could not resolve</td><td>Some escalations are correct policy (the agent <em>should</em> hand off)</td></tr>
 <tr><td>Abandonment</td><td>Session ends mid-task, no confirmation, no return</td><td>Gave up</td><td>Also happens when the user simply got what they needed</td></tr>
@@ -1117,7 +1117,7 @@ jobs:
 <details>
 <summary>Worked example: turning a production trace into a regression case</summary>
 <p>The flight-change session from the implicit-signals figure lands in the queue (escalation plus a judge fail). The reviewer writes: "FAIL. Agent booked Thursday when the user said Friday; later added a $75 fee without warning. First failure: date parsing." Tags: <code>wrong_entity</code>, <code>unannounced_cost</code>.</p>
-<p>The engineer converts it into a test case: input = the first user message plus the booking tool's recorded responses (so it replays deterministically); graders = a code check that the <code>rebook</code> tool was called with a Friday date, and a judge check "if the action has a fee, the agent states the fee and asks for confirmation before acting". The case goes into the smoke suite as a must-pass case because it touches money. The failure mode also gets a synthetic variant set ("move it to next Tuesday", "the 14th", "two days later") so the fix generalizes rather than memorising one phrasing.</p>
+<p>The engineer converts it into a test case: input = the first user message plus the booking tool's recorded responses (so it replays deterministically); graders = a code check that the <code>rebook</code> tool was called with a Friday date, and a judge check "if the action has a fee, the agent states the fee and asks for confirmation before acting". The case goes into the smoke suite as a must-pass case because it touches money. The failure mode also gets a synthetic variant set ("move it to next Tuesday", "the 14th", "two days later") so the fix generalizes rather than memorizing one phrasing.</p>
 </details>
 
 <h2>Privacy and PII in traces</h2>
