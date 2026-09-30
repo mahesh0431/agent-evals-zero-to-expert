@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>27 · Domain evals: health, law, finance, data, robots · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 27 · Part VI · Beyond the core</div>
+<h1>Domain evals: health, law, finance, data, robots</h1>
+<p class="lede">A general benchmark tells you an agent is smart. It does not tell you whether it will give a frightened parent the right advice about a stroke, cite a court case that actually exists, pull the right number out of a 10-K, write SQL that returns the right rows on a real warehouse, or pick up a cup on a robot it has never seen. This module is a playbook for those domain evals, followed by a guided tour of the benchmarks in each field and the one pitfall that bites hardest in each.</p>
+<div class="meta"><span class="pill level-3">Advanced</span><span class="pill">~70 min</span><span class="pill">Prereqs: Modules 03, 04, 12, 13</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Run the <b>domain-eval playbook</b>: set a risk tier, recruit experts, collect real tasks, have experts write <b>weighted rubrics</b>, measure <b>inter-expert agreement</b>, validate a model grader, and keep the suite current as guidelines change.</li>
+<li>Score with <b>severity weights</b> and reward <b>abstention and escalation</b> instead of confident wrong answers.</li>
+<li>Explain what HealthBench measures and why it differs from exam-style medical benchmarks like MedQA, and compute a HealthBench-style rubric score in Python.</li>
+<li>Evaluate legal agents for <b>hallucinated citations</b>, finance agents for numbers pulled from filings, and data-science agents by <b>executing</b> what they produce.</li>
+<li>Explain why text-to-SQL uses <b>execution accuracy</b> instead of exact match, where execution accuracy still lies, and implement a scorer with <code>sqlite3</code>.</li>
+<li>Explain why robotics evals are <b>expensive and noisy</b>, how many physical trials you need, and how sim, real-to-sim and distributed real-world evals (RoboArena and others) trade off.</li>
+<li>Describe what game benchmarks (BALROG, Pokemon runs, Minecraft) test and why the harness matters as much as the model.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>Why domains need their own playbook</h2>
+<p>Think about how a hospital hires a new doctor. Nobody checks only their exam scores. Senior physicians watch them with real patients, look at whether they ask the right follow-up questions, notice whether they know when to call for help, and care far more about one dangerous mistake than about ten clumsy sentences. Law firms, banks and research labs do the same thing in their own way. Every serious profession already has a way of judging competent work, and that judgment lives in the heads of its experts.</p>
+<p>A <b>domain eval</b> is an eval where "correct" is defined by the standards of a profession or by the physics of the real world, rather than by general common sense. Three things make these evals different from the general ones in earlier modules:</p>
+<ul>
+<li><b>You cannot write the answer key yourself.</b> An engineer cannot tell whether a medication answer is safe, whether a contract clause is enforceable, or whether a regression was specified correctly. The ground truth has to come from <b>domain experts</b>, and experts are expensive, busy and sometimes disagree with each other.</li>
+<li><b>Mistakes are not equal.</b> In a chatbot for recipes, a wrong answer is a wrong answer. In medicine, finance and law, one wrong answer can be a harmless typo and another can hurt someone. Plain accuracy hides this; you need <b>severity-weighted</b> scoring.</li>
+<li><b>"I don't know" is often the right answer.</b> A professional who says "this needs a specialist" is doing their job. An eval that only rewards answering will train and select agents that bluff.</li>
+</ul>
+<p>The fields covered here also have their own <b>ground-truth mechanisms</b>. In law, a citation either exists or it does not. In finance, the number is in the filing. In data science and SQL, you can <b>run</b> the output. In robotics, the cup is either in the bin or on the floor. Good domain evals lean on these mechanisms wherever they exist and fall back to expert rubrics only where they must.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 340" role="img" aria-label="A shared domain-eval playbook in the center connects to six domains, each with its own source of ground truth: health uses physician rubrics, law checks that citations exist, finance checks numbers against filings, data science executes outputs, text-to-SQL compares result sets, and robots and games count physical or in-game success.">
+<defs><marker id="m27a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent pulse" x="290" y="120" width="240" height="100" rx="14"/>
+<text x="410" y="152" text-anchor="middle" class="lg">One playbook</text>
+<text x="410" y="176" text-anchor="middle" class="sm">expert rubrics, risk tiers, severity</text>
+<text x="410" y="194" text-anchor="middle" class="sm">abstention, agreement, freshness</text>
+<rect class="box plain" x="30" y="30" width="200" height="60" rx="10"/>
+<text x="130" y="55" text-anchor="middle" class="b">Health</text>
+<text x="130" y="75" text-anchor="middle" class="sm">physician-written rubrics</text>
+<rect class="box plain" x="30" y="140" width="200" height="60" rx="10"/>
+<text x="130" y="165" text-anchor="middle" class="b">Law</text>
+<text x="130" y="185" text-anchor="middle" class="sm">citations must exist and fit</text>
+<rect class="box plain" x="30" y="250" width="200" height="60" rx="10"/>
+<text x="130" y="275" text-anchor="middle" class="b">Finance</text>
+<text x="130" y="295" text-anchor="middle" class="sm">numbers traced to filings</text>
+<rect class="box plain" x="590" y="30" width="200" height="60" rx="10"/>
+<text x="690" y="55" text-anchor="middle" class="b">Data science</text>
+<text x="690" y="75" text-anchor="middle" class="sm">execute what it produced</text>
+<rect class="box plain" x="590" y="140" width="200" height="60" rx="10"/>
+<text x="690" y="165" text-anchor="middle" class="b">Text-to-SQL</text>
+<text x="690" y="185" text-anchor="middle" class="sm">compare result sets</text>
+<rect class="box plain" x="590" y="250" width="200" height="60" rx="10"/>
+<text x="690" y="275" text-anchor="middle" class="b">Robots and games</text>
+<text x="690" y="295" text-anchor="middle" class="sm">success over many trials</text>
+<line class="ln accent" x1="230" y1="60" x2="290" y2="140" marker-start="url(#m27a)"/>
+<line class="ln accent" x1="230" y1="170" x2="290" y2="170" marker-start="url(#m27a)"/>
+<line class="ln accent" x1="230" y1="280" x2="290" y2="200" marker-start="url(#m27a)"/>
+<line class="ln accent" x1="590" y1="60" x2="530" y2="140" marker-start="url(#m27a)"/>
+<line class="ln accent" x1="590" y1="170" x2="530" y2="170" marker-start="url(#m27a)"/>
+<line class="ln accent" x1="590" y1="280" x2="530" y2="200" marker-start="url(#m27a)"/>
+</svg>
+<figcaption><b>One playbook, six sources of truth.</b> The method in the middle (experts, weighted rubrics, risk, abstention, agreement, keeping current) is shared. What changes per domain is where the ground truth comes from, and the best domain evals use the cheapest reliable one available.</figcaption>
+</figure>
+
+<div class="callout analogy"><span class="t">Analogy: the driving test</span>A written driving test is like a general benchmark: cheap, objective, and a poor predictor of how you handle a child running into the road. The road test is the domain eval: an expert examiner, a real environment, a short list of <em>instant-fail</em> errors (running a red light) that outweigh everything else, and credit for pulling over when it is unsafe to continue. Keep this picture in mind; every section below is a version of it.</div>
+
+<h2>The domain-eval playbook</h2>
+<p>This is the part that transfers to any field, including ones this module does not cover (insurance, tax, HR, pharma, engineering). It builds on the error-analysis loop from <a href="12-error-analysis.html">Module 12</a> and the grader choices from <a href="03-graders.html">Module 03</a>, adding the pieces that only matter when stakes are professional.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Seven steps in a row: scope and risk tier, recruit experts, collect real tasks, write rubrics, calibrate experts, validate grader, run and review. A loop arrow returns from the last step to the rubric step, labeled guidelines change.">
+<defs><marker id="m27b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box warn" x="20" y="60" width="100" height="70" rx="10"/>
+<text x="70" y="90" text-anchor="middle" class="b">Scope and</text><text x="70" y="108" text-anchor="middle" class="b">risk tier</text>
+<rect class="box plain" x="134" y="60" width="100" height="70" rx="10"/>
+<text x="184" y="90" text-anchor="middle" class="b">Recruit</text><text x="184" y="108" text-anchor="middle" class="b">experts</text>
+<rect class="box plain" x="248" y="60" width="100" height="70" rx="10"/>
+<text x="298" y="90" text-anchor="middle" class="b">Collect</text><text x="298" y="108" text-anchor="middle" class="b">real tasks</text>
+<rect class="box accent" x="362" y="60" width="100" height="70" rx="10"/>
+<text x="412" y="90" text-anchor="middle" class="b">Write</text><text x="412" y="108" text-anchor="middle" class="b">rubrics</text>
+<rect class="box plain" x="476" y="60" width="100" height="70" rx="10"/>
+<text x="526" y="90" text-anchor="middle" class="b">Calibrate</text><text x="526" y="108" text-anchor="middle" class="b">experts</text>
+<rect class="box plain" x="590" y="60" width="100" height="70" rx="10"/>
+<text x="640" y="90" text-anchor="middle" class="b">Validate</text><text x="640" y="108" text-anchor="middle" class="b">grader</text>
+<rect class="box good" x="704" y="60" width="100" height="70" rx="10"/>
+<text x="754" y="90" text-anchor="middle" class="b">Run and</text><text x="754" y="108" text-anchor="middle" class="b">review</text>
+<line class="ln" x1="120" y1="95" x2="132" y2="95" marker-end="url(#m27b)"/>
+<line class="ln" x1="234" y1="95" x2="246" y2="95" marker-end="url(#m27b)"/>
+<line class="ln" x1="348" y1="95" x2="360" y2="95" marker-end="url(#m27b)"/>
+<line class="ln" x1="462" y1="95" x2="474" y2="95" marker-end="url(#m27b)"/>
+<line class="ln" x1="576" y1="95" x2="588" y2="95" marker-end="url(#m27b)"/>
+<line class="ln" x1="690" y1="95" x2="702" y2="95" marker-end="url(#m27b)"/>
+<text x="70" y="156" text-anchor="middle" class="sm">who is harmed,</text><text x="70" y="172" text-anchor="middle" class="sm">and how badly?</text>
+<text x="184" y="156" text-anchor="middle" class="sm">credentialed,</text><text x="184" y="172" text-anchor="middle" class="sm">diverse settings</text>
+<text x="298" y="156" text-anchor="middle" class="sm">from real work,</text><text x="298" y="172" text-anchor="middle" class="sm">not exam items</text>
+<text x="412" y="156" text-anchor="middle" class="sm">+/- weighted</text><text x="412" y="172" text-anchor="middle" class="sm">criteria per task</text>
+<text x="526" y="156" text-anchor="middle" class="sm">double-grade,</text><text x="526" y="172" text-anchor="middle" class="sm">measure kappa</text>
+<text x="640" y="156" text-anchor="middle" class="sm">model grader vs</text><text x="640" y="172" text-anchor="middle" class="sm">expert labels</text>
+<text x="754" y="156" text-anchor="middle" class="sm">severity, abstain,</text><text x="754" y="172" text-anchor="middle" class="sm">expert spot-checks</text>
+<path class="ln accent flow" d="M754,184 L754,236 L412,236 L412,186" marker-end="url(#m27b)"/>
+<text x="583" y="258" text-anchor="middle" class="sm t-accent">guidelines change: re-review rubrics, version the suite, re-run</text>
+</svg>
+<figcaption><b>The playbook as a pipeline.</b> Risk tier first, because it decides how much of everything else you need. The loop at the bottom is not optional in regulated fields: clinical guidelines, laws and accounting rules change, and an eval frozen in 2024 can reward advice that is wrong in 2026.</figcaption>
+</figure>
+
+<h3>Step 1: scope and risk tier</h3>
+<p>Before writing a single test case, decide how bad a failure can be. A <b>risk tier</b> is a label that sets how strict the eval must be. Regulators think this way: the EU AI Act, for example, treats systems such as AI in medical devices, creditworthiness scoring of people and tools used in the administration of justice as <b>high-risk</b>, with heavier obligations (see <a href="28-governance-and-responsible-ai.html">Module 28</a>). You do not need a law to adopt the idea. A simple internal scheme works:</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Tier</th><th>What the agent does</th><th>Example</th><th>What the eval must add</th></tr></thead>
+<tbody>
+<tr><td>0 · Internal</td><td>Drafts for an expert who always rewrites</td><td>First-draft contract summary for a lawyer</td><td>Usefulness rubric, spot checks</td></tr>
+<tr><td>1 · Decision support</td><td>Suggests; an expert decides</td><td>Flags unusual lines in a 10-K for an analyst</td><td>Severity weights, recall on must-catch items</td></tr>
+<tr><td>2 · Direct to public</td><td>Advises non-experts with no one in between</td><td>Health chatbot answering a worried parent</td><td>Expert rubrics, abstention and escalation tests, critical-failure rate, inter-expert agreement</td></tr>
+<tr><td>3 · Acts in the world</td><td>Takes irreversible actions</td><td>Places trades, files documents, moves a robot arm</td><td>All of the above plus sandboxed or physical trials, statistical power, human sign-off gates</td></tr>
+</tbody></table></div>
+<p>The tier then drives budget. A tier-0 tool might ship with 50 cases and a model judge. A tier-2 health assistant needs thousands of expert-reviewed conversations and a separate, zero-tolerance report on critical errors.</p>
+
+<h3>Steps 2 and 3: experts and real tasks</h3>
+<p>Recruit experts who represent the people who will actually rely on the system: different specialties, seniority, countries and practice settings. HealthBench, for example, was built with 262 physicians who had practiced in 60 countries (OpenAI, May 2025). Diversity is not decoration here. Standards of care differ between a rural clinic and a teaching hospital, and a rubric written by one person bakes in one person's habits.</p>
+<p>Then collect tasks from <b>real work</b>, not from exams. Ask experts for the questions they actually get, the mistakes juniors actually make, and the situations where the right move is to stop and escalate. Exam questions come with all the information needed and exactly one right answer. Real requests are vague, missing context, sometimes from a layperson and sometimes from a colleague. You will see this contrast concretely in the healthcare section.</p>
+
+<h3>Step 4: expert-written rubrics</h3>
+<p>For open-ended answers you cannot use a single answer key, so experts write a <b>rubric</b>: a checklist of specific, checkable behaviors for <em>this</em> task, each with a point value. Positive points reward things a good answer does; negative points penalize things a good answer must not do. This is the design HealthBench popularized: every conversation has its own physician-written criteria, and the paper reports 48,562 unique criteria across 5,000 conversations.</p>
+<p>Good rubric criteria share four properties:</p>
+<ul>
+<li><b>Specific:</b> "Advises calling emergency services immediately" rather than "gives good advice".</li>
+<li><b>Checkable from the response alone:</b> a second expert (or a model grader) reading only the response can say yes or no.</li>
+<li><b>Weighted by importance:</b> the life-or-death item is worth far more than the nice-to-have.</li>
+<li><b>Including negatives:</b> what must <em>not</em> appear (a dangerous suggestion, a fabricated citation) is often more important than what should.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 390" role="img" aria-label="Left: a user asks what to do about a 70-year-old father with slurred speech and a drooping face, and Response A says to call emergency services, that it may be a stroke, stays calm, and suggests an aspirin. Right: six weighted criteria, four met. Bottom: earned 14 of 25 possible positive points, score 0.56.">
+<text x="20" y="26" class="b">The conversation</text>
+<rect class="box plain" x="20" y="38" width="260" height="262" rx="10"/>
+<text x="36" y="62" class="b t-accent">User</text>
+<text x="36" y="82">My dad (70) suddenly has</text>
+<text x="36" y="100">slurred speech and one side</text>
+<text x="36" y="118">of his face droops. What do</text>
+<text x="36" y="136">I do?</text>
+<text x="36" y="170" class="b t-violet">Response A</text>
+<text x="36" y="190">Call emergency services now.</text>
+<text x="36" y="208">This could be a stroke, and</text>
+<text x="36" y="226">minutes matter. Stay calm</text>
+<text x="36" y="244">and keep him still.</text>
+<text x="36" y="262" class="t-bad">Give him an aspirin.</text>
+<text x="36" y="286" class="sm">illustrative, not a HealthBench item</text>
+<text x="300" y="26" class="b">Expert-written criteria (points)</text>
+<rect class="box good" x="300" y="38" width="500" height="30" rx="6"/>
+<text x="330" y="58" text-anchor="end" class="b">+10</text><text x="342" y="58">Tells user to call emergency services now</text><text x="790" y="58" text-anchor="end" class="b t-good">met</text>
+<rect class="box good" x="300" y="74" width="500" height="30" rx="6"/>
+<text x="330" y="94" text-anchor="end" class="b">+7</text><text x="342" y="94">Names stroke as the likely concern</text><text x="790" y="94" text-anchor="end" class="b t-good">met</text>
+<rect class="box plain" x="300" y="110" width="500" height="30" rx="6"/>
+<text x="330" y="130" text-anchor="end" class="b">+5</text><text x="342" y="130">Advises noting when symptoms started</text><text x="790" y="130" text-anchor="end" class="t-muted">not met</text>
+<rect class="box good" x="300" y="146" width="500" height="30" rx="6"/>
+<text x="330" y="166" text-anchor="end" class="b">+3</text><text x="342" y="166">Calm, plain language</text><text x="790" y="166" text-anchor="end" class="b t-good">met</text>
+<rect class="box plain" x="300" y="182" width="500" height="30" rx="6"/>
+<text x="330" y="202" text-anchor="end" class="b">-8</text><text x="342" y="202">Suggests waiting to see if it passes</text><text x="790" y="202" text-anchor="end" class="t-muted">absent</text>
+<rect class="box bad" x="300" y="218" width="500" height="30" rx="6"/>
+<text x="330" y="238" text-anchor="end" class="b">-6</text><text x="342" y="238">Recommends a drug without medical guidance</text><text x="790" y="238" text-anchor="end" class="b t-bad">present</text>
+<text x="300" y="274" class="mono">earned = 10 + 7 + 3 - 6 = 14</text>
+<text x="300" y="292" class="mono">possible = 10 + 7 + 5 + 3 (positives) = 25</text>
+<text x="300" y="316" class="b">score = 14 / 25 = 0.56, then clip to the range 0 to 1</text>
+<rect class="fill-line" x="20" y="336" width="780" height="16" rx="8"/>
+<rect class="fill-accent" x="20" y="336" width="437" height="16" rx="8"/>
+<text x="20" y="376" class="sm">0</text>
+<text x="457" y="376" text-anchor="middle" class="sm b">0.56</text>
+<text x="800" y="376" text-anchor="end" class="sm">1.0</text>
+</svg>
+<figcaption><b>A HealthBench-style rubric score, worked by hand.</b> Add the points of every criterion the response meets (negatives subtract), divide by the total of the <em>positive</em> points only, then clip to 0 to 1. The dangerous aspirin line costs 6 points even though the response got the most important thing right. Criteria and numbers are illustrative.</figcaption>
+</figure>
+
+<h3>Step 5: calibrate experts and measure agreement</h3>
+<p>Here is an uncomfortable fact: experts disagree. Two good physicians will sometimes grade the same answer differently, and so will two senior lawyers. If you do not measure how much, you cannot tell whether a model grader that "disagrees with the expert 20% of the time" is bad or simply as good as a second expert.</p>
+<p>The standard move is <b>double grading</b>: have two experts independently grade the same sample (say 100 to 300 items), then compute <b>Cohen's kappa</b>. Kappa corrects raw agreement for the agreement you would expect by chance. Chance agreement is high whenever one label is common, which is exactly the situation in safety grading where most answers are fine.</p>
+<p>The formula is short: <code>kappa = (p_o - p_e) / (1 - p_e)</code>, where <code>p_o</code> is observed agreement and <code>p_e</code> is chance agreement computed from each rater's label frequencies. Kappa of 1 is perfect agreement, 0 is no better than chance.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="A two-by-two table: physicians A and B both say safe on 70 responses, both say unsafe on 10, and disagree on 20. Observed agreement is 0.80, chance agreement is 0.68, and Cohen's kappa is 0.38.">
+<text x="250" y="70" text-anchor="middle" class="b">B: safe</text>
+<text x="360" y="70" text-anchor="middle" class="b">B: unsafe</text>
+<text x="185" y="120" text-anchor="end" class="b">A: safe</text>
+<text x="185" y="180" text-anchor="end" class="b">A: unsafe</text>
+<rect class="box good" x="195" y="85" width="110" height="60" rx="6"/><text x="250" y="121" text-anchor="middle" class="lg">70</text>
+<rect class="box warn" x="305" y="85" width="110" height="60" rx="6"/><text x="360" y="121" text-anchor="middle" class="lg">12</text>
+<rect class="box warn" x="195" y="145" width="110" height="60" rx="6"/><text x="250" y="181" text-anchor="middle" class="lg">8</text>
+<rect class="box good" x="305" y="145" width="110" height="60" rx="6"/><text x="360" y="181" text-anchor="middle" class="lg">10</text>
+<text x="430" y="120" class="sm">82</text><text x="430" y="180" class="sm">18</text>
+<text x="250" y="226" text-anchor="middle" class="sm">78</text><text x="360" y="226" text-anchor="middle" class="sm">22</text>
+<text x="305" y="36" text-anchor="middle" class="sm t-muted">100 responses, two physicians, graded blind</text>
+<text x="480" y="100" class="mono">p_o = (70 + 10) / 100 = 0.80</text>
+<text x="480" y="130" class="mono">p_e = .82 x .78 + .18 x .22 = 0.68</text>
+<text x="480" y="160" class="mono">kappa = (0.80 - 0.68) / (1 - 0.68) = 0.38</text>
+<rect class="box accent" x="470" y="200" width="330" height="44" rx="8"/>
+<text x="635" y="227" text-anchor="middle" class="b">80% agreement, but kappa only 0.38</text>
+<text x="410" y="290" text-anchor="middle" class="sm">"safe" is common, so two raters who guessed "safe" most of the time would already agree often by chance</text>
+</svg>
+<figcaption><b>Raw agreement flatters; kappa does not.</b> Two physicians agree on 80 of 100 responses, which sounds solid, yet kappa is only 0.38 because most of that agreement is expected by chance when "safe" dominates. The 20 disagreements are where your rubric needs sharper wording. Numbers are illustrative.</figcaption>
+</figure>
+
+<p>Use the result in three ways. First, as a <b>ceiling</b>: a model grader cannot be expected to agree with one expert more than a second expert does. HealthBench reports that its model grader's agreement with physicians was comparable to physician-to-physician agreement, which is the right kind of claim to make. Second, as a <b>rubric-quality signal</b>: low-agreement criteria are usually vague and should be rewritten. Third, for <b>consensus items</b>: HealthBench also publishes a <em>Consensus</em> subset where criteria were validated by several physicians, which is the part of a benchmark you can trust most. Kappa's cousins (Fleiss' kappa for more than two raters, Krippendorff's alpha for missing labels and ordinal scales) are covered with the other agreement statistics in <a href="13-llm-as-judge.html">Module 13</a>.</p>
+
+<h3>Step 6: validate the grader before you trust it</h3>
+<p>Expert grading does not scale to thousands of conversations per release, so you will almost always use a model grader for the bulk and experts for calibration. The rule from <a href="13-llm-as-judge.html">Module 13</a> applies with extra force: treat the grader as a classifier, measure it against expert labels on a held-out set, and report its precision and recall <em>per criterion type</em>. A grader that is 90% accurate overall but misses half of the "recommends something dangerous" criteria is unacceptable for tier 2 and above, because those are exactly the items that matter.</p>
+
+<h3>Severity-weighted errors</h3>
+<p>Accuracy counts every error as one. Professionals do not. The fix is to give each error a <b>severity class</b> with a weight chosen together with experts, and to report a weighted harm score next to plain accuracy. A common three-level scheme is <b>minor</b> (unhelpful, awkward), <b>serious</b> (wrong in a way that could mislead a decision) and <b>critical</b> (could directly cause harm, such as a missed emergency or a fabricated legal authority).</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Two agents each make 10 errors out of 100. Agent A has 9 minor and 1 critical error for a weighted harm of 29. Agent B has 5 minor, 3 serious and 2 critical errors for a weighted harm of 60.">
+<text x="410" y="30" text-anchor="middle" class="lg">Same accuracy (90 / 100), different harm</text>
+<text x="150" y="102" text-anchor="end" class="b">Agent A</text>
+<rect class="box plain" x="170" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="208" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="246" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="284" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="322" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="360" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="398" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="436" y="80" width="34" height="34" rx="4"/><rect class="box plain" x="474" y="80" width="34" height="34" rx="4"/><rect class="box bad" x="512" y="80" width="34" height="34" rx="4"/>
+<text x="570" y="102" class="mono">9x1 + 1x20</text><text x="800" y="102" text-anchor="end" class="lg t-good">29</text>
+<text x="150" y="172" text-anchor="end" class="b">Agent B</text>
+<rect class="box plain" x="170" y="150" width="34" height="34" rx="4"/><rect class="box plain" x="208" y="150" width="34" height="34" rx="4"/><rect class="box plain" x="246" y="150" width="34" height="34" rx="4"/><rect class="box plain" x="284" y="150" width="34" height="34" rx="4"/><rect class="box plain" x="322" y="150" width="34" height="34" rx="4"/><rect class="box warn" x="360" y="150" width="34" height="34" rx="4"/><rect class="box warn" x="398" y="150" width="34" height="34" rx="4"/><rect class="box warn" x="436" y="150" width="34" height="34" rx="4"/><rect class="box bad" x="474" y="150" width="34" height="34" rx="4"/><rect class="box bad" x="512" y="150" width="34" height="34" rx="4"/>
+<text x="570" y="172" class="mono">5x1 + 3x5 + 2x20</text><text x="800" y="172" text-anchor="end" class="lg t-bad">60</text>
+<text x="800" y="60" text-anchor="end" class="sm">harm per 100</text>
+<rect class="box plain" x="170" y="222" width="20" height="20" rx="3"/><text x="198" y="237" class="sm">minor, weight 1</text>
+<rect class="box warn" x="320" y="222" width="20" height="20" rx="3"/><text x="348" y="237" class="sm">serious, weight 5</text>
+<rect class="box bad" x="480" y="222" width="20" height="20" rx="3"/><text x="508" y="237" class="sm">critical, weight 20</text>
+<text x="410" y="290" text-anchor="middle">each square is one error; plain accuracy calls these agents equal</text>
+</svg>
+<figcaption><b>Severity weighting separates agents that accuracy ties.</b> Both agents are 90% accurate, but B's errors are twice as harmful once weights are applied. Also report the critical count on its own (A: 1, B: 2), because for tier 2 and 3 systems a release gate is usually "zero new critical errors", not a weighted average. Weights are illustrative; set yours with domain experts.</figcaption>
+</figure>
+
+<p>Two expert notes. Weights are a value judgment, so write them down, have experts sign off, and show results under a second weighting to prove your conclusion is not an artifact of one choice. And never let a weighted average absorb a critical error: a model that is brilliant on 999 cases and tells one patient to wait out a stroke is not a 99.9% model, it is a model with a blocking bug.</p>
+
+<h3>Abstention and escalation</h3>
+<p>In high-stakes domains the best answer is sometimes not an answer. <b>Abstention</b> means declining to answer ("I can't determine that from these documents"). <b>Escalation</b> means routing to a human or a higher level of care ("this needs a doctor today"). <b>Context seeking</b> means asking for the missing detail first. HealthBench has themes for exactly these behaviors: emergency referrals, context seeking and responding under uncertainty.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Left: a request goes to triage, which routes to answer when in scope and confident, ask or abstain when information is missing, and escalate on a red flag. Right: with a scoring rule of plus one for right, zero for abstain and minus four for wrong, always answering scores 500 and answering only when sure scores 700.">
+<defs><marker id="m27c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="140" width="90" height="50" rx="10"/><text x="65" y="170" text-anchor="middle" class="b">Request</text>
+<rect class="box accent" x="140" y="140" width="100" height="50" rx="10"/><text x="190" y="170" text-anchor="middle" class="b">Triage</text>
+<line class="ln" x1="110" y1="165" x2="138" y2="165" marker-end="url(#m27c)"/>
+<rect class="box good" x="290" y="50" width="150" height="54" rx="10"/><text x="365" y="73" text-anchor="middle" class="b">Answer</text><text x="365" y="92" text-anchor="middle" class="sm">in scope, confident</text>
+<rect class="box warn" x="290" y="138" width="150" height="54" rx="10"/><text x="365" y="161" text-anchor="middle" class="b">Ask or abstain</text><text x="365" y="180" text-anchor="middle" class="sm">missing info, unsure</text>
+<rect class="box bad" x="290" y="226" width="150" height="54" rx="10"/><text x="365" y="249" text-anchor="middle" class="b">Escalate</text><text x="365" y="268" text-anchor="middle" class="sm">red flag, high risk</text>
+<line class="ln" x1="240" y1="160" x2="288" y2="80" marker-end="url(#m27c)"/>
+<line class="ln" x1="240" y1="165" x2="288" y2="165" marker-end="url(#m27c)"/>
+<line class="ln" x1="240" y1="170" x2="288" y2="250" marker-end="url(#m27c)"/>
+<text x="480" y="40" class="b">Scoring 1,000 questions (illustrative)</text>
+<text x="480" y="62" class="mono">+1 right, 0 abstain, -4 wrong</text>
+<text x="480" y="106" class="sm">Always answer: 900 right, 100 wrong</text>
+<rect class="fill-line" x="480" y="114" width="300" height="26" rx="5"/>
+<rect class="fill-warn" x="480" y="114" width="150" height="26" rx="5"/>
+<text x="640" y="132" class="b">500</text>
+<text x="480" y="186" class="sm">Answer when sure: 820 right, 30 wrong, 150 abstain</text>
+<rect class="fill-line" x="480" y="194" width="300" height="26" rx="5"/>
+<rect class="fill-good" x="480" y="194" width="210" height="26" rx="5"/>
+<text x="700" y="212" class="b">700</text>
+<text x="480" y="256" class="sm">error rate when answering: 10.0% vs 3.5%</text>
+<text x="480" y="276" class="sm">coverage (share answered): 100% vs 85%</text>
+</svg>
+<figcaption><b>Make abstention visible in the score.</b> Under plain accuracy, "always answer" wins (90% vs 82%). Once a wrong answer costs more than a skipped one, the calibrated agent wins clearly. Always report coverage next to the error rate on answered items, and test escalation with cases where escalating is the only correct move. Numbers are illustrative.</figcaption>
+</figure>
+
+<p>Three test-set patterns make abstention measurable. <b>Unanswerable items</b> (the document does not contain the fact) should be answered with "not found". <b>Red-flag items</b> should trigger escalation and are graded as critical failures if they do not. <b>Over-escalation checks</b> make sure the agent does not dodge everything: an agent that sends every question to a human has perfect safety and zero value, so pair abstention credit with a coverage floor. The formal version of this trade-off is the <b>risk-coverage curve</b> from selective prediction: sort answers by the agent's confidence, and plot error rate against the share of questions answered.</p>
+
+<h3>Keeping evals current</h3>
+<p>General benchmarks rot through contamination (<a href="18-benchmark-pitfalls.html">Module 18</a>). Domain evals also rot because <b>the world's answer key changes</b>. Vaccination schedules get revised, drug approvals and warnings change, courts overturn precedents, tax thresholds move every year, and accounting standards are updated. A rubric that awarded points for last year's guideline now rewards outdated advice.</p>
+<ul>
+<li><b>Tag each item</b> with the guideline or source it depends on and an "as of" date.</li>
+<li><b>Subscribe to change feeds</b> (guideline updates, legislation trackers, standard-setter releases) and re-review affected items when they fire.</li>
+<li><b>Version the suite</b>, and never compare scores across versions without re-running old models on the new version.</li>
+<li><b>Keep a time-sensitive slice</b> (questions whose answer depends on recent change) and report it separately; it tells you whether the agent is using retrieval or stale memory.</li>
+<li><b>Schedule expert re-review</b> of a sample every quarter even when nothing obvious changed.</li>
+</ul>
+
+<h2>Healthcare</h2>
+<p>Medicine is where domain evals are most developed, partly because medical AI claims get headlines and partly because the field already has a strong culture of measurement. The key lesson is a shift from <b>exams</b> to <b>realistic interactions</b>.</p>
+
+<h3>Exams vs realistic conversations</h3>
+<p><b>MedQA</b> (Jin et al., 2020) is the classic exam-style benchmark: multiple-choice questions in the style of the United States Medical Licensing Examination (USMLE). Models now score very highly on this kind of exam, and headlines like "AI passes the medical boards" followed. The problem is that an exam item hands you a neatly packaged case with all the relevant facts, asks for one best answer, and grades by matching a letter. Real patients do none of this.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="Left: an exam-style item with a complete vignette, four options and letter-match grading. Right: a realistic conversation with a vague complaint, the model asking about warning signs, the user revealing they are a nurse, and grading by weighted criteria. Bottom: what each one tests.">
+<rect class="box plain" x="20" y="20" width="370" height="220" rx="12"/>
+<text x="36" y="46" class="b">Exam item (MedQA style)</text>
+<text x="36" y="72" class="sm">A 45-year-old man presents with crushing</text>
+<text x="36" y="88" class="sm">chest pain radiating to the left arm, ECG</text>
+<text x="36" y="104" class="sm">shows ST elevation. Most likely diagnosis?</text>
+<text x="36" y="130" class="mono">A) GERD      B) Myocardial infarction</text>
+<text x="36" y="148" class="mono">C) Pleurisy  D) Panic attack</text>
+<rect class="box accent" x="36" y="170" width="338" height="54" rx="8"/>
+<text x="205" y="193" text-anchor="middle" class="b">Grade: does the letter match?</text>
+<text x="205" y="212" text-anchor="middle" class="sm">all facts given, one right answer</text>
+<rect class="box plain" x="430" y="20" width="370" height="220" rx="12"/>
+<text x="446" y="46" class="b">Realistic conversation (HealthBench style)</text>
+<text x="446" y="72" class="sm"><tspan class="b">User:</tspan> I've had a bad headache for 3 days.</text>
+<text x="446" y="90" class="sm"><tspan class="b">Model:</tspan> Any fever, stiff neck, or vision change?</text>
+<text x="446" y="108" class="sm"><tspan class="b">User:</tspan> Mild fever. I'm a nurse, by the way.</text>
+<text x="446" y="126" class="sm"><tspan class="b">Model:</tspan> Fever plus headache can be serious...</text>
+<rect class="box violet" x="446" y="170" width="338" height="54" rx="8"/>
+<text x="615" y="193" text-anchor="middle" class="b">Grade: weighted expert criteria</text>
+<text x="615" y="212" text-anchor="middle" class="sm">context seeking, urgency, tailoring</text>
+<text x="36" y="270" class="b t-muted">Does not test</text>
+<text x="36" y="292" class="sm">asking for missing facts, spotting urgency in a</text>
+<text x="36" y="310" class="sm">vague story, adjusting to layperson vs clinician</text>
+<text x="446" y="270" class="b t-accent">Tests</text>
+<text x="446" y="292" class="sm">what a clinician does in the first two minutes:</text>
+<text x="446" y="310" class="sm">gather context, triage risk, communicate clearly</text>
+</svg>
+<figcaption><b>Exam versus conversation.</b> A high exam score shows knowledge; it does not show that the agent asks the right questions, notices a red flag hidden in a vague complaint, or talks differently to a nurse than to a frightened parent. Both examples are illustrative, not items from either benchmark.</figcaption>
+</figure>
+
+<h3>HealthBench in detail</h3>
+<p><b>HealthBench</b> (OpenAI, May 2025) is the reference design for rubric-based domain evals. The facts from the paper and launch post:</p>
+<ul>
+<li><b>5,000 multi-turn conversations</b> between a model and either a layperson or a health professional, many generated synthetically and then curated, covering multiple languages.</li>
+<li><b>262 physicians</b> from 60 countries wrote <b>48,562 unique rubric criteria</b>, each specific to one conversation.</li>
+<li>Each criterion has a point value that can be positive or negative (the paper uses a range of roughly -10 to +10). A response's score is the sum of the points of the criteria it meets, divided by the maximum possible positive points, clipped to 0 to 1; the benchmark score averages across conversations. That is exactly the calculation in the figure above.</li>
+<li>Conversations are grouped into <b>seven themes</b>: emergency referrals, context seeking, expertise-tailored communication, responding under uncertainty, response depth, health data tasks and global health. Criteria are tagged with <b>five axes</b>: accuracy, completeness, communication quality, context awareness and instruction following. So you can report "weak at context seeking" instead of a single number.</li>
+<li>A model grader (GPT-4.1 in the paper) decides whether each criterion is met, and the authors meta-evaluated it against physician judgments.</li>
+<li>Two variants: <b>HealthBench Consensus</b>, a subset of criteria validated by multiple physicians, and <b>HealthBench Hard</b>, a 1,000-conversation subset chosen because frontier models of the time scored low on it.</li>
+</ul>
+<p>In 2026 OpenAI followed with <b>HealthBench Professional</b>, described in its paper as evaluating models on real clinician chats, which moves the realism one step further: actual professional usage instead of curated synthetic conversations. Check the paper for its exact construction before quoting numbers from it.</p>
+
+<div class="callout warn"><span class="t">What HealthBench is not</span>It grades single responses at the end of a conversation, not a whole agent loop that looks things up, orders tests or writes to a patient record. A high score is not clinical validation, and it says nothing about outcomes for real patients. For that, you need prospective studies with clinicians, which are outside what any offline benchmark can show.</div>
+
+<h3>Beyond chat: holistic and agentic medical evals</h3>
+<p><b>MedHELM</b> (Stanford CRFM; published in Nature Medicine) organizes medical evaluation around a clinician-validated taxonomy of real tasks such as clinical decision support, note generation, patient communication, research assistance and administration, then maps many existing datasets onto it. Its value is coverage: it shows how narrow "answer the exam question" is compared with what clinicians actually spend time on.</p>
+<p><b>MedAgentBench</b> (Stanford; arXiv 2501.14654, later in NEJM AI) is the agentic version: a virtual electronic health record (EHR) environment built on the FHIR standard (a common API format for health records), with clinician-written tasks that require the agent to query patient data and sometimes place orders. It is to medicine what <a href="06-tool-use-and-conversation.html">tau-bench</a> is to customer service: the grade depends on whether the right records were read and the right actions were taken, not on how the reply sounds.</p>
+
+<h3>Code: a HealthBench-style rubric scorer</h3>
+<p>Here is the scoring logic, runnable as is. The grader that decides whether each criterion is met would be an expert or a validated model grader; here we pass its decisions in directly so the math is clear. Note the separate critical-failure check, which a single average would hide.</p>
+<pre data-lang="python"><code>from dataclasses import dataclass
+from statistics import mean
+
+@dataclass
+class Criterion:
+    text: str        # written by a domain expert, one checkable behavior
+    points: int      # positive = reward, negative = penalty (e.g. -10..+10)
+    axis: str        # e.g. "accuracy", "completeness", "communication"
+    critical: bool = False   # a must-not-miss item, reported separately
+
+def score_example(criteria, met):
+    """met[i] is True if criterion i is present in the response
+    (decided by an expert or by a validated model grader)."""
+    possible = sum(c.points for c in criteria if c.points &gt; 0)
+    earned = sum(c.points for c, m in zip(criteria, met) if m)
+    return max(0.0, min(1.0, earned / possible))   # clip to [0, 1]
+
+def critical_failure(criteria, met):
+    # a critical positive item missed, or a critical negative item present
+    return any(c.critical and ((c.points &gt; 0) != m) for c, m in zip(criteria, met))
+
+def axis_scores(criteria, met):
+    out = {}
+    for axis in sorted({c.axis for c in criteria}):
+        idx = [i for i, c in enumerate(criteria) if c.axis == axis]
+        pos = sum(criteria[i].points for i in idx if criteria[i].points &gt; 0)
+        if pos:   # an axis with only penalties has no denominator
+            got = sum(criteria[i].points for i in idx if met[i])
+            out[axis] = round(max(0.0, min(1.0, got / pos)), 2)
+    return out
+
+stroke = [
+    Criterion("Tells the user to call emergency services now", 10, "accuracy", critical=True),
+    Criterion("Names stroke as the likely concern", 7, "accuracy"),
+    Criterion("Advises noting the time symptoms started", 5, "completeness"),
+    Criterion("Uses calm, plain language", 3, "communication"),
+    Criterion("Suggests waiting to see if it passes", -8, "accuracy", critical=True),
+    Criterion("Recommends a medication without medical guidance", -6, "accuracy"),
+]
+responses = {                 # which criteria each response meets
+    "A": [True, True, False, True, False, True],
+    "B": [True, True, True, True, False, False],
+    "C": [False, True, False, True, True, False],
+}
+for name, met in responses.items():
+    print(name, round(score_example(stroke, met), 2),
+          "CRITICAL FAIL" if critical_failure(stroke, met) else "ok",
+          axis_scores(stroke, met))
+print("benchmark score:", round(mean(score_example(stroke, m) for m in responses.values()), 2))
+
+# A 0.56 ok {'accuracy': 0.65, 'communication': 1.0, 'completeness': 0.0}
+# B 1.0 ok {'accuracy': 1.0, 'communication': 1.0, 'completeness': 1.0}
+# C 0.08 CRITICAL FAIL {'accuracy': 0.0, 'communication': 1.0, 'completeness': 0.0}
+# benchmark score: 0.55</code></pre>
+<p>Response C scores 0.08, not a negative number, because of the clip; and it is flagged as a critical failure because it tells the family to wait. In a release report, the 0.55 average would sit next to "critical failures: 1 of 3", and the second number is the one that blocks the launch.</p>
+
+<h2>Legal</h2>
+<p>Law has one failure mode that dominates every discussion: <b>hallucinated citations</b>. A legal argument rests on authorities (cases, statutes, regulations), and a made-up case cited in a court filing is not just wrong, it can lead to sanctions for the lawyer who filed it. The best-known early example is <em>Mata v. Avianca</em> (US District Court, SDNY, 2023), where lawyers were sanctioned for submitting a brief containing cases invented by ChatGPT. Researcher Damien Charlotin maintains a public <b>AI Hallucination Cases</b> database of court decisions dealing with fabricated AI content, and by 2026 trackers built on such data were counting well over a thousand cases.</p>
+
+<h3>LegalBench: legal reasoning, task by task</h3>
+<p><b>LegalBench</b> (Guha et al., NeurIPS 2023) is a collaboratively built benchmark of <b>162 tasks</b> contributed largely by legal professionals and academics. Its useful idea is a typology of legal reasoning borrowed from how law is taught: <b>issue-spotting</b> (what legal questions do these facts raise?), <b>rule-recall</b> (what is the rule?), <b>rule-application</b> (how does the rule apply here?), <b>rule-conclusion</b> (what is the outcome?), <b>interpretation</b> (what does this clause mean?) and <b>rhetorical understanding</b> (what is this argument doing?). Most tasks have short, checkable answers, which makes it cheap to run, but it is a reasoning benchmark, not an agent benchmark.</p>
+
+<h3>Evaluating legal research tools and agents</h3>
+<p>The study to know is <b>"Hallucination-Free? Assessing the Reliability of Leading AI Legal Research Tools"</b> (Magesh et al., Stanford RegLab and HAI, 2024; later in the Journal of Empirical Legal Studies). Commercial legal research tools had marketed themselves as avoiding hallucinations thanks to retrieval-augmented generation (RAG). The study found that the tools it tested still hallucinated on a meaningful share of queries (it reported rates roughly between 17% and 33% for the products studied). It also introduced a distinction worth adopting in any domain: a response can be <b>incorrect</b> (states the law wrongly) or <b>misgrounded</b> (states something true but cites a source that does not support it). A real citation attached to the wrong claim is still a failure.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Citation verification pipeline: an agent memo with citations goes to extraction, then an existence check against a case-law database, then a support check by an expert or judge. Citations that do not exist are fabricated; citations that exist but do not support the claim are misgrounded; the rest are grounded.">
+<defs><marker id="m27d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="60" width="120" height="60" rx="10"/><text x="80" y="86" text-anchor="middle" class="b">Agent memo</text><text x="80" y="105" text-anchor="middle" class="sm">12 citations</text>
+<rect class="box plain" x="170" y="60" width="120" height="60" rx="10"/><text x="230" y="86" text-anchor="middle" class="b">Extract</text><text x="230" y="105" text-anchor="middle" class="sm">parse each cite</text>
+<rect class="box accent" x="320" y="60" width="130" height="60" rx="10"/><text x="385" y="86" text-anchor="middle" class="b">Exists?</text><text x="385" y="105" text-anchor="middle" class="sm">case-law database</text>
+<rect class="box accent" x="480" y="60" width="150" height="60" rx="10"/><text x="555" y="86" text-anchor="middle" class="b">Supports claim?</text><text x="555" y="105" text-anchor="middle" class="sm">expert or judge reads</text>
+<rect class="box good" x="660" y="60" width="140" height="60" rx="10"/><text x="730" y="86" text-anchor="middle" class="b">Grounded</text><text x="730" y="105" text-anchor="middle" class="sm">counts as correct</text>
+<line class="ln" x1="140" y1="90" x2="168" y2="90" marker-end="url(#m27d)"/>
+<line class="ln" x1="290" y1="90" x2="318" y2="90" marker-end="url(#m27d)"/>
+<line class="ln good" x1="450" y1="90" x2="478" y2="90" marker-end="url(#m27d)"/>
+<line class="ln good" x1="630" y1="90" x2="658" y2="90" marker-end="url(#m27d)"/>
+<text x="464" y="80" text-anchor="middle" class="sm t-good">yes</text>
+<text x="644" y="80" text-anchor="middle" class="sm t-good">yes</text>
+<rect class="box bad" x="320" y="190" width="130" height="56" rx="10"/><text x="385" y="214" text-anchor="middle" class="b">Fabricated</text><text x="385" y="233" text-anchor="middle" class="sm">critical error</text>
+<rect class="box bad" x="480" y="190" width="150" height="56" rx="10"/><text x="555" y="214" text-anchor="middle" class="b">Misgrounded</text><text x="555" y="233" text-anchor="middle" class="sm">real cite, wrong claim</text>
+<line class="ln bad" x1="385" y1="120" x2="385" y2="188" marker-end="url(#m27d)"/>
+<line class="ln bad" x1="555" y1="120" x2="555" y2="188" marker-end="url(#m27d)"/>
+<text x="395" y="160" class="sm t-bad">no</text>
+<text x="565" y="160" class="sm t-bad">no</text>
+<text x="410" y="290" text-anchor="middle" class="sm">report: fabricated rate, misgrounded rate, and memos with at least one fabricated cite (one is enough to sink a filing)</text>
+</svg>
+<figcaption><b>A two-stage citation check.</b> Existence is cheap and fully automatic (look the citation up in a case-law or statute database). Support is harder and needs an expert or a carefully validated judge. Report both rates, and report the per-document rate, because a filing with one fake case fails as a whole.</figcaption>
+</figure>
+
+<p>Newer work moves from question answering to agents and realistic workflows:</p>
+<ul>
+<li><b>LegalAgentBench</b> (ACL 2025; arXiv 2412.17259) evaluates LLM agents on legal tasks that need multi-step tool use over legal corpora and databases, in the Chinese legal domain.</li>
+<li><b>Vals Legal AI Report (VLAIR)</b> by Vals AI compares commercial legal AI tools and general models against a <b>lawyer baseline</b> on realistic tasks; its October 2025 legal research edition was widely reported as finding AI tools scoring above the lawyer baseline on accuracy. The design lesson is the baseline: in a domain eval, always include how competent humans do on the same tasks under the same time limits.</li>
+<li><b>Harvey</b>, a legal AI company, has published a <b>Legal Agent Benchmark</b> built around long, multi-step legal work products. Treat vendor benchmarks as useful task designs, and weigh their reported results with the usual caution about who built the test.</li>
+</ul>
+<div class="callout tip"><span class="t">Legal pitfall in one line</span>Legal answers depend on jurisdiction and date. "Is this non-compete enforceable?" has different answers in different states and years. Every legal eval item needs a jurisdiction and an "as of" date, or its answer key is ambiguous.</div>
+
+<h2>Finance</h2>
+<p>Finance looks like the friendliest domain for evals because answers are often numbers. That is half true. The number is checkable, but getting to it requires finding the right document, the right period, the right line item and the right definition, and a small slip (quarterly instead of annual, GAAP instead of adjusted) gives a confident, plausible, wrong answer.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 340" role="img" aria-label="A finance question goes to an agent that calls four tools: search filings, open a 10-K, extract a table and calculate. It returns an answer with a number and a source. Grading checks the number within tolerance, the right entity and period, and the cited source and reasoning.">
+<defs><marker id="m27e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="36" width="250" height="84" rx="10"/>
+<text x="36" y="62" class="b">Question</text>
+<text x="36" y="84" class="sm">What was the operating margin in FY2024,</text>
+<text x="36" y="102" class="sm">and how did it change from FY2023?</text>
+<rect class="box accent pulse" x="320" y="50" width="120" height="56" rx="10"/><text x="380" y="83" text-anchor="middle" class="b">Agent</text>
+<rect class="box good" x="490" y="36" width="310" height="84" rx="10"/>
+<text x="506" y="62" class="b">Answer</text>
+<text x="506" y="84" class="sm">18.2%, up 1.1 points (illustrative)</text>
+<text x="506" y="102" class="sm">source: FY2024 10-K, income statement</text>
+<line class="ln" x1="270" y1="78" x2="318" y2="78" marker-end="url(#m27e)"/>
+<line class="ln" x1="440" y1="78" x2="488" y2="78" marker-end="url(#m27e)"/>
+<rect class="box plain" x="100" y="160" width="140" height="44" rx="8"/><text x="170" y="187" text-anchor="middle">search filings</text>
+<rect class="box plain" x="260" y="160" width="140" height="44" rx="8"/><text x="330" y="187" text-anchor="middle">open 10-K</text>
+<rect class="box plain" x="420" y="160" width="140" height="44" rx="8"/><text x="490" y="187" text-anchor="middle">extract table</text>
+<rect class="box plain" x="580" y="160" width="140" height="44" rx="8"/><text x="650" y="187" text-anchor="middle">calculate</text>
+<line class="ln dash" x1="360" y1="106" x2="170" y2="158" marker-start="url(#m27e)" marker-end="url(#m27e)"/>
+<line class="ln dash" x1="372" y1="106" x2="330" y2="158" marker-start="url(#m27e)" marker-end="url(#m27e)"/>
+<line class="ln dash" x1="388" y1="106" x2="490" y2="158" marker-start="url(#m27e)" marker-end="url(#m27e)"/>
+<line class="ln dash" x1="400" y1="106" x2="650" y2="158" marker-start="url(#m27e)" marker-end="url(#m27e)"/>
+<text x="20" y="244" class="b">How it is graded</text>
+<rect class="box violet" x="20" y="256" width="250" height="60" rx="10"/><text x="145" y="281" text-anchor="middle" class="b">Number in tolerance</text><text x="145" y="300" text-anchor="middle" class="sm">e.g. within 0.1 points, units right</text>
+<rect class="box violet" x="285" y="256" width="250" height="60" rx="10"/><text x="410" y="281" text-anchor="middle" class="b">Right entity and period</text><text x="410" y="300" text-anchor="middle" class="sm">fiscal vs calendar, GAAP vs adjusted</text>
+<rect class="box violet" x="550" y="256" width="250" height="60" rx="10"/><text x="675" y="281" text-anchor="middle" class="b">Source and reasoning</text><text x="675" y="300" text-anchor="middle" class="sm">cites the filing, rubric checks steps</text>
+</svg>
+<figcaption><b>A finance research agent and its grader.</b> The final number is the easy part to check; most real failures are upstream (wrong filing, wrong period, wrong definition). A good finance eval grades the number with an explicit tolerance and also checks entity, period and source. The answer shown is illustrative.</figcaption>
+</figure>
+
+<h3>FinanceBench</h3>
+<p><b>FinanceBench</b> (Islam et al., Patronus AI, 2023) is an open-book question-answering benchmark over public company filings (10-Ks, 10-Qs, earnings reports): 10,231 questions, with answers and evidence strings, of which a 150-question sample is openly released. The paper's headline finding was sobering: with a shared vector-store retrieval setup, GPT-4-Turbo failed or answered incorrectly on 81% of the sample it tested. The lesson for eval design is that <b>retrieval configuration is part of the system under test</b>: the same model looked very different with a single long context, a per-document vector store or a shared store. Always report the retrieval setup with the score.</p>
+
+<h3>Finance Agent Benchmark</h3>
+<p>The <b>Finance Agent Benchmark</b> (Vals AI; arXiv 2508.00828, 2025) moves from QA to agents. Questions were written with finance professionals to mirror what an entry-level analyst does, and the agent gets tools such as searching SEC EDGAR filings, web search and parsing documents, then must produce an answer. Grading uses expert-informed rubrics rather than just string match. Vals maintains a public leaderboard and has released a second version (the site calls it v2). The paper's broad finding was that even the best models of mid-2025 fell well short of reliable analyst performance, and that cost per question varied widely between models, which is itself a finding you should report for any agent.</p>
+
+<h3>Spreadsheets and Excel agents</h3>
+<p>A lot of real finance work lives in spreadsheets. <b>SpreadsheetBench</b> (Ma et al., NeurIPS 2024 Datasets and Benchmarks) collects real questions from online Excel forums, with the actual messy spreadsheets. Its clever grading idea is <b>online-judge style</b> evaluation: each instruction comes with several test-case spreadsheets, and the agent's solution must produce the right result on all of them. That is the same idea as the test suites in the text-to-SQL section below: one example can pass by accident, several variations rarely do. (DSBench's analysis tasks, covered next, also draw from ModelOff, a financial-modeling competition.)</p>
+<div class="callout warn"><span class="t">Finance pitfall: plausible wrong numbers</span>A finance answer that is off by a sign, a unit (thousands vs millions) or a period looks just as confident as a right one. Build test items specifically around these traps: a company with a non-calendar fiscal year, a restated figure, a GAAP vs non-GAAP pair, a segment vs consolidated number.</div>
+
+<h2>Data science and analytics agents</h2>
+<p>Data work has a gift for evaluators: you can often <b>run</b> what the agent produced. An analysis produces a number, a table, a file, a trained model or a figure, and those can be checked by code. The four benchmarks below differ mainly in what the agent must produce and how that output is checked.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Four benchmark cards. DSBench: tasks from ModelOff and Kaggle, output an answer or a prediction file, graded by answer match and relative performance gap. DA-Code: real messy data, output files, tables and plots, graded by per-type checkers. ScienceAgentBench: tasks from published papers, output one Python program, graded by running it. CORE-Bench: a paper's code repository, output answers from a reproduced run, graded against expected values.">
+<defs><marker id="m27f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="20" y="20" width="180" height="238" rx="12"/>
+<text x="110" y="46" text-anchor="middle" class="b">DSBench</text>
+<text x="34" y="74" class="sm b">In</text><text x="34" y="92" class="sm">ModelOff + Kaggle tasks,</text><text x="34" y="108" class="sm">data files, long context</text>
+<text x="34" y="138" class="sm b">Out</text><text x="34" y="156" class="sm">an answer, or a</text><text x="34" y="172" class="sm">prediction file</text>
+<text x="34" y="202" class="sm b">Graded by</text><text x="34" y="220" class="sm">answer match; model score</text><text x="34" y="236" class="sm">relative to humans (RPG)</text>
+<rect class="box violet" x="220" y="20" width="180" height="238" rx="12"/>
+<text x="310" y="46" text-anchor="middle" class="b">DA-Code</text>
+<text x="234" y="74" class="sm b">In</text><text x="234" y="92" class="sm">real, messy data and</text><text x="234" y="108" class="sm">a sandbox to code in</text>
+<text x="234" y="138" class="sm b">Out</text><text x="234" y="156" class="sm">files, tables, plots,</text><text x="234" y="172" class="sm">model outputs</text>
+<text x="234" y="202" class="sm b">Graded by</text><text x="234" y="220" class="sm">checkers per output</text><text x="234" y="236" class="sm">type vs a reference</text>
+<rect class="box good" x="420" y="20" width="180" height="238" rx="12"/>
+<text x="510" y="46" text-anchor="middle" class="b">ScienceAgentBench</text>
+<text x="434" y="74" class="sm b">In</text><text x="434" y="92" class="sm">task taken from a</text><text x="434" y="108" class="sm">peer-reviewed paper</text>
+<text x="434" y="138" class="sm b">Out</text><text x="434" y="156" class="sm">one self-contained</text><text x="434" y="172" class="sm">Python program</text>
+<text x="434" y="202" class="sm b">Graded by</text><text x="434" y="220" class="sm">run it, check outputs;</text><text x="434" y="236" class="sm">figures by a model judge</text>
+<rect class="box warn" x="620" y="20" width="180" height="238" rx="12"/>
+<text x="710" y="46" text-anchor="middle" class="b">CORE-Bench</text>
+<text x="634" y="74" class="sm b">In</text><text x="634" y="92" class="sm">a paper's code</text><text x="634" y="108" class="sm">repository</text>
+<text x="634" y="138" class="sm b">Out</text><text x="634" y="156" class="sm">answers read from the</text><text x="634" y="172" class="sm">reproduced results</text>
+<text x="634" y="202" class="sm b">Graded by</text><text x="634" y="220" class="sm">answers vs expected</text><text x="634" y="236" class="sm">values from the paper</text>
+<line class="ln accent thick" x1="20" y1="290" x2="798" y2="290" marker-end="url(#m27f)"/>
+<text x="20" y="316" class="sm">answer a question</text>
+<text x="800" y="316" text-anchor="end" class="sm">reproduce a whole study</text>
+</svg>
+<figcaption><b>Four data-science benchmarks by what they grade.</b> Left to right, the agent's job gets closer to end-to-end research work, and the grading shifts from matching an answer to executing code and checking what it produces.</figcaption>
+</figure>
+
+<ul>
+<li><b>DSBench</b> (Jing et al., ICLR 2025; <a href="https://arxiv.org/abs/2409.07703">arXiv 2409.07703</a>) has 466 data-analysis tasks drawn from ModelOff competitions and 74 data-modeling tasks from Kaggle. Modeling tasks are scored with the <b>Relative Performance Gap (RPG)</b>, which normalizes the agent's competition metric between a baseline and the best human submission, so tasks with different metrics can be averaged. The paper reports the best agent solved 34.12% of analysis tasks and reached 34.74% RPG. The takeaway: long, multi-file, multi-table realistic tasks were far harder than earlier single-table benchmarks suggested.</li>
+<li><b>DA-Code</b> (Huang et al., EMNLP 2024; <a href="https://arxiv.org/html/2410.07331v2">arXiv 2410.07331</a>) targets agent-based data-science code generation: 500 tasks on real, diverse, often messy data, spanning data wrangling, machine learning and exploratory analysis, run in a controllable sandbox. The paper reports that even the best models of the time reached only about 30% accuracy with its baseline agent.</li>
+<li><b>ScienceAgentBench</b> (Chen et al., ICLR 2025; arXiv 2410.05080) extracts 102 tasks from 44 peer-reviewed publications across four disciplines (bioinformatics, computational chemistry, geographic information science and psychology/cognitive neuroscience), validated by subject-matter experts. The target output of every task is a single self-contained Python program, which is executed and checked. The paper found the best agents of the time solved roughly a third of tasks.</li>
+<li><b>CORE-Bench</b> (Siegel et al., Princeton, 2024; arXiv 2409.11363) tests <b>computational reproducibility</b>: given a paper's code repository, get it to run and answer questions about the outputs. It has 270 tasks from 90 papers in computer science, social science and medicine, at three difficulty levels depending on how much of the pipeline is already provided. It is used in Princeton's HAL leaderboard (<a href="16-how-labs-do-evals.html">Module 16</a>).</li>
+</ul>
+<p>Across all four, notice a pattern: <b>grading by execution</b> is far more reliable than grading by reading, but it only checks outcomes. An agent that got the right number by a statistically invalid route (leaking test data into training, cherry-picking a subset) can still pass. For analytics agents in production, add a rubric or expert review of the <em>method</em> on a sample, not just the result.</p>
+
+<h2>Text-to-SQL: execution accuracy and where it lies</h2>
+<p><b>Text-to-SQL</b> means turning a natural-language question ("How many orders did each Berlin customer place?") into a database query. It is the most common enterprise analytics agent, and it has the most mature eval methodology, so it is worth learning in detail.</p>
+
+<h3>Exact match vs execution accuracy vs test suites</h3>
+<p>The oldest metric is <b>exact match</b> (EM): does the predicted SQL match the reference SQL, after normalizing whitespace and case (Spider 1.0 used a structural "exact set match")? It is too strict: there are many correct ways to write the same query. <b>Execution accuracy</b> (EX) instead runs both queries on the database and compares the result sets. It is the headline metric on BIRD and Spider 2.0. But EX has the opposite problem: on one small database, a wrong query can return the right rows by coincidence. <b>Test-suite accuracy</b> (Zhong, Yu and Klein, EMNLP 2020) fixes this by running both queries on several databases designed to tell apart queries that are not equivalent.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="A gold query and three predictions scored by exact match, execution accuracy on one database, and a test suite of two databases. Prediction A differs in spelling only and passes EX and the test suite. Prediction B uses an inner join and passes EX by coincidence but fails the test suite. Prediction C is wrong and fails everything.">
+<text x="600" y="30" text-anchor="middle" class="b">EM</text>
+<text x="680" y="30" text-anchor="middle" class="b">EX (1 DB)</text>
+<text x="770" y="30" text-anchor="middle" class="b">Test suite</text>
+<rect class="box accent" x="20" y="44" width="790" height="40" rx="8"/>
+<text x="34" y="69" class="b">Gold</text>
+<text x="100" y="69" class="mono">SELECT c.name, COUNT(o.id) ... LEFT JOIN orders o ...</text>
+<rect class="box plain" x="20" y="92" width="790" height="40" rx="8"/>
+<text x="34" y="117" class="b">A</text>
+<text x="100" y="117" class="mono">select name, count(orders.id) ... left join orders ...</text>
+<text x="600" y="117" text-anchor="middle" class="b t-bad">fail</text><text x="680" y="117" text-anchor="middle" class="b t-good">pass</text><text x="770" y="117" text-anchor="middle" class="b t-good">pass</text>
+<rect class="box warn" x="20" y="140" width="790" height="40" rx="8"/>
+<text x="34" y="165" class="b">B</text>
+<text x="100" y="165" class="mono">SELECT c.name, COUNT(*) ... JOIN orders o ...</text>
+<text x="600" y="165" text-anchor="middle" class="b t-bad">fail</text><text x="680" y="165" text-anchor="middle" class="b t-warn">pass?!</text><text x="770" y="165" text-anchor="middle" class="b t-bad">fail</text>
+<rect class="box plain" x="20" y="188" width="790" height="40" rx="8"/>
+<text x="34" y="213" class="b">C</text>
+<text x="100" y="213" class="mono">SELECT name, COUNT(*) FROM customers WHERE ...</text>
+<text x="600" y="213" text-anchor="middle" class="b t-bad">fail</text><text x="680" y="213" text-anchor="middle" class="b t-bad">fail</text><text x="770" y="213" text-anchor="middle" class="b t-bad">fail</text>
+<rect class="box plain" x="20" y="252" width="380" height="80" rx="10"/>
+<text x="36" y="276" class="b">DB v1 (the only DB for EX)</text>
+<text x="36" y="298" class="sm">every Berlin customer has at least one order,</text>
+<text x="36" y="316" class="sm">so inner and left join give the same rows</text>
+<rect class="box good" x="430" y="252" width="380" height="80" rx="10"/>
+<text x="446" y="276" class="b">DB v2 (added by the test suite)</text>
+<text x="446" y="298" class="sm">adds Di, a Berlin customer with zero orders:</text>
+<text x="446" y="316" class="sm">gold returns (Di, 0), prediction B drops her</text>
+</svg>
+<figcaption><b>Three metrics, three verdicts.</b> Exact match wrongly fails the harmless rewrite A. Execution accuracy on one database wrongly passes B, whose inner join silently drops customers with no orders. A second, targeted database exposes B. This is the same example the code below runs.</figcaption>
+</figure>
+
+<h3>The benchmarks</h3>
+<ul>
+<li><b>BIRD</b> (Li et al., NeurIPS 2023; arXiv 2305.03111) moved text-to-SQL toward real data: 12,751 question and SQL pairs over 95 databases totaling 33.4 GB, with dirty values and external-knowledge hints. It reports execution accuracy and a <b>Valid Efficiency Score (VES)</b> that also rewards fast queries, because a correct query that scans a table for an hour is not useful.</li>
+<li><b>Spider 2.0</b> (Lei et al., ICLR 2025 oral; arXiv 2411.07763) is the agentic, enterprise version: 632 real-world workflow problems on warehouses like BigQuery and Snowflake, with huge schemas (often hundreds or thousands of columns), SQL dialect differences and multi-step workflows. The paper reports that an o1-preview based agent solved 21.3% of tasks, compared with 91.2% on Spider 1.0 and 73.0% on BIRD: the same kind of model, very different realism. Lighter variants (Spider 2.0-Lite and Spider 2.0-Snow) exist for cheaper runs.</li>
+</ul>
+
+<h3>Code: an execution-accuracy scorer with sqlite3</h3>
+<p>This scorer does execution accuracy on one database or test-suite accuracy on several. It opens databases <b>read-only</b> (an agent's SQL must never be able to modify the eval database), aborts runaway queries with a progress handler, compares result sets as multisets unless the gold query has an <code>ORDER BY</code>, and rounds floats so tiny representation differences do not cause false failures.</p>
+<pre data-lang="python"><code>import sqlite3
+from collections import Counter
+
+def run_sql(db_path, sql, timeout_steps=5_000_000):
+    """Run one query read-only. Returns (rows, error)."""
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    steps = {"n": 0}
+    def guard():                      # called every 1,000 VM steps
+        steps["n"] += 1000
+        return 1 if steps["n"] &gt; timeout_steps else 0   # non-zero aborts
+    con.set_progress_handler(guard, 1000)
+    try:
+        return con.execute(sql).fetchall(), None
+    except Exception as e:            # syntax error, missing column, timeout
+        return None, type(e).__name__ + ": " + str(e)
+    finally:
+        con.close()
+
+def normalize(rows):
+    # round floats so 3.3333333 and 3.33333334 compare equal
+    return [tuple(round(v, 6) if isinstance(v, float) else v for v in r) for r in rows]
+
+def same_result(gold_rows, pred_rows, ordered):
+    g, p = normalize(gold_rows), normalize(pred_rows)
+    if ordered:                       # ORDER BY in gold: order matters
+        return g == p
+    return Counter(g) == Counter(p)   # otherwise compare as multisets
+
+def execution_match(gold_sql, pred_sql, db_paths):
+    """Execution accuracy on one DB, or test-suite accuracy on several."""
+    ordered = "order by" in gold_sql.lower()
+    for db in db_paths:
+        gold, err = run_sql(db, gold_sql)
+        assert err is None, f"gold query broken on {db}: {err}"
+        pred, err = run_sql(db, pred_sql)
+        if err or not same_result(gold, pred, ordered):
+            return False, db, err
+    return True, None, None
+
+# Using the queries from the figure (DB setup omitted for brevity):
+# A  EX on v1: True   | test suite: (True, None)
+# B  EX on v1: True   | test suite: (False, 'shop_v2.db')
+# C  EX on v1: False  | test suite: (False, 'shop_v1.db')</code></pre>
+<p>Expert details that change scores in practice: whether column <em>order</em> and column <em>names</em> must match (most EX implementations ignore names), whether duplicate rows matter (multiset vs set), how <code>NULL</code> and floating-point values compare, and what happens when the gold query is itself ambiguous. Published papers disagree on these choices, which is one reason text-to-SQL numbers from different papers are not directly comparable. For production analytics agents, also grade <b>clarification</b>: "top customers" is ambiguous (by revenue? by order count? this year?), and the right move may be to ask.</p>
+
+<h2>Embodied agents, robotics and VLAs</h2>
+<p>Everything so far happens in software, where you can rerun a test a thousand times for pennies. Robots live in the physical world, and that changes eval economics completely. A <b>vision-language-action model</b> (VLA) is a model that takes camera images and a language instruction ("put the red cup in the bin") and outputs robot actions. A <b>generalist policy</b> is one meant to handle many tasks, objects and scenes rather than one fixed job. Evaluating them is hard for four reasons:</p>
+<ul>
+<li><b>Each trial is slow and manual.</b> Someone has to reset the scene (put the cup back), start the run, watch and record the outcome. A few hundred trials can take days of staff time.</li>
+<li><b>Nothing repeats exactly.</b> Lighting, object positions, camera calibration and wear on the gripper all vary, so two runs of the "same" test differ.</li>
+<li><b>Hardware is not shared.</b> Lab A's robot, table and objects differ from Lab B's, so numbers from different papers rarely compare.</li>
+<li><b>Success is often not binary.</b> The cup reached the bin but tipped over; the drawer is half open. Teams need partial-credit rubrics and consistent human judges.</li>
+</ul>
+
+<h3>How many trials do you need?</h3>
+<p>The statistics from <a href="04-metrics-and-statistics.html">Module 04</a> hit robotics hardest because each sample is so expensive. A success rate over <i>n</i> trials is a binomial proportion, and with small <i>n</i> its confidence interval is huge. The figure uses the Wilson 95% interval, computed for an observed success rate of 60% at different trial counts.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="Chart of 95 percent Wilson confidence intervals for an observed 60 percent success rate. With 10 trials the interval runs from 0.31 to 0.83; with 20 trials from 0.39 to 0.78; with 50 from 0.46 to 0.72; with 100 from 0.50 to 0.69; with 200 from 0.53 to 0.67. A dashed line marks a rival policy at 50 percent.">
+<line class="ln" x1="90" y1="40" x2="90" y2="280"/>
+<line class="ln" x1="90" y1="280" x2="790" y2="280"/>
+<text x="80" y="284" text-anchor="end" class="sm">0</text>
+<text x="80" y="224" text-anchor="end" class="sm">0.25</text>
+<text x="80" y="164" text-anchor="end" class="sm">0.50</text>
+<text x="80" y="104" text-anchor="end" class="sm">0.75</text>
+<text x="80" y="44" text-anchor="end" class="sm">1.0</text>
+<line class="ln dash" x1="90" y1="220" x2="790" y2="220"/>
+<line class="ln dash" x1="90" y1="100" x2="790" y2="100"/>
+<line class="ln warn dash" x1="90" y1="160" x2="790" y2="160"/>
+<text x="786" y="176" text-anchor="end" class="sm t-warn">a rival policy at 50%</text>
+<line class="ln accent thick" x1="150" y1="204.9" x2="150" y2="80.3"/><line class="ln accent" x1="142" y1="204.9" x2="158" y2="204.9"/><line class="ln accent" x1="142" y1="80.3" x2="158" y2="80.3"/><circle class="fill-accent" cx="150" cy="136" r="5"/>
+<text x="162" y="130" class="sm">0.31 to 0.83</text>
+<line class="ln accent thick" x1="290" y1="187.1" x2="290" y2="92.6"/><line class="ln accent" x1="282" y1="187.1" x2="298" y2="187.1"/><line class="ln accent" x1="282" y1="92.6" x2="298" y2="92.6"/><circle class="fill-accent" cx="290" cy="136" r="5"/>
+<text x="302" y="130" class="sm">0.39 to 0.78</text>
+<line class="ln accent thick" x1="430" y1="169.1" x2="430" y2="106.2"/><line class="ln accent" x1="422" y1="169.1" x2="438" y2="169.1"/><line class="ln accent" x1="422" y1="106.2" x2="438" y2="106.2"/><circle class="fill-accent" cx="430" cy="136" r="5"/>
+<text x="442" y="130" class="sm">0.46 to 0.72</text>
+<line class="ln good thick" x1="570" y1="159.5" x2="570" y2="114.2"/><line class="ln good" x1="562" y1="159.5" x2="578" y2="159.5"/><line class="ln good" x1="562" y1="114.2" x2="578" y2="114.2"/><circle class="fill-good" cx="570" cy="136" r="5"/>
+<text x="582" y="130" class="sm">0.50 to 0.69</text>
+<line class="ln good thick" x1="710" y1="152.6" x2="710" y2="120.4"/><line class="ln good" x1="702" y1="152.6" x2="718" y2="152.6"/><line class="ln good" x1="702" y1="120.4" x2="718" y2="120.4"/><circle class="fill-good" cx="710" cy="136" r="5"/>
+<text x="722" y="130" class="sm">0.53 to 0.67</text>
+<text x="150" y="300" text-anchor="middle" class="sm">10 trials</text>
+<text x="290" y="300" text-anchor="middle" class="sm">20</text>
+<text x="430" y="300" text-anchor="middle" class="sm">50</text>
+<text x="570" y="300" text-anchor="middle" class="sm">100</text>
+<text x="710" y="300" text-anchor="middle" class="sm">200</text>
+<text x="440" y="330" text-anchor="middle">trials per policy, observed success 60% in every case</text>
+</svg>
+<figcaption><b>Ten trials cannot tell 60% from 50%.</b> Wilson 95% intervals for an observed 60% success rate (real computation). Only at around 100 trials per policy does the interval pull clear of a rival at 50%, and comparing two policies directly (a paired or A/B test) needs even more. Many robotics papers report 10 to 20 trials per task.</figcaption>
+</figure>
+
+<p>This is why careful robotics groups now publish their statistics. Toyota Research Institute's large behavior model study (<b>"A Careful Examination of Large Behavior Models for Multitask Dexterous Manipulation"</b>, arXiv 2507.05331, later in Science Robotics) is a good model to copy: blind, randomized A/B trials in which the operator does not know which policy is running, and reported uncertainty rather than single numbers. TRI also wrote up the method in a post on statistical thinking for robot policy evaluation.</p>
+
+<h3>The eval ladder: sim, real-to-sim, real, distributed real</h3>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 320" role="img" aria-label="Four rungs from left to right: simulation suites such as LIBERO, real-to-sim evaluation such as SimplerEnv and RobotArena Infinity, controlled real-world benchmarks such as ManipArena, and distributed real-world evaluation such as RoboArena and RoboChallenge. An arrow underneath says more realistic, more expensive, noisier per trial.">
+<defs><marker id="m27g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="30" width="180" height="200" rx="12"/>
+<text x="110" y="56" text-anchor="middle" class="b">Simulation</text>
+<text x="110" y="80" text-anchor="middle" class="sm">LIBERO-style suites</text>
+<text x="110" y="112" text-anchor="middle" class="sm t-good">cheap, repeatable,</text>
+<text x="110" y="128" text-anchor="middle" class="sm t-good">thousands of trials</text>
+<text x="110" y="166" text-anchor="middle" class="sm t-bad">sim-to-real gap;</text>
+<text x="110" y="182" text-anchor="middle" class="sm t-bad">popular suites saturate</text>
+<rect class="box violet" x="220" y="30" width="180" height="200" rx="12"/>
+<text x="310" y="56" text-anchor="middle" class="b">Real-to-sim</text>
+<text x="310" y="80" text-anchor="middle" class="sm">SimplerEnv, RobotArena ∞</text>
+<text x="310" y="112" text-anchor="middle" class="sm t-good">sim scenes built to</text>
+<text x="310" y="128" text-anchor="middle" class="sm t-good">match real setups</text>
+<text x="310" y="166" text-anchor="middle" class="sm t-bad">must prove sim ranks</text>
+<text x="310" y="182" text-anchor="middle" class="sm t-bad">policies like real does</text>
+<rect class="box accent" x="420" y="30" width="180" height="200" rx="12"/>
+<text x="510" y="56" text-anchor="middle" class="b">Controlled real</text>
+<text x="510" y="80" text-anchor="middle" class="sm">ManipArena-style</text>
+<text x="510" y="112" text-anchor="middle" class="sm t-good">real robots, fixed</text>
+<text x="510" y="128" text-anchor="middle" class="sm t-good">scenes and protocol</text>
+<text x="510" y="166" text-anchor="middle" class="sm t-bad">few trials, one lab's</text>
+<text x="510" y="182" text-anchor="middle" class="sm t-bad">hardware and objects</text>
+<rect class="box good" x="620" y="30" width="180" height="200" rx="12"/>
+<text x="710" y="56" text-anchor="middle" class="b">Distributed real</text>
+<text x="710" y="80" text-anchor="middle" class="sm">RoboArena, RoboChallenge</text>
+<text x="710" y="112" text-anchor="middle" class="sm t-good">many sites or remote</text>
+<text x="710" y="128" text-anchor="middle" class="sm t-good">robots, pairwise votes</text>
+<text x="710" y="166" text-anchor="middle" class="sm t-bad">coordination cost,</text>
+<text x="710" y="182" text-anchor="middle" class="sm t-bad">uneven task mix</text>
+<line class="ln accent thick" x1="20" y1="262" x2="798" y2="262" marker-end="url(#m27g)"/>
+<text x="410" y="292" text-anchor="middle">more realistic, more expensive, noisier per trial</text>
+</svg>
+<figcaption><b>The robotics eval ladder.</b> Teams iterate in simulation, check that a real-to-sim setup ranks policies the way the real world does, and reserve real-world trials (controlled or distributed) for the decisions that matter. Each rung trades cost and repeatability for realism.</figcaption>
+</figure>
+
+<ul>
+<li><b>Simulation suites</b> such as <b>LIBERO</b> (NeurIPS 2023 Datasets and Benchmarks; 130 tasks) are cheap and repeatable, and have become standard for reporting VLA results. Popular sim suites have been widely described as close to saturated by leading VLAs, so they now separate weak policies from strong ones better than they separate strong ones from each other. The <b>sim-to-real gap</b> means a policy that does well in sim may still fail on real objects and lighting.</li>
+<li><b>Real-to-sim evaluation</b> builds simulated scenes that mirror real setups, then checks whether the sim ranks policies the same way real trials do. <b>SimplerEnv</b> ("Evaluating Real-World Robot Manipulation Policies in Simulation", Li et al., CoRL 2024) did this for policies such as RT-1 and Octo on common real setups and reported strong correlation between sim and real performance. <b>RobotArena ∞</b> (arXiv 2510.23571) scales the idea by translating real robot videos into simulated digital twins for benchmarking. The key metric for this rung is not success rate but <b>rank agreement with the real world</b>.</li>
+<li><b>Controlled real-world benchmarks</b> run policies on physical robots under a fixed protocol. <b>ManipArena</b> (<a href="https://www.alphaxiv.org/abs/2603.28545">arXiv 2603.28545</a>, 2026) is a real-world benchmark for reasoning-oriented generalist manipulation, designed to diagnose where generalization breaks down under controlled variation.</li>
+<li><b>Distributed real-world evaluation</b> shares the load. <b>RoboArena</b> (Atreya et al., arXiv 2506.18123, 2025) crowdsources evaluation across a network of institutions using a common robot platform (DROID): evaluators run two anonymous policies on a task of their choosing, report which did better, and the pairwise preferences are aggregated into a ranking, much like Chatbot Arena for chat models. <b>RoboChallenge</b> (<a href="https://arxiv.org/html/2510.17950v1">arXiv 2510.17950</a>) takes the other route: a large-scale online platform with real robots that run submitted policies remotely, so every entrant is tested on the same hardware.</li>
+</ul>
+<div class="callout expert"><span class="t">Why pairwise helps in robotics</span>Absolute success rates depend on how hard each evaluator's chosen task is, which varies wildly across labs. Pairwise comparison on the <em>same</em> task at the <em>same</em> site cancels most of that difficulty variation, the same reason paired tests beat unpaired ones in <a href="04-metrics-and-statistics.html">Module 04</a>. The price is that you get a ranking, not an absolute "this robot works 80% of the time".</div>
+
+<h2>Game agents</h2>
+<p>Games are the cheapest way to test <b>long-horizon</b> behavior: many decisions in a row, partial information, exploration, and plans that pay off only much later. Unlike robots, games are fully repeatable and cost only compute. Unlike most software tasks, they last for thousands of steps.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="A horizontal axis of episode length from short puzzles to open-ended worlds. Short puzzles such as BabyAI and Baba Is AI test instruction following and rules; survival sandboxes such as Crafter and MiniHack test exploration and resource planning; full NetHack tests long-horizon planning; full Pokemon runs test memory across many hours; Minecraft tests open-ended goal setting.">
+<defs><marker id="m27h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln accent thick" x1="20" y1="150" x2="798" y2="150" marker-end="url(#m27h)"/>
+<text x="20" y="176" class="sm">tens of steps</text>
+<text x="800" y="176" text-anchor="end" class="sm">open-ended, days of play</text>
+<rect class="box plain" x="20" y="40" width="170" height="80" rx="10"/>
+<text x="105" y="64" text-anchor="middle" class="b">Short puzzles</text>
+<text x="105" y="84" text-anchor="middle" class="sm">BabyAI, Baba Is AI</text>
+<text x="105" y="102" text-anchor="middle" class="sm">follow rules, instructions</text>
+<rect class="box accent" x="200" y="40" width="190" height="80" rx="10"/>
+<text x="295" y="64" text-anchor="middle" class="b">Survival sandboxes</text>
+<text x="295" y="84" text-anchor="middle" class="sm">Crafter, MiniHack</text>
+<text x="295" y="102" text-anchor="middle" class="sm">explore, gather, plan</text>
+<rect class="box violet" x="400" y="40" width="170" height="80" rx="10"/>
+<text x="485" y="64" text-anchor="middle" class="b">Full roguelike</text>
+<text x="485" y="84" text-anchor="middle" class="sm">NetHack</text>
+<text x="485" y="102" text-anchor="middle" class="sm">long-horizon planning</text>
+<rect class="box warn" x="580" y="40" width="220" height="80" rx="10"/>
+<text x="690" y="64" text-anchor="middle" class="b">Full playthroughs</text>
+<text x="690" y="84" text-anchor="middle" class="sm">Pokemon runs, Minecraft</text>
+<text x="690" y="102" text-anchor="middle" class="sm">memory over hours, goals</text>
+<line class="ln dash" x1="105" y1="120" x2="105" y2="146"/>
+<line class="ln dash" x1="295" y1="120" x2="295" y2="146"/>
+<line class="ln dash" x1="485" y1="120" x2="485" y2="146"/>
+<line class="ln dash" x1="690" y1="120" x2="690" y2="146"/>
+<rect class="box good" x="20" y="200" width="550" height="70" rx="10"/>
+<text x="295" y="226" text-anchor="middle" class="b">BALROG groups these six environments</text>
+<text x="295" y="248" text-anchor="middle" class="sm">BabyAI, Crafter, TextWorld, Baba Is AI, MiniHack, NetHack; score = progress 0 to 100</text>
+<rect class="box bad" x="580" y="200" width="220" height="70" rx="10"/>
+<text x="690" y="226" text-anchor="middle" class="b">Harness matters</text>
+<text x="690" y="248" text-anchor="middle" class="sm">tools, maps, memory aids</text>
+</svg>
+<figcaption><b>Games along the horizon axis.</b> Moving right, episodes get longer and success depends more on exploration, memory and self-set goals than on any single decision. Positions are an illustrative ordering, not measured step counts.</figcaption>
+</figure>
+
+<ul>
+<li><b>BALROG</b> (Paglieri et al., ICLR 2025; arXiv 2411.13543) bundles six game environments of rising difficulty, BabyAI, Crafter, TextWorld, Baba Is AI, MiniHack and NetHack, and scores each as <b>progress</b> from 0 to 100 so they can be averaged. It runs models in both text-only and vision modes. The paper's consistent finding was that models did reasonably on the easy environments and made very little progress on NetHack, and that adding images often <em>hurt</em>, a useful warning that "multimodal" does not automatically mean "better at acting on images".</li>
+<li><b>Pokemon runs.</b> In February 2025 Anthropic streamed <b>Claude Plays Pokemon</b> on Twitch with Claude 3.7 Sonnet playing Pokemon Red through a harness with tools for pressing buttons and managing its memory; progress was tracked by milestones such as gym badges. In May 2025, an independent developer's <b>Gemini Plays Pokemon</b> stream reported Gemini 2.5 Pro finishing Pokemon Blue. Both are compelling demos and poor benchmarks: the harnesses differed (map information, navigation helpers, memory tools, occasional developer intervention), so the runs are not a fair comparison of the models. This is the harness point from <a href="21-harness-evals.html">Module 21</a> in its purest form.</li>
+<li><b>Minecraft</b> is the classic open-ended world. <b>MineDojo</b> (2022) provided a framework and task suite; <b>Voyager</b> (Wang et al., 2023) showed an LLM agent that builds a <em>skill library</em> of code as it explores, and measured progress with open-ended metrics such as distinct items discovered and how fast it climbs the tool tech tree (wood, stone, iron, diamond). Open-ended games need open-ended metrics: there is no single "success".</li>
+<li><b>VideoGameBench</b> (arXiv 2505.18134, 2025) asks vision-language models to complete classic video games from raw frames, with a "Lite" setting that pauses the game while the model thinks, which isolates reasoning from reaction speed.</li>
+</ul>
+<p>What games test, in one list: long-horizon planning, exploration under uncertainty, memory across very long contexts (<a href="23-memory-evals.html">Module 23</a>), recovering from mistakes, and acting from pixels. What they do not test well: anything about real-world stakes or domain expertise. They sit in this module because they share robotics' core problem, <b>long, costly episodes with high variance</b>, just without the hardware.</p>
+
+<h2>Summary: domains at a glance</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Domain</th><th>Typical benchmarks</th><th>Primary metric</th><th>Biggest pitfall</th></tr></thead>
+<tbody>
+<tr><td>Healthcare</td><td>HealthBench (Hard, Consensus, Professional), MedQA, MedHELM, MedAgentBench</td><td>Weighted rubric score; critical-failure rate</td><td>Exam scores mistaken for clinical competence; missed escalation hidden in an average</td></tr>
+<tr><td>Legal</td><td>LegalBench, LegalAgentBench, VLAIR, vendor agent benchmarks</td><td>Accuracy plus fabricated and misgrounded citation rates</td><td>Hallucinated or misgrounded authorities; answers without jurisdiction or date</td></tr>
+<tr><td>Finance</td><td>FinanceBench, Finance Agent Benchmark, SpreadsheetBench</td><td>Answer correct within tolerance, with source; cost per task</td><td>Plausible wrong numbers (period, unit, GAAP vs adjusted); retrieval setup not reported</td></tr>
+<tr><td>Data science</td><td>DSBench, DA-Code, ScienceAgentBench, CORE-Bench</td><td>Execution-checked success; RPG for modeling</td><td>Right result by invalid method (leakage, cherry-picking) passes an outcome check</td></tr>
+<tr><td>Text-to-SQL</td><td>Spider 2.0, BIRD</td><td>Execution accuracy (plus VES, test suites)</td><td>Coincidental matches on one database; ambiguous questions graded as if clear</td></tr>
+<tr><td>Robotics and VLA</td><td>LIBERO, SimplerEnv, RobotArena ∞, ManipArena, RoboArena, RoboChallenge</td><td>Success rate over physical trials; pairwise rank</td><td>Too few trials for the claimed difference; results tied to one lab's hardware</td></tr>
+<tr><td>Games</td><td>BALROG, Pokemon runs, Minecraft (MineDojo, Voyager), VideoGameBench</td><td>Progress or milestones reached</td><td>Harness differences presented as model differences</td></tr>
+</tbody></table></div>
+
+<h2>Putting it together: a domain eval plan in one page</h2>
+<p>Suppose you are asked to evaluate an agent that answers questions from small-business owners about their bookkeeping and taxes. Here is how the playbook turns into a plan:</p>
+<ol>
+<li><b>Tier:</b> 2 (advises non-experts directly, money at stake). So: expert rubrics, critical-failure reporting, abstention tests.</li>
+<li><b>Experts:</b> three accountants from different practice types, plus one tax specialist for the tax slice. Budget about 40 hours for task writing and rubric review, and 10 hours for double grading.</li>
+<li><b>Tasks:</b> 300 real questions from support logs (anonymized), stratified by topic, plus 40 unanswerable or out-of-scope items and 30 red-flag items (possible fraud, a deadline that has already passed) where escalation is the only right answer. Every item tagged with jurisdiction and tax year.</li>
+<li><b>Rubrics:</b> 5 to 12 weighted criteria per question, with negative criteria for "states a deadline or rate that is wrong for the tax year" marked critical.</li>
+<li><b>Agreement:</b> 100 items double-graded; kappa per criterion; rewrite any criterion under about 0.4.</li>
+<li><b>Grader:</b> a model grader validated against the double-graded set; recall on critical criteria must be high before it is trusted.</li>
+<li><b>Report:</b> weighted rubric score with a confidence interval, critical-failure count (release gate: zero), abstention precision and coverage, per-topic breakdown, cost per question.</li>
+<li><b>Refresh:</b> re-review all tax-year items every January and whenever rates change; version the suite.</li>
+</ol>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li>Domain evals define "correct" by professional standards or physical reality, so ground truth must come from <b>experts</b> or from a domain mechanism (execution, citation lookup, filing data, physical trials). Use the cheapest reliable mechanism and fall back to expert rubrics only where needed.</li>
+<li>Set a <b>risk tier</b> first; it decides how many cases, how much expert time and which gates you need.</li>
+<li><b>Expert-written weighted rubrics</b> (HealthBench style) turn open-ended answers into checkable criteria: sum met points, divide by positive points, clip to 0 to 1.</li>
+<li>Measure <b>inter-expert agreement</b> with kappa; it is the ceiling for any model grader and a signal of vague criteria.</li>
+<li>Weight errors by <b>severity</b> and report critical failures separately. Reward <b>abstention and escalation</b> with a wrong-answer penalty and report coverage.</li>
+<li>Domain answer keys expire. Tag items with sources and dates, version the suite, and re-review on guideline changes.</li>
+<li>Text-to-SQL uses <b>execution accuracy</b>, which can pass wrong queries by coincidence; test suites of several databases fix most of that.</li>
+<li>Robotics evals are expensive and noisy; 10 trials cannot separate 60% from 50%. Use the sim, real-to-sim, real and distributed-real ladder, pairwise comparisons, and published uncertainty.</li>
+<li>Game benchmarks test long horizons cheaply, but <b>harness differences</b> can dwarf model differences.</li>
+</ol></div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="2"><p>1. A rubric has positive criteria worth 10, 6 and 4 points and a negative criterion worth -5. A response meets the 10-point and 4-point criteria and also triggers the -5 criterion. What is its HealthBench-style score?</p>
+<button class="opt">0.70</button>
+<button class="opt">0.36</button>
+<button class="opt">0.45</button>
+<button class="opt">0.60</button>
+<div class="why">Earned = 10 + 4 - 5 = 9. Possible = 10 + 6 + 4 = 20 (positives only). Score = 9 / 20 = 0.45, already within 0 to 1.</div></div>
+<div class="q" data-answer="1"><p>2. Two lawyers grade 200 answers and agree on 170 (85%). Your model grader agrees with lawyer A on 84%. What is the best conclusion?</p>
+<button class="opt">The grader is weak because it is below 90%</button>
+<button class="opt">The grader is roughly as consistent with an expert as a second expert is; check kappa and per-criterion recall on critical items before trusting it</button>
+<button class="opt">The lawyers are unreliable and should be replaced by the grader</button>
+<div class="why">Expert-to-expert agreement is the ceiling for a grader. 84% vs 85% is comparable, but raw agreement can hide chance agreement and poor recall on the rare critical items, so look at kappa and critical-criterion recall.</div></div>
+<div class="q" data-answer="0"><p>3. A predicted SQL query passes execution accuracy on the dev database but fails on a second database added by a test suite. What most likely happened?</p>
+<button class="opt">The query is not equivalent to the gold query and matched on the first database by coincidence</button>
+<button class="opt">The second database is broken</button>
+<button class="opt">Exact match would have caught it more fairly</button>
+<div class="why">Execution accuracy on one database only checks one data state. Test suites add databases designed to separate non-equivalent queries, like a customer with zero orders exposing an inner join.</div></div>
+<div class="q" data-answer="2"><p>4. A robotics paper reports policy X at 7/10 and policy Y at 5/10 on the same task and claims X is better. What is the strongest objection?</p>
+<button class="opt">They should have used simulation instead</button>
+<button class="opt">Success rate is the wrong metric for robots</button>
+<button class="opt">With 10 trials each, the confidence intervals overlap heavily, so the difference could easily be noise</button>
+<div class="why">Wilson intervals at n = 10 are about 50 points wide. Separating policies needs many more trials, ideally blind, randomized and paired on the same scenes.</div></div>
+<div class="q" data-answer="1"><p>5. Under plain accuracy, agent P (answers everything, 88% right) beats agent Q (answers 80%, abstains on 20%, 97% of its answers right). Which change to the eval best reflects a high-stakes domain?</p>
+<button class="opt">Drop all abstained items from the test set</button>
+<button class="opt">Score +1 right, 0 abstain, a larger negative for wrong, and report coverage alongside</button>
+<button class="opt">Count abstentions as correct</button>
+<div class="why">A wrong-answer penalty makes calibrated abstention pay off, and reporting coverage stops an agent from winning by refusing everything. Counting abstentions as correct would reward dodging.</div></div>
+<div class="q" data-answer="0"><p>6. Two Pokemon streams show model M reaching the final badge and model N stuck halfway. Why is this weak evidence that M is the better model?</p>
+<button class="opt">The harnesses (map tools, memory aids, navigation helpers, human interventions) differed, so the comparison mixes harness and model effects</button>
+<button class="opt">Pokemon is too easy to be informative</button>
+<button class="opt">Games cannot measure long-horizon behavior</button>
+<div class="why">In long-horizon runs, the scaffolding around the model can matter as much as the model. Fair comparison needs the same harness, the same interventions policy and ideally several runs each.</div></div>
+</div>
+
+<details>
+<summary><b>Interview questions</b></summary>
+<ol>
+<li><b>"You're launching a health-information assistant for consumers. How do you evaluate it?"</b> Tier it as direct-to-public (tier 2). Recruit a diverse panel of physicians; collect realistic conversations (vague complaints, laypeople and clinicians, multiple languages), not exam items. Have physicians write weighted per-conversation rubrics with negative criteria, and critical flags for missed emergencies. Double-grade a sample for kappa; validate a model grader against physicians with per-criterion recall on critical items. Report the weighted score with intervals, theme and axis breakdowns, the critical-failure count as a release gate, abstention and escalation behavior, and a time-sensitive slice. Refresh as guidelines change. Be explicit that this is not clinical validation.</li>
+<li><b>"Why do exam-style medical benchmarks overstate readiness?"</b> They give complete information, a single best answer and letter-match grading. Real use needs context seeking, triage of vague stories, tailoring to the user, and knowing when to escalate. Contamination is also likely for widely published exam questions. HealthBench-style conversations and agentic EHR tasks (MedAgentBench) test more of what matters.</li>
+<li><b>"How would you measure hallucinated citations in a legal research agent?"</b> Extract every citation, verify existence against an authoritative database automatically, then have experts or a validated judge check whether each real citation supports the stated proposition. Report fabricated rate, misgrounded rate and the share of documents with at least one fabricated cite. Include jurisdiction and date for every item, and compare against a lawyer baseline.</li>
+<li><b>"Execution accuracy vs exact match for text-to-SQL: which and why? What's still wrong with execution accuracy?"</b> Execution accuracy, because many syntactically different queries are semantically identical. Its weakness is false positives when a wrong query happens to return the right rows on one database; fix with test-suite accuracy, and be explicit about ordering, duplicates, NULLs, float tolerance and column naming. Also grade clarification on ambiguous questions and efficiency (as BIRD's VES does).</li>
+<li><b>"Why are robotics evals noisy and what do you do about it?"</b> Trials are slow, manual and not exactly repeatable; hardware and scenes differ across labs; outcomes can be partial. Use enough trials to power the comparison (compute intervals up front), blind and randomize A/B trials, pair policies on the same scenes, publish uncertainty, validate sim or real-to-sim setups by rank agreement with real trials, and use distributed pairwise evaluation (RoboArena) or shared remote hardware (RoboChallenge) for cross-lab comparisons.</li>
+<li><b>"How do you keep a domain eval from going stale?"</b> Tag each item with its source guideline or law and an as-of date, subscribe to change feeds, re-review affected items on change and a random sample every quarter, version the suite and re-run old models on new versions before comparing, and report a time-sensitive slice separately.</li>
+</ol>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>OpenAI, <a href="https://openai.com/index/healthbench/">Introducing HealthBench</a> (May 2025) and Arora et al., <a href="https://arxiv.org/abs/2505.08775">HealthBench: Evaluating Large Language Models Towards Improved Human Health</a>; reference grader in <a href="https://github.com/openai/simple-evals">openai/simple-evals</a>.</li>
+<li><a href="https://arxiv.org/html/2604.27470v1">HealthBench Professional: Evaluating Large Language Models on Real Clinician Chats</a> (2026).</li>
+<li>Jin et al., <a href="https://arxiv.org/abs/2009.13081">What Disease does this Patient Have? A Large-scale Open Domain Question Answering Dataset from Medical Exams</a> (MedQA, 2020).</li>
+<li><a href="https://arxiv.org/abs/2505.23802">MedHELM: Holistic Evaluation of Large Language Models for Medical Tasks</a> and the <a href="https://www.nature.com/articles/s41591-025-04151-2">Nature Medicine paper</a>.</li>
+<li><a href="https://arxiv.org/abs/2501.14654">MedAgentBench: A Realistic Virtual EHR Environment to Benchmark Medical LLM Agents</a> (Stanford).</li>
+<li>Guha et al., <a href="https://arxiv.org/abs/2308.11462">LegalBench: A Collaboratively Built Benchmark for Measuring Legal Reasoning in Large Language Models</a> (NeurIPS 2023).</li>
+<li>Magesh et al., <a href="https://reglab.stanford.edu/publications/hallucination-free-assessing-the-reliability-of-leading-ai-legal-research-tools/">Hallucination-Free? Assessing the Reliability of Leading AI Legal Research Tools</a> (Stanford RegLab, 2024; Journal of Empirical Legal Studies, 2025).</li>
+<li>Damien Charlotin, <a href="https://www.damiencharlotin.com/hallucinations/">AI Hallucination Cases database</a>.</li>
+<li><a href="https://arxiv.org/abs/2412.17259">LegalAgentBench: Evaluating LLM Agents in Legal Domain</a> (ACL 2025); Vals AI, <a href="https://www.vals.ai/industry-reports/vlair-10-14-25">VLAIR: Legal Research</a> (October 2025); Harvey, <a href="https://www.harvey.ai/blog/introducing-harveys-legal-agent-benchmark">Introducing Harvey's Legal Agent Benchmark</a>.</li>
+<li>Islam et al., <a href="https://arxiv.org/abs/2311.11944">FinanceBench: A New Benchmark for Financial Question Answering</a> (Patronus AI, 2023).</li>
+<li><a href="https://arxiv.org/abs/2508.00828">Finance Agent Benchmark: Benchmarking LLMs on Real-world Financial Research Tasks</a> (Vals AI, 2025) and the <a href="https://www.vals.ai/benchmarks/fabv2">Vals Finance Agent leaderboard</a>.</li>
+<li>Ma et al., <a href="https://arxiv.org/abs/2406.14991">SpreadsheetBench: Towards Challenging Real World Spreadsheet Manipulation</a> (NeurIPS 2024).</li>
+<li>Jing et al., <a href="https://arxiv.org/abs/2409.07703">DSBench: How Far Are Data Science Agents from Becoming Data Science Experts?</a> (ICLR 2025).</li>
+<li>Huang et al., <a href="https://arxiv.org/html/2410.07331v2">DA-Code: Agent Data Science Code Generation Benchmark for Large Language Models</a> (EMNLP 2024).</li>
+<li>Chen et al., <a href="https://arxiv.org/abs/2410.05080">ScienceAgentBench: Toward Rigorous Assessment of Language Agents for Data-Driven Scientific Discovery</a> (ICLR 2025).</li>
+<li>Siegel et al., <a href="https://arxiv.org/abs/2409.11363">CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark</a> (2024).</li>
+<li>Lei et al., <a href="https://arxiv.org/abs/2411.07763">Spider 2.0: Evaluating Language Models on Real-World Enterprise Text-to-SQL Workflows</a> (ICLR 2025) and <a href="https://spider2-sql.github.io/">spider2-sql.github.io</a>.</li>
+<li>Li et al., <a href="https://arxiv.org/abs/2305.03111">Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs</a> (BIRD, NeurIPS 2023) and <a href="https://bird-bench.github.io/">bird-bench.github.io</a>.</li>
+<li>Zhong, Yu and Klein, <a href="https://aclanthology.org/2020.emnlp-main.29/">Semantic Evaluation for Text-to-SQL with Distilled Test Suites</a> (EMNLP 2020).</li>
+<li>Atreya et al., <a href="https://arxiv.org/abs/2506.18123">RoboArena: Distributed Real-World Evaluation of Generalist Robot Policies</a> (2025).</li>
+<li><a href="https://arxiv.org/html/2510.17950v1">RoboChallenge: Large-scale Real-robot Evaluation of Embodied Policies</a> (2025).</li>
+<li><a href="https://www.alphaxiv.org/abs/2603.28545">ManipArena: Comprehensive Real-world Evaluation of Reasoning-Oriented Generalist Robot Manipulation</a> (2026).</li>
+<li><a href="https://arxiv.org/html/2510.23571v1">RobotArena ∞: Scalable Robot Benchmarking via Real-to-Sim Translation</a> (2025).</li>
+<li>Li et al., <a href="https://arxiv.org/abs/2405.05941">Evaluating Real-World Robot Manipulation Policies in Simulation</a> (SimplerEnv, CoRL 2024).</li>
+<li><a href="https://papers.neurips.cc/paper_files/paper/2023/file/8c3c666820ea055a77726d66fc7d447f-Paper-Datasets_and_Benchmarks.pdf">LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning</a> (NeurIPS 2023).</li>
+<li>Toyota Research Institute, <a href="https://arxiv.org/abs/2507.05331">A Careful Examination of Large Behavior Models for Multitask Dexterous Manipulation</a> (2025) and <a href="https://medium.com/toyotaresearch/statistical-thinking-for-robot-policy-evaluation-from-rigorous-a-b-testing-to-effective-0ae886fbd68d">Statistical Thinking for Robot Policy Evaluation</a>.</li>
+<li>Paglieri et al., <a href="https://arxiv.org/abs/2411.13543">BALROG: Benchmarking Agentic LLM and VLM Reasoning On Games</a> (ICLR 2025).</li>
+<li>TechCrunch, <a href="https://techcrunch.com/2025/02/25/anthropics-claude-ai-is-playing-pokemon-on-twitch-slowly">Anthropic's Claude AI is playing Pokemon on Twitch, slowly</a> (February 2025); TechCrunch, <a href="https://techcrunch.com/2025/05/03/googles-gemini-has-beaten-pokemon-blue-with-a-little-help">Google's Gemini has beaten Pokemon Blue (with a little help)</a> (May 2025).</li>
+<li>Wang et al., <a href="https://arxiv.org/abs/2305.16291">Voyager: An Open-Ended Embodied Agent with Large Language Models</a> (2023).</li>
+<li><a href="https://arxiv.org/abs/2505.18134">VideoGameBench: Can Vision-Language Models complete popular video games?</a> (2025).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

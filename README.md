@@ -8,6 +8,7 @@ A free, visual course on evaluating AI agents across every modality: tool calls,
 
 - **23 modules in 5 parts**, each built around inline diagrams (nearly 300 in total), with runnable code, worked examples, a self-check quiz and cited sources.
 - **Interactive widgets**: score noise, confidence intervals, paired A/B comparisons, pass@k vs pass^k, compounding errors, judge-error correction, word error rate, Arena ratings, harness ablation, skill trigger thresholds and memory retrieval. All of them are collected in the [Eval Playground](https://mahesh0431.github.io/agent-evals-zero-to-expert/playground.html).
+- **Four small runnable example evals** in [`code/examples`](code/examples) (tool calls, judge calibration, text-to-SQL execution accuracy, memory probes). Standard library only, no API keys: `python code/examples/run_all.py`.
 - **A runnable capstone** in [`code/capstone`](code/capstone): an [Inspect](https://inspect.aisi.org.uk/) eval of a tool-using support agent, with outcome, policy and LLM-judge scorers, pass^k over epochs, analysis scripts and a CI gate.
 
 | Part | Modules |

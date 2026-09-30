@@ -16,7 +16,7 @@
 <div class="kicker">Module 07 · Agent evals, every modality</div>
 <h1>Evaluating coding agents</h1>
 <p class="lede">Code is the friendliest domain in all of agent evaluation, because you can <em>run</em> the answer. It is also where the field learned, the hard way, that "the tests passed" and "the agent solved the problem" are not the same sentence.</p>
-<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~60 min</span><span class="pill">Prereqs: Modules 03, 04, 05</span></div>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill level-3">Advanced</span><span class="pill">~80 min</span><span class="pill">Prereqs: Modules 03, 04, 05</span></div>
 
 <div class="objectives">
 <h3>By the end of this module you can</h3>
@@ -27,6 +27,7 @@
 <li>Grade beyond pass/fail: regressions, diff size, code quality, security, cost, time and turns.</li>
 <li>Build your own coding-agent eval from your repository's merged pull requests, and run it safely in containers.</li>
 <li>Explain why the same model scores differently in different agent harnesses, and what that means when you read a leaderboard.</li>
+<li>Evaluate a coding assistant as a product: the acceptance, survival, merge and revert funnel, developer-level A/B tests, and why developer self-reports mislead.</li>
 </ul>
 </div>
 
@@ -1075,6 +1076,277 @@ if __name__ == "__main__":
 </figure>
 
 
+<h2>Evaluating coding assistants as products</h2>
+<p>Everything so far asks one question: <em>can this model and harness solve a coding task?</em> A company that ships a coding assistant (an autocomplete like Copilot or Cursor Tab, an in-editor agent, or a terminal agent like Claude Code) has a different question: <em>does this product make real developers ship better software, faster, on their own code, week after week?</em> A benchmark cannot answer that, for the same reason a car's lab emissions test cannot tell you how people actually drive it. You need measurements taken from real use.</p>
+
+<div class="callout analogy"><span class="t">Analogy: the test kitchen and the restaurant</span>
+<p>A benchmark is the test kitchen: the chef cooks a fixed menu and a panel scores each plate. The product is the restaurant. What matters there is whether diners order the dish, finish it, come back next week, and do not get sick. The test kitchen is still essential (you do not serve an untested dish), but the restaurant needs its own numbers.</p>
+</div>
+
+<h3>The product metrics funnel</h3>
+<p>Product teams think of assistant output as flowing through a funnel. Each step down is a stricter answer to "did the assistant help?":</p>
+<ul>
+<li><b>Shown (impressions).</b> How many suggestions, proposed edits or agent diffs the developer actually saw. This is the denominator, and the product itself controls it, which matters a lot below.</li>
+<li><b>Accepted.</b> The developer pressed Tab, clicked apply, or kept the agent's change. <b>Acceptance rate</b> = accepted / shown. Teams also track <b>accepted characters or lines</b>, because accepting a one-character suggestion and a 40-line function are very different events.</li>
+<li><b>Survived (edit survival, also called code retention or persistence).</b> Of the text that was accepted, how much is still there after N minutes, hours or days? Accepting a suggestion and then deleting it thirty seconds later is not help. Survival is usually computed by comparing the accepted span with the file at a later time.</li>
+<li><b>Merged.</b> Did the change reach a merged pull request? For agent products the natural unit is the task or PR: <b>PR merge rate</b> for agent-authored PRs, <b>time to merge</b> (open to merged), and <b>review rounds</b> before merge.</li>
+<li><b>Stayed good.</b> No revert, no hot-fix to the same lines, no incident traced back to it, within some window after merge. This is the closest you get to "the code was actually correct".</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 400" role="img" aria-label="A funnel of five bars getting narrower: 1,000 suggestions shown, 300 accepted, 180 still present after 30 days, 150 in a merged pull request, 140 with no revert or hot-fix. On the right, the ratio each step defines: acceptance rate 30 percent, 30-day survival 60 percent, merge rate 50 percent of accepted, and stayed-good rate 93 percent of merged.">
+<defs><marker id="m07n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="24" class="b">One team, one week of assistant output (illustrative numbers)</text>
+<line class="ln accent flow" x1="22" y1="48" x2="22" y2="344" marker-end="url(#m07n)"/>
+<text x="16" y="200" text-anchor="middle" class="sm" transform="rotate(-90 16 200)">stricter definition of "helped"</text>
+<rect class="box plain" x="40" y="44" width="520" height="48" rx="8"/>
+<text x="300" y="64" text-anchor="middle" class="b">Suggestions shown</text>
+<text x="300" y="82" text-anchor="middle" class="sm">1,000 completions or proposed edits</text>
+<rect class="box accent" x="100" y="108" width="400" height="48" rx="8"/>
+<text x="300" y="128" text-anchor="middle" class="b">Accepted</text>
+<text x="300" y="146" text-anchor="middle" class="sm">300 (Tab, apply, or kept)</text>
+<rect class="box good" x="150" y="172" width="300" height="48" rx="8"/>
+<text x="300" y="192" text-anchor="middle" class="b">Still there after 30 days</text>
+<text x="300" y="210" text-anchor="middle" class="sm">180 of the 300</text>
+<rect class="box good" x="175" y="236" width="250" height="48" rx="8"/>
+<text x="300" y="256" text-anchor="middle" class="b">In a merged PR</text>
+<text x="300" y="274" text-anchor="middle" class="sm">150</text>
+<rect class="box violet pulse" x="185" y="300" width="230" height="48" rx="8"/>
+<text x="300" y="320" text-anchor="middle" class="b">No revert or hot-fix</text>
+<text x="300" y="338" text-anchor="middle" class="sm">140</text>
+<text x="590" y="64" class="b t-warn">denominator you control</text>
+<text x="590" y="82" class="sm">show less and every rate below rises</text>
+<text x="590" y="128" class="b">acceptance rate</text>
+<text x="590" y="146" class="sm">300 / 1,000 = 30%</text>
+<text x="590" y="192" class="b">edit survival (30 days)</text>
+<text x="590" y="210" class="sm">180 / 300 = 60% of accepted</text>
+<text x="590" y="256" class="b">merged</text>
+<text x="590" y="274" class="sm">150 / 300 = 50% of accepted</text>
+<text x="590" y="320" class="b t-good">stayed good</text>
+<text x="590" y="338" class="sm">140 / 150 = 93% of merged</text>
+<text x="300" y="380" text-anchor="middle" class="sm">In practice survival is counted in characters or lines, not whole suggestions</text>
+</svg>
+<figcaption><b>The coding-assistant metrics funnel.</b> All numbers are illustrative, not real data. Each step down is a stricter test of whether the assistant helped. Acceptance is the easiest to measure and the easiest to game; the lower steps are slower to observe but much closer to value.</figcaption>
+</figure>
+
+<p>Published work gives these metrics some grounding. GitHub researchers (Ziegler et al., 2022) compared usage measures from Copilot telemetry with developers' own survey ratings of productivity, and the paper reports that the <b>acceptance rate of shown suggestions</b> predicted perceived productivity better than more detailed measures such as how much accepted code persisted. Google's research blog posts on its internal ML code completion report acceptance rate and the <b>fraction of new code characters that came from accepted suggestions</b> as headline metrics. GitHub's Copilot usage metrics for organizations expose similar counts (suggestions shown and accepted, lines accepted, active users). So acceptance-style metrics are real, widely used and cheap. They are also the metric most easily fooled.</p>
+
+<h3>Why acceptance rate alone misleads</h3>
+<p>Acceptance rate is a ratio, and the product controls the denominator. If a new version shows suggestions only when it is very confident, it shows fewer of them, and the ones it shows are accepted more often. The rate goes up even if developers receive less help in total. Cursor's post on training its Tab model with online reinforcement learning reports exactly this shape of change, with fewer suggestions shown and a higher accept rate, which is a good outcome <em>if</em> total useful code held up. You only know that by looking at more than the rate.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Two versions compared. Version A shows 1,000 suggestions and 300 are accepted, 30 percent, totalling 12,000 accepted characters. Version B shows 500 and 200 are accepted, 40 percent, but only 9,000 accepted characters. The rate went up while delivered code went down.">
+<rect class="box plain" x="20" y="20" width="380" height="210" rx="10"/>
+<rect class="box plain" x="420" y="20" width="380" height="210" rx="10"/>
+<text x="36" y="44" class="b">Version A (shows more)</text>
+<text x="436" y="44" class="b">Version B (shows less)</text>
+<text x="36" y="84" class="sm">shown</text>
+<rect x="130" y="72" width="200" height="16" rx="3" class="fill-muted"/>
+<text x="338" y="85" class="sm">1,000</text>
+<text x="36" y="118" class="sm">accepted</text>
+<rect x="130" y="106" width="60" height="16" rx="3" class="fill-accent"/>
+<text x="198" y="119" class="sm">300</text>
+<text x="36" y="152" class="sm">accepted chars</text>
+<rect x="130" y="140" width="200" height="16" rx="3" class="fill-good"/>
+<text x="338" y="153" class="sm">12,000</text>
+<text x="436" y="84" class="sm">shown</text>
+<rect x="530" y="72" width="100" height="16" rx="3" class="fill-muted"/>
+<text x="638" y="85" class="sm">500</text>
+<text x="436" y="118" class="sm">accepted</text>
+<rect x="530" y="106" width="40" height="16" rx="3" class="fill-accent"/>
+<text x="578" y="119" class="sm">200</text>
+<text x="436" y="152" class="sm">accepted chars</text>
+<rect x="530" y="140" width="150" height="16" rx="3" class="fill-warn"/>
+<text x="688" y="153" class="sm">9,000</text>
+<text x="36" y="196" class="lg">acceptance 30%</text>
+<text x="36" y="216" class="sm">12,000 characters of help</text>
+<text x="436" y="196" class="lg t-good">acceptance 40%</text>
+<text x="436" y="216" class="sm t-bad">9,000 characters of help (25% less)</text>
+<rect class="box warn" x="170" y="248" width="480" height="40" rx="8"/>
+<text x="410" y="273" text-anchor="middle" class="b">Rate up, delivered value down: always pair a rate with a volume</text>
+</svg>
+<figcaption><b>The acceptance-rate trap.</b> Illustrative numbers. Version B looks better on the headline ratio because it shows fewer, safer suggestions, yet developers get less accepted code overall. Report accepted characters (or surviving characters) per developer per day alongside the rate, and whether B's 9,000 characters survive better than A's 12,000.</figcaption>
+</figure>
+
+<p>The other traps, each with the metric that guards against it:</p>
+<div class="tablewrap"><table>
+<tr><th>Metric</th><th>What it tells you</th><th>How it gets fooled</th><th>Pair it with</th></tr>
+<tr><td>Acceptance rate</td><td>Suggestions feel useful in the moment</td><td>Showing fewer, safer suggestions; accepting and then deleting</td><td>Accepted characters per developer per day; survival</td></tr>
+<tr><td>Edit survival (N days)</td><td>Accepted code was actually kept</td><td>Boilerplate and trivial lines survive easily; files that are never touched again "survive" by default</td><td>Survival weighted by size and by file activity; revert rate</td></tr>
+<tr><td>Time to merge, PR throughput</td><td>End-to-end flow of work</td><td>Smaller PRs, lighter review, more trivial changes</td><td>Review rounds, post-merge defects and reverts</td></tr>
+<tr><td>Agent task success</td><td>The agent finished what was asked</td><td>Logged as "done" when the user gave up and fixed it by hand</td><td>Follow-up fix rate, explicit rating, merged-and-not-reverted</td></tr>
+<tr><td>Weekly active users, retention</td><td>People keep choosing the tool</td><td>Mandated use; tool is on by default</td><td>Voluntary use in opt-in teams; usage depth</td></tr>
+<tr><td>Self-reported productivity</td><td>How the tool feels</td><td>Novelty, expectations, wanting to look modern (see below)</td><td>Measured time and outcomes on randomized tasks</td></tr>
+</table></div>
+
+<p>For agentic products the unit shifts from the keystroke to the <b>task</b>. Suggestion-level metrics fade and teams watch session-level ones instead: did the session end in an accepted change, how many times did the human have to step in or correct course, how many permission prompts and turns did it take, what did it cost in tokens per merged change, how many review comments do agent-authored PRs attract, and how often are they reverted. These map directly onto the offline scorecard from the "Beyond pass/fail" section above, which is the point: the same questions, asked of real use.</p>
+
+<h3>Measuring edit survival yourself</h3>
+<p>If you run an assistant inside your company, you can compute survival from two things you already have: a log of what was accepted (file, inserted text, time) and git. The idea: for each accepted span, look at the same file N days later and count how many of its lines are still there. Line-level matching is crude, but it is honest and easy to explain.</p>
+
+<pre data-lang="python"><code>"""Edit survival: what share of accepted assistant-written lines is still in
+the file N days later. A sketch; a real product logs a stable suggestion id and
+the exact inserted span at accept time."""
+import subprocess
+from collections import Counter
+from datetime import datetime, timedelta
+
+MIN_LEN = 8   # ignore lines like "}" or "else:" that survive by accident
+
+def git(repo: str, *args: str) -&gt; str:
+    return subprocess.run(["git", "-C", repo, *args], capture_output=True,
+                          text=True, check=True).stdout
+
+def rev_at(repo: str, when: datetime, branch: str = "main") -&gt; str:
+    """Last commit on the branch at or before a moment in time."""
+    return git(repo, "rev-list", "-1", f"--before={when.isoformat()}", branch).strip()
+
+def file_at(repo: str, path: str, rev: str) -&gt; str:
+    try:
+        return git(repo, "show", f"{rev}:{path}")
+    except subprocess.CalledProcessError:
+        return ""                      # file deleted: nothing survived
+
+def surviving(inserted: str, later_file: str) -&gt; tuple[int, int]:
+    wanted = [l.strip() for l in inserted.splitlines() if len(l.strip()) &gt;= MIN_LEN]
+    pool = Counter(l.strip() for l in later_file.splitlines())
+    kept = 0
+    for line in wanted:                # multiset match: each later line used once
+        if pool[line] &gt; 0:
+            pool[line] -= 1
+            kept += 1
+    return kept, len(wanted)
+
+def survival_rate(events: list[dict], repo: str, days: int = 30) -&gt; float:
+    """events: [{"path": "src/app.py", "inserted": "...", "accepted_at": datetime}]"""
+    kept = total = 0
+    for e in events:
+        rev = rev_at(repo, e["accepted_at"] + timedelta(days=days))
+        k, n = surviving(e["inserted"], file_at(repo, e["path"], rev))
+        kept, total = kept + k, total + n
+    return kept / total if total else float("nan")</code></pre>
+
+<p>Three honest caveats. First, a line that was rewritten slightly (a renamed variable) counts as lost, so survival is a lower bound. Second, code in files nobody touches again "survives" by default; compare against a baseline of human-written lines in the same files over the same window, otherwise you are measuring how busy the file is. Third, a renamed or moved file looks deleted unless you follow renames (<code>git log --follow</code>). Code-analytics vendors such as GitClear have published repository-level analyses arguing that short-lived and duplicated code rose as AI assistants spread. Those studies are observational (they cannot separate the tool from everything else that changed), so treat them as a hypothesis to check in your own history, not as a measured effect.</p>
+
+<h3>Online A/B tests for coding assistants</h3>
+<p>To know whether version B of the assistant is better than version A in real use, run a randomized experiment, exactly as in <a href="15-production-evals.html">Module 15</a>, with a few coding-specific rules:</p>
+<ul>
+<li><b>Randomize by developer, not by request.</b> A developer who sees A in the morning and B in the afternoon learns habits from both, and a session that switches versions mid-task is contaminated.</li>
+<li><b>Pick one primary metric in advance</b> (for example surviving characters per developer per day) and list <b>guardrail metrics</b> that must not get worse: latency, error rate, revert rate, cost per developer.</li>
+<li><b>Analyze at the developer level.</b> One heavy user produces thousands of correlated suggestions. If you treat every suggestion as independent, your confidence interval will be far too narrow.</li>
+<li><b>Run long enough to see survival and merges</b>, which lag acceptance by days or weeks, and long enough for novelty to wear off.</li>
+</ul>
+
+<pre data-lang="python"><code>import numpy as np
+
+rng = np.random.default_rng(0)
+
+def dev_bootstrap_ci(shown_a, acc_a, shown_b, acc_b, n_boot=5000):
+    """95% CI for (rate_B - rate_A), resampling DEVELOPERS, not suggestions.
+    Each array has one entry per developer: suggestions shown / accepted."""
+    shown_a, acc_a = np.asarray(shown_a), np.asarray(acc_a)
+    shown_b, acc_b = np.asarray(shown_b), np.asarray(acc_b)
+    diffs = np.empty(n_boot)
+    for i in range(n_boot):
+        ia = rng.integers(0, len(shown_a), len(shown_a))   # resample developers
+        ib = rng.integers(0, len(shown_b), len(shown_b))
+        diffs[i] = acc_b[ib].sum() / shown_b[ib].sum() - acc_a[ia].sum() / shown_a[ia].sum()
+    return np.percentile(diffs, [2.5, 97.5])</code></pre>
+
+<div class="callout expert"><span class="t">Worked example: the interval that shrank too much</span>
+<p>Illustrative numbers. 400 developers per arm; version A's acceptance rate is 30.1%, version B's is 31.0%. Treating each of roughly 600,000 suggestions as independent gives a 95% interval for the difference of about [+0.5, +1.3] points: "significant". Resampling developers instead gives something like [−0.4, +2.2]: not distinguishable from zero, because a handful of very heavy users dominate the suggestion count and their behavior moves together. The developer-level interval is the honest one. The same clustering idea appears in <a href="04-metrics-and-statistics.html">Module 04</a>.</p>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 370" role="img" aria-label="Offline evaluation on the left: public benchmarks, a repo-history suite and replayed real sessions; fast, reproducible and safe but blind to real usage. Online evaluation on the right: the telemetry funnel, an A/B test randomized by developer, and surveys and interviews; real but slow and noisy. Candidates that pass offline go online; online surprises become new offline tasks. Both feed a ship, iterate or roll back decision.">
+<defs><marker id="m07o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="20" y="20" width="320" height="270" rx="12"/>
+<rect class="box dashed" x="480" y="20" width="320" height="270" rx="12"/>
+<text x="36" y="44" class="b t-accent">OFFLINE (before users see it)</text>
+<text x="496" y="44" class="b t-violet">ONLINE (with real users)</text>
+<rect class="box accent" x="36" y="58" width="288" height="34" rx="6"/>
+<text x="180" y="80" text-anchor="middle" class="sm">public benchmarks (SWE-bench, Terminal-Bench)</text>
+<rect class="box accent" x="36" y="100" width="288" height="34" rx="6"/>
+<text x="180" y="122" text-anchor="middle" class="sm">repo-history suite (your merged PRs)</text>
+<rect class="box accent" x="36" y="142" width="288" height="34" rx="6"/>
+<text x="180" y="164" text-anchor="middle" class="sm">replayed real sessions (with consent)</text>
+<text x="40" y="204" class="sm t-good">+ minutes to hours, cheap, reproducible</text>
+<text x="40" y="224" class="sm t-good">+ safe: no user sees a bad version</text>
+<text x="40" y="250" class="sm t-bad">- blind to how people really use it</text>
+<text x="40" y="270" class="sm t-bad">- tests only what you thought of</text>
+<rect class="box violet" x="496" y="58" width="288" height="34" rx="6"/>
+<text x="640" y="80" text-anchor="middle" class="sm">telemetry funnel (accept, survive, merge)</text>
+<rect class="box violet" x="496" y="100" width="288" height="34" rx="6"/>
+<text x="640" y="122" text-anchor="middle" class="sm">A/B test randomized by developer</text>
+<rect class="box violet" x="496" y="142" width="288" height="34" rx="6"/>
+<text x="640" y="164" text-anchor="middle" class="sm">surveys, interviews, diary studies</text>
+<text x="500" y="204" class="sm t-good">+ real tasks, real behavior, real value</text>
+<text x="500" y="224" class="sm t-good">+ catches what no one thought to test</text>
+<text x="500" y="250" class="sm t-bad">- weeks to reach a clear answer</text>
+<text x="500" y="270" class="sm t-bad">- noisy; only for shipped candidates</text>
+<line class="ln accent flow" x1="344" y1="110" x2="476" y2="110" marker-end="url(#m07o)"/>
+<text x="410" y="100" text-anchor="middle" class="sm">only what passes</text>
+<line class="ln violet flow" x1="476" y1="200" x2="344" y2="200" marker-end="url(#m07o)"/>
+<text x="410" y="190" text-anchor="middle" class="sm">surprises become</text>
+<text x="410" y="220" text-anchor="middle" class="sm">new offline tasks</text>
+<rect class="box good" x="290" y="316" width="240" height="40" rx="8"/>
+<text x="410" y="341" text-anchor="middle" class="b">ship, iterate or roll back</text>
+<line class="ln" x1="180" y1="290" x2="288" y2="330" marker-end="url(#m07o)"/>
+<line class="ln" x1="640" y1="290" x2="532" y2="330" marker-end="url(#m07o)"/>
+</svg>
+<figcaption><b>Offline and online evaluation of a coding assistant.</b> Offline suites are the gate: cheap, fast, repeatable, and they keep bad versions away from users. Online measurement is the verdict on real value, but it is slow and only possible for versions you dared to ship. Every online surprise (a drop in survival on one language, a spike in reverts) should become a new offline task, so the gate learns.</figcaption>
+</figure>
+
+<h3>Developer-reported productivity, and why it misleads</h3>
+<p>The cheapest way to ask "does this help?" is to ask developers. Surveys are genuinely useful for finding friction ("it keeps suggesting the old API") and for measuring satisfaction. They are a poor measure of speed. The clearest evidence is a randomized controlled trial by METR, published in July 2025. Experienced open-source developers worked on real issues from large, mature repositories they already maintained; each issue was randomly assigned to "AI tools allowed" or "AI tools not allowed", and the time to finish was recorded. The paper reports that developers <b>forecast</b> before starting that AI would cut their completion time by about 24%, <b>estimated</b> afterwards that it had cut it by about 20%, and in fact <b>took about 19% longer</b> when AI was allowed.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 280" role="img" aria-label="Bar chart of the change in completion time with AI allowed. Developers' forecast before the study: 24 percent less time. Their own estimate afterwards: 20 percent less time. Measured in the randomized trial: 19 percent more time.">
+<text x="20" y="24" class="b">Expected, felt and measured effect of AI tools (METR, early-2025 study)</text>
+<line class="ln dash" x1="430" y1="40" x2="430" y2="200"/>
+<text x="20" y="72" class="b">Forecast (before)</text>
+<rect x="430" y="56" width="168" height="26" rx="4" class="fill-accent"/>
+<text x="606" y="74" class="b t-accent">24% less time</text>
+<text x="20" y="122" class="b">Estimate (after)</text>
+<rect x="430" y="106" width="140" height="26" rx="4" class="fill-accent"/>
+<text x="578" y="124" class="b t-accent">20% less time</text>
+<text x="20" y="172" class="b">Measured (RCT)</text>
+<rect x="297" y="156" width="133" height="26" rx="4" class="fill-bad"/>
+<text x="289" y="174" text-anchor="end" class="b t-bad">19% more time</text>
+<line class="ln" x1="220" y1="200" x2="780" y2="200"/>
+<line class="ln" x1="290" y1="196" x2="290" y2="204"/><text x="290" y="218" text-anchor="middle" class="sm">-20%</text>
+<line class="ln" x1="430" y1="196" x2="430" y2="204"/><text x="430" y="218" text-anchor="middle" class="sm">0</text>
+<line class="ln" x1="570" y1="196" x2="570" y2="204"/><text x="570" y="218" text-anchor="middle" class="sm">+20%</text>
+<line class="ln" x1="710" y1="196" x2="710" y2="204"/><text x="710" y="218" text-anchor="middle" class="sm">+40%</text>
+<text x="500" y="244" text-anchor="middle" class="sm">change in completion time with AI allowed (right = less time)</text>
+<text x="500" y="264" text-anchor="middle" class="sm">same developers, same kind of task, AI randomly allowed or not per issue</text>
+</svg>
+<figcaption><b>Feeling faster is not being faster.</b> Values as reported by METR's July 2025 paper (arXiv 2507.09089), rounded; bar lengths are to scale. The gap between perception and measurement is the lesson, not the exact percentage, which applies to one group of experienced developers, on their own mature repositories, with early-2025 tools.</figcaption>
+</figure>
+
+<p>Read this result carefully, in both directions. It does <em>not</em> show that AI tools slow everyone down: the study was small (the paper reports 16 developers and 246 tasks), the developers were experts in codebases they knew deeply, and the tools were those of early 2025. METR itself lists these limits, and in February 2026 it published a note explaining that it was changing its experiment design for follow-up studies. What it <em>does</em> show, very clearly, is that self-reports can point in the opposite direction from measured time. Reasons include: waiting on the model feels like work but is idle time, reviewing and fixing generated code is easy to forget, novelty feels productive, and nobody wants to seem slow to adopt new tools.</p>
+
+<div class="callout warn"><span class="t">Rules for productivity claims</span>
+<ul>
+<li>Never report a survey result as a speedup. Report it as what it is: perceived benefit or satisfaction.</li>
+<li>If you want a speed number, randomize: per task (like METR), per developer, or per team with staggered rollout, and measure time and outcomes, not feelings.</li>
+<li>Measure quality next to speed. Faster merges with more reverts is not a win.</li>
+<li>Combine methods. Anthropic's late-2025 study of its own engineers ("How AI is transforming work at Anthropic") mixed a survey, interviews and Claude Code usage data, and surfaced concerns such as skill erosion that no single metric would show.</li>
+</ul>
+</div>
+
+<h3>Putting it together: a product eval program for a coding assistant</h3>
+<ol>
+<li><b>Offline gate.</b> A repo-history suite (previous section) plus a few public benchmarks, run on every model, prompt or harness change. Nothing ships that regresses here.</li>
+<li><b>Replay set.</b> With consent, keep a stream of anonymized real requests (the prompt, the repository state, what the developer finally committed). Re-run candidates on them offline and compare their output with what the developer actually shipped, using tests where they exist and a calibrated judge otherwise (<a href="13-llm-as-judge.html">Module 13</a>).</li>
+<li><b>Dogfood and canary.</b> Internal users first, then a small percentage of real users, watching guardrail metrics (latency, errors, reverts).</li>
+<li><b>A/B test</b> for anything big, randomized by developer, with one pre-registered primary metric from low in the funnel (surviving code, merged and not reverted) and developer-level confidence intervals.</li>
+<li><b>Qualitative loop.</b> Read sessions where the developer rejected or rewrote the output (<a href="12-error-analysis.html">Module 12</a>). Each new failure mode becomes an offline task.</li>
+</ol>
+
+<div class="callout tip"><span class="t">Go deeper</span><p>Randomized rollouts, guardrail metrics, sampling live traffic and dashboards are covered for all agent products in <a href="15-production-evals.html">Module 15</a>. How to judge whether the <em>harness</em> (not the model) caused a product change is in <a href="21-harness-evals.html">Module 21</a>.</p></div>
+
+
 <div class="takeaways"><h3>Key takeaways</h3><ol>
 <li>Code can be graded by running it, which accepts many correct solutions, but a score is only as honest as the tests: weak tests inflate it, over-strict tests deflate it.</li>
 <li>SWE-bench grading: apply the agent's patch at the base commit in a fresh container, then the hidden test patch; the instance is resolved only if every FAIL_TO_PASS test passes and every PASS_TO_PASS test still passes.</li>
@@ -1083,6 +1355,8 @@ if __name__ == "__main__":
 <li>Report a scorecard, not a bit: regressions, diff size, judged quality, security, cost per resolved task and turns.</li>
 <li>A coding score belongs to model × harness × budget. To compare models, hold the harness and budget fixed.</li>
 <li>Your own merged PRs are a ready-made, contamination-resistant benchmark, as long as you scrub leaked solutions and validate every task with the gold patch.</li>
+<li>A coding assistant is judged as a product by a funnel: shown, accepted, survived, merged, not reverted. Acceptance rate is cheap and useful but easy to game by showing less, so always pair a rate with a volume and a later-funnel metric.</li>
+<li>Offline suites are the gate; online A/B tests (randomized and analyzed by developer) are the verdict. Self-reported speedups are not measurements: in METR's 2025 randomized study, developers felt faster while measured time went up.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1117,6 +1391,16 @@ if __name__ == "__main__":
 <button class="opt">It is usually too short</button>
 <button class="opt">It is in Markdown</button>
 <div class="why">That is solution leakage. Prefer linked issue text written before the fix, or rewrite the task as a user report.</div></div>
+<div class="q" data-answer="1"><p>7. A new autocomplete model raises acceptance rate from 30% to 40%. The logs also show it displays half as many suggestions. What should you check before calling it a win?</p>
+<button class="opt">Nothing: a higher acceptance rate means developers like it more</button>
+<button class="opt">Accepted (and surviving) characters per developer per day, because the product changed the denominator</button>
+<button class="opt">Whether the new model scores higher on HumanEval</button>
+<div class="why">Showing fewer, safer suggestions raises the rate even if developers get less help overall. Pair the rate with a volume metric and a later-funnel metric such as survival or merged-and-not-reverted code.</div></div>
+<div class="q" data-answer="2"><p>8. An internal survey says developers feel 25% faster with your coding agent. How should you report this?</p>
+<button class="opt">As a 25% productivity gain</button>
+<button class="opt">As a 25% gain, discounted by the 19% from METR's study</button>
+<button class="opt">As perceived benefit; if you need a speed number, run a randomized comparison that measures time and quality</button>
+<div class="why">METR's 2025 randomized trial found experienced developers estimated a speedup while their measured time went up. Self-reports measure perception, which is worth knowing, but they are not a measurement of speed.</div></div>
 </div>
 
 <details><summary>Expert corner: interview-style questions</summary>
@@ -1149,6 +1433,13 @@ if __name__ == "__main__":
 <li>Starace et al. (OpenAI), <a href="https://arxiv.org/abs/2504.01848">PaperBench</a>, 2025.</li>
 <li>Miserendino et al. (OpenAI), <a href="https://arxiv.org/abs/2502.12115">SWE-Lancer</a>, 2025.</li>
 <li>SWE-rebench, <a href="https://swe-rebench.com">swe-rebench.com</a> (continuously refreshed, decontaminated tasks).</li>
+<li>Becker, Rush et al. (METR), <a href="https://arxiv.org/abs/2507.09089">Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity</a>, July 2025; <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/">METR blog summary</a>; <a href="https://metr.org/blog/2026-02-24-uplift-update/">We are Changing our Developer Productivity Experiment Design</a>, Feb 2026.</li>
+<li>Ziegler et al. (GitHub), <a href="https://arxiv.org/abs/2205.06537">Productivity Assessment of Neural Code Completion</a>, 2022; later version in CACM, <a href="https://cacm.acm.org/research/measuring-github-copilots-impact-on-productivity/">Measuring GitHub Copilot's Impact on Productivity</a>, 2024.</li>
+<li>Google Research, <a href="https://research.google/blog/ml-enhanced-code-completion-improves-developer-productivity/">ML-Enhanced Code Completion Improves Developer Productivity</a> and <a href="https://research.google/blog/ai-in-software-engineering-at-google-progress-and-the-path-ahead/">AI in software engineering at Google: Progress and the path ahead</a>.</li>
+<li>GitHub Docs, <a href="https://docs.github.com/en/copilot/concepts/copilot-usage-metrics/copilot-metrics">GitHub Copilot usage metrics</a>.</li>
+<li>Cursor, <a href="https://cursor.com/blog/tab-rl">Improving Cursor Tab with online RL</a>.</li>
+<li>GitClear, <a href="https://www.gitclear.com/ai_assistant_code_quality_2025_research">AI Copilot Code Quality: 2025 research</a> (vendor, observational).</li>
+<li>Anthropic, <a href="https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic">How AI is transforming work at Anthropic</a>.</li>
 </ul>
 
 </article>

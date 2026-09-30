@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>26 · Deep research and real-work agents · Agent Evals: Zero to Expert</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar" aria-label="Course modules"></nav>
+<main>
+<article class="content">
+
+<div class="kicker">Module 26 · Part VI · Beyond the core</div>
+<h1>Deep research and real-work agents</h1>
+<p class="lede">Some agents do not end with a short answer or a passing test. They end with a 20-page cited report, a slide deck, a spreadsheet, a video edit or a finished ticket in a company's systems. This module is about grading that kind of output: how to score a long report for coverage and insight, how to check every citation automatically, how the real-work benchmarks (GDPval, the Remote Labor Index, TheAgentCompany, Toolathlon) grade deliverables, and how to build all of it yourself without spending more on the judge than on the agent.</p>
+<div class="meta"><span class="pill level-3">Advanced</span><span class="pill">~70 min</span><span class="pill">Prereqs: Modules 06, 11, 13</span></div>
+
+<div class="objectives">
+<h3>By the end of this module you can</h3>
+<ul>
+<li>Explain what a <b>deep-research agent</b> produces and name the five reasons a long cited report is hard to grade.</li>
+<li>Separate the quality dimensions of a report: <b>coverage, depth, faithfulness, citation accuracy, citation coverage, source quality, recency, instruction following and readability</b>.</li>
+<li>Describe how <b>DeepResearch Bench</b> scores reports (<b>RACE</b>: reference-based, adaptive criteria; <b>FACT</b>: citation accuracy and effective citations), and place DEER, ResearchRubrics, Mind2Web 2, BrowseComp-Plus and others on a map.</li>
+<li>Build a <b>claim-extraction and citation-verification</b> pipeline, and control its cost with passage retrieval, cascades and sampling.</li>
+<li>Explain how real-work benchmarks grade <b>unstructured deliverables</b> (expert pairwise comparison, rubrics, automated state checks) and what an <b>automation rate</b> does and does not mean.</li>
+<li>Run a blinded <b>pairwise expert-comparison</b> study and put a confidence interval on the result.</li>
+</ul>
+</div>
+
+<div data-toc></div>
+
+<h2>Two families of agents, one grading problem</h2>
+<p>Earlier modules mostly graded things a computer can check. A tool call either matches the expected arguments or it does not (<a href="06-tool-use-and-conversation.html">Module 06</a>). A patch either passes the hidden tests or it does not (<a href="07-coding-agents.html">Module 07</a>). Even BrowseComp, which asks an agent to search the web for a long time, keeps grading cheap by choosing questions whose answer is one short string: "hard to find, easy to verify" (<a href="06-tool-use-and-conversation.html">Module 06</a>, <a href="08-web-and-computer-use.html">Module 08</a>).</p>
+<p>This module covers two families of agents that break that comfortable pattern:</p>
+<ul>
+<li><b>Deep-research agents</b> take an open question ("How will falling battery prices change grid storage in Europe over the next five years?"), plan a search strategy, read dozens or hundreds of web pages, and write a long, structured <b>report with citations</b>. OpenAI's Deep Research, Google's Gemini Deep Research, Perplexity's research mode and Claude's Research feature are all products of this kind. The architecture behind Claude's version is the case study in <a href="11-multi-agent-long-horizon.html">Module 11</a>.</li>
+<li><b>Real-work agents</b> do the kind of task a person is paid for: draft a legal memo, build a financial model, design a floor plan, edit a product video, or close a ticket that requires reading a wiki, asking a colleague and updating three internal systems. Their output is a <b>deliverable</b>: a file, a set of files, or a changed state in some software.</li>
+</ul>
+<p>What unites them is that the output has no single right answer, is long, and is expensive to check. The picture below orders the kinds of output from easiest to hardest to grade, with one twist on the far right.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Four kinds of agent output from left to right: a short answer graded by answer match, a cited report graded by rubric and citation checks, a work deliverable graded by expert comparison, and work in a live system graded by state checks. Grading gets harder and costlier from the first to the third; the fourth moves the cost into building the environment.">
+<defs><marker id="m26a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="30" width="180" height="190" rx="12"/>
+<text x="110" y="58" text-anchor="middle" class="b">Short answer</text>
+<text x="110" y="78" text-anchor="middle" class="sm">BrowseComp, GAIA</text>
+<text x="36" y="112" class="sm">grader: answer match</text>
+<text x="36" y="136" class="sm">judge cost: tiny</text>
+<text x="36" y="160" class="sm">realism: low</text>
+<text x="36" y="196" class="mono">"Bern, 1904"</text>
+<rect class="box accent" x="220" y="30" width="180" height="190" rx="12"/>
+<text x="310" y="58" text-anchor="middle" class="b">Cited report</text>
+<text x="310" y="78" text-anchor="middle" class="sm">DeepResearch Bench, DEER</text>
+<text x="236" y="112" class="sm">grader: rubric + citations</text>
+<text x="236" y="136" class="sm">judge cost: high</text>
+<text x="236" y="160" class="sm">realism: medium</text>
+<text x="236" y="196" class="mono">report.md, 60 refs</text>
+<rect class="box violet" x="420" y="30" width="180" height="190" rx="12"/>
+<text x="510" y="58" text-anchor="middle" class="b">Work deliverable</text>
+<text x="510" y="78" text-anchor="middle" class="sm">GDPval, Remote Labor Index</text>
+<text x="436" y="112" class="sm">grader: expert comparison</text>
+<text x="436" y="136" class="sm">judge cost: very high</text>
+<text x="436" y="160" class="sm">realism: high</text>
+<text x="436" y="196" class="mono">model.xlsx, deck.pptx</text>
+<rect class="box good" x="620" y="30" width="180" height="190" rx="12"/>
+<text x="710" y="58" text-anchor="middle" class="b">Work in a live system</text>
+<text x="710" y="78" text-anchor="middle" class="sm">TheAgentCompany, Toolathlon</text>
+<text x="636" y="112" class="sm">grader: state checks</text>
+<text x="636" y="136" class="sm">judge cost: low, once built</text>
+<text x="636" y="160" class="sm">realism: high, but narrow</text>
+<text x="636" y="196" class="mono">issue #42 closed</text>
+<line class="ln accent thick flow" x1="30" y1="250" x2="596" y2="250" marker-end="url(#m26a)"/>
+<text x="310" y="276" text-anchor="middle" class="sm">output gets more open-ended: grading gets harder, slower and more subjective</text>
+<text x="710" y="256" text-anchor="middle" class="sm t-good">the trade: build the world</text>
+<text x="710" y="274" text-anchor="middle" class="sm t-good">once, then check its state</text>
+<text x="410" y="314" text-anchor="middle" class="sm t-muted">examples of output shown in monospace; benchmark names are the ones covered in this module</text>
+</svg>
+<figcaption><b>The grading spectrum.</b> Moving right, outputs become more realistic and grading gets harder: string match, then rubric plus citation checks, then paid experts comparing files side by side. The far right is the escape hatch: if the work happens inside a simulated company, a script can check the final state, but only for the tasks that environment supports.</figcaption>
+</figure>
+
+<div class="callout analogy"><span class="t">Analogy: the exam, the term paper and the internship</span>
+<p>A short-answer benchmark is a multiple-choice exam: a machine grades it. A deep-research report is a term paper: a teacher needs a rubric, and must check the bibliography. A real-work deliverable is an internship project: the best judge is an experienced professional who asks "would I accept this from a colleague?" This module is about grading term papers and internships at scale.</p>
+</div>
+
+<h2>What a deep-research agent produces</h2>
+<p>A deep-research run usually has four phases: <b>plan</b> (break the question into sub-questions), <b>search and read</b> (many queries, many pages, often in parallel subagents), <b>synthesize</b> (organize findings into sections with an argument), and <b>cite</b> (attach each claim to the source that supports it). The output is typically thousands of words with dozens of inline citations.</p>
+<p>Each phase leaves its own fingerprints on the report, and each fingerprint needs a different check. The figure annotates an excerpt of a report with the problems a good eval must catch.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 340" role="img" aria-label="An excerpt of a research report with eight numbered lines on the left. On the right, each line has a callout: supported; low-quality source; cited source never says this; contradicted by source; dead link; uncited opinion; stale data; and a missing topic, which is a coverage gap.">
+<defs><marker id="m26b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="20" width="380" height="290" rx="10"/>
+<text x="36" y="44" class="b">Report: EV batteries (excerpt)</text>
+<text x="36" y="76" class="mono">1 Pack prices fell to $115/kWh [1]</text>
+<text x="36" y="106" class="mono">2 LFP now leads new EV models [2]</text>
+<text x="36" y="136" class="mono">3 Prices hit $50/kWh by 2026 [1]</text>
+<text x="36" y="166" class="mono">4 Solar record, led by India [3]</text>
+<text x="36" y="196" class="mono">5 Grid storage doubled [4]</text>
+<text x="36" y="226" class="mono">6 Most analysts expect growth.</text>
+<text x="36" y="256" class="mono">7 EV share was 14% [5]</text>
+<text x="36" y="286" class="mono t-muted">8 (nothing on recycling)</text>
+<line class="ln" x1="300" y1="72" x2="446" y2="72" marker-end="url(#m26b)"/>
+<line class="ln warn" x1="300" y1="102" x2="446" y2="102" marker-end="url(#m26b)"/>
+<line class="ln bad" x1="300" y1="132" x2="446" y2="132" marker-end="url(#m26b)"/>
+<line class="ln bad" x1="300" y1="162" x2="446" y2="162" marker-end="url(#m26b)"/>
+<line class="ln bad" x1="260" y1="192" x2="446" y2="192" marker-end="url(#m26b)"/>
+<line class="ln warn" x1="290" y1="222" x2="446" y2="222" marker-end="url(#m26b)"/>
+<line class="ln warn" x1="210" y1="252" x2="446" y2="252" marker-end="url(#m26b)"/>
+<line class="ln violet" x1="250" y1="282" x2="446" y2="282" marker-end="url(#m26b)"/>
+<rect class="box good" x="450" y="58" width="350" height="26" rx="6"/><text x="462" y="76" class="sm">supported: the source says exactly this</text>
+<rect class="box warn" x="450" y="88" width="350" height="26" rx="6"/><text x="462" y="106" class="sm">source quality: cites an anonymous blog</text>
+<rect class="box bad" x="450" y="118" width="350" height="26" rx="6"/><text x="462" y="136" class="sm">cited source never says this (a forecast as fact)</text>
+<rect class="box bad" x="450" y="148" width="350" height="26" rx="6"/><text x="462" y="166" class="sm">contradicted: the source says China</text>
+<rect class="box bad" x="450" y="178" width="350" height="26" rx="6"/><text x="462" y="196" class="sm">link is dead: cannot be verified</text>
+<rect class="box warn" x="450" y="208" width="350" height="26" rx="6"/><text x="462" y="226" class="sm">uncited: does this sentence need a source?</text>
+<rect class="box warn" x="450" y="238" width="350" height="26" rx="6"/><text x="462" y="256" class="sm">recency: 2022 figure, newer data exists</text>
+<rect class="box violet" x="450" y="268" width="350" height="26" rx="6"/><text x="462" y="286" class="sm">coverage gap: an expected topic is missing</text>
+<text x="410" y="332" text-anchor="middle" class="sm t-muted">illustrative excerpt; each callout is a different check with a different grader</text>
+</svg>
+<figcaption><b>Eight things that can be wrong in eight lines.</b> Only line 1 is clean. Lines 3 to 5 fail citation checks, lines 2, 6 and 7 fail softer quality checks, and line 8 is invisible to any citation checker because the problem is something the report does not say. A report eval needs checks at the claim level and at the whole-report level.</figcaption>
+</figure>
+
+<h2>Why grading a long report is hard</h2>
+<p>Five problems stack on top of each other:</p>
+<ol>
+<li><b>No single right answer.</b> Two excellent reports on the same question can be organized differently, emphasize different evidence and reach different (defensible) conclusions. Exact-match grading is useless, and even "compare with a reference answer" has to allow for legitimate variation.</li>
+<li><b>Length.</b> A 20-page report is roughly 10,000 words. A judge model can read it, but judges get less reliable as inputs get longer, and they drift toward rewarding length itself (<b>verbosity bias</b>, <a href="13-llm-as-judge.html">Module 13</a>).</li>
+<li><b>Citations are claims about the world.</b> Checking that "[4]" supports sentence 5 means opening source 4, finding the relevant passage and reading it. Multiply by 60 or 100 citations per report.</li>
+<li><b>The world moves.</b> Pages change or disappear (<b>link rot</b>), facts go out of date, and a reference answer written in March may be wrong by September. Live-web evals are not perfectly reproducible.</li>
+<li><b>Judging costs real money.</b> If verifying one report takes a million judge tokens, a suite of 100 tasks, 3 runs each, across 2 agent versions is 600 million tokens. Cost control is a design requirement, not an afterthought (see <a href="#cost">controlling judge cost</a> below).</li>
+</ol>
+
+<div class="callout warn"><span class="t">The trap: "looks thorough" is not "is correct"</span>
+<p>Long reports with many citations and confident headings impress both humans and model judges. Anthropic's team noted in its research-system post that human testers caught agents preferring SEO-optimized content farms over authoritative sources, something their automated evals had missed (<a href="11-multi-agent-long-horizon.html">Module 11</a>). A grading scheme that rewards the look of rigor will be optimized for the look of rigor.</p>
+</div>
+
+<h2>The quality dimensions of a report</h2>
+<p>Before choosing a benchmark or writing a rubric, name what "good" means. Most published schemes use some subset of these dimensions. The first column is the vocabulary you should be fluent in.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Dimension</th><th>Question it asks</th><th>Typical grader</th></tr>
+<tr><td><b>Coverage</b> (comprehensiveness)</td><td>Does the report address every part of the question and the key facts an expert would expect?</td><td>Rubric or checklist of expected points ("nuggets"); reference comparison</td></tr>
+<tr><td><b>Depth / insight</b></td><td>Does it analyze, compare and explain causes, or just list facts?</td><td>Rubric-driven LLM judge, validated on expert labels</td></tr>
+<tr><td><b>Faithfulness</b></td><td>Is each claim supported by the source it cites?</td><td>Claim-level check: NLI model or LLM judge reading the source</td></tr>
+<tr><td><b>Factuality</b></td><td>Is each claim true about the world, whatever it cites?</td><td>Search-based verification, reference facts, experts</td></tr>
+<tr><td><b>Citation accuracy</b> (precision)</td><td>Of the citations given, what share actually support their sentence?</td><td>Automated pipeline (FACT-style)</td></tr>
+<tr><td><b>Citation coverage</b> (recall)</td><td>Of the claims that need support, what share have a citation?</td><td>Judge decides "needs a citation?", then count</td></tr>
+<tr><td><b>Source quality</b></td><td>Are sources primary and authoritative, or content farms?</td><td>Domain allow/deny lists plus a judge</td></tr>
+<tr><td><b>Recency</b></td><td>Does it use the latest available data where it matters?</td><td>Date checks against a known "latest" fact</td></tr>
+<tr><td><b>Instruction following</b></td><td>Did it respect scope, format, length and audience?</td><td>Code checks plus a judge</td></tr>
+<tr><td><b>Readability</b></td><td>Is it well organized and clear?</td><td>Judge; low weight</td></tr>
+<tr><td><b>Calibration</b></td><td>Does it flag uncertainty and conflicting evidence honestly?</td><td>Judge; questions with no clean answer</td></tr>
+</table></div>
+
+<p>Two of these are routinely confused: <b>faithfulness</b> and <b>factuality</b>. Faithfulness asks "does the cited source say this?"; factuality asks "is this true?". They are different axes, and a claim can fail one while passing the other.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 340" role="img" aria-label="Two by two grid. Columns: the cited source supports the claim, or it does not. Rows: the claim is true, or it is false. True and supported is grounded. True but unsupported is a right answer with a wrong receipt. False but supported means the report faithfully repeated a bad source. False and unsupported is a hallucination with a fake receipt.">
+<text x="325" y="42" text-anchor="middle" class="b">cited source supports it</text>
+<text x="645" y="42" text-anchor="middle" class="b">cited source does not</text>
+<text x="90" y="118" text-anchor="middle" class="b">claim is</text>
+<text x="90" y="136" text-anchor="middle" class="b">true</text>
+<text x="90" y="248" text-anchor="middle" class="b">claim is</text>
+<text x="90" y="266" text-anchor="middle" class="b">false</text>
+<rect class="box good" x="170" y="58" width="310" height="120" rx="10"/>
+<text x="325" y="92" text-anchor="middle" class="b">Grounded</text>
+<text x="325" y="116" text-anchor="middle" class="sm">what you want: true and traceable</text>
+<text x="325" y="136" text-anchor="middle" class="sm">passes faithfulness and factuality</text>
+<rect class="box warn" x="490" y="58" width="310" height="120" rx="10"/>
+<text x="645" y="92" text-anchor="middle" class="b">Right answer, wrong receipt</text>
+<text x="645" y="116" text-anchor="middle" class="sm">true from memory, citation decorative</text>
+<text x="645" y="136" text-anchor="middle" class="sm">fails faithfulness; reader cannot verify</text>
+<rect class="box warn" x="170" y="190" width="310" height="120" rx="10"/>
+<text x="325" y="224" text-anchor="middle" class="b">Faithful to a bad source</text>
+<text x="325" y="248" text-anchor="middle" class="sm">copied an error from a weak page</text>
+<text x="325" y="268" text-anchor="middle" class="sm">passes faithfulness; fails factuality</text>
+<rect class="box bad" x="490" y="190" width="310" height="120" rx="10"/>
+<text x="645" y="224" text-anchor="middle" class="b">Hallucination with a receipt</text>
+<text x="645" y="248" text-anchor="middle" class="sm">invented claim, citation for show</text>
+<text x="645" y="268" text-anchor="middle" class="sm">fails both; the most dangerous kind</text>
+<text x="485" y="332" text-anchor="middle" class="sm t-muted">faithfulness checks read the columns; factuality checks read the rows</text>
+</svg>
+<figcaption><b>Faithfulness versus factuality.</b> A citation checker (faithfulness) separates the left column from the right. It cannot see the bottom-left cell, where the agent faithfully repeated a wrong source; that needs factuality checks against trusted references, plus source-quality scoring. Report both numbers.</figcaption>
+</figure>
+
+<h2>DeepResearch Bench: RACE and FACT</h2>
+<p><b>DeepResearch Bench</b> (Du et al., June 2025, <a href="https://arxiv.org/abs/2506.11763">arXiv 2506.11763</a>) is the most widely cited benchmark for research reports, and its two scoring frameworks are worth understanding in detail because you can reuse both ideas. It contains <b>100 PhD-level research tasks across 22 fields</b>, written by domain experts, with the topic mix chosen to reflect what real users ask deep-research tools. It splits evaluation into two independent frameworks: one for the report's quality, one for its citations.</p>
+
+<h3>RACE: grading report quality against a reference</h3>
+<p><b>RACE</b> stands for <b>R</b>eference-based <b>A</b>daptive <b>C</b>riteria-driven <b>E</b>valuation. Three ideas make it work:</p>
+<ol>
+<li><b>Fixed dimensions.</b> Every report is judged on four: <b>comprehensiveness</b>, <b>insight/depth</b>, <b>instruction following</b> and <b>readability</b>.</li>
+<li><b>Adaptive weights and criteria.</b> A judge model reads the task and decides how much each dimension matters <em>for this task</em>, then writes task-specific criteria (with their own weights) under each dimension. A literature survey might weight comprehensiveness heavily; a "should we enter this market?" memo might weight insight.</li>
+<li><b>Reference-relative scoring.</b> Instead of asking for an absolute score (which judges give inconsistently), the judge scores the target report and a high-quality <b>reference report</b> on the same criteria, and the final number is the target's share of the combined score. A result of 0.5 means "as good as the reference".</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="RACE pipeline. The task goes to a judge that sets dimension weights: comprehensiveness 0.30, insight 0.35, instruction following 0.20, readability 0.15, and writes criteria. The judge scores the target report and the reference report on those criteria. Weighted totals are 6.75 for the target and 7.55 for the reference, and the relative score is 6.75 divided by 14.30, which is 0.47.">
+<defs><marker id="m26c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="54" width="170" height="50" rx="8"/>
+<text x="105" y="84" text-anchor="middle" class="b">Task prompt</text>
+<rect class="box accent" x="235" y="24" width="255" height="150" rx="10"/>
+<text x="250" y="46" class="b">1. Judge sets weights</text>
+<text x="250" y="72" class="mono">comprehensiveness  0.30</text>
+<text x="250" y="92" class="mono">insight / depth    0.35</text>
+<text x="250" y="112" class="mono">instruction follow 0.20</text>
+<text x="250" y="132" class="mono">readability        0.15</text>
+<text x="250" y="160" class="sm">+ weighted criteria per dimension</text>
+<rect class="box plain" x="20" y="206" width="170" height="44" rx="8"/>
+<text x="105" y="233" text-anchor="middle" class="b">Target report</text>
+<rect class="box plain dashed" x="20" y="266" width="170" height="44" rx="8"/>
+<text x="105" y="293" text-anchor="middle" class="b">Reference report</text>
+<rect class="box violet" x="235" y="214" width="255" height="84" rx="10"/>
+<text x="362" y="244" text-anchor="middle" class="b">2. Judge scores both</text>
+<text x="362" y="266" text-anchor="middle" class="sm">same criteria, side by side</text>
+<text x="362" y="284" text-anchor="middle" class="sm">0 to 10 per criterion</text>
+<line class="ln" x1="190" y1="79" x2="231" y2="79" marker-end="url(#m26c)"/>
+<line class="ln" x1="190" y1="228" x2="231" y2="240" marker-end="url(#m26c)"/>
+<line class="ln" x1="190" y1="288" x2="231" y2="276" marker-end="url(#m26c)"/>
+<line class="ln accent flow" x1="362" y1="174" x2="362" y2="210" marker-end="url(#m26c)"/>
+<text x="530" y="40" class="b">3. Weighted totals</text>
+<text x="700" y="64" text-anchor="end" class="sm b">target</text>
+<text x="790" y="64" text-anchor="end" class="sm b">ref</text>
+<text x="530" y="88" class="sm">comprehensiveness</text><text x="700" y="88" text-anchor="end" class="mono">7.0</text><text x="790" y="88" text-anchor="end" class="mono">8.0</text>
+<text x="530" y="108" class="sm">insight / depth</text><text x="700" y="108" text-anchor="end" class="mono">5.5</text><text x="790" y="108" text-anchor="end" class="mono">7.0</text>
+<text x="530" y="128" class="sm">instruction follow</text><text x="700" y="128" text-anchor="end" class="mono">8.0</text><text x="790" y="128" text-anchor="end" class="mono">7.5</text>
+<text x="530" y="148" class="sm">readability</text><text x="700" y="148" text-anchor="end" class="mono">7.5</text><text x="790" y="148" text-anchor="end" class="mono">8.0</text>
+<line class="ln" x1="530" y1="158" x2="795" y2="158"/>
+<text x="530" y="178" class="sm b">weighted total</text><text x="700" y="178" text-anchor="end" class="mono t-accent">6.75</text><text x="790" y="178" text-anchor="end" class="mono">7.55</text>
+<line class="ln accent flow" x1="494" y1="240" x2="526" y2="240" marker-end="url(#m26c)"/>
+<line class="ln" x1="665" y1="186" x2="665" y2="212" marker-end="url(#m26c)"/>
+<rect class="box good pulse" x="530" y="216" width="270" height="82" rx="10"/>
+<text x="665" y="240" text-anchor="middle" class="b">4. Relative score</text>
+<text x="665" y="264" text-anchor="middle" class="mono">6.75 / (6.75 + 7.55) = 0.47</text>
+<text x="665" y="286" text-anchor="middle" class="sm">0.50 = as good as the reference</text>
+<text x="410" y="324" text-anchor="middle" class="sm t-muted">illustrative scores and weights, not from the paper</text>
+</svg>
+<figcaption><b>RACE, step by step.</b> The judge adapts the weights and criteria to the task, scores the target and the reference report on the same criteria, and reports the target's share of the combined weighted score. Here the target is weaker on insight, so it lands just under 0.5. Numbers are illustrative.</figcaption>
+</figure>
+
+<p>Why the ratio instead of the raw 6.75? Because absolute scores from a judge drift: the same report might get 6.5 today and 7.2 after a prompt tweak, and different tasks have different natural score ranges. Anchoring every score to a reference that the judge sees in the same call cancels much of that drift. The price is that you need a good reference report per task, and the score becomes "relative to that reference", so a mediocre reference inflates everyone.</p>
+
+<h3>FACT: grading the citations</h3>
+<p><b>FACT</b> (Framework for Factual Abundance and Citation Trustworthiness) ignores the prose quality and asks two questions about the citations: are they right, and how many useful ones are there?</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="FACT pipeline in five steps: extract statement and URL pairs, deduplicate, fetch each cited page, judge whether the page supports the statement, and aggregate. Two metrics come out: citation accuracy, the share of checked citations that are supported, and effective citations, the number of supported citations per task.">
+<defs><marker id="m26d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="130" height="84" rx="10"/>
+<text x="85" y="68" text-anchor="middle" class="b">1. Extract</text>
+<text x="85" y="90" text-anchor="middle" class="sm">statement + URL</text>
+<text x="85" y="106" text-anchor="middle" class="sm">pairs</text>
+<rect class="box plain" x="182" y="40" width="130" height="84" rx="10"/>
+<text x="247" y="68" text-anchor="middle" class="b">2. Dedupe</text>
+<text x="247" y="90" text-anchor="middle" class="sm">merge repeats of</text>
+<text x="247" y="106" text-anchor="middle" class="sm">the same pair</text>
+<rect class="box accent" x="344" y="40" width="130" height="84" rx="10"/>
+<text x="409" y="68" text-anchor="middle" class="b">3. Fetch</text>
+<text x="409" y="90" text-anchor="middle" class="sm">scrape the text</text>
+<text x="409" y="106" text-anchor="middle" class="sm">of each URL</text>
+<rect class="box violet" x="506" y="40" width="130" height="84" rx="10"/>
+<text x="571" y="68" text-anchor="middle" class="b">4. Judge</text>
+<text x="571" y="90" text-anchor="middle" class="sm">does the page</text>
+<text x="571" y="106" text-anchor="middle" class="sm">support it?</text>
+<rect class="box plain" x="668" y="40" width="130" height="84" rx="10"/>
+<text x="733" y="68" text-anchor="middle" class="b">5. Aggregate</text>
+<text x="733" y="90" text-anchor="middle" class="sm">per report,</text>
+<text x="733" y="106" text-anchor="middle" class="sm">then per agent</text>
+<line class="ln accent flow" x1="150" y1="82" x2="178" y2="82" marker-end="url(#m26d)"/>
+<line class="ln accent flow" x1="312" y1="82" x2="340" y2="82" marker-end="url(#m26d)"/>
+<line class="ln accent flow" x1="474" y1="82" x2="502" y2="82" marker-end="url(#m26d)"/>
+<line class="ln accent flow" x1="636" y1="82" x2="664" y2="82" marker-end="url(#m26d)"/>
+<rect class="box accent" x="250" y="178" width="260" height="62" rx="10"/>
+<text x="380" y="204" text-anchor="middle" class="b">Citation accuracy</text>
+<text x="380" y="224" text-anchor="middle" class="sm">supported ÷ checked: are they right?</text>
+<rect class="box good" x="540" y="178" width="260" height="62" rx="10"/>
+<text x="670" y="204" text-anchor="middle" class="b">Effective citations</text>
+<text x="670" y="224" text-anchor="middle" class="sm">supported per task: how much support?</text>
+<line class="ln" x1="712" y1="124" x2="470" y2="174" marker-end="url(#m26d)"/>
+<line class="ln" x1="733" y1="124" x2="690" y2="174" marker-end="url(#m26d)"/>
+<text x="30" y="200" class="sm">precision-like and</text>
+<text x="30" y="216" class="sm">volume-like: report</text>
+<text x="30" y="232" class="sm">both, never just one</text>
+<text x="410" y="284" text-anchor="middle" class="sm t-muted">not checked by this pipeline: uncited claims, and whether the cited page is itself correct</text>
+</svg>
+<figcaption><b>FACT, as a pipeline.</b> Each (statement, URL) pair is fetched and judged. Citation accuracy rewards being right; effective citations reward providing a lot of verified support. An agent can max out accuracy with three safe citations, or max out volume with sloppy ones, which is why both are reported.</figcaption>
+</figure>
+
+<p>The paper describes using a web-scraping service to fetch cited pages and an LLM judge to decide support. At release it reported that agents differed a lot on both metrics and that the two did not move together: some systems cited heavily with lower accuracy, others cited less but more precisely. The lesson for your own evals: <b>a single citation number is gameable</b>. Pair a precision-like metric with a volume or coverage metric.</p>
+
+<div class="callout tip"><span class="t">Name collision alert</span>
+<p>"Deep Research Bench" (with a space, by FutureSearch, <a href="https://arxiv.org/abs/2506.06287">arXiv 2506.06287</a>) is a <em>different</em> benchmark from "DeepResearch Bench" (Du et al.). FutureSearch's version focuses on web-research tasks such as finding numbers, validating claims and compiling datasets, and runs agents against <b>RetroSearch</b>, a frozen snapshot of scraped web pages, so results are reproducible. Always check which one a leaderboard means.</p>
+</div>
+
+<h2>DEER and the wider benchmark map</h2>
+<p><b>DEER</b> (<a href="https://arxiv.org/abs/2512.17776">arXiv 2512.17776</a>, first posted December 2025, an ICML 2026 poster) targets <b>expert-level report generation</b>. It pushes on two weaknesses of earlier report benchmarks. First, judges who are not domain experts miss subtle problems, so DEER builds an <b>expert-grounded rubric taxonomy</b> of dimensions and sub-dimensions, and supplies <b>task-specific expert guidance</b> to the judge so it knows what a strong answer must contain. Second, citation checkers like FACT only look at claims that carry a citation, so DEER adds <b>document-level fact-checking</b> that extracts and verifies claims across the whole report, <b>cited and uncited</b>, and assesses the quality of the evidence behind them. If your agent writes "Most analysts expect growth" with no citation, FACT never sees it; DEER-style checking does.</p>
+<p>Several other benchmarks cover different corners of the space. Each one below was confirmed to exist at the linked address; details beyond what is written here should be read from the papers.</p>
+
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>Output graded</th><th>How it grades</th><th>What it adds</th></tr>
+<tr><td><b>DeepResearch Bench</b> (Du et al., 2025)</td><td>Long cited report</td><td>RACE (reference-relative, adaptive rubric) + FACT (citations)</td><td>Separate report-quality and citation scores; 100 expert tasks, 22 fields</td></tr>
+<tr><td><b>DEER</b> (2025, ICML 2026)</td><td>Expert-level report</td><td>Expert rubric taxonomy with judge guidance; document-level fact-check</td><td>Checks uncited claims too; evidence quality</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2511.07685">ResearchRubrics</a></b> (Scale AI, 2025, ICLR 2026)</td><td>Long report</td><td>Expert-written, per-prompt rubrics applied by a judge</td><td>Large set of fine-grained rubric items; the paper reports even top agents miss many</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2510.14240">LiveResearchBench</a></b> (Salesforce, 2025, ICLR 2026)</td><td>Long report</td><td>Multi-dimension evaluation suite, live web</td><td>User-centric tasks that need current information</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2506.21506">Mind2Web 2</a></b> (OSU, 2025, NeurIPS 2025)</td><td>Answer with sources, from long live browsing</td><td><b>Agent-as-a-judge</b> with task-specific tree rubrics</td><td>A judge agent that itself browses to verify answers and attributions</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2508.06600">BrowseComp-Plus</a></b> (2025, ACL 2026)</td><td>Short answer</td><td>Answer match, on a <b>fixed, curated corpus</b></td><td>Reproducible; separates retriever quality from agent quality</td></tr>
+<tr><td><b>Deep Research Bench</b> (FutureSearch, 2025)</td><td>Answers, numbers, datasets</td><td>Task-specific scoring on a frozen web (RetroSearch)</td><td>Reproducible web research</td></tr>
+<tr><td><b>BrowseComp</b> (OpenAI, 2025)</td><td>Short answer</td><td>Model-graded answer match, live web</td><td>The baseline for persistent search (<a href="06-tool-use-and-conversation.html">Module 06</a>)</td></tr>
+</table></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 390" role="img" aria-label="Map of deep-research benchmarks. Horizontal axis: output from short answer to long cited report. Vertical: live web at the top, frozen corpus at the bottom. BrowseComp is live and short; Mind2Web 2 is live with answers plus sources; ResearchRubrics, DeepResearch Bench, DEER and LiveResearchBench are live and long. BrowseComp-Plus and FutureSearch Deep Research Bench use frozen corpora.">
+<defs><marker id="m26e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="100" y1="320" x2="806" y2="320" marker-end="url(#m26e)"/>
+<line class="ln" x1="100" y1="320" x2="100" y2="24" marker-end="url(#m26e)"/>
+<line class="ln dash" x1="100" y1="212" x2="800" y2="212"/>
+<text x="50" y="112" text-anchor="middle" class="b">live</text>
+<text x="50" y="130" text-anchor="middle" class="b">web</text>
+<text x="50" y="258" text-anchor="middle" class="b">frozen</text>
+<text x="50" y="276" text-anchor="middle" class="b">corpus</text>
+<text x="110" y="340" class="sm">short answer</text>
+<text x="450" y="340" text-anchor="middle" class="sm">answer + sources</text>
+<text x="800" y="340" text-anchor="end" class="sm">long cited report</text>
+<rect class="box plain" x="116" y="44" width="130" height="34" rx="8"/><text x="181" y="66" text-anchor="middle" class="sm b">BrowseComp</text>
+<rect class="box good" x="330" y="44" width="150" height="34" rx="8"/><text x="405" y="66" text-anchor="middle" class="sm b">Mind2Web 2</text>
+<rect class="box violet" x="620" y="44" width="170" height="34" rx="8"/><text x="705" y="66" text-anchor="middle" class="sm b">DeepResearch Bench</text>
+<rect class="box violet" x="440" y="100" width="160" height="34" rx="8"/><text x="520" y="122" text-anchor="middle" class="sm b">ResearchRubrics</text>
+<rect class="box violet" x="620" y="100" width="170" height="34" rx="8"/><text x="705" y="122" text-anchor="middle" class="sm b">DEER</text>
+<rect class="box violet" x="620" y="156" width="170" height="34" rx="8"/><text x="705" y="178" text-anchor="middle" class="sm b">LiveResearchBench</text>
+<rect class="box plain" x="116" y="234" width="150" height="34" rx="8"/><text x="191" y="256" text-anchor="middle" class="sm b">BrowseComp-Plus</text>
+<rect class="box accent" x="300" y="228" width="210" height="46" rx="8"/><text x="405" y="248" text-anchor="middle" class="sm b">Deep Research Bench</text><text x="405" y="264" text-anchor="middle" class="sm">(FutureSearch, RetroSearch)</text>
+<rect class="box plain" x="120" y="360" width="16" height="14" rx="3"/><text x="142" y="372" class="sm">answer match</text>
+<rect class="box accent" x="250" y="360" width="16" height="14" rx="3"/><text x="272" y="372" class="sm">task-specific scoring</text>
+<rect class="box good" x="420" y="360" width="16" height="14" rx="3"/><text x="442" y="372" class="sm">agent-as-a-judge</text>
+<rect class="box violet" x="570" y="360" width="16" height="14" rx="3"/><text x="592" y="372" class="sm">rubric / report judge</text>
+</svg>
+<figcaption><b>The deep-research benchmark map.</b> The top-right corner (live web, long reports) is where products live and where grading is hardest. The bottom row trades realism for reproducibility by freezing the corpus. Positions are qualitative. A complete eval program usually uses one benchmark from each row.</figcaption>
+</figure>
+
+<div class="callout expert"><span class="t">Why BrowseComp-Plus matters beyond its size</span>
+<p>On the live web, a deep-research score mixes two things: how good the search engine was that day, and how good the agent is at using it. BrowseComp-Plus fixes the document collection (with human-verified supporting pages and deliberately hard distractors), so you can swap the retriever while holding the agent fixed, or the reverse. That is the same ablation logic as <a href="21-harness-evals.html">Module 21</a>: hold everything constant except the component you are measuring.</p>
+</div>
+
+<h2>Grading methods, in depth</h2>
+<p>The benchmarks above are built from a small number of reusable grading methods. Knowing the methods lets you design your own eval instead of borrowing a benchmark that does not fit your product.</p>
+
+<h3>1. Rubric-based report grading</h3>
+<p>A <b>rubric</b> is a list of specific, checkable criteria, each with a weight. Good report rubrics share a few traits, many learned from PaperBench's hierarchical rubrics (<a href="11-multi-agent-long-horizon.html">Module 11</a>) and from the judge-design rules in <a href="13-llm-as-judge.html">Module 13</a>:</p>
+<ul>
+<li><b>Task-specific, not generic.</b> "Report is comprehensive" is a vibe. "States the 2024 average battery pack price and its year-on-year change" is checkable.</li>
+<li><b>Binary per item.</b> Met or not met, with evidence quoted from the report. Binary items agree better across judges and humans than 1-to-10 scales.</li>
+<li><b>Mandatory versus optional.</b> Some items are gates: missing them fails the report regardless of the total. ResearchRubrics distinguishes mandatory from optional items for this reason.</li>
+<li><b>Negative items.</b> Penalize known bad behaviors ("presents a forecast as established fact", "relies on a single source for the central claim").</li>
+<li><b>One criterion per judge call</b>, or at most one dimension per call, so criteria do not bleed into each other.</li>
+</ul>
+<p>Worked example, with the rubric from the code later in this module: criteria C1 (weight 3, mandatory), C2 (2), C3 (2), C4 (1, mandatory) and a negative item N1 (-3). Positive weights sum to 8. A report that meets C1, C2 and C4 but also triggers N1 scores (3 + 2 + 1 - 3) / 8 = <b>0.375</b> and passes the gate. A report that meets C2, C3 and C4 but misses C1 scores 5 / 8 = 0.625 <b>but fails the gate</b>, because a mandatory item is missing. The higher number is the worse report.</p>
+
+<h3>2. Reference-report comparison</h3>
+<p>Instead of (or as well as) absolute rubric scores, compare the agent's report to a <b>reference report</b> written by an expert or a strong system, as RACE does. Two flavors:</p>
+<ul>
+<li><b>Relative scoring</b>: score both on the same criteria in one call and report the ratio. Stabilizes the judge.</li>
+<li><b>Pairwise preference</b>: ask "which is better, A or B, or tie?" with positions randomized. This is how GDPval grades deliverables, and it is the basis of the protocol later in this module.</li>
+</ul>
+<p>Watch for three problems. The reference can be <b>wrong or dated</b>, and then the eval rewards matching its mistakes. Judges have <b>position bias</b> (<a href="13-llm-as-judge.html">Module 13</a>), so always run both orders or randomize. And if the reference was written by the same model family as the agent, the judge may favor the shared style (<b>self-preference</b>).</p>
+
+<h3>3. Claim extraction and citation verification</h3>
+<p>This is the engine under FACT, DEER's fact-checking and most production citation checks. It descends from a line of research you should know by name:</p>
+<ul>
+<li><b>AIS</b>, "Attributable to Identified Sources" (<a href="https://arxiv.org/abs/2112.12870">Rashkin et al.</a>): a human-annotation framework for asking "does this source support this statement?".</li>
+<li><b>ALCE</b> (<a href="https://arxiv.org/abs/2305.14627">Gao et al., 2023</a>): automatic <b>citation recall</b> (is each statement fully supported by its citations?) and <b>citation precision</b> (is each citation actually needed and relevant?), scored with an NLI model.</li>
+<li><b>FActScore</b> (<a href="https://arxiv.org/abs/2305.14251">Min et al., 2023</a>): split a long text into <b>atomic facts</b> and check each against a knowledge source.</li>
+<li><b>SAFE</b> and LongFact (<a href="https://arxiv.org/abs/2403.18802">Wei et al., 2024</a>): an LLM agent verifies each atomic fact by issuing search queries; the paper combines precision with recall against a target number of facts (F1@K), so a response is not rewarded simply for saying less.</li>
+</ul>
+<p><b>NLI</b> (natural language inference) models are small classifiers that take a premise (the source passage) and a hypothesis (the claim) and output "entails", "contradicts" or "neutral". They are fast and cheap, which makes them useful as a first filter.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 400" role="img" aria-label="Citation-verification decision flow. The report is split into claims. If a claim has no citation it goes to an uncited bucket. If it has one, the source is fetched; if unreachable it goes to an unreachable bucket; otherwise the best passage is retrieved and a judge decides: supported, partial, contradicted or not in source. A metrics panel on the left lists citation accuracy, citation coverage, unreachable rate and effective citations.">
+<defs><marker id="m26f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="30" width="110" height="48" rx="8"/><text x="75" y="59" text-anchor="middle" class="b">Report</text>
+<rect class="box plain" x="160" y="30" width="160" height="48" rx="8"/><text x="240" y="51" text-anchor="middle" class="b">Split into</text><text x="240" y="68" text-anchor="middle" class="sm">atomic claims</text>
+<rect class="box warn" x="350" y="30" width="120" height="48" rx="8"/><text x="410" y="59" text-anchor="middle" class="b">Cited?</text>
+<rect class="box accent" x="500" y="30" width="130" height="48" rx="8"/><text x="565" y="51" text-anchor="middle" class="b">Fetch source</text><text x="565" y="68" text-anchor="middle" class="sm">cache by URL</text>
+<rect class="box warn" x="660" y="30" width="140" height="48" rx="8"/><text x="730" y="59" text-anchor="middle" class="b">Reachable?</text>
+<line class="ln accent flow" x1="130" y1="54" x2="156" y2="54" marker-end="url(#m26f)"/>
+<line class="ln accent flow" x1="320" y1="54" x2="346" y2="54" marker-end="url(#m26f)"/>
+<line class="ln accent flow" x1="470" y1="54" x2="496" y2="54" marker-end="url(#m26f)"/>
+<line class="ln accent flow" x1="630" y1="54" x2="656" y2="54" marker-end="url(#m26f)"/>
+<text x="483" y="46" text-anchor="middle" class="sm">yes</text>
+<rect class="box warn dashed" x="350" y="130" width="120" height="48" rx="8"/><text x="410" y="151" text-anchor="middle" class="b">uncited</text><text x="410" y="168" text-anchor="middle" class="sm">needs one?</text>
+<line class="ln warn" x1="410" y1="78" x2="410" y2="126" marker-end="url(#m26f)"/>
+<text x="418" y="106" class="sm">no</text>
+<rect class="box bad dashed" x="500" y="130" width="130" height="48" rx="8"/><text x="565" y="151" text-anchor="middle" class="b">unreachable</text><text x="565" y="168" text-anchor="middle" class="sm">dead or paywalled</text>
+<line class="ln bad" x1="690" y1="78" x2="610" y2="126" marker-end="url(#m26f)"/>
+<text x="632" y="100" class="sm">no</text>
+<rect class="box accent" x="660" y="130" width="140" height="48" rx="8"/><text x="730" y="151" text-anchor="middle" class="b">Best passage</text><text x="730" y="168" text-anchor="middle" class="sm">retrieve ~1 page</text>
+<line class="ln accent flow" x1="760" y1="78" x2="760" y2="126" marker-end="url(#m26f)"/>
+<text x="768" y="106" class="sm">yes</text>
+<rect class="box violet pulse" x="560" y="222" width="240" height="48" rx="8"/><text x="680" y="243" text-anchor="middle" class="b">Judge: does the passage</text><text x="680" y="260" text-anchor="middle" class="sm">support the claim?</text>
+<line class="ln accent flow" x1="730" y1="178" x2="730" y2="218" marker-end="url(#m26f)"/>
+<rect class="box good" x="330" y="320" width="110" height="40" rx="8"/><text x="385" y="345" text-anchor="middle" class="sm b">supported</text>
+<rect class="box warn" x="450" y="320" width="110" height="40" rx="8"/><text x="505" y="345" text-anchor="middle" class="sm b">partial</text>
+<rect class="box bad" x="570" y="320" width="110" height="40" rx="8"/><text x="625" y="345" text-anchor="middle" class="sm b">contradicted</text>
+<rect class="box bad" x="690" y="320" width="110" height="40" rx="8"/><text x="745" y="345" text-anchor="middle" class="sm b">not in source</text>
+<line class="ln" x1="640" y1="270" x2="400" y2="316" marker-end="url(#m26f)"/>
+<line class="ln" x1="660" y1="270" x2="515" y2="316" marker-end="url(#m26f)"/>
+<line class="ln" x1="680" y1="270" x2="630" y2="316" marker-end="url(#m26f)"/>
+<line class="ln" x1="700" y1="270" x2="740" y2="316" marker-end="url(#m26f)"/>
+<rect class="box plain" x="20" y="130" width="290" height="240" rx="10"/>
+<text x="36" y="156" class="b">Metrics</text>
+<text x="36" y="184" class="sm b">citation accuracy</text>
+<text x="36" y="202" class="sm">supported ÷ checked citations</text>
+<text x="36" y="228" class="sm b">citation coverage</text>
+<text x="36" y="246" class="sm">cited claims ÷ claims that need one</text>
+<text x="36" y="272" class="sm b">unreachable rate</text>
+<text x="36" y="290" class="sm">dead or blocked ÷ all citations</text>
+<text x="36" y="316" class="sm b">effective citations</text>
+<text x="36" y="334" class="sm">distinct sources that support</text>
+<text x="36" y="352" class="sm">at least one claim</text>
+</svg>
+<figcaption><b>The citation-verification pipeline.</b> Every claim ends in exactly one bucket, and each bucket feeds a different metric. Keep "unreachable" separate from "unsupported": a dead link is a reproducibility problem, not proof of fabrication, and mixing them punishes agents for other people's websites.</figcaption>
+</figure>
+
+<h3>4. Faithfulness, coverage and recency as separate numbers</h3>
+<ul>
+<li><b>Faithfulness</b> is the output of the pipeline above. It needs no ground truth, only the sources.</li>
+<li><b>Coverage</b> needs a list of what a good answer must contain. The standard trick, used in TREC's retrieval-augmented generation evaluations, is a list of <b>nuggets</b>: short atomic facts an expert expects ("LFP share rising", "pack price fell about 20%"). A judge marks each nugget present or absent. Coverage = nuggets present ÷ nuggets expected, with vital nuggets weighted more than nice-to-have ones.</li>
+<li><b>Recency</b> is best tested with <b>time-sensitive probes</b>: tasks where you know the latest value of something (last quarter's figure, the current version of a standard) and check whether the report uses it. Date-stamp these probes and refresh them, or they become recency traps for the grader too.</li>
+</ul>
+
+<h3 id="cost">5. Controlling judge cost</h3>
+<p>Here is an illustrative budget for fully checking one 20-page report. Assume 10,000 words (about 13,000 tokens), 30 rubric criteria and 150 cited claims.</p>
+<ul>
+<li><b>Naive rubric pass:</b> one call per criterion, each reading the whole report: 30 × 13,000 = 390,000 input tokens.</li>
+<li><b>Naive citation pass:</b> each claim sent with its full source page (say 4,000 tokens): 150 × 4,000 = 600,000 tokens.</li>
+<li><b>Total: about 990,000 tokens per report.</b> For 100 tasks × 3 runs × 2 agent versions, that is about 594 million tokens, before any human review.</li>
+</ul>
+<p>Five techniques bring this down without losing the signal you care about:</p>
+<ol>
+<li><b>Retrieve the passage, not the page.</b> Chunk each source once, cache it by URL, and send only the best-matching passage (about 800 tokens) with each claim.</li>
+<li><b>Cascade.</b> Resolve easy cases with cheap checks first: exact quote and number matching, then a small NLI model, and only send the ambiguous remainder to a large judge, and a thin slice of the hardest to humans.</li>
+<li><b>Section-scoped criteria.</b> Most rubric items concern one section. Send the judge that section (about 3,000 tokens), not the whole report.</li>
+<li><b>Sample claims.</b> To estimate citation accuracy you do not need every claim. Checking a random sample of 50 of 150 claims and observing 80% supported gives a standard error of about √(0.8 × 0.2 / 50) × √(1 − 50/150) ≈ 0.046, so roughly ±9 points at 95% (the second square root is the finite-population correction, because you sampled a third of all claims). Good enough to compare agents; not good enough to certify one report.</li>
+<li><b>Stratify effort by risk.</b> Verify every claim in the executive summary and every number; sample the rest.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="A cascade funnel for 150 cited claims. Rules for exact numbers and quotes resolve 60, leaving 90. A small NLI model resolves 45, leaving 45. An LLM judge resolves 40, leaving 5 hard cases for humans, plus a random audit sample. Cost per claim rises at each stage.">
+<defs><marker id="m26g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="60" y="24" width="460" height="46" rx="8"/>
+<text x="290" y="45" text-anchor="middle" class="b">150 cited claims</text>
+<text x="290" y="62" text-anchor="middle" class="sm">stage 1: rules (numbers, dates, exact quotes)</text>
+<rect class="box accent" x="152" y="100" width="276" height="46" rx="8"/>
+<text x="290" y="121" text-anchor="middle" class="b">90 remain</text>
+<text x="290" y="138" text-anchor="middle" class="sm">stage 2: small NLI model</text>
+<rect class="box violet" x="221" y="176" width="138" height="46" rx="8"/>
+<text x="290" y="197" text-anchor="middle" class="b">45 remain</text>
+<text x="290" y="214" text-anchor="middle" class="sm">stage 3: LLM judge</text>
+<rect class="box warn pulse" x="240" y="252" width="100" height="46" rx="8"/>
+<text x="290" y="273" text-anchor="middle" class="b">5 remain</text>
+<text x="290" y="290" text-anchor="middle" class="sm">stage 4: human</text>
+<line class="ln accent flow" x1="290" y1="70" x2="290" y2="96" marker-end="url(#m26g)"/>
+<line class="ln accent flow" x1="290" y1="146" x2="290" y2="172" marker-end="url(#m26g)"/>
+<line class="ln accent flow" x1="290" y1="222" x2="290" y2="248" marker-end="url(#m26g)"/>
+<text x="560" y="45" class="sm b">resolves 60</text><text x="660" y="45" class="sm">cost per claim: ~0</text>
+<text x="560" y="121" class="sm b">resolves 45</text><text x="660" y="121" class="sm">cost: milliseconds</text>
+<text x="560" y="197" class="sm b">resolves 40</text><text x="660" y="197" class="sm">cost: ~1k tokens</text>
+<text x="560" y="273" class="sm b">resolves 5</text><text x="660" y="273" class="sm">cost: minutes of expert</text>
+<text x="560" y="310" class="sm t-warn">+ audit a random 5% of every stage</text>
+<text x="20" y="320" class="sm t-muted">illustrative counts</text>
+</svg>
+<figcaption><b>A verification cascade.</b> Each stage handles what it can answer confidently and passes the rest down. The expensive judge sees 45 claims instead of 150, and humans see 5. The random audit of every stage is not optional: it is how you learn that the cheap rule is quietly wrong (for example, a matching number with a different unit).</figcaption>
+</figure>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 250" role="img" aria-label="Stacked bar chart of judge tokens per report. Naive: 390 thousand rubric tokens plus 600 thousand citation tokens, 990 thousand total. Optimized: 90 thousand rubric tokens plus 60 thousand citation tokens, 150 thousand total, about 6.6 times cheaper.">
+<text x="20" y="30" class="b">Judge input tokens per 20-page report</text>
+<text x="160" y="84" text-anchor="end" class="b">naive</text>
+<rect x="180" y="62" width="236" height="34" class="fill-accent"/>
+<rect x="416" y="62" width="364" height="34" class="fill-violet"/>
+<text x="298" y="84" text-anchor="middle" class="sm b">rubric 390k</text>
+<text x="598" y="84" text-anchor="middle" class="sm b">citations 600k</text>
+<text x="160" y="148" text-anchor="end" class="b">optimized</text>
+<rect x="180" y="126" width="55" height="34" class="fill-accent"/>
+<rect x="235" y="126" width="36" height="34" class="fill-violet"/>
+<text x="284" y="148" class="sm">150k total: section-scoped rubric (90k)</text>
+<text x="284" y="164" class="sm">+ passage-level cascade (60k)</text>
+<line class="ln" x1="180" y1="190" x2="780" y2="190"/>
+<text x="180" y="208" text-anchor="middle" class="sm">0</text>
+<text x="483" y="208" text-anchor="middle" class="sm">500k</text>
+<text x="780" y="208" text-anchor="middle" class="sm">990k</text>
+<text x="410" y="240" text-anchor="middle" class="sm t-muted">illustrative: 30 criteria, 150 claims; roughly 6.6 times cheaper</text>
+</svg>
+<figcaption><b>Where the judge tokens go.</b> In the naive design, citation checking with whole pages dominates. Sending only the relevant passage and cascading easy claims cuts it tenfold; scoping criteria to sections cuts the rubric pass about fourfold. Numbers are illustrative; measure your own.</figcaption>
+</figure>
+
+<div class="callout bad"><span class="t">A cheaper judge that is wrong is not cheaper</span>
+<p>Every cost-cutting step changes the grader, so each one needs its own validation against human labels (TPR and TNR, <a href="13-llm-as-judge.html">Module 13</a>). A sampled estimate with a biased judge is a precise wrong number.</p>
+</div>
+
+<h2>Real-work benchmarks</h2>
+<p>Now the second family. These benchmarks ask whether agents can do work people are paid for. <a href="11-multi-agent-long-horizon.html">Module 11</a> covered <b>GDPval</b> and <b>Vending-Bench</b>; here we add their relatives and, more importantly, compare how each one grades.</p>
+
+<h3>GDPval, briefly</h3>
+<p>OpenAI's <b>GDPval</b> (September 2025, <a href="https://arxiv.org/abs/2510.04374">arXiv 2510.04374</a>) has 1,320 tasks across 44 occupations drawn from industries that each make up over 5% of US GDP, with a 220-task open gold set. Each task comes from an experienced professional, with a real deliverable (a legal brief, a nursing care plan, a slide deck). Grading is <b>blinded expert pairwise comparison</b>: another professional from the same occupation sees the human deliverable and the model's deliverable, without labels, and picks the better one or calls a tie. The headline metric is the <b>win-or-tie rate</b> against the human expert. OpenAI also released an experimental automated grader and reported its agreement with human graders as somewhat below human-to-human agreement: good for iteration, not a replacement. Artificial Analysis runs <b>GDPval-AA</b>, a leaderboard that runs models on the GDPval tasks through its own agentic harness.</p>
+
+<h3>Remote Labor Index (RLI)</h3>
+<p>The <b>Remote Labor Index</b> (Scale AI and the Center for AI Safety, October 2025, <a href="https://arxiv.org/abs/2510.26787">arXiv 2510.26787</a>, <a href="https://scale.com/blog/rli">Scale blog</a>) asks a blunter question than GDPval: of real freelance projects, what fraction could an AI agent complete to a standard a client would accept? The benchmark collects <b>240 real projects</b> that freelancers had actually been commissioned and paid to do, across many kinds of remote work (for example design, video and audio, architecture, game development, data analysis and writing). Each project comes with the original brief, the input files, and the <b>human professional's deliverable</b>, which serves as the gold standard.</p>
+<p>Agents receive the brief and files and produce their own deliverable. Trained evaluators compare it holistically with the human deliverable and judge whether it would be <b>accepted by a reasonable client as the commissioned work</b>. The headline metric, the <b>automation rate</b>, is the share of projects where the AI's work meets that bar. At launch the best agent tested (Manus) reached an automation rate of <b>2.5%</b>; later CAIS updates on the live leaderboard report a significant increase, so check the current leaderboard rather than quoting the launch number. RLI also reports an <b>Elo</b> score from pairwise comparisons between AI deliverables, which shows relative progress even while absolute automation stays low.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 340" role="img" aria-label="RLI grading flow. A real freelance project with brief and input files produces a human professional deliverable, which is the gold standard, and an AI agent deliverable. An expert evaluator compares them against the same brief. If a reasonable client would accept the AI work, it counts toward the automation rate. Separately, pairwise preferences between AI deliverables produce an Elo ranking.">
+<defs><marker id="m26h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="120" width="170" height="90" rx="10"/>
+<text x="105" y="146" text-anchor="middle" class="b">Real project</text>
+<text x="105" y="168" text-anchor="middle" class="sm">client brief</text>
+<text x="105" y="186" text-anchor="middle" class="sm">+ input files</text>
+<rect class="box good" x="240" y="40" width="220" height="70" rx="10"/>
+<text x="350" y="68" text-anchor="middle" class="b">Human deliverable</text>
+<text x="350" y="90" text-anchor="middle" class="sm">the gold standard, was paid for</text>
+<rect class="box accent" x="240" y="220" width="220" height="70" rx="10"/>
+<text x="350" y="248" text-anchor="middle" class="b">AI agent deliverable</text>
+<text x="350" y="270" text-anchor="middle" class="sm">same brief, same files</text>
+<line class="ln" x1="190" y1="150" x2="236" y2="88" marker-end="url(#m26h)"/>
+<line class="ln accent flow" x1="190" y1="182" x2="236" y2="244" marker-end="url(#m26h)"/>
+<rect class="box violet" x="510" y="115" width="150" height="100" rx="10"/>
+<text x="585" y="145" text-anchor="middle" class="b">Expert</text>
+<text x="585" y="163" text-anchor="middle" class="b">evaluator</text>
+<text x="585" y="187" text-anchor="middle" class="sm">compares against</text>
+<text x="585" y="203" text-anchor="middle" class="sm">the brief</text>
+<line class="ln" x1="460" y1="80" x2="506" y2="138" marker-end="url(#m26h)"/>
+<line class="ln accent flow" x1="460" y1="252" x2="506" y2="196" marker-end="url(#m26h)"/>
+<rect class="box good" x="690" y="50" width="115" height="96" rx="10"/>
+<text x="747" y="76" text-anchor="middle" class="b">Accepted?</text>
+<text x="747" y="98" text-anchor="middle" class="sm">counts toward</text>
+<text x="747" y="114" text-anchor="middle" class="sm">automation</text>
+<text x="747" y="130" text-anchor="middle" class="sm">rate</text>
+<rect class="box warn" x="690" y="186" width="115" height="96" rx="10"/>
+<text x="747" y="212" text-anchor="middle" class="b">Elo</text>
+<text x="747" y="234" text-anchor="middle" class="sm">AI vs AI</text>
+<text x="747" y="250" text-anchor="middle" class="sm">preferences,</text>
+<text x="747" y="266" text-anchor="middle" class="sm">relative rank</text>
+<line class="ln" x1="660" y1="140" x2="686" y2="110" marker-end="url(#m26h)"/>
+<line class="ln" x1="660" y1="190" x2="686" y2="220" marker-end="url(#m26h)"/>
+<text x="410" y="326" text-anchor="middle" class="sm t-muted">automation rate is absolute ("good enough to deliver?"); Elo is relative ("better than another agent?")</text>
+</svg>
+<figcaption><b>How the Remote Labor Index grades.</b> The bar is not "better than the human" but "would a client accept this as the job they paid for". Almost all AI deliverables miss that bar at launch, so the Elo ranking between agents is what shows progress between releases.</figcaption>
+</figure>
+
+<h3>TheAgentCompany</h3>
+<p><b>TheAgentCompany</b> (Xu et al., Carnegie Mellon and collaborators, December 2024, <a href="https://arxiv.org/html/2412.14161v2">arXiv 2412.14161</a>, NeurIPS 2025 Datasets and Benchmarks) takes the "live system" route. It builds a <b>self-hosted simulated software company</b> with a code host (GitLab), a file store (OwnCloud), a project tracker (Plane), a chat server (RocketChat) and <b>simulated colleagues</b>, LLM-backed characters the agent can message to ask for information. Its <b>175 tasks</b> span software engineering, project management, finance, HR, admin and data science.</p>
+<p>Grading is by <b>checkpoints</b>: each task lists intermediate milestones, verified by scripts that inspect the environment's state (and, for a few subjective checkpoints, by an LLM judge). The paper defines full completion (all checkpoints pass) and a <b>partial-completion score</b>:</p>
+<pre data-lang="text"><code>S_partial = 0.5 × (checkpoints passed / total checkpoints) + 0.5 × S_full
+where S_full = 1 if every checkpoint passes, else 0</code></pre>
+<p>The design deliberately rewards finishing: half of the credit is only available for complete success. At first release the best agent fully completed about a quarter of the tasks (Claude 3.5 Sonnet, 24%); the updated paper reports higher numbers for newer models, still far from most tasks. The paper also observed that tasks involving talking to colleagues and navigating complex web interfaces were among the hardest, while many coding tasks were easier.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="Left: an agent at the center of a simulated company with GitLab, OwnCloud, Plane, RocketChat and simulated colleagues around it. Right: a worked task with six checkpoints, three passed and three failed, giving a partial score of 0.5 times 3 over 6 plus 0.5 times 0, which equals 0.25.">
+<defs><marker id="m26i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box dashed" x="20" y="20" width="350" height="300" rx="12"/>
+<text x="195" y="42" text-anchor="middle" class="sm b">simulated company (self-hosted)</text>
+<rect class="box accent pulse" x="140" y="146" width="110" height="48" rx="10"/>
+<text x="195" y="175" text-anchor="middle" class="b">Agent</text>
+<rect class="box plain" x="40" y="60" width="120" height="40" rx="8"/><text x="100" y="78" text-anchor="middle" class="sm b">GitLab</text><text x="100" y="93" text-anchor="middle" class="sm">code</text>
+<rect class="box plain" x="230" y="60" width="120" height="40" rx="8"/><text x="290" y="78" text-anchor="middle" class="sm b">OwnCloud</text><text x="290" y="93" text-anchor="middle" class="sm">files</text>
+<rect class="box plain" x="40" y="240" width="120" height="40" rx="8"/><text x="100" y="258" text-anchor="middle" class="sm b">Plane</text><text x="100" y="273" text-anchor="middle" class="sm">tasks</text>
+<rect class="box plain" x="230" y="240" width="120" height="40" rx="8"/><text x="290" y="258" text-anchor="middle" class="sm b">RocketChat</text><text x="290" y="273" text-anchor="middle" class="sm">chat</text>
+<rect class="box violet" x="110" y="284" width="170" height="28" rx="8"/><text x="195" y="303" text-anchor="middle" class="sm">simulated colleagues</text>
+<line class="ln" x1="150" y1="150" x2="120" y2="104" marker-end="url(#m26i)" marker-start="url(#m26i)"/>
+<line class="ln" x1="240" y1="150" x2="270" y2="104" marker-end="url(#m26i)" marker-start="url(#m26i)"/>
+<line class="ln" x1="150" y1="194" x2="120" y2="236" marker-end="url(#m26i)" marker-start="url(#m26i)"/>
+<line class="ln" x1="240" y1="194" x2="270" y2="236" marker-end="url(#m26i)" marker-start="url(#m26i)"/>
+<text x="410" y="42" class="b">Task: sprint summary for the PM</text>
+<rect class="box good" x="410" y="56" width="52" height="24" rx="5"/><text x="436" y="73" text-anchor="middle" class="sm b">pass</text><text x="474" y="73" class="sm">found open issues in Plane</text>
+<rect class="box good" x="410" y="88" width="52" height="24" rx="5"/><text x="436" y="105" text-anchor="middle" class="sm b">pass</text><text x="474" y="105" class="sm">asked the PM for the deadline on chat</text>
+<rect class="box good" x="410" y="120" width="52" height="24" rx="5"/><text x="436" y="137" text-anchor="middle" class="sm b">pass</text><text x="474" y="137" class="sm">computed story points per person</text>
+<rect class="box bad" x="410" y="152" width="52" height="24" rx="5"/><text x="436" y="169" text-anchor="middle" class="sm b">fail</text><text x="474" y="169" class="sm">saved report.xlsx to OwnCloud</text>
+<rect class="box bad" x="410" y="184" width="52" height="24" rx="5"/><text x="436" y="201" text-anchor="middle" class="sm b">fail</text><text x="474" y="201" class="sm">totals in the report are correct</text>
+<rect class="box bad" x="410" y="216" width="52" height="24" rx="5"/><text x="436" y="233" text-anchor="middle" class="sm b">fail</text><text x="474" y="233" class="sm">sent the PM the file link</text>
+<rect class="box accent" x="410" y="258" width="390" height="62" rx="10"/>
+<text x="605" y="282" text-anchor="middle" class="mono">0.5 × 3/6 + 0.5 × 0 = 0.25</text>
+<text x="605" y="306" text-anchor="middle" class="sm">partial credit; full completion = 0</text>
+<text x="410" y="340" class="sm t-muted">illustrative task; formula from the TheAgentCompany paper</text>
+</svg>
+<figcaption><b>Checkpoints in a simulated company.</b> Scripts read the state of GitLab, OwnCloud, Plane and RocketChat to decide each checkpoint. Doing half the work earns 0.25, not 0.5, because the other half of the score is reserved for finishing the whole task.</figcaption>
+</figure>
+
+<h3>Toolathlon</h3>
+<p><b>Toolathlon</b>, "The Tool Decathlon" (October 2025, <a href="https://arxiv.org/abs/2510.25726">arXiv 2510.25726</a>, ICLR 2026), spans <b>32 software applications and 604 tools</b> (many via MCP servers) with <b>108 tasks</b> that each need many tool calls across several apps: think "read the course roster in the learning system, compute grades in a spreadsheet, and email students". Two design choices make it relevant here. Environments start from <b>realistic initial states</b> (populated accounts, not empty sandboxes), and every task has a dedicated <b>execution-based evaluation script</b> that checks the final state. Like TheAgentCompany, it turns "real work" into something a script can grade, at the cost of building and maintaining the environments. It also appears in <a href="24-tools-and-mcp-evals.html">Module 24</a> from the tools angle.</p>
+
+<h3>Other real-work benchmarks worth knowing</h3>
+<div class="tablewrap"><table>
+<tr><th>Benchmark</th><th>Work</th><th>Grading</th><th>Headline metric</th></tr>
+<tr><td><b>GDPval</b> (OpenAI, 2025)</td><td>44 occupations, file deliverables</td><td>Blinded expert pairwise vs human deliverable</td><td>Win-or-tie rate</td></tr>
+<tr><td><b>Remote Labor Index</b> (Scale + CAIS, 2025)</td><td>240 paid freelance projects</td><td>Expert holistic judgment vs human deliverable</td><td>Automation rate; Elo</td></tr>
+<tr><td><b>TheAgentCompany</b> (CMU et al., 2024)</td><td>175 tasks in a simulated software company</td><td>Scripted checkpoints (a few LLM-judged)</td><td>Full completion; partial score</td></tr>
+<tr><td><b>Toolathlon</b> (2025)</td><td>108 multi-app tasks, 32 apps</td><td>Execution-based state checks</td><td>Task success rate</td></tr>
+<tr><td><b><a href="https://www.mercor.com/apex/">APEX</a> / APEX-Agents</b> (Mercor, 2025 to 2026)</td><td>Professional tasks in fields such as banking, consulting and law</td><td>Expert-written rubrics applied by judges</td><td>Rubric score</td></tr>
+<tr><td><b>SWE-Lancer</b> (OpenAI, 2025)</td><td>Paid freelance software jobs</td><td>End-to-end tests; manager choices</td><td>Dollars earned (<a href="07-coding-agents.html">Module 07</a>)</td></tr>
+<tr><td><b>Vending-Bench</b> (Andon Labs, 2025)</td><td>Run a simulated business</td><td>Simulator state</td><td>Net worth (<a href="11-multi-agent-long-horizon.html">Module 11</a>)</td></tr>
+</table></div>
+
+<h2>How unstructured deliverables are graded</h2>
+<p>Strip away the names and there are only three grading approaches for a deliverable, and every benchmark above is one or a blend of them.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Three columns comparing grading approaches for deliverables. Expert pairwise comparison against a human deliverable: asks which is better, catches holistic quality, misses why, very high cost. Rubric: asks which specific items are met, catches specific omissions and errors, misses unlisted problems, medium cost. Automated checks: asks whether the state or file is correct, catches exact correctness, misses quality and taste, low cost per run.">
+<rect class="box violet" x="20" y="20" width="250" height="290" rx="12"/>
+<text x="145" y="46" text-anchor="middle" class="b">Expert pairwise</text>
+<text x="145" y="64" text-anchor="middle" class="sm">GDPval, RLI</text>
+<text x="36" y="98" class="sm b">asks</text>
+<text x="36" y="116" class="sm">which is better, or is it</text>
+<text x="36" y="132" class="sm">acceptable to a client?</text>
+<text x="36" y="162" class="sm b">catches</text>
+<text x="36" y="180" class="sm">holistic quality, taste, polish</text>
+<text x="36" y="210" class="sm b">misses</text>
+<text x="36" y="228" class="sm">why it lost; hard to debug</text>
+<text x="36" y="258" class="sm b">cost</text>
+<text x="36" y="276" class="sm">expert time per item, every run</text>
+<rect class="box accent" x="285" y="20" width="250" height="290" rx="12"/>
+<text x="410" y="46" text-anchor="middle" class="b">Rubric</text>
+<text x="410" y="64" text-anchor="middle" class="sm">APEX, ResearchRubrics, PaperBench</text>
+<text x="301" y="98" class="sm b">asks</text>
+<text x="301" y="116" class="sm">which specific items are met?</text>
+<text x="301" y="162" class="sm b">catches</text>
+<text x="301" y="180" class="sm">named omissions and errors;</text>
+<text x="301" y="196" class="sm">tells you what to fix</text>
+<text x="301" y="210" class="sm b"> </text>
+<text x="301" y="226" class="sm b">misses</text>
+<text x="301" y="244" class="sm">problems nobody wrote down</text>
+<text x="301" y="270" class="sm b">cost</text>
+<text x="301" y="288" class="sm">experts once, judge every run</text>
+<rect class="box good" x="550" y="20" width="250" height="290" rx="12"/>
+<text x="675" y="46" text-anchor="middle" class="b">Automated checks</text>
+<text x="675" y="64" text-anchor="middle" class="sm">TheAgentCompany, Toolathlon</text>
+<text x="566" y="98" class="sm b">asks</text>
+<text x="566" y="116" class="sm">is the file or state correct?</text>
+<text x="566" y="162" class="sm b">catches</text>
+<text x="566" y="180" class="sm">exact correctness, cheaply,</text>
+<text x="566" y="196" class="sm">repeatably</text>
+<text x="566" y="226" class="sm b">misses</text>
+<text x="566" y="244" class="sm">quality, tone, design, taste</text>
+<text x="566" y="270" class="sm b">cost</text>
+<text x="566" y="288" class="sm">building the environment</text>
+</svg>
+<figcaption><b>The three ways to grade a deliverable.</b> Pairwise experts are the most valid and least diagnostic; rubrics are diagnostic but only see what was written down; automated checks are cheap and exact but blind to quality. Strong eval programs layer them: automated checks as gates, rubrics for iteration, expert pairwise studies for milestones.</figcaption>
+</figure>
+
+<p>In practice, use them in layers:</p>
+<ol>
+<li><b>Automated gates first.</b> Does the file exist, open, have the requested format and sheets, do the formulas compute, are the numbers right where you know them? A deliverable that fails a gate should not cost an expert's time.</li>
+<li><b>Rubrics for everyday iteration.</b> Written once by experts, applied by a validated judge on every change, with evidence per item. This is where most of your signal comes from week to week.</li>
+<li><b>Expert pairwise studies for milestones.</b> Before a launch or a claim like "matches professionals", run a blinded comparison against human deliverables. It is slow and expensive, and it is the only one of the three that measures what the customer will actually experience.</li>
+</ol>
+
+<h3>What "automation rate" and "win rate" mean, and what they do not</h3>
+<p>Three headline numbers get confused in press coverage. Be precise about which is which:</p>
+<div class="grid2">
+<div class="card accent"><b>Win-or-tie rate (GDPval)</b><br>Share of comparisons where experts judged the AI deliverable as good as or better than a professional's. 50% would mean parity with the human expert on those tasks.</div>
+<div class="card violet"><b>Automation rate (RLI)</b><br>Share of projects where the AI deliverable would be accepted as the commissioned work. An absolute bar, not a comparison: "good enough to hand over?"</div>
+<div class="card good"><b>Task success (TheAgentCompany, Toolathlon)</b><br>Share of tasks whose final state passes the checks. Only as meaningful as the checks and the environment's realism.</div>
+<div class="card warn"><b>What none of them measure</b><br>Jobs replaced. They cover sampled, one-shot, well-specified tasks, not the meetings, iterations, context gathering and accountability around them.</div>
+</div>
+<p>Also remember the statistics. RLI's launch figure of 2.5% on 240 projects corresponds to 6 projects. The 95% Wilson interval for 6 of 240 is about <b>1.2% to 5.3%</b>: the leader could plausibly be at half or double that value. For a 40-task internal study with 12 successes (30%), the interval is about <b>18% to 45%</b>. When two agents' intervals overlap this much, "agent A automates more" is not a finding (<a href="04-metrics-and-statistics.html">Module 04</a>).</p>
+
+<div class="callout expert"><span class="t">Why pairwise against a human, rather than a score?</span>
+<p>Experts disagree on absolute scores ("is this a 6 or a 7?") far more than on comparisons ("is A better than B?"), and a human deliverable is a concrete anchor that keeps the bar realistic. The costs: every task needs a real human deliverable, the comparison says nothing about <em>why</em> one side won unless you collect reasons, and ties must be allowed and reported, or graders are forced into noisy coin flips.</p>
+</div>
+
+<h2>Build your own</h2>
+<p>Here are the three pieces you need for your own research-agent or real-work eval: a rubric grader, a citation checker, and a pairwise study. The code runs as written (the judge and fetch calls are mocked), so you can test the logic before wiring in real models.</p>
+
+<h3>1. A research-agent eval with a rubric</h3>
+<p>Start with 20 to 50 real questions from your users, stratified by type (fact-finding, comparison, open analysis), exactly as Anthropic's research team did (<a href="11-multi-agent-long-horizon.html">Module 11</a>). For each, have a domain expert write 5 to 15 rubric items, mark the mandatory ones, and add negative items for the failure modes you saw in error analysis (<a href="12-error-analysis.html">Module 12</a>).</p>
+<pre data-lang="python"><code># Rubric for one task. Weights are relative; negative items are penalties.
+RUBRIC = {
+  "task_id": "ev-battery-2025",
+  "criteria": [
+    {"id": "C1", "dim": "coverage",     "weight": 3, "mandatory": True,
+     "text": "States the 2024 average battery pack price and its year-on-year change"},
+    {"id": "C2", "dim": "coverage",     "weight": 2, "mandatory": False,
+     "text": "Compares at least two chemistries (for example LFP and NMC)"},
+    {"id": "C3", "dim": "insight",      "weight": 2, "mandatory": False,
+     "text": "Explains at least one cause of the price trend, with a source"},
+    {"id": "C4", "dim": "instructions", "weight": 1, "mandatory": True,
+     "text": "Ends with a one-paragraph recommendation, as the user asked"},
+    {"id": "N1", "dim": "faithfulness", "weight": -3, "mandatory": False,
+     "text": "Presents a forecast as an established fact"},
+  ]
+}
+
+JUDGE_TEMPLATE = """You are grading one criterion of a research report.
+Criterion: {criterion}
+Report section:
+&lt;report&gt;
+{section}
+&lt;/report&gt;
+Quote the exact sentence(s) that meet the criterion, or say NONE.
+Then answer on the last line with MET or NOT_MET."""
+
+def judge_criterion(criterion, section, call_judge):
+    """call_judge(prompt) -&gt; str is your model call (see Module 13 for a full,
+    validated implementation with retries and structured output)."""
+    out = call_judge(JUDGE_TEMPLATE.format(criterion=criterion["text"], section=section))
+    return out.strip().splitlines()[-1].strip() == "MET"
+
+def score(verdicts, rubric=RUBRIC):
+    """verdicts: {criterion_id: True/False}. Negative items subtract when triggered."""
+    pos = sum(c["weight"] for c in rubric["criteria"] if c["weight"] &gt; 0)
+    raw = sum(c["weight"] for c in rubric["criteria"] if verdicts.get(c["id"]))
+    missed = [c["id"] for c in rubric["criteria"]
+              if c["mandatory"] and not verdicts.get(c["id"])]
+    return {"score": max(raw, 0) / pos, "passes_gate": not missed,
+            "missed_mandatory": missed}
+
+print(score({"C1": True, "C2": True, "C3": False, "C4": True, "N1": True}))
+# {'score': 0.375, 'passes_gate': True, 'missed_mandatory': []}
+print(score({"C1": False, "C2": True, "C3": True, "C4": True, "N1": False}))
+# {'score': 0.625, 'passes_gate': False, 'missed_mandatory': ['C1']}</code></pre>
+<p>Report three things per agent version: the <b>gate pass rate</b> (share of reports with no missing mandatory items), the <b>mean score</b> among all reports, and per-dimension means so you can see whether a change helped coverage but hurt faithfulness. Validate the judge on 50 or more expert-labeled (criterion, report) pairs before trusting it.</p>
+
+<h3>2. A claim and citation checker (mock retrieval)</h3>
+<p>This is the pipeline from the flow diagram, in about 70 lines. The support check is a deliberately simple lexical rule so the code runs anywhere; its "needs_judge" bucket is where a real NLI model or LLM judge plugs in, making this stage one of the cascade.</p>
+<pre data-lang="python"><code>import re
+from dataclasses import dataclass
+
+# A mock "web": URL -&gt; page text. In production: fetch, extract text, cache by URL.
+MOCK_WEB = {
+    "https://ex.org/battery-2025": "Global lithium-ion battery pack prices fell to 115 dollars "
+                                   "per kWh in 2024, a 20 percent drop from 2023.",
+    "https://ex.org/ev-sales": "Electric cars made up about 18 percent of new car sales "
+                              "worldwide in 2023.",
+    "https://ex.org/solar": "Solar capacity additions reached a record in 2023, led by China.",
+}
+
+REPORT = """Battery pack prices fell to 115 dollars per kWh in 2024 [1].
+Electric cars made up about 18 percent of global new car sales in 2023 [2].
+Battery prices will fall below 50 dollars per kWh by 2026 [1].
+Solar additions hit a record in 2023, led by India [3].
+Grid storage demand doubled in 2024 [4].
+Most analysts expect continued growth."""
+
+REFS = {1: "https://ex.org/battery-2025", 2: "https://ex.org/ev-sales",
+        3: "https://ex.org/solar", 4: "https://ex.org/missing-page"}
+
+@dataclass
+class Claim:
+    text: str
+    cites: list
+
+def extract_claims(report):
+    """Step 1: sentence-level claims plus their citation markers.
+    Real pipelines ask an LLM to split sentences into atomic facts (FActScore style)."""
+    claims = []
+    for sent in re.split(r"(?&lt;=[.!?])\s+", report.strip()):
+        cites = [int(n) for n in re.findall(r"\[(\d+)\]", sent)]
+        claims.append(Claim(re.sub(r"\s*\[\d+\]", "", sent).strip(), cites))
+    return claims
+
+def fetch(url):
+    """Step 2: retrieve the cited source (mocked). None = unreachable."""
+    return MOCK_WEB.get(url)
+
+STOP = {"the", "a", "of", "in", "to", "by", "and", "about", "was", "were", "made", "up"}
+def tokens(s):
+    return {w for w in re.findall(r"[a-z0-9]+", s.lower()) if w not in STOP}
+
+def supports(claim, source):
+    """Step 3: cheap first-stage check. Numbers must match; then word overlap.
+    Ambiguous cases are escalated, not guessed."""
+    c, s = tokens(claim), tokens(source)
+    if not all(n in s for n in re.findall(r"\d+", claim)):
+        return "unsupported"          # a number in the claim is not in the source
+    overlap = len(c &amp; s) / max(len(c), 1)
+    if overlap &gt;= 0.8:
+        return "supported"
+    if overlap &gt;= 0.5:
+        return "needs_judge"          # send to NLI model / LLM judge (next stage)
+    return "unsupported"
+
+def check(report, refs):
+    rows = []
+    for cl in extract_claims(report):
+        if not cl.cites:
+            rows.append((cl.text, None, "uncited"))
+            continue
+        for n in cl.cites:
+            page = fetch(refs.get(n, ""))
+            rows.append((cl.text, n, "unreachable" if page is None else supports(cl.text, page)))
+    return rows
+
+rows = check(REPORT, REFS)
+for text, n, verdict in rows:
+    print(f"[{n or '-'}] {verdict:12s} {text[:52]}")
+
+cited = [r for r in rows if r[1] is not None]
+checkable = [r for r in cited if r[2] != "unreachable"]
+ok = [r for r in checkable if r[2] == "supported"]
+print(f"citation accuracy : {len(ok)}/{len(checkable)} = {len(ok)/len(checkable):.2f}")
+print(f"effective cites   : {len({r[1] for r in ok})}")
+print(f"unreachable       : {sum(r[2] == 'unreachable' for r in cited)}")
+print(f"uncited claims    : {sum(r[2] == 'uncited' for r in rows)}")</code></pre>
+<p>Output:</p>
+<pre data-lang="text"><code>[1] supported    Battery pack prices fell to 115 dollars per kWh in 2
+[2] supported    Electric cars made up about 18 percent of global new
+[1] unsupported  Battery prices will fall below 50 dollars per kWh by
+[3] needs_judge  Solar additions hit a record in 2023, led by India.
+[4] unreachable  Grid storage demand doubled in 2024.
+[-] uncited      Most analysts expect continued growth.
+citation accuracy : 2/4 = 0.50
+effective cites   : 2
+unreachable       : 1
+uncited claims    : 1</code></pre>
+<p>Read the output as an eval designer. The number check correctly rejects the forecast (the source never says $50). The India claim shares most words with the source, so a lexical rule cannot decide; it is escalated, and an LLM judge would mark it <b>contradicted</b> (the source says China). This is exactly why cascades have a "not sure" exit instead of forcing a verdict. The dead link is kept out of the accuracy denominator and reported separately, and the uncited sentence is counted for a DEER-style "needs a citation?" check.</p>
+
+<h3>3. A pairwise expert-comparison protocol</h3>
+<p>When you need to claim "our agent's deliverables are as good as a professional's", run a GDPval-style study. The protocol matters more than the code:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 290" role="img" aria-label="Six-step protocol in two rows. Calibrate raters on practice pairs; blind the deliverables by stripping names and normalizing format; randomize which side is A; three raters each choose A, B or tie with a reason; unblind into win, tie or loss; cluster bootstrap over tasks for a confidence interval. A dashed loop from the rating step back to calibration says to recalibrate if agreement is low.">
+<defs><marker id="m26j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="30" width="240" height="74" rx="10"/>
+<text x="140" y="58" text-anchor="middle" class="b">1. Calibrate raters</text>
+<text x="140" y="80" text-anchor="middle" class="sm">10 practice pairs, discuss disagreements</text>
+<rect class="box plain" x="290" y="30" width="240" height="74" rx="10"/>
+<text x="410" y="58" text-anchor="middle" class="b">2. Blind</text>
+<text x="410" y="80" text-anchor="middle" class="sm">strip names, same file format</text>
+<rect class="box plain" x="560" y="30" width="240" height="74" rx="10"/>
+<text x="680" y="58" text-anchor="middle" class="b">3. Randomize A / B</text>
+<text x="680" y="80" text-anchor="middle" class="sm">coin flip per task, key kept hidden</text>
+<rect class="box violet" x="560" y="170" width="240" height="74" rx="10"/>
+<text x="680" y="198" text-anchor="middle" class="b">4. Rate: A, B or tie</text>
+<text x="680" y="220" text-anchor="middle" class="sm">3 experts per task, reason required</text>
+<rect class="box plain" x="290" y="170" width="240" height="74" rx="10"/>
+<text x="410" y="198" text-anchor="middle" class="b">5. Unblind</text>
+<text x="410" y="220" text-anchor="middle" class="sm">win / tie / loss for the AI</text>
+<rect class="box good" x="20" y="170" width="240" height="74" rx="10"/>
+<text x="140" y="198" text-anchor="middle" class="b">6. Win-or-tie + CI</text>
+<text x="140" y="220" text-anchor="middle" class="sm">bootstrap over tasks, not ratings</text>
+<line class="ln accent flow" x1="260" y1="67" x2="286" y2="67" marker-end="url(#m26j)"/>
+<line class="ln accent flow" x1="530" y1="67" x2="556" y2="67" marker-end="url(#m26j)"/>
+<line class="ln accent flow" x1="680" y1="104" x2="680" y2="166" marker-end="url(#m26j)"/>
+<line class="ln accent flow" x1="560" y1="207" x2="534" y2="207" marker-end="url(#m26j)"/>
+<line class="ln accent flow" x1="290" y1="207" x2="264" y2="207" marker-end="url(#m26j)"/>
+<path class="ln dash warn" d="M620,244 C620,282 140,282 140,248" fill="none"/>
+<path class="ln dash warn" d="M140,160 L140,110" marker-end="url(#m26j)"/>
+<text x="380" y="276" text-anchor="middle" class="sm t-warn">agreement low? stop, recalibrate, clarify the brief</text>
+<text x="148" y="140" class="sm t-warn">recalibrate</text>
+</svg>
+<figcaption><b>A blinded pairwise study, end to end.</b> Calibration and blinding protect validity; randomizing sides removes position bias; three raters per task let you measure agreement; and the bootstrap resamples tasks, because three ratings of the same task are not three independent data points.</figcaption>
+</figure>
+
+<pre data-lang="python"><code>import random
+from collections import defaultdict
+
+def make_packets(tasks, seed=7):
+    """tasks: dicts with task_id, prompt, ai_file, human_file.
+    Randomize which deliverable is A or B; keep the key away from raters."""
+    rng = random.Random(seed)
+    packets, key = [], {}
+    for t in tasks:
+        ai_first = rng.random() &lt; 0.5
+        a, b = (t["ai_file"], t["human_file"]) if ai_first else (t["human_file"], t["ai_file"])
+        pid = f"P{len(packets):04d}"
+        packets.append({"packet": pid, "prompt": t["prompt"], "A": a, "B": b})
+        key[pid] = {"task_id": t["task_id"], "ai_is": "A" if ai_first else "B"}
+    return packets, key
+
+def unblind(ratings, key):
+    """ratings: (packet, rater, choice) with choice in {"A", "B", "tie"}.
+    Returns outcomes from the AI's point of view, grouped by task."""
+    by_task = defaultdict(list)
+    for pid, rater, choice in ratings:
+        k = key[pid]
+        out = "tie" if choice == "tie" else ("win" if choice == k["ai_is"] else "loss")
+        by_task[k["task_id"]].append(out)
+    return by_task
+
+def win_or_tie(by_task):
+    outs = [o for v in by_task.values() for o in v]
+    return sum(o != "loss" for o in outs) / len(outs)
+
+def cluster_bootstrap(by_task, n_boot=5000, seed=0):
+    """Resample TASKS with replacement: ratings of one task are correlated."""
+    rng = random.Random(seed)
+    ids = list(by_task)
+    stats = sorted(
+        win_or_tie({i: by_task[rng.choice(ids)] for i in range(len(ids))})
+        for _ in range(n_boot))
+    return stats[int(0.025 * n_boot)], stats[int(0.975 * n_boot)]
+
+# With 40 tasks x 3 raters of simulated data (illustrative), this prints:
+# win-or-tie rate 0.41  95% CI [0.32, 0.50]</code></pre>
+<p>Protocol details that decide whether anyone should believe the result:</p>
+<ul>
+<li><b>Blind properly.</b> Convert both deliverables to the same format, remove file metadata, and strip tell-tale phrases ("As an AI..."). If raters can guess which is the AI, the study measures their attitude to AI.</li>
+<li><b>Same brief, same inputs, same time budget</b> where that is meaningful, and record the human's time and cost so you can report cost per acceptable deliverable, not just quality.</li>
+<li><b>Require a reason</b> with each choice, from a fixed list plus free text ("factual error", "missed requirement", "formatting", "better analysis"). Reasons turn a single number into an error analysis.</li>
+<li><b>Measure agreement.</b> Compute how often raters agree (and Cohen's or Fleiss' kappa, <a href="13-llm-as-judge.html">Module 13</a>). Low agreement means the task or the question is underspecified, not that the AI is "about human level".</li>
+<li><b>Pre-register the metric</b> (win-or-tie, or win-only) before unblinding, and report ties separately.</li>
+</ul>
+
+<h2>Expert nuance and pitfalls</h2>
+<div class="grid2">
+<div class="card bad"><b>Length gaming</b><br>Longer reports cover more rubric items and nuggets by accident. Add a length-normalized view, negative items for padding, and compare at similar lengths.</div>
+<div class="card bad"><b>Citation laundering</b><br>The agent writes from memory and then attaches a plausible source. Faithfulness checks catch it only if they read the passage, not the title.</div>
+<div class="card warn"><b>Judge cannot see what the agent saw</b><br>Paywalls, bot blocks and personalized pages mean the judge may fetch a different page. Log the agent's retrieved text and verify against that snapshot as well as the live page.</div>
+<div class="card warn"><b>Live-web drift</b><br>Scores on live benchmarks move as the web changes. Date-stamp every run, rerun baselines on the same day, and keep a frozen-corpus benchmark for regression tests.</div>
+<div class="card violet"><b>Reference contamination</b><br>Public reference reports and gold deliverables can leak into training data. Keep a private held-out set (<a href="18-benchmark-pitfalls.html">Module 18</a>).</div>
+<div class="card violet"><b>Harness dependence</b><br>A real-work score is the model plus the harness plus the tools (<a href="21-harness-evals.html">Module 21</a>). GDPval-AA and vendor numbers can differ for this reason alone.</div>
+<div class="card accent"><b>One-shot vs iterative</b><br>Most benchmarks grade a single attempt with no feedback. Real work involves revision. If your product iterates with the user, evaluate the loop, for example with a simulated client who requests changes.</div>
+<div class="card accent"><b>Cost belongs in the headline</b><br>Report tokens, time and dollars per report next to quality. Anthropic found token usage explained most of its research system's BrowseComp variance (<a href="11-multi-agent-long-horizon.html">Module 11</a>).</div>
+</div>
+
+<h2>A checklist for research and real-work evals</h2>
+<div class="tablewrap"><table>
+<tr><th>Question</th><th>Method</th><th>Minimum setup</th><th>Main pitfall</th></tr>
+<tr><td>Does the report answer the question fully?</td><td>Task rubric or nugget coverage</td><td>Expert-written items per task, mandatory flags</td><td>Generic criteria ("is comprehensive")</td></tr>
+<tr><td>Is it better than a good report?</td><td>Reference-relative or pairwise judge</td><td>Reference per task, randomized order</td><td>Stale or weak reference</td></tr>
+<tr><td>Do the citations support the claims?</td><td>Claim extraction + passage check</td><td>Cached sources, NLI then judge cascade</td><td>Counting dead links as fabrication</td></tr>
+<tr><td>Are uncited claims safe?</td><td>Document-level fact check (DEER-style)</td><td>"Needs a citation?" judge + search verification</td><td>Only checking cited sentences</td></tr>
+<tr><td>Is it current?</td><td>Time-sensitive probes</td><td>Dated facts with known latest values</td><td>Probes that go stale themselves</td></tr>
+<tr><td>Is a deliverable acceptable?</td><td>Automated gates, then rubric</td><td>File, format and number checks</td><td>Gates that pass empty files</td></tr>
+<tr><td>Is it as good as a professional?</td><td>Blinded expert pairwise study</td><td>Human deliverables, 3 raters, bootstrap by task</td><td>Unblinded or unreasoned ratings</td></tr>
+<tr><td>Can it do the job in the real systems?</td><td>Simulated environment + checkpoints</td><td>Realistic initial state, scripted checks</td><td>Empty sandboxes that make tasks trivial</td></tr>
+<tr><td>At what cost?</td><td>Same runs</td><td>Tokens, time, dollars for agent and judge</td><td>Judge cost larger than agent cost, unnoticed</td></tr>
+</table></div>
+
+<div class="takeaways"><h3>Key takeaways</h3><ol>
+<li><b>Long, open-ended outputs need layered grading.</b> Automated checks where possible, rubrics for everyday iteration, expert comparisons for milestones.</li>
+<li><b>Separate report quality from citation quality.</b> DeepResearch Bench does this with RACE (reference-relative, adaptive criteria) and FACT (citation accuracy plus effective citations). Report a precision-like and a volume-like citation metric together.</li>
+<li><b>Faithfulness is not factuality.</b> A citation checker cannot catch a claim faithfully copied from a wrong source, and FACT-style checks never see uncited claims; DEER-style document-level fact-checking closes that gap.</li>
+<li><b>The citation pipeline is claim, source, passage, verdict,</b> with separate buckets for uncited and unreachable. Control its cost with passage retrieval, cascades, section scoping and sampling, and validate every cheaper stage.</li>
+<li><b>Real-work benchmarks grade in three ways:</b> expert pairwise against human deliverables (GDPval, RLI), rubrics (APEX, ResearchRubrics), or state checks in simulated environments (TheAgentCompany, Toolathlon).</li>
+<li><b>Know what the headline means.</b> Win-or-tie rate, automation rate and task success answer different questions, none of them is "jobs replaced", and small task counts give wide intervals.</li>
+<li><b>Build your own with the same parts:</b> a rubric with mandatory and negative items, a claim checker with an "escalate" exit, and a blinded, randomized, multi-rater pairwise study bootstrapped by task.</li>
+</ol></div>
+
+<h2>Check yourself</h2>
+<div class="quiz">
+<div class="q" data-answer="1"><p>1. In RACE, a target report's weighted score is 6.0 and the reference report's is 6.0. What is the relative score, and what does it mean?</p>
+<button class="opt">6.0: the report is above average</button>
+<button class="opt">0.5: the report is judged as good as the reference on this task's criteria</button>
+<button class="opt">1.0: the report matches the reference perfectly</button>
+<div class="why">RACE reports target ÷ (target + reference). Equal scores give 0.5, meaning parity with the reference, which is why the quality of the reference matters so much.</div></div>
+<div class="q" data-answer="2"><p>2. Agent A has 98% citation accuracy with 4 effective citations per report. Agent B has 85% accuracy with 60 effective citations. Which statement is right?</p>
+<button class="opt">A is clearly better because its accuracy is higher</button>
+<button class="opt">B is clearly better because it has more citations</button>
+<button class="opt">Neither metric alone decides it: A may be citing only safe, trivial claims; you need both numbers plus coverage of claims that need support</button>
+<div class="why">Accuracy is precision-like and effective citations is volume-like. Each is easy to game alone, which is why FACT reports both, and why citation coverage (claims needing support that have it) is worth adding.</div></div>
+<div class="q" data-answer="0"><p>3. Your citation checker marks every claim in a report as supported, yet an expert finds three false statements. Which explanation fits best?</p>
+<button class="opt">The false claims were faithfully copied from wrong sources, or were uncited: faithfulness checks do not test factuality or uncited text</button>
+<button class="opt">The NLI model must be broken</button>
+<button class="opt">The report is too short to evaluate</button>
+<div class="why">This is the bottom-left cell of the faithfulness vs factuality grid, plus the blind spot for uncited claims. Add document-level fact-checking and source-quality scoring.</div></div>
+<div class="q" data-answer="1"><p>4. In TheAgentCompany, an agent passes 4 of 8 checkpoints on a task. What is its partial-completion score?</p>
+<button class="opt">0.50</button>
+<button class="opt">0.25</button>
+<button class="opt">0.00</button>
+<div class="why">0.5 × 4/8 + 0.5 × 0 = 0.25. Half of the credit is reserved for full completion, so half the work earns a quarter of the score.</div></div>
+<div class="q" data-answer="2"><p>5. A headline says "AI can now automate 2.5% of remote jobs", citing the Remote Labor Index launch result. What is the most accurate correction?</p>
+<button class="opt">It should say 2.5% of all jobs</button>
+<button class="opt">It is correct as written</button>
+<button class="opt">It is the share of 240 sampled freelance projects where the best agent's deliverable was judged acceptable to a client; with 6 projects the interval is wide, and projects are not jobs</button>
+<div class="why">Automation rate is per project, on a specific sample, one attempt, judged against a client-acceptance bar. Six successes out of 240 gives a 95% interval of roughly 1.2% to 5.3%.</div></div>
+<div class="q" data-answer="0"><p>6. Your judge budget for verifying citations is ten times the agent's cost. Which change keeps the most signal for the least money?</p>
+<button class="opt">Send only the retrieved passage per claim, cascade cheap checks before the LLM judge, and sample claims outside the summary, validating each cheap stage against human labels</button>
+<button class="opt">Switch to the cheapest judge model and change nothing else</button>
+<button class="opt">Stop checking citations and rely on the rubric score</button>
+<div class="why">Passage retrieval, cascades and stratified sampling cut cost by large factors while keeping the verdicts that matter; a cheaper judge without validation just gives a cheaper wrong answer.</div></div>
+</div>
+
+<details>
+<summary><b>Expert corner: interview questions</b></summary>
+<ol>
+<li><b>"Design an eval for our deep-research product."</b> Collect 30 to 50 real queries stratified by type. Per task: an expert rubric with mandatory and negative items, a reference report for relative scoring, and a nugget list for coverage. Run a claim-level citation pipeline (extract, fetch, passage, cascade to a judge) reporting citation accuracy, citation coverage, unreachable rate and effective citations, plus a document-level check of uncited claims. Add time-sensitive probes for recency and questions with no clean answer for calibration. Run a frozen-corpus set (BrowseComp-Plus style) for regressions and a live-web set for realism, date-stamped. Validate every judge against expert labels. Report cost per report next to quality.</li>
+<li><b>"How does RACE differ from asking a judge for a 1-to-10 score?"</b> It adapts dimension weights and criteria to each task, scores against concrete criteria rather than a vibe, and anchors the score to a reference report judged in the same call, which cancels much of the judge's absolute-scale drift. The cost is needing a good reference per task, and scores that are relative to it.</li>
+<li><b>"What does FACT miss, and how would you fix it?"</b> It checks only claims that carry a citation, and it checks support rather than truth. Add a "does this sentence need a citation?" judge and search-based verification of uncited claims (DEER-style), source-quality scoring, and factuality checks against trusted references for key numbers.</li>
+<li><b>"Compare GDPval and the Remote Labor Index."</b> Both use real professional deliverables as the bar and human experts as graders. GDPval asks experts which of two deliverables is better (win-or-tie rate against a professional), on tasks written by occupational experts. RLI asks whether the AI deliverable would be accepted by a client as the paid project (automation rate), on real freelance projects, and adds Elo between agents. GDPval measures closeness to expert quality; RLI measures the rate of end-to-end acceptable work.</li>
+<li><b>"When would you build a simulated environment like TheAgentCompany instead of using expert graders?"</b> When the work happens in systems whose state you can inspect, when you need to rerun on every change, and when correctness is mostly objective (right ticket closed, right file, right numbers). Keep expert or rubric grading for the parts that are about quality and judgment, and seed the environment with realistic data so tasks are not trivially easy.</li>
+<li><b>"Your pairwise study shows 52% win-or-tie against professionals. Can you claim parity?"</b> Only with the interval, computed by bootstrapping over tasks; with 40 tasks it could easily span the low 40s to the low 60s. Also check rater agreement, whether blinding held (could raters tell?), whether ties dominate, how tasks were sampled, and whether the result holds per occupation rather than only on average.</li>
+</ol>
+</details>
+
+<h2>Sources and further reading</h2>
+<ul class="sources">
+<li>Du et al., <a href="https://arxiv.org/abs/2506.11763">DeepResearch Bench: A Comprehensive Benchmark for Deep Research Agents</a> (June 2025), and the <a href="https://deepresearch-bench.github.io/">project site</a>. Source for RACE and FACT.</li>
+<li><a href="https://arxiv.org/html/2512.17776v2">DEER: A Benchmark for Evaluating Deep Research Agents on Expert Report Generation</a> (December 2025; <a href="https://icml.cc/virtual/2026/poster/64961">ICML 2026 poster</a>).</li>
+<li>Sharma et al. (Scale AI), <a href="https://arxiv.org/abs/2511.07685">ResearchRubrics: A Benchmark of Prompts and Rubrics for Evaluating Deep Research Agents</a> (2025, ICLR 2026).</li>
+<li><a href="https://arxiv.org/abs/2510.14240">LiveResearchBench: A Live Benchmark for User-Centric Deep Research in the Wild</a> (Salesforce AI Research, 2025, ICLR 2026).</li>
+<li><a href="https://arxiv.org/abs/2506.21506">Mind2Web 2: Evaluating Agentic Search with Agent-as-a-Judge</a> (OSU NLP Group, 2025, NeurIPS 2025); <a href="https://osu-nlp-group.github.io/Mind2Web-2/">project site</a>.</li>
+<li><a href="https://arxiv.org/abs/2508.06600">BrowseComp-Plus: A More Fair and Transparent Evaluation Benchmark of Deep-Research Agent</a> (2025, ACL 2026); <a href="https://github.com/texttron/BrowseComp-Plus">code</a>.</li>
+<li>FutureSearch, <a href="https://arxiv.org/abs/2506.06287">Deep Research Bench: Evaluating AI Web Research Agents</a> (2025).</li>
+<li>Gao et al., <a href="https://arxiv.org/abs/2305.14627">Enabling Large Language Models to Generate Text with Citations (ALCE)</a> (2023); Min et al., <a href="https://arxiv.org/abs/2305.14251">FActScore</a> (2023); Wei et al., <a href="https://arxiv.org/abs/2403.18802">Long-form factuality in large language models (SAFE, LongFact)</a> (2024); Rashkin et al., <a href="https://arxiv.org/abs/2112.12870">Measuring Attribution in Natural Language Generation Models (AIS)</a>.</li>
+<li>Scale AI and Center for AI Safety, <a href="https://scale.com/blog/rli">The Remote Labor Index: Measuring the Automation of Work</a> and <a href="https://arxiv.org/abs/2510.26787">paper (arXiv 2510.26787)</a> (October 2025); <a href="https://labs.scale.com/leaderboard/rli">live leaderboard</a>; CAIS, <a href="https://safe.ai/blog/significant-increase-in-digital-labor-automation">A Significant Increase in Digital Labor Automation</a>.</li>
+<li>Xu et al., <a href="https://arxiv.org/html/2412.14161v2">TheAgentCompany: Benchmarking LLM Agents on Consequential Real World Tasks</a> (2024, NeurIPS 2025 Datasets and Benchmarks); <a href="https://github.com/TheAgentCompany/TheAgentCompany">code</a>.</li>
+<li>Li et al., <a href="https://arxiv.org/abs/2510.25726">The Tool Decathlon (Toolathlon): Benchmarking Language Agents for Diverse, Realistic, and Long-Horizon Task Execution</a> (2025, ICLR 2026); <a href="https://toolathlon.xyz/introduction">site</a>.</li>
+<li>OpenAI, <a href="https://openai.com/index/gdpval/">GDPval</a> and <a href="https://arxiv.org/abs/2510.04374">paper</a> (2025); Artificial Analysis, <a href="https://artificialanalysis.ai/evaluations/gdpval-aa">GDPval-AA leaderboard</a>.</li>
+<li>Mercor, <a href="https://arxiv.org/abs/2509.25721">The AI Productivity Index (APEX)</a> (2025) and <a href="https://www.mercor.com/blog/introducing-apex-agents/">Introducing APEX-Agents</a>.</li>
+<li>Anthropic, <a href="https://www.anthropic.com/engineering/multi-agent-research-system">How we built our multi-agent research system</a> (June 2025), the case study in Module 11.</li>
+<li>Zhuge et al., <a href="https://arxiv.org/abs/2410.10934">Agent-as-a-Judge: Evaluate Agents with Agents</a> (2024), background for Mind2Web 2's judge (Module 13).</li>
+</ul>
+
+</article>
+</main>
+</div>
+</body>
+</html>

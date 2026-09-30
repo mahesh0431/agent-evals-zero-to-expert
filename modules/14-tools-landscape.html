@@ -21,6 +21,7 @@
 <div class="objectives">
 <h3>By the end of this module you can</h3>
 <ul>
+<li>Place red-teaming scanners (garak, PyRIT), transcript analysis (Docent), shared eval collections (Inspect Evals) and third-party measurement (Artificial Analysis, OpenRouter) next to the core eval tools, and say what each can and cannot tell you.</li>
 <li>Sort any eval tool into one of five families and place it on a two-axis map (offline vs online, library vs hosted platform).</li>
 <li>Explain what each major tool (Inspect, promptfoo, DeepEval, Braintrust, LangSmith, Langfuse, Phoenix, Weave, Opik, MLflow, Ragas, TruLens, lm-eval-harness, HELM and the cloud services) is best at, and where it is weak.</li>
 <li>Read and write the same small eval in five different tools, and translate vocabulary between them.</li>
@@ -280,6 +281,19 @@ def simpleqa():
 </figure>
 
 <div class="card violet" style="margin:16px 0">
+<h4>Inspect Evals (the <code>inspect_evals</code> collection)</h4>
+<p><b>Maker:</b> the UK AI Security Institute with community contributors (repository <code>UKGovernmentBEIS/inspect_evals</code>). <b>What it is:</b> not a new tool but a <b>library of ready-made evals</b> written for Inspect: 200+ public benchmarks, from knowledge and reasoning sets such as GPQA to agentic and coding benchmarks such as SWE-bench, each packaged as an Inspect task you can run with one command.</p>
+<ul>
+<li><b>Why it matters:</b> re-implementing a benchmark yourself is where many silent differences creep in (prompt wording, answer parsing, scorer details). Using a shared implementation makes your number comparable with other people who used the same one.</li>
+<li><b>The catch:</b> a shared implementation is still <em>an</em> implementation. It may differ from the original paper's prompt or scorer. Report "GPQA Diamond as implemented by <code>inspect_evals</code>, version X, 3 epochs", not just "GPQA" (<a href="18-benchmark-pitfalls.html">Module 18</a>).</li>
+</ul>
+<pre data-lang="bash"><code>pip install inspect-evals
+# run a ready-made benchmark against any model Inspect supports
+inspect eval inspect_evals/gpqa_diamond --model &lt;provider/model&gt; --epochs 3 --limit 50
+inspect view                       # browse the logs</code></pre>
+</div>
+
+<div class="card violet" style="margin:16px 0">
 <h4>EleutherAI lm-evaluation-harness</h4>
 <p><b>Maker:</b> EleutherAI. <b>Licence:</b> MIT. <b>Language:</b> Python, with tasks defined in YAML plus Jinja2 prompt templates.</p>
 <ul>
@@ -397,6 +411,14 @@ async def guess_city(question: str) -&gt; str:
     return 'Paris'
 
 dataset.evaluate_sync(guess_city).print()</code></pre>
+</div>
+
+<div class="card good" style="margin:16px 0">
+<h4>Giskard and Strands Evals</h4>
+<ul>
+<li><b>Giskard</b> (Giskard AI, a French company): an open-source Python testing library (the repository is now <code>Giskard-AI/giskard-oss</code>, described as an evaluation and testing library for LLM agents) plus a commercial hub. It is best known for two things. The <b>scan</b> automatically probes an LLM app for weaknesses such as prompt injection, harmful content, sensitive-information disclosure, hallucination and lack of robustness, then turns what it finds into a reusable test suite. <b>RAGET</b> generates a question-and-answer test set from your own knowledge base to evaluate a RAG pipeline (<a href="06-tool-use-and-conversation.html">Module 06</a>). The library has been reorganized more than once, so copy code from its current docs rather than from older blog posts.</li>
+<li><b>Strands Evals</b>: AWS's open-source Strands Agents SDK has a companion evaluation package for agents built with it, with checks on the final output and on the agent's trajectory (the sequence of tool calls), including LLM-judged ones. It is young, its API is still moving, and its details could not be re-checked against a primary source for this page; if you build on Strands, start from the evaluation section of the Strands documentation. If you do not, it is one more example of the pattern this module keeps showing: every agent framework now ships its own eval harness, and all of them share the dataset, task, scorer shape.</li>
+</ul>
 </div>
 
 <h3>Observability plus eval platforms</h3>
@@ -585,6 +607,16 @@ results = mlflow.genai.evaluate(
 )</code></pre>
 </div>
 
+<div class="card accent" style="margin:16px 0">
+<h4>Galileo</h4>
+<p><b>Maker:</b> Galileo (commercial SaaS, with enterprise deployment options). <b>What it is:</b> an evaluation and observability platform for LLM apps and agents: tracing, experiments, metrics dashboards and real-time checks on production traffic.</p>
+<ul>
+<li><b>Distinctive idea:</b> <b>Luna</b>, which Galileo calls "evaluation foundation models": small models trained to act as evaluators, pitched as a cheaper and faster alternative to running a large LLM judge on every trace, and fast enough to use as an inline guardrail (<a href="15-production-evals.html">Module 15</a> explains why that latency matters).</li>
+<li><b>Agents:</b> Galileo has marketed an agent reliability offering (including a free tier announced in 2025) aimed at tracing and scoring multi-step agents.</li>
+<li><b>How to judge it:</b> like any vendor judge, a Luna score is someone else's grader. Before you gate on it, measure its agreement with your own human labels on your own traces (<a href="13-llm-as-judge.html">Module 13</a>). Its SDK syntax could not be verified from a primary source for this page, so no snippet is shown.</li>
+</ul>
+</div>
+
 <h3>Metric and judge libraries</h3>
 
 <div class="card warn" style="margin:16px 0">
@@ -656,6 +688,7 @@ session.get_leaderboard()</code></pre>
         "reference": "{{ item.correct_label }}",
     }],
 )</code></pre>
+<p><b>Agent evals and trace grading.</b> OpenAI's docs also describe evaluating whole agent workflows, not just single responses. <b>Trace grading</b> attaches graders to the <em>trace</em> of an agent run (the record of model calls, tool calls, handoffs and guardrail checks that the Agents SDK captures), so you can score where in a workflow things went wrong, not only whether the final answer was right. The AgentKit launch (October 2025) bundled Agent Builder, a visual workflow editor, with eval features such as datasets, trace grading and automated prompt optimization. These sit on the same hosted evals and graders stack whose deprecation is described above, so check their status on OpenAI's deprecations page before building on them. The idea outlives the product: grade the trajectory, not just the answer (<a href="05-agents-are-different.html">Module 05</a>). <a href="16-how-labs-do-evals.html">Module 16</a> covers OpenAI's agent-eval approach in depth.</p>
 </div>
 
 <div class="card" style="margin:16px 0">
@@ -672,6 +705,157 @@ eval_result = client.evals.evaluate(
     metrics=[types.Metric(name='exact_match'), types.Metric(name='rouge_l_sum'), types.RubricMetric.TEXT_QUALITY],
 )</code></pre>
 </div>
+
+<h2>Beyond the five families: red teaming, transcripts, public numbers</h2>
+<p>Three more kinds of tool sit next to the five families. They are not rivals to your harness or platform; each answers a question the others do not. <b>Red-teaming scanners</b> ask "how can this be broken?". <b>Transcript analysis tools</b> ask "what is actually happening across thousands of runs?". <b>Third-party measurement</b> asks "what do independent runs say about models I have not tested yet?". The map at the end of this section places them next to the tools you already know.</p>
+
+<h3>Red-teaming scanners</h3>
+<p>The tools above mostly run datasets <em>you</em> wrote. Red-teaming scanners bring the dataset with them: large, curated families of attacks (jailbreaks, prompt injection, encoding tricks, data-leak bait), a way to send them to your model or app, and a detector that decides whether each attack got through. Think of them as an eval tool with an adversarial test generator built in. The concepts behind them (attack success rate, injection, jailbreak robustness) are in <a href="17-safety-evals.html">Module 17</a> and <a href="25-agent-security-evals.html">Module 25</a>; here is how the two best-known open-source scanners are built.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Two red-teaming pipelines. garak: probes send attack prompts to a generator, the model or app under test; detectors flag failed responses; a report gives the failure rate per probe. PyRIT: an orchestrator or attack strategy passes prompts through converters that encode, translate or rephrase them, to a target; scorers judge each response, and in multi-turn attacks the result feeds back so the attacker adapts its next turn.">
+<defs><marker id="m14l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="30" class="b">garak: sweep many known attacks, like a network scanner</text>
+<rect class="box bad" x="20" y="44" width="170" height="56" rx="8"/>
+<text x="105" y="67" text-anchor="middle" class="b">Probes</text>
+<text x="105" y="86" text-anchor="middle" class="sm">attack prompts by family</text>
+<rect class="box plain" x="225" y="44" width="170" height="56" rx="8"/>
+<text x="310" y="67" text-anchor="middle" class="b">Generator</text>
+<text x="310" y="86" text-anchor="middle" class="sm">the model or app</text>
+<rect class="box warn" x="430" y="44" width="170" height="56" rx="8"/>
+<text x="515" y="67" text-anchor="middle" class="b">Detectors</text>
+<text x="515" y="86" text-anchor="middle" class="sm">flag failed responses</text>
+<rect class="box accent" x="635" y="44" width="170" height="56" rx="8"/>
+<text x="720" y="67" text-anchor="middle" class="b">Report</text>
+<text x="720" y="86" text-anchor="middle" class="sm">failure rate per probe</text>
+<line class="ln bad flow" x1="190" y1="72" x2="223" y2="72" marker-end="url(#m14l)"/>
+<line class="ln" x1="395" y1="72" x2="428" y2="72" marker-end="url(#m14l)"/>
+<line class="ln" x1="600" y1="72" x2="633" y2="72" marker-end="url(#m14l)"/>
+<text x="20" y="160" class="b">PyRIT: orchestrate adaptive, multi-turn attacks</text>
+<rect class="box bad" x="20" y="174" width="170" height="56" rx="8"/>
+<text x="105" y="197" text-anchor="middle" class="b">Orchestrator</text>
+<text x="105" y="216" text-anchor="middle" class="sm">single or multi-turn attack</text>
+<rect class="box violet" x="225" y="174" width="170" height="56" rx="8"/>
+<text x="310" y="197" text-anchor="middle" class="b">Converters</text>
+<text x="310" y="216" text-anchor="middle" class="sm">encode, translate, rephrase</text>
+<rect class="box plain" x="430" y="174" width="170" height="56" rx="8"/>
+<text x="515" y="197" text-anchor="middle" class="b">Target</text>
+<text x="515" y="216" text-anchor="middle" class="sm">model, app or endpoint</text>
+<rect class="box warn" x="635" y="174" width="170" height="56" rx="8"/>
+<text x="720" y="197" text-anchor="middle" class="b">Scorers</text>
+<text x="720" y="216" text-anchor="middle" class="sm">judge or classifier</text>
+<line class="ln bad flow" x1="190" y1="202" x2="223" y2="202" marker-end="url(#m14l)"/>
+<line class="ln" x1="395" y1="202" x2="428" y2="202" marker-end="url(#m14l)"/>
+<line class="ln" x1="600" y1="202" x2="633" y2="202" marker-end="url(#m14l)"/>
+<path class="ln dash bad" d="M720,230 L720,270 L105,270 L105,234" marker-end="url(#m14l)"/>
+<text x="412" y="290" text-anchor="middle" class="sm">score feeds back: an attacker LLM adapts its next turn (for example Crescendo)</text>
+<text x="412" y="316" text-anchor="middle" class="sm t-muted">every exchange is stored, so a human can review and reuse successful attacks</text>
+</svg>
+<figcaption><b>Two shapes of automated red teaming.</b> garak is breadth-first: many fixed attack families, one pass, a report of which ones got through. PyRIT is depth-first: it composes transformations and runs adaptive conversations where an attacker model reacts to each reply. Either way, the detector or scorer decides what counts as a "hit", so it needs validating like any judge.</figcaption>
+</figure>
+
+<div class="card bad" style="margin:16px 0">
+<h4>garak</h4>
+<p><b>Maker:</b> NVIDIA (open source; repository <code>NVIDIA/garak</code>, tagline "the LLM vulnerability scanner"). <b>Language:</b> Python CLI.</p>
+<ul>
+<li><b>Core abstractions:</b> <b>probes</b> (families of attack prompts: jailbreaks, prompt injection, encoding tricks, data leakage, toxicity, malware generation and more), <b>generators</b> (connectors to the model or app under test), <b>detectors</b> (decide whether a response shows the failure), and a report with the failure rate per probe. Its README compares it to network tools such as nmap and Metasploit, but for LLMs.</li>
+<li><b>Best at:</b> a broad, repeatable sweep of known weaknesses before launch and after every model swap.</li>
+</ul>
+<pre data-lang="bash"><code>python -m pip install -U garak
+export OPENAI_API_KEY="..."
+# run the encoding-based prompt-injection probes against one hosted model
+python -m garak --model_type openai --model_name gpt-4o-mini --probes encoding
+# flag names change between releases (newer ones also accept --target_type and
+# --target_name); check `python -m garak --help` for your installed version</code></pre>
+</div>
+
+<div class="card bad" style="margin:16px 0">
+<h4>PyRIT</h4>
+<p><b>Maker:</b> Microsoft (its AI Red Team). "The Python Risk Identification Tool for generative AI", open source (repository <code>microsoft/PyRIT</code>). <b>Language:</b> Python library, usually driven from notebooks.</p>
+<ul>
+<li><b>Core abstractions:</b> <b>targets</b> (the model, app or endpoint), <b>converters</b> (transform a prompt: encodings, translation, rephrasing, and other modalities), <b>scorers</b> (LLM judges or classifiers that decide whether an attack succeeded), <b>memory</b> (every exchange stored for later analysis), and <b>orchestrators</b> or attack strategies that run single-turn batches or multi-turn attacks such as Crescendo, where an attacker model escalates step by step. Recent releases have reorganized these names, so follow the current docs.</li>
+<li><b>Best at:</b> helping a human red team scale up: automating the boring parts, composing attacks, and keeping a searchable record. Multi-turn attacks matter for agents, which are usually broken over several turns, not one.</li>
+</ul>
+</div>
+
+<div class="callout warn"><span class="t">A scanner finds failures; it does not give you a safety score</span>
+<p>Attack success rates from different scanners are not comparable: they use different attack sets, different detectors and different definitions of "success". Use a scanner as a <b>discovery</b> tool. The failures it finds become cases in your own regression suite (run by Inspect, promptfoo or DeepEval), graded by a detector you have checked against human labels. promptfoo's red-team mode and Giskard's scan, covered above, play the same role inside tools you may already use.</p>
+</div>
+
+<h3>Transcript analysis</h3>
+<p>Once agent evals produce thousands of long transcripts, reading them all is impossible and reading ten at random misses rare problems. A new kind of tool helps a human search and summarize transcripts at scale. This is error analysis (<a href="12-error-analysis.html">Module 12</a>) with power tools.</p>
+
+<div class="card accent" style="margin:16px 0">
+<h4>Docent (Transluce)</h4>
+<p><b>Maker:</b> Transluce, a non-profit AI research lab. <b>What it is:</b> a tool for analyzing large collections of agent transcripts, as described on its site: you load the runs from an eval, then ask questions in plain language ("find runs where the agent edited the tests", "which runs gave up after a tool error?"), cluster similar behaviors, and jump to the exact moments that match.</p>
+<ul>
+<li><b>Best at:</b> finding what the score hides: broken tasks, environment bugs, reward hacking, agents that found an answer key, or a failure mode that only appears in 2% of runs. These are exactly the problems that make a benchmark number lie (<a href="18-benchmark-pitfalls.html">Module 18</a>).</li>
+<li><b>How it fits:</b> it complements your eval harness rather than replacing it. Inspect Scout (in the Inspect card above) and Patronus Percival (judge libraries, above) aim at related problems. Whatever the tool, an LLM that searches transcripts can miss or invent matches, so open and read the transcripts it points you to before you believe a pattern.</li>
+</ul>
+</div>
+
+<h3>Third-party measurement</h3>
+<p>Finally, some sources are not tools you run at all: they are organizations that run evals and publish the numbers. They are useful for a shortlist and dangerous as a final answer.</p>
+<div class="grid2">
+<div class="card warn"><h4>Artificial Analysis</h4><p>An independent company that runs its own evaluations of models and of the API endpoints that serve them. It publishes a composite <b>Intelligence Index</b> (built from about ten evals across agentic tasks, coding, scientific reasoning and general knowledge, with weights and versions documented on its methodology page), and it measures <b>output speed, latency and price</b> per provider. Good for "which three models should I test?". Remember that a composite index reflects its authors' choice of evals and weights, that the index version changes over time, and that its harness is not yours.</p></div>
+<div class="card warn"><h4>OpenRouter</h4><p>An API router: one endpoint and one bill for many models from many providers. Its public <b>rankings</b> show which models and apps consume the most tokens through OpenRouter. That is a <b>usage</b> signal (popularity, price-performance as judged by real buyers), not a quality score, and it covers only OpenRouter's own traffic. A second lesson it makes visible: the same open-weights model can be served by several providers, and endpoints can differ (for example in quantization, context limits or tool-call handling), so evaluate the exact endpoint you will use.</p></div>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 560" role="img" aria-label="The landscape map extended with newer tools. On the same axes (offline to online, code-first to hosted), Inspect Evals sits bottom-left beside Inspect; garak and PyRIT sit in the offline, code-first region; Giskard and Strands Evals sit near promptfoo and DeepEval; Docent sits near the middle as a transcript analysis tool used on both offline runs and production traces; Galileo sits top-right with the hosted platforms. Outside the map, a separate column holds public measurement: Artificial Analysis and OpenRouter rankings.">
+<defs><marker id="m14k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<line class="ln" x1="70" y1="470" x2="632" y2="470" marker-end="url(#m14k)"/>
+<line class="ln" x1="70" y1="470" x2="70" y2="22" marker-end="url(#m14k)"/>
+<line class="ln dash" x1="350" y1="30" x2="350" y2="466"/>
+<line class="ln dash" x1="74" y1="250" x2="628" y2="250"/>
+<text x="350" y="496" text-anchor="middle" class="sm">offline, pre-release  ←→  online, production</text>
+<text x="34" y="250" text-anchor="middle" class="sm" transform="rotate(-90 34 250)">code-first library  ←→  hosted platform</text>
+
+<!-- existing tools, muted -->
+<circle cx="150" cy="300" r="4" class="fill-muted"/><text x="158" y="304" class="sm t-muted">Inspect</text>
+<circle cx="150" cy="190" r="4" class="fill-muted"/><text x="158" y="194" class="sm t-muted">OpenAI Evals API (ending)</text>
+<circle cx="370" cy="310" r="4" class="fill-muted"/><text x="378" y="314" class="sm t-muted">promptfoo</text>
+<circle cx="300" cy="400" r="4" class="fill-muted"/><text x="308" y="404" class="sm t-muted">DeepEval</text>
+<circle cx="560" cy="290" r="4" class="fill-muted"/><text x="568" y="294" class="sm t-muted">Langfuse</text>
+<circle cx="540" cy="150" r="4" class="fill-muted"/><text x="548" y="154" class="sm t-muted">LangSmith</text>
+<circle cx="480" cy="110" r="4" class="fill-muted"/><text x="488" y="114" class="sm t-muted">Braintrust</text>
+
+<!-- new tools -->
+<circle cx="100" cy="420" r="6" class="fill-violet"/><text x="110" y="424" class="b">Inspect Evals</text>
+<circle cx="130" cy="350" r="6" class="fill-bad"/><text x="140" y="354" class="b">garak</text>
+<circle cx="220" cy="330" r="6" class="fill-bad"/><text x="230" y="334" class="b">PyRIT</text>
+<circle cx="250" cy="445" r="6" class="fill-good"/><text x="260" y="449" class="b">Strands Evals</text>
+<circle cx="400" cy="380" r="6" class="fill-good"/><text x="410" y="384" class="b">Giskard</text>
+<text x="410" y="400" class="sm">scan + RAGET; hub is hosted</text>
+<circle cx="350" cy="250" r="7" class="fill-accent pulse"/><text x="362" y="236" class="b">Docent</text>
+<text x="362" y="222" class="sm">transcripts from both sides</text>
+<circle cx="520" cy="66" r="6" class="fill-accent"/><text x="530" y="70" class="b">Galileo</text>
+<text x="530" y="86" class="sm">Luna evaluators</text>
+
+<!-- outside the map -->
+<rect class="box dashed" x="652" y="30" width="158" height="300" rx="10"/>
+<text x="731" y="54" text-anchor="middle" class="b">Outside the map</text>
+<text x="731" y="72" text-anchor="middle" class="sm">numbers others publish;</text>
+<text x="731" y="87" text-anchor="middle" class="sm">you read, not run</text>
+<circle cx="668" cy="120" r="6" class="fill-warn"/><text x="680" y="124" class="b">Artificial</text>
+<text x="680" y="140" class="b">Analysis</text>
+<text x="680" y="158" class="sm">index, speed, price</text>
+<circle cx="668" cy="200" r="6" class="fill-warn"/><text x="680" y="204" class="b">OpenRouter</text>
+<text x="680" y="222" class="sm">usage rankings</text>
+<text x="668" y="268" class="sm t-muted">related: public</text>
+<text x="668" y="284" class="sm t-muted">leaderboards</text>
+<text x="668" y="300" class="sm t-muted">(Module 18)</text>
+
+<!-- legend -->
+<circle cx="80" cy="528" r="5" class="fill-muted"/><text x="90" y="532" class="sm">already on the map</text>
+<circle cx="210" cy="528" r="5" class="fill-violet"/><text x="220" y="532" class="sm">eval collection</text>
+<circle cx="320" cy="528" r="5" class="fill-bad"/><text x="330" y="532" class="sm">red-team scanner</text>
+<circle cx="440" cy="528" r="5" class="fill-good"/><text x="450" y="532" class="sm">dev test</text>
+<circle cx="510" cy="528" r="5" class="fill-accent"/><text x="520" y="532" class="sm">platform / analysis</text>
+<circle cx="640" cy="528" r="5" class="fill-warn"/><text x="650" y="532" class="sm">public measurement</text>
+</svg>
+<figcaption><b>The landscape map, extended (qualitative positioning, not measured data).</b> Same axes as the first map. Most new arrivals sit in the offline, code-first half, because red teaming and benchmark collections run before release. Docent sits on the crossing point because transcripts come from both offline runs and production. Artificial Analysis and OpenRouter are drawn outside the map on purpose: they are sources of numbers, not tools in your pipeline.</figcaption>
+</figure>
 
 <h2>What changed recently</h2>
 <p>Tool choice is partly a bet on who will still maintain the tool in two years. The last two years saw acquisitions, handovers and one shutdown.</p>
@@ -735,6 +919,13 @@ eval_result = client.evals.evaluate(
 <tr><td><b>Patronus AI</b></td><td>Closed</td><td>?</td><td>Judge models, agent trace debugging</td><td><span class="y">Y</span> Percival</td><td><span class="y">Y</span> image-to-text</td><td><span class="y">Y</span></td><td><span class="y">Y</span></td><td>?</td><td>SaaS</td></tr>
 <tr><td><b>OpenAI Evals API</b></td><td>Closed, ends 2026-11-30</td><td>API</td><td>Hosted evals + RFT graders</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> score / label model</td><td>–</td><td>API</td><td>Dashboard</td></tr>
 <tr><td><b>Google Gen AI eval / ADK</b></td><td>Closed service</td><td>Py</td><td>Rubric + agent trajectory evals</td><td><span class="y">Y</span> trajectory metrics</td><td>?</td><td><span class="y">Y</span> rubrics</td><td>?</td><td><span class="y">Y</span> pytest AgentEvaluator</td><td>Cloud console</td></tr>
+<tr><td><b>Inspect Evals</b></td><td>Open source</td><td>Py</td><td>200+ ready-made benchmark implementations for Inspect</td><td><span class="y">Y</span> agentic benchmarks</td><td>?</td><td><span class="p">P</span> via Inspect scorers</td><td>Inspect logs</td><td>CLI</td><td>Inspect View</td></tr>
+<tr><td><b>Giskard</b></td><td>Open-source library; hub commercial</td><td>Py</td><td>Vulnerability scan, RAG test-set generation</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span></td><td>?</td><td>?</td><td>Hub</td></tr>
+<tr><td><b>Strands Evals</b></td><td>Open source</td><td>Py</td><td>Evals for agents built on Strands</td><td><span class="y">Y</span> trajectory checks</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
+<tr><td><b>Galileo</b></td><td>Closed</td><td>?</td><td>Observability + evals, Luna evaluator models</td><td><span class="p">P</span></td><td>?</td><td><span class="y">Y</span> Luna</td><td><span class="y">Y</span></td><td>?</td><td>SaaS</td></tr>
+<tr><td><b>garak</b></td><td>Open source (NVIDIA)</td><td>Py</td><td>LLM vulnerability scanning</td><td>?</td><td>?</td><td><span class="p">P</span> detectors</td><td>–</td><td>CLI</td><td>Report files</td></tr>
+<tr><td><b>PyRIT</b></td><td>Open source (Microsoft)</td><td>Py</td><td>Red-team orchestration, multi-turn attacks</td><td><span class="y">Y</span> multi-turn</td><td><span class="p">P</span> converters</td><td><span class="y">Y</span> scorers</td><td>Memory store</td><td>?</td><td>Notebooks</td></tr>
+<tr><td><b>Docent</b></td><td>?</td><td>?</td><td>Searching and clustering agent transcripts</td><td><span class="y">Y</span> transcripts</td><td>?</td><td><span class="p">P</span> LLM-powered search</td><td>Ingests runs</td><td>–</td><td>Web UI</td></tr>
 <tr><td><b>Anthropic Console</b></td><td>Closed</td><td>UI</td><td>Test-case generation + side-by-side</td><td>–</td><td>?</td><td>Human 5-point grading</td><td>–</td><td>–</td><td>Console</td></tr>
 </table></div>
 
@@ -1116,6 +1307,8 @@ run = client.evals.runs.create(
 <div class="card accent"><h4>Production tracing + experiments UI</h4><p>Hosted and polished: <b>Braintrust</b> or <b>LangSmith</b> (especially on LangChain/LangGraph), or <b>Weave</b> if you already use W&amp;B. Self-hosted or open: <b>Langfuse</b>, <b>Phoenix</b>, <b>Opik</b>, <b>MLflow</b>.</p></div>
 <div class="card warn"><h4>RAG quality</h4><p><b>Ragas</b> or <b>TruLens</b> metrics (faithfulness, context relevance, the RAG triad), called from whatever harness you already run.</p></div>
 <div class="card"><h4>Single-vendor stack</h4><p>On Google: <b>ADK eval</b> and the <b>Gen AI evaluation service</b>. On Azure: <b>Foundry evaluation</b>. OpenAI-only: the hosted Evals API is ending, so use <b>promptfoo</b> (now OpenAI-owned) instead.</p></div>
+<div class="card bad"><h4>Red teaming and security scans</h4><p><b>garak</b> for a broad sweep of known attack families; <b>PyRIT</b> for orchestrated, multi-turn and human-in-the-loop red teaming; <b>promptfoo</b> or <b>Giskard</b> if you want scans inside the tool that already runs your tests. Turn every finding into a regression case (<a href="25-agent-security-evals.html">Module 25</a>).</p></div>
+<div class="card accent"><h4>Too many transcripts to read</h4><p><b>Docent</b> or <b>Inspect Scout</b> to search and cluster agent runs; your trace platform's filters for production. Then read the transcripts they surface yourself (<a href="12-error-analysis.html">Module 12</a>).</p></div>
 <div class="card bad"><h4>Caveats</h4><p>No tool fixes a bad dataset or an unvalidated judge. Most of the value comes from <a href="12-error-analysis.html">error analysis</a> and <a href="13-llm-as-judge.html">judge calibration</a>, which you can do in any of these tools, or in a spreadsheet.</p></div>
 </div>
 
@@ -1344,6 +1537,8 @@ run = client.evals.runs.create(
 <li>Licences are a spectrum: permissive open source, open core or source-available (Langfuse, Phoenix), open SDK with a hosted platform, and fully closed services.</li>
 <li>An LLM judge sends graded text to its model provider even when the eval library runs locally. Privacy reviews must cover that path.</li>
 <li>The real lock-in is your datasets, labels and judge prompts. Keep them in version control you own; the OpenAI Evals shutdown shows why.</li>
+<li>Next to the five families sit red-teaming scanners (garak, PyRIT), transcript analysis (Docent, Inspect Scout) and third-party measurement (Artificial Analysis, OpenRouter rankings). Scanners discover failures, analysis tools find patterns, public numbers build a shortlist; none of them replaces your own eval.</li>
+<li>A score from a shared implementation or a public index is "benchmark as implemented by X, version Y". Pin and report the version, and do not compare attack success rates across different scanners.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1378,6 +1573,16 @@ run = client.evals.runs.create(
 <button class="opt">A statistical test comparing two systems</button>
 <button class="opt">A single trace of one request</button>
 <div class="why">They are all "one run" records. A proper comparison (with confidence intervals) compares two of them, which most tools display but leave the statistics to you.</div></div>
+<div class="q" data-answer="1"><p>7. Before launch, you want to throw hundreds of known jailbreak, encoding and prompt-injection attacks at your agent and see which get through. Which tool is built for that?</p>
+<button class="opt">Artificial Analysis</button>
+<button class="opt">A red-teaming scanner such as garak (or PyRIT for multi-turn attacks)</button>
+<button class="opt">OpenRouter's rankings</button>
+<div class="why">Scanners bring the attack dataset and a detector with them. Treat their output as discovery: the failures become regression cases, and the detector needs checking against human labels before you trust its hit rate.</div></div>
+<div class="q" data-answer="2"><p>8. A model tops OpenRouter's rankings this month. What does that tell you?</p>
+<button class="opt">It has the highest quality on agent tasks</button>
+<button class="opt">It is the safest model available</button>
+<button class="opt">It consumed the most tokens through OpenRouter: a usage and popularity signal, not a quality score</button>
+<div class="why">Rankings reflect what OpenRouter's customers use, which mixes price, speed, habit and quality. Use it, and indexes such as Artificial Analysis, to build a shortlist, then run your own eval on the exact endpoint you will deploy.</div></div>
 </div>
 
 <details><summary>Interview questions on eval tooling (with model answers)</summary>
@@ -1410,6 +1615,15 @@ Datasets, labels and history, not code. Keep canonical datasets and judge prompt
 <li>Pydantic, <a href="https://pydantic.dev/docs/ai/evals/evals/">Pydantic Evals</a>; Google, <a href="https://adk.dev/evaluate/">ADK evaluation</a>, <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview">Gen AI evaluation overview</a>, <a href="https://github.com/googleapis/python-aiplatform">python-aiplatform</a>; Microsoft, <a href="https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/observability">Foundry observability and evaluation</a>.</li>
 <li>Anthropic, <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a> (2026-01-09); <a href="https://claude.com/blog/evaluate-prompts">Evaluate prompts in the Console</a> (2024-07-09); <a href="https://www.anthropic.com/research/petri-open-source-auditing">Petri</a>; <a href="https://www.anthropic.com/research/bloom">Bloom</a>.</li>
 <li>Patronus AI, <a href="https://www.patronus.ai/products">Products</a>.</li>
+<li>UK AISI, <a href="https://github.com/UKGovernmentBEIS/inspect_evals">inspect_evals on GitHub</a> (community collection of Inspect evals).</li>
+<li>NVIDIA, <a href="https://github.com/NVIDIA/garak">garak: the LLM vulnerability scanner</a>.</li>
+<li>Microsoft, <a href="https://github.com/microsoft/PyRIT">PyRIT on GitHub</a> and <a href="https://microsoft.github.io/PyRIT/">PyRIT documentation</a>.</li>
+<li>Giskard, <a href="https://github.com/Giskard-AI/giskard-oss">giskard-oss on GitHub</a> and <a href="https://docs.giskard.ai/oss">library documentation</a>.</li>
+<li>Galileo, <a href="https://galileo.ai/">Galileo platform</a>; <a href="https://www.prnewswire.com/news-releases/galileo-introduces-first-of-its-kind-evaluation-foundation-models-to-transform-enterprise-genai-evaluations-302165399.html">Galileo introduces evaluation foundation models (Luna)</a>; <a href="https://www.prnewswire.com/news-releases/galileo-announces-free-agent-reliability-platform-302508172.html">Galileo announces free agent reliability platform</a>.</li>
+<li>Strands Agents, <a href="https://strandsagents.com/">Strands Agents documentation</a> (see its evaluation section for Strands Evals).</li>
+<li>Transluce, <a href="https://transluce.org/docent">Docent</a>.</li>
+<li>Artificial Analysis, <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">Intelligence benchmarking methodology</a>; OpenRouter, <a href="https://openrouter.ai/rankings">Rankings</a>.</li>
+<li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/trace-grading">Trace grading</a>, <a href="https://developers.openai.com/api/docs/guides/agent-evals">Evaluate agent workflows</a>, <a href="https://openai.com/index/introducing-agentkit/">Introducing AgentKit</a> (Oct 2025).</li>
 </ul>
 
 </article>

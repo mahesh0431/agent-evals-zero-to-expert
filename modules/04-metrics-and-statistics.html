@@ -16,7 +16,7 @@
 <div class="kicker">Module 04 · Part I · Foundations</div>
 <h1>Metrics and statistics</h1>
 <p class="lede">A metric turns thousands of graded outputs into one number. Statistics tells you how much to trust that number. Get the first wrong and you measure the wrong thing; get the second wrong and you celebrate noise. This module rebuilds the school statistics you need, with pictures first and formulas second.</p>
-<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill">~70 min</span><span class="pill">Prerequisites: Modules 01 to 03</span><span class="pill">Python helpful</span></div>
+<div class="meta"><span class="pill level-2">Intermediate</span><span class="pill">~90 min</span><span class="pill">Prerequisites: Modules 01 to 03</span><span class="pill">Python helpful</span></div>
 
 <div class="objectives">
 <h3>By the end of this module you can</h3>
@@ -26,6 +26,7 @@
 <li>Treat cost, latency percentiles, tokens and steps as first-class metrics and read a Pareto frontier.</li>
 <li>Explain sampling variance, standard error and 95% confidence intervals without jargon, and compute Wald, Wilson and bootstrap intervals.</li>
 <li>Apply the five recommendations of Anthropic's "Adding error bars to evals": CLT standard errors, clustered errors, resampling, paired differences and power analysis.</li>
+<li>Describe agent reliability as four separate measurements (consistency, robustness, predictability, safety), read a cost-aware leaderboard like HAL, and cut eval cost with stratified subsampling or IRT anchor sets without fooling yourself.</li>
 <li>Decide whether "Model A beat Model B by 3.6 points" is real, and report a result in a form an expert reviewer would accept.</li>
 </ul>
 </div>
@@ -557,6 +558,54 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 </figure>
 
 <p>Two practical rules. First, <b>plot cost on a log scale</b>: configurations span orders of magnitude. Second, <b>compare at matched budgets</b>: "our agent beats theirs" is meaningless if yours ran with 5 samples and a verifier. Research groups have argued that agent leaderboards should always show cost alongside accuracy for exactly this reason: simple baselines with retries can match elaborate agents at a fraction of the cost.</p>
+
+<h3>Cost-aware leaderboards: HAL</h3>
+<p>The <b>Holistic Agent Leaderboard</b> (HAL; Kapoor et al., Princeton; <a href="https://arxiv.org/abs/2510.11977">arXiv 2510.11977</a>, accepted at ICLR 2026; <a href="https://hal.cs.princeton.edu/">hal.cs.princeton.edu</a>) is the clearest example of treating cost as a first-class metric at leaderboard scale. Three of its design choices are worth copying in your own evals:</p>
+<ul>
+<li><b>One standardized harness.</b> Every model × agent scaffold × benchmark cell runs under the same evaluation setup, so a difference between two cells is not secretly a difference in timeouts, sandboxes or graders. (<a href="21-harness-evals.html">Module 21</a> covers the harness side in depth.)</li>
+<li><b>Dollars next to accuracy.</b> Every cell reports cost, and results are read as an accuracy versus cost frontier, exactly like the plot above. The HAL paper reports about 21,730 rollouts across 9 models and 9 benchmarks for about $40,000 in total (roughly $2 per rollout on average), and reports that higher reasoning effort <em>reduced</em> accuracy in the majority of runs. "More thinking" is a configuration to measure, not an upgrade to assume.</li>
+<li><b>Logs, not only scores.</b> HAL keeps the full transcripts and inspects them with LLM help. The paper reports finding agents that searched online for the benchmark's answers instead of solving the task, and an agent that misused a credit card in a flight-booking task. Neither behavior moves the accuracy number in the right direction; both change what the number means.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Models, agent scaffolds and benchmarks all feed one standardized harness with the same sandbox, limits and grader. It produces three outputs per cell: accuracy with a confidence interval, cost per task, and transcripts that an LLM-aided review scans for behavior the score hides.">
+<defs><marker id="m04x" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="40" width="180" height="50" rx="8"/>
+<text x="110" y="62" text-anchor="middle" class="b">Models</text>
+<text x="110" y="80" text-anchor="middle" class="sm">many LLMs and settings</text>
+<rect class="box plain" x="20" y="110" width="180" height="50" rx="8"/>
+<text x="110" y="132" text-anchor="middle" class="b">Agent scaffolds</text>
+<text x="110" y="150" text-anchor="middle" class="sm">generalist and task-specific</text>
+<rect class="box plain" x="20" y="180" width="180" height="50" rx="8"/>
+<text x="110" y="202" text-anchor="middle" class="b">Benchmarks</text>
+<text x="110" y="220" text-anchor="middle" class="sm">several task families</text>
+<line class="ln" x1="200" y1="65" x2="256" y2="110" marker-end="url(#m04x)"/>
+<line class="ln" x1="200" y1="135" x2="256" y2="145" marker-end="url(#m04x)"/>
+<line class="ln" x1="200" y1="205" x2="256" y2="180" marker-end="url(#m04x)"/>
+<rect class="box accent" x="260" y="70" width="200" height="150" rx="12"/>
+<text x="360" y="100" text-anchor="middle" class="b">One standardized</text>
+<text x="360" y="118" text-anchor="middle" class="b">harness</text>
+<text x="360" y="146" text-anchor="middle" class="sm">same sandbox and limits</text>
+<text x="360" y="164" text-anchor="middle" class="sm">same grader</text>
+<text x="360" y="182" text-anchor="middle" class="sm">every call logged</text>
+<text x="360" y="200" text-anchor="middle" class="sm">cost metered per call</text>
+<line class="ln accent flow" x1="460" y1="110" x2="536" y2="62" marker-end="url(#m04x)"/>
+<line class="ln accent flow" x1="460" y1="145" x2="536" y2="140" marker-end="url(#m04x)"/>
+<line class="ln accent flow" x1="460" y1="180" x2="536" y2="222" marker-end="url(#m04x)"/>
+<rect class="box good" x="540" y="30" width="260" height="60" rx="8"/>
+<text x="556" y="55" class="b">Accuracy, with CI</text>
+<text x="556" y="75" class="sm">per model × scaffold × benchmark</text>
+<rect class="box warn" x="540" y="110" width="260" height="60" rx="8"/>
+<text x="556" y="135" class="b">Cost per task ($)</text>
+<text x="556" y="155" class="sm">read as an accuracy vs cost frontier</text>
+<rect class="box violet" x="540" y="190" width="260" height="76" rx="8"/>
+<text x="556" y="214" class="b">Transcripts → LLM-aided review</text>
+<text x="556" y="234" class="sm">flags what the score hides, e.g.</text>
+<text x="556" y="252" class="sm">searching for answers, misusing a card</text>
+<text x="410" y="292" text-anchor="middle" class="sm">a leaderboard cell = accuracy + dollars + what the transcripts show</text>
+</svg>
+<figcaption><b>What a holistic agent leaderboard reports.</b> HAL's pattern, drawn schematically: one harness for every combination, and three outputs per cell instead of one. The examples in the violet box are behaviors the HAL paper reports finding in its logs.</figcaption>
+</figure>
 
 <h2>Why scores wobble: sampling variance</h2>
 <p>Time to rebuild the statistics. Start with a thought experiment. Suppose your agent has a <b>true</b> success rate of exactly 70% on the kind of task in your eval: if you could run it on infinitely many such tasks, 70% would pass. You can't, so you run it on n tasks and get a <b>measured</b> rate. How far from 70% can the measured rate land?</p>
@@ -1126,6 +1175,319 @@ k=5:  pass@k=0.729   pass^k=0.271</code></pre>
 <li><b>Compounding.</b> In a 30-step trajectory, a small random difference at step 3 can send the agent down a completely different path. That is why agent success rates vary more across epochs than single-answer accuracy does, and why pass^k matters.</li>
 </ul>
 
+<h2>Reliability as its own science</h2>
+<p>pass^k told you whether an agent succeeds <em>every time</em>. That is one face of reliability, but only one. Engineers who build aircraft, bridges and power grids never describe reliability with a single number: they separately ask whether a system behaves the same way twice, whether it survives disturbances, whether its failures can be anticipated, and how bad its failures are. Agent evaluation is starting to borrow that habit.</p>
+<p>The paper <a href="https://arxiv.org/abs/2602.16666">"Towards a Science of AI Agent Reliability"</a> (arXiv 2602.16666, February 2026; presented at ICML 2026) comes from the Princeton group behind HAL, including Sayash Kapoor and Arvind Narayanan. It argues that a single accuracy score hides <em>how</em> agents fail, and proposes measuring reliability along four separate dimensions: <b>consistency</b>, <b>robustness</b>, <b>predictability</b> and <b>safety</b>. Its headline finding, as the authors and press coverage summarize it, is that agents have become much more capable while their reliability has improved far more slowly (Fortune's headline: "AI agents are getting more capable, but reliability is lagging"). HAL now hosts a <a href="https://hal.cs.princeton.edu/reliability/">reliability dashboard</a> alongside its accuracy leaderboard.</p>
+
+<div class="callout analogy"><span class="t">Analogy: two new hires with the same grades</span>
+<p>Two new hires both get 70% of their tickets right. The first gets the <em>same</em> 70% right every week, handles a rephrased ticket just as well, says "I'm not sure, can you check?" on the ones it will get wrong, and when it fails it leaves things untouched. The second gets a different 70% right each week, stumbles when a customer words things differently, sounds equally confident about everything, and occasionally issues a wrong refund. Same grade; you would trust only one of them alone with customers.</p>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 440" role="img" aria-label="Two agents with the same 70 percent single-run accuracy compared on four reliability dimensions. Consistency: agent A passes the same 7 tasks in all 3 runs, agent B only 3. Robustness: under a paraphrase and an injected tool error, A drops to 67 and 62 percent, B to 55 and 38 percent. Predictability: A's confidence tracks its success, B is about 90 percent confident on everything. Safety: both fail 30 percent of runs, but 2 percent of A's runs are harmful versus 12 percent of B's.">
+<text x="410" y="24" text-anchor="middle" class="b">Two agents, same 70% accuracy on a single run, very different reliability</text>
+<rect class="box accent" x="15" y="40" width="390" height="190" rx="10"/>
+<text x="31" y="64" class="b t-accent">Consistency</text>
+<text x="31" y="82" class="sm">Same task, same result on every run?</text>
+<text x="35" y="102" class="sm b">Agent A</text>
+<text x="220" y="102" class="sm b">Agent B</text>
+<rect x="35" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="51" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="67" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="83" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="99" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="115" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="131" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="147" y="110" width="13" height="13" rx="2" class="fill-bad"/><rect x="163" y="110" width="13" height="13" rx="2" class="fill-bad"/><rect x="179" y="110" width="13" height="13" rx="2" class="fill-bad"/>
+<rect x="35" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="51" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="67" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="83" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="99" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="115" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="131" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="147" y="127" width="13" height="13" rx="2" class="fill-bad"/><rect x="163" y="127" width="13" height="13" rx="2" class="fill-bad"/><rect x="179" y="127" width="13" height="13" rx="2" class="fill-bad"/>
+<rect x="35" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="51" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="67" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="83" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="99" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="115" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="131" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="147" y="144" width="13" height="13" rx="2" class="fill-bad"/><rect x="163" y="144" width="13" height="13" rx="2" class="fill-bad"/><rect x="179" y="144" width="13" height="13" rx="2" class="fill-bad"/>
+<rect x="220" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="236" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="252" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="268" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="284" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="300" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="316" y="110" width="13" height="13" rx="2" class="fill-good"/><rect x="332" y="110" width="13" height="13" rx="2" class="fill-bad"/><rect x="348" y="110" width="13" height="13" rx="2" class="fill-bad"/><rect x="364" y="110" width="13" height="13" rx="2" class="fill-bad"/>
+<rect x="220" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="236" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="252" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="268" y="127" width="13" height="13" rx="2" class="fill-bad"/><rect x="284" y="127" width="13" height="13" rx="2" class="fill-bad"/><rect x="300" y="127" width="13" height="13" rx="2" class="fill-bad"/><rect x="316" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="332" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="348" y="127" width="13" height="13" rx="2" class="fill-good"/><rect x="364" y="127" width="13" height="13" rx="2" class="fill-good"/>
+<rect x="220" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="236" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="252" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="268" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="284" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="300" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="316" y="144" width="13" height="13" rx="2" class="fill-bad"/><rect x="332" y="144" width="13" height="13" rx="2" class="fill-bad"/><rect x="348" y="144" width="13" height="13" rx="2" class="fill-good"/><rect x="364" y="144" width="13" height="13" rx="2" class="fill-bad"/>
+<text x="35" y="178" class="sm b t-good">all 3 runs pass: 7 of 10</text>
+<text x="220" y="178" class="sm b t-bad">all 3 runs pass: 3 of 10</text>
+<text x="35" y="196" class="sm">rows = 3 runs, columns = 10 tasks, every run scores 70%</text>
+<text x="31" y="218" class="sm t-accent">measure: pass^k, run-to-run agreement</text>
+<rect class="box violet" x="415" y="40" width="390" height="190" rx="10"/>
+<text x="431" y="64" class="b t-violet">Robustness</text>
+<text x="431" y="82" class="sm">Does it survive small, irrelevant changes?</text>
+<text x="431" y="116" class="sm">original wording</text>
+<rect x="560" y="100" width="140" height="10" rx="2" class="fill-accent"/><text x="706" y="109" class="sm">70%</text>
+<rect x="560" y="113" width="140" height="10" rx="2" class="fill-warn"/><text x="706" y="122" class="sm">70%</text>
+<text x="431" y="146" class="sm">paraphrased task</text>
+<rect x="560" y="130" width="134" height="10" rx="2" class="fill-accent"/><text x="700" y="139" class="sm">67%</text>
+<rect x="560" y="143" width="110" height="10" rx="2" class="fill-warn"/><text x="676" y="152" class="sm">55%</text>
+<text x="431" y="176" class="sm">tool error injected</text>
+<rect x="560" y="160" width="124" height="10" rx="2" class="fill-accent"/><text x="690" y="169" class="sm">62%</text>
+<rect x="560" y="173" width="76" height="10" rx="2" class="fill-warn"/><text x="642" y="182" class="sm">38%</text>
+<rect x="560" y="194" width="12" height="8" rx="2" class="fill-accent"/><text x="578" y="202" class="sm">Agent A</text>
+<rect x="650" y="194" width="12" height="8" rx="2" class="fill-warn"/><text x="668" y="202" class="sm">Agent B</text>
+<text x="431" y="218" class="sm t-violet">measure: paired drop under perturbation</text>
+<rect class="box warn" x="15" y="240" width="390" height="190" rx="10"/>
+<text x="31" y="264" class="b t-warn">Predictability</text>
+<text x="31" y="282" class="sm">Does it know when it will fail?</text>
+<line class="ln" x1="60" y1="390" x2="220" y2="390"/>
+<line class="ln" x1="60" y1="390" x2="60" y2="300"/>
+<line class="ln dash" x1="60" y1="390" x2="220" y2="300" opacity="0.5"/>
+<circle cx="92" cy="367" r="4.5" class="fill-accent"/><circle cx="140" cy="350" r="4.5" class="fill-accent"/><circle cx="188" cy="320" r="4.5" class="fill-accent"/><circle cx="212" cy="307" r="4.5" class="fill-accent"/>
+<rect x="200" y="355" width="9" height="9" class="fill-warn"/><rect x="196" y="332" width="9" height="9" class="fill-warn"/><rect x="200" y="310" width="9" height="9" class="fill-warn"/><rect x="190" y="322" width="9" height="9" class="fill-warn"/>
+<text x="140" y="406" text-anchor="middle" class="sm">stated confidence →</text>
+<text x="46" y="345" text-anchor="middle" class="sm" transform="rotate(-90 46 345)">actual success</text>
+<text x="240" y="318" class="sm b t-accent">A: confidence</text>
+<text x="240" y="334" class="sm">tracks success</text>
+<text x="240" y="358" class="sm b t-warn">B: about 90% sure</text>
+<text x="240" y="374" class="sm">on everything</text>
+<text x="31" y="424" class="sm t-warn">measure: calibration error, AUROC</text>
+<rect class="box bad" x="415" y="240" width="390" height="190" rx="10"/>
+<text x="431" y="264" class="b t-bad">Safety</text>
+<text x="431" y="282" class="sm">When it fails, how bad is it?</text>
+<text x="431" y="306" class="sm b">Agent A: 28% safe failures, 2% harmful</text>
+<rect x="431" y="312" width="280" height="18" rx="3" class="fill-muted"/><rect x="711" y="312" width="20" height="18" rx="3" class="fill-bad"/>
+<text x="431" y="350" class="sm b">Agent B: 18% safe failures, 12% harmful</text>
+<rect x="431" y="356" width="180" height="18" rx="3" class="fill-muted"/><rect x="611" y="356" width="120" height="18" rx="3" class="fill-bad"/>
+<rect x="431" y="388" width="12" height="8" rx="2" class="fill-muted"/><text x="449" y="396" class="sm">safe (stops, asks a human)</text>
+<rect x="615" y="388" width="12" height="8" rx="2" class="fill-bad"/><text x="633" y="396" class="sm">harmful (e.g. deletes data)</text>
+<text x="431" y="424" class="sm t-bad">measure: violation rate, severity-weighted</text>
+</svg>
+<figcaption><b>Reliability is four measurements, not one.</b> Illustrative numbers. Both agents score 70% on a single run, so an accuracy leaderboard ranks them as tied. The four panels follow the dimensions named in "Towards a Science of AI Agent Reliability"; the specific measurements shown are examples you can run yourself, not the paper's exact metric definitions.</figcaption>
+</figure>
+
+<h3>What each dimension asks, and how to measure it yourself</h3>
+<p>The paper defines its own specific metrics under each dimension. You do not need its exact definitions to start; the table gives the question each dimension asks and a practical way to measure it in your own eval.</p>
+<div class="tablewrap"><table>
+<tr><th>Dimension</th><th>The question</th><th>A practical measurement</th></tr>
+<tr><td><b>Consistency</b></td><td>Run the same task several times: do you get the same outcome (and roughly the same path and cost)?</td><td>k epochs per task; report pass^k, the share of tasks with mixed outcomes, and the spread of cost and steps across runs.</td></tr>
+<tr><td><b>Robustness</b></td><td>Does performance survive changes that should not matter: a paraphrased instruction, reordered tools, a transient tool error, an irrelevant detail in the environment?</td><td>Make meaning-preserving variants of each task; report the <em>paired</em> drop (perturbed minus original, same tasks), with a CI.</td></tr>
+<tr><td><b>Predictability</b></td><td>Can you tell in advance, or at least at the end, whether a run succeeded? Does the agent's confidence mean anything?</td><td>Collect a confidence (self-report, or a judge's estimate) per run. Report <b>calibration error</b> (does "80% sure" succeed 80% of the time?) and <b>discrimination</b> (AUROC: does confidence rank successes above failures?). Count false success claims.</td></tr>
+<tr><td><b>Safety</b></td><td>When it fails, how much damage does it do? A refusal and a wrong wire transfer are both "fails".</td><td>Label each failure with a severity (none, reversible, serious); report the harmful-failure rate and a severity-weighted rate, not only the failure rate.</td></tr>
+</table></div>
+
+<p>Here is a minimal "reliability report" over run records. It reuses the pass^k estimator from earlier, so you can see that consistency is literally the pass^k you already know, while the other three need extra information that a plain pass/fail log does not contain.</p>
+<pre data-lang="python"><code>from math import comb
+
+# One record per (task, run). Illustrative data for 4 tasks x 3 runs.
+#   ok        : did the run succeed on the ORIGINAL task wording?
+#   ok_perturb: did it succeed on a meaning-preserving paraphrase of the task?
+#   conf      : the agent's own stated confidence (0..1) before finishing
+#   severity  : 0 = no harm, 1 = minor (wrong but reversible), 3 = serious (destructive)
+runs = [
+    # task, ok, ok_perturb, conf, severity
+    ("t1", 1, 1, 0.90, 0), ("t1", 1, 1, 0.85, 0), ("t1", 1, 0, 0.90, 0),
+    ("t2", 1, 0, 0.80, 0), ("t2", 0, 0, 0.75, 1), ("t2", 1, 1, 0.80, 0),
+    ("t3", 0, 0, 0.30, 0), ("t3", 0, 0, 0.40, 0), ("t3", 1, 0, 0.50, 0),
+    ("t4", 0, 0, 0.90, 3), ("t4", 1, 1, 0.90, 0), ("t4", 0, 0, 0.85, 1),
+]
+
+def by_task(rows):
+    out = {}
+    for t, ok, *_ in rows:
+        out.setdefault(t, []).append(ok)
+    return out
+
+def consistency(rows, k):
+    """Mean unbiased pass^k over tasks: chance that k runs of a task ALL pass."""
+    vals = [comb(sum(o), k) / comb(len(o), k) for o in by_task(rows).values()]
+    return sum(vals) / len(vals)
+
+def robustness_drop(rows):
+    """Paired drop in success when the task is paraphrased (same tasks, same runs)."""
+    return sum(r[2] - r[1] for r in rows) / len(rows)
+
+def calibration_error(rows, bins=(0.0, 0.5, 0.8, 1.01)):
+    """Expected calibration error: |stated confidence - actual success|, bin by bin."""
+    ece = 0.0
+    for lo, hi in zip(bins, bins[1:]):
+        b = [r for r in rows if lo &lt;= r[3] &lt; hi]
+        if b:
+            gap = abs(sum(r[3] for r in b) / len(b) - sum(r[1] for r in b) / len(b))
+            ece += len(b) / len(rows) * gap
+    return ece
+
+def harm_rate(rows):
+    """Share of runs with any harmful failure, and severity-weighted harm per run."""
+    return (sum(r[4] &gt; 0 for r in rows) / len(rows), sum(r[4] for r in rows) / len(rows))
+
+acc = sum(r[1] for r in runs) / len(runs)
+print(f"accuracy (pass@1)       {acc:.0%}")
+print(f"consistency  pass^3     {consistency(runs, 3):.0%}")
+print(f"robustness   drop       {100 * robustness_drop(runs):+.0f} points")
+print(f"predictability  ECE     {calibration_error(runs):.2f}")
+share, weighted = harm_rate(runs)
+print(f"safety  harmful runs    {share:.0%}  (severity-weighted {weighted:.2f} per run)")</code></pre>
+<p>Output:</p>
+<pre data-lang="text"><code>accuracy (pass@1)       58%
+consistency  pass^3     25%
+robustness   drop       -25 points
+predictability  ECE     0.15
+safety  harmful runs    25%  (severity-weighted 0.42 per run)</code></pre>
+<p>A 58% agent whose tasks pass all three runs only 25% of the time, that loses 25 points when the task is reworded, and that is most confident on the task where it does the most damage (t4) is a very different product from what "58%" suggests. With 12 runs these numbers have enormous error bars; the point is the shape of the report, not the values.</p>
+
+<div class="callout expert"><span class="t">Expert nuance</span>
+<ul>
+<li><b>The dimensions are only loosely coupled.</b> Accuracy gains do not automatically bring consistency or calibration with them, which is the paper's core argument for measuring them separately.</li>
+<li><b>Robustness perturbations must preserve meaning.</b> If your paraphrase changes what the task asks for, you have measured a different task, not robustness. Have a human or a validated judge check the variants.</li>
+<li><b>Predictability is what makes safe deployment possible.</b> An agent that knows when it is unsure can escalate to a human (<a href="15-production-evals.html">Module 15</a>). An agent that confidently claims success on failures (common in coding and computer-use agents) is worse than its accuracy suggests.</li>
+<li><b>"Safety" here is operational.</b> It is about the severity of ordinary failures in your task, which complements, and does not replace, the misuse and dangerous-capability evals in <a href="17-safety-evals.html">Module 17</a>.</li>
+<li><b>Every reliability number needs its own error bar.</b> pass^k, a robustness drop and a calibration error are all statistics of a sample, so bootstrap them over tasks exactly as you would a success rate.</li>
+</ul>
+</div>
+
+<h2>The cost of evaluating: efficient benchmarking</h2>
+<p>Everything in this module pushes the eval bill up. Power analysis asks for more tasks. pass^k and consistency need several epochs. Robustness needs perturbed copies of every task. Comparisons need several configurations. And for agents, each "item" is not one model call but a whole multi-step rollout in a sandbox. The EvalEval Coalition's April 2026 essay <a href="https://evalevalai.com/research/2026/04/29/eval-costs-bottleneck/">"AI evals are becoming the new compute bottleneck"</a> makes the case that evaluation compute is becoming a real constraint in its own right; HAL's roughly $40,000 for about 21,730 rollouts gives a sense of scale.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Illustrative eval bill: 500 tasks times 5 epochs times 4 configurations times 80 cents per run equals 8,000 dollars per sweep. Below, one way to cut it: run the full benchmark on many past models, fit an item response model, pick 50 informative anchor tasks, run a new agent on the anchors only, and estimate its ability and full-benchmark score, with periodic full runs as a check.">
+<defs><marker id="m04y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="20" y="24" class="b">The eval bill multiplies (illustrative numbers)</text>
+<rect class="box plain" x="20" y="40" width="120" height="44" rx="8"/><text x="80" y="67" text-anchor="middle" class="b">500 tasks</text>
+<text x="155" y="68" text-anchor="middle" class="lg">×</text>
+<rect class="box plain" x="170" y="40" width="120" height="44" rx="8"/><text x="230" y="67" text-anchor="middle" class="b">5 epochs</text>
+<text x="305" y="68" text-anchor="middle" class="lg">×</text>
+<rect class="box plain" x="320" y="40" width="120" height="44" rx="8"/><text x="380" y="67" text-anchor="middle" class="b">4 configs</text>
+<text x="455" y="68" text-anchor="middle" class="lg">×</text>
+<rect class="box plain" x="470" y="40" width="130" height="44" rx="8"/><text x="535" y="67" text-anchor="middle" class="b">$0.80 / run</text>
+<text x="615" y="68" text-anchor="middle" class="lg">=</text>
+<rect class="box bad" x="630" y="40" width="170" height="44" rx="8"/><text x="715" y="61" text-anchor="middle" class="lg t-bad">$8,000</text><text x="715" y="77" text-anchor="middle" class="sm">per sweep</text>
+<text x="20" y="104" class="sm">more tasks for power · epochs for pass^k · configs for comparisons · every agent "item" is a whole rollout</text>
+<text x="20" y="138" class="b">One way to cut it: calibrate once, then test new agents on anchors</text>
+<rect class="box accent" x="8" y="152" width="148" height="80" rx="8"/><text x="82" y="176" text-anchor="middle" class="b">Full benchmark</text><text x="82" y="196" text-anchor="middle" class="sm">500 tasks, already run</text><text x="82" y="212" text-anchor="middle" class="sm">by many past models</text>
+<rect class="box plain" x="172" y="152" width="148" height="80" rx="8"/><text x="246" y="176" text-anchor="middle" class="b">Fit IRT</text><text x="246" y="196" text-anchor="middle" class="sm">difficulty and</text><text x="246" y="212" text-anchor="middle" class="sm">discrimination per task</text>
+<rect class="box violet" x="336" y="152" width="148" height="80" rx="8"/><text x="410" y="176" text-anchor="middle" class="b">Pick anchors</text><text x="410" y="196" text-anchor="middle" class="sm">50 informative tasks</text><text x="410" y="212" text-anchor="middle" class="sm">(mid difficulty)</text>
+<rect class="box warn" x="500" y="152" width="148" height="80" rx="8"/><text x="574" y="176" text-anchor="middle" class="b">New agent</text><text x="574" y="196" text-anchor="middle" class="sm">runs anchors only</text><text x="574" y="212" text-anchor="middle" class="sm">10× fewer runs</text>
+<rect class="box good" x="664" y="152" width="148" height="80" rx="8"/><text x="738" y="176" text-anchor="middle" class="b">Estimate θ</text><text x="738" y="196" text-anchor="middle" class="sm">predicted full score</text><text x="738" y="212" text-anchor="middle" class="sm">with an honest ±</text>
+<line class="ln accent flow" x1="156" y1="192" x2="168" y2="192" marker-end="url(#m04y)"/>
+<line class="ln accent flow" x1="320" y1="192" x2="332" y2="192" marker-end="url(#m04y)"/>
+<line class="ln accent flow" x1="484" y1="192" x2="496" y2="192" marker-end="url(#m04y)"/>
+<line class="ln accent flow" x1="648" y1="192" x2="660" y2="192" marker-end="url(#m04y)"/>
+<path class="ln dash" d="M738,232 V262 H82 V238" marker-end="url(#m04y)"/>
+<text x="410" y="284" text-anchor="middle" class="sm">spot-check: run the full benchmark periodically, and always before a public claim</text>
+</svg>
+<figcaption><b>Where the money goes, and one way to spend less.</b> The top row multiplies illustrative numbers. The bottom row is the anchor-set approach used by tinyBenchmarks-style methods: expensive calibration once, cheap estimates for each new system, and full runs kept for checking the estimator and for decisions that matter.</figcaption>
+</figure>
+
+<h3>Option 1: subsample, and know what the ± means</h3>
+<p>The simplest saving is to run a random subset of n tasks out of the N in the benchmark. Your estimate of the <em>full-benchmark</em> score then has a standard error with a <b>finite population correction</b> (because you are sampling from a fixed, finite set of tasks):</p>
+<p style="text-align:center"><code>SE = √( p(1−p)/n × (N−n)/(N−1) )</code></p>
+<p>Worked numbers for a benchmark of N = 500 tasks and a score near 60%:</p>
+<div class="tablewrap"><table>
+<tr><th>Tasks run (n)</th><th>SE vs full-benchmark score</th><th>95% half-width</th><th>Cost vs full run</th></tr>
+<tr><td>50</td><td>6.6 points</td><td>±12.9 points</td><td>10%</td></tr>
+<tr><td>100</td><td>4.4 points</td><td>±8.6 points</td><td>20%</td></tr>
+<tr><td>200</td><td>2.7 points</td><td>±5.3 points</td><td>40%</td></tr>
+<tr><td>500 (all)</td><td>0</td><td>0 (vs this benchmark)</td><td>100%</td></tr>
+</table></div>
+<p>Three rules make subsampling work. <b>Stratify</b>: sample within categories or difficulty bands so each is represented, then weight back to the full mix. <b>Pair</b>: when comparing two versions, run both on the <em>same</em> subset and use the paired test from earlier, which is far tighter than two independent estimates. <b>Keep the ladder in mind</b>: a zero SE at n = 500 only means you have the full-benchmark score exactly; that score still has its own sampling uncertainty as an estimate of the agent's true skill, which is everything the first half of this module was about.</p>
+
+<h3>Option 2: anchor sets and Item Response Theory</h3>
+<p><b>Item Response Theory</b> (IRT) comes from standardized testing, where a test must rank students fairly even if different students see different questions. It gives every task a <b>difficulty</b> b and a <b>discrimination</b> a (how sharply it separates weaker from stronger systems), and every system an <b>ability</b> θ on the same scale. The two-parameter logistic (2PL) model says:</p>
+<p style="text-align:center"><code>P(system with ability θ solves task i) = 1 / (1 + e<sup>−a<sub>i</sub>(θ − b<sub>i</sub>)</sup>)</code></p>
+<p>When θ equals a task's difficulty, the chance is 50%. You fit a and b once, from many past models' full runs. Then a new system only needs to run a small <b>anchor set</b> of well-chosen tasks: you find the θ that best explains its anchor results, and predict its score on every task, including the ones it never ran. <a href="https://arxiv.org/abs/2402.14992">tinyBenchmarks</a> (Polo et al., ICML 2024) applied this idea to popular LLM benchmarks and reports that about 100 curated examples per benchmark were enough to estimate full-benchmark accuracy within about 2% on average. Epoch AI's Capabilities Index uses IRT for a related job: putting results from many different benchmarks onto one scale (<a href="https://epoch.ai/eci">epoch.ai/eci</a>).</p>
+<p>Which tasks make good anchors? A task that every system solves, or that none solves, tells you nothing about the difference between them. Information is highest where a task's solve chance is near 50% for the systems you care about (the Fisher information of a 2PL item is a²·P·(1−P), which peaks at P = 0.5). The 2026 paper <a href="https://arxiv.org/abs/2603.23749">"Efficient Benchmarking of AI Agents"</a> applies this intuition to agent benchmarks; its code release describes the approach as mid-range task selection for cost-efficient agent evaluation.</p>
+
+<h3>Worked example: predicting a full score from 10 anchors</h3>
+<p>An illustrative benchmark has 500 tasks in five difficulty tiers of 100 (b = −2, −1, 0, +1, +2), all with discrimination a = 1.5, fitted from past models. The anchor set is 10 tasks chosen mostly from the middle tiers, so its mix does not match the benchmark. A new agent passes 7 of the 10 anchors: 70% raw. Is its full-benchmark score 70%?</p>
+<pre data-lang="python"><code>import math
+
+def p_correct(theta, a, b):
+    """2PL item response curve: chance an agent of ability theta solves a task
+    with discrimination a and difficulty b."""
+    return 1 / (1 + math.exp(-a * (theta - b)))
+
+# Calibration (done once, from many past models' FULL runs):
+# the 500-task benchmark has 5 difficulty tiers of 100 tasks, all with a = 1.5.
+TIERS = [-2.0, -1.0, 0.0, 1.0, 2.0]
+A = 1.5
+
+# Anchor set: 10 tasks, chosen mostly near the middle (where tasks are most
+# informative), so the mix does NOT match the benchmark. (difficulty b, result)
+anchors = [(-2.0, 1),
+           (-1.0, 1), (-1.0, 1),
+           (0.0, 1), (0.0, 1), (0.0, 1), (0.0, 0),
+           (1.0, 1), (1.0, 0),
+           (2.0, 0)]
+
+def log_lik(theta):
+    return sum(math.log(p_correct(theta, A, b)) if y else
+               math.log(1 - p_correct(theta, A, b)) for b, y in anchors)
+
+# Maximum-likelihood ability: a simple grid search is enough for one number.
+grid = [i / 1000 for i in range(-4000, 4001)]
+theta_hat = max(grid, key=log_lik)
+
+# Predicted score on the FULL benchmark = average solve chance over all 500 tasks.
+def full_score(theta):
+    return sum(p_correct(theta, A, b) for b in TIERS) / len(TIERS)
+
+# Uncertainty: Fisher information of the 10 anchors -&gt; SE of theta -&gt; score range.
+info = sum(A**2 * p_correct(theta_hat, A, b) * (1 - p_correct(theta_hat, A, b)) for b, _ in anchors)
+se_theta = 1 / math.sqrt(info)
+lo, hi = full_score(theta_hat - 1.96 * se_theta), full_score(theta_hat + 1.96 * se_theta)
+
+print(f"raw anchor pass rate: {sum(y for _, y in anchors) / len(anchors):.0%}")
+print(f"theta_hat = {theta_hat:.2f}  (SE {se_theta:.2f})")
+print(f"predicted full-benchmark score: {full_score(theta_hat):.1%}  (95% range {lo:.1%} to {hi:.1%})")
+for b in TIERS:
+    print(f"  tier b={b:+.0f}: predicted solve rate {p_correct(theta_hat, A, b):.0%}")</code></pre>
+<p>Output:</p>
+<pre data-lang="text"><code>raw anchor pass rate: 70%
+theta_hat = 0.83  (SE 0.56)
+predicted full-benchmark score: 65.8%  (95% range 45.1% to 84.1%)
+  tier b=-2: predicted solve rate 99%
+  tier b=-1: predicted solve rate 94%
+  tier b=+0: predicted solve rate 78%
+  tier b=+1: predicted solve rate 44%
+  tier b=+2: predicted solve rate 15%</code></pre>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="Item characteristic curves for five task difficulties from minus 2 to plus 2. An agent with estimated ability 0.83 has predicted solve chances of 99, 94, 78, 44 and 15 percent on the five tiers, which average to a predicted full-benchmark score of 65.8 percent.">
+<line class="ln dash" x1="90" y1="250.0" x2="590" y2="250.0" opacity="0.25"/><text x="82" y="254.0" text-anchor="end" class="sm">0%</text>
+<line class="ln dash" x1="90" y1="197.5" x2="590" y2="197.5" opacity="0.25"/><text x="82" y="201.5" text-anchor="end" class="sm">25%</text>
+<line class="ln dash" x1="90" y1="145.0" x2="590" y2="145.0" opacity="0.25"/><text x="82" y="149.0" text-anchor="end" class="sm">50%</text>
+<line class="ln dash" x1="90" y1="92.5" x2="590" y2="92.5" opacity="0.25"/><text x="82" y="96.5" text-anchor="end" class="sm">75%</text>
+<line class="ln dash" x1="90" y1="40.0" x2="590" y2="40.0" opacity="0.25"/><text x="82" y="44.0" text-anchor="end" class="sm">100%</text>
+<line class="ln" x1="90" y1="250" x2="590" y2="250"/><line class="ln" x1="90" y1="250" x2="90" y2="40"/>
+<line class="ln" x1="90.0" y1="250" x2="90.0" y2="255"/><text x="90.0" y="269" text-anchor="middle" class="sm">-4</text>
+<line class="ln" x1="152.5" y1="250" x2="152.5" y2="255"/><text x="152.5" y="269" text-anchor="middle" class="sm">-3</text>
+<line class="ln" x1="215.0" y1="250" x2="215.0" y2="255"/><text x="215.0" y="269" text-anchor="middle" class="sm">-2</text>
+<line class="ln" x1="277.5" y1="250" x2="277.5" y2="255"/><text x="277.5" y="269" text-anchor="middle" class="sm">-1</text>
+<line class="ln" x1="340.0" y1="250" x2="340.0" y2="255"/><text x="340.0" y="269" text-anchor="middle" class="sm">0</text>
+<line class="ln" x1="402.5" y1="250" x2="402.5" y2="255"/><text x="402.5" y="269" text-anchor="middle" class="sm">+1</text>
+<line class="ln" x1="465.0" y1="250" x2="465.0" y2="255"/><text x="465.0" y="269" text-anchor="middle" class="sm">+2</text>
+<line class="ln" x1="527.5" y1="250" x2="527.5" y2="255"/><text x="527.5" y="269" text-anchor="middle" class="sm">+3</text>
+<line class="ln" x1="590.0" y1="250" x2="590.0" y2="255"/><text x="590.0" y="269" text-anchor="middle" class="sm">+4</text>
+<text x="340.0" y="290" text-anchor="middle" class="sm">agent ability θ (same scale as task difficulty b)</text>
+<text x="36" y="145.0" text-anchor="middle" class="sm" transform="rotate(-90 36 145.0)">chance of solving a task</text>
+<polyline class="ln good thick" points="90.0,240.0 96.2,238.5 102.5,236.8 108.7,234.8 115.0,232.5 121.2,230.0 127.5,227.1 133.8,223.8 140.0,220.2 146.2,216.2 152.5,211.7 158.8,206.8 165.0,201.4 171.2,195.6 177.5,189.3 183.8,182.6 190.0,175.6 196.2,168.2 202.5,160.6 208.8,152.9 215.0,145.0 221.2,137.1 227.5,129.4 233.8,121.8 240.0,114.4 246.2,107.4 252.5,100.7 258.8,94.4 265.0,88.6 271.2,83.2 277.5,78.3 283.8,73.8 290.0,69.8 296.2,66.2 302.5,62.9 308.8,60.0 315.0,57.5 321.2,55.2 327.5,53.2 333.8,51.5 340.0,50.0 346.3,48.6 352.5,47.5 358.8,46.5 365.0,45.6 371.2,44.8 377.5,44.2 383.8,43.6 390.0,43.1 396.2,42.7 402.5,42.3 408.8,42.0 415.0,41.7 421.3,41.5 427.5,41.3 433.8,41.1 440.0,40.9 446.2,40.8 452.5,40.7 458.8,40.6 465.0,40.5 471.3,40.4 477.5,40.4 483.8,40.3 490.0,40.3 496.2,40.2 502.5,40.2 508.8,40.2 515.0,40.2 521.2,40.1 527.5,40.1 533.8,40.1 540.0,40.1 546.2,40.1 552.5,40.1 558.8,40.1 565.0,40.0 571.2,40.0 577.5,40.0 583.8,40.0 590.0,40.0"/>
+<polyline class="ln accent thick" points="90.0,247.7 96.2,247.3 102.5,246.9 108.7,246.4 115.0,245.8 121.2,245.2 127.5,244.4 133.8,243.5 140.0,242.5 146.2,241.4 152.5,240.0 158.8,238.5 165.0,236.8 171.2,234.8 177.5,232.5 183.8,230.0 190.0,227.1 196.2,223.8 202.5,220.2 208.8,216.2 215.0,211.7 221.2,206.8 227.5,201.4 233.8,195.6 240.0,189.3 246.2,182.6 252.5,175.6 258.8,168.2 265.0,160.6 271.2,152.9 277.5,145.0 283.8,137.1 290.0,129.4 296.2,121.8 302.5,114.4 308.8,107.4 315.0,100.7 321.2,94.4 327.5,88.6 333.8,83.2 340.0,78.3 346.3,73.8 352.5,69.8 358.8,66.2 365.0,62.9 371.2,60.0 377.5,57.5 383.8,55.2 390.0,53.2 396.2,51.5 402.5,50.0 408.8,48.6 415.0,47.5 421.3,46.5 427.5,45.6 433.8,44.8 440.0,44.2 446.2,43.6 452.5,43.1 458.8,42.7 465.0,42.3 471.3,42.0 477.5,41.7 483.8,41.5 490.0,41.3 496.2,41.1 502.5,40.9 508.8,40.8 515.0,40.7 521.2,40.6 527.5,40.5 533.8,40.4 540.0,40.4 546.2,40.3 552.5,40.3 558.8,40.2 565.0,40.2 571.2,40.2 577.5,40.2 583.8,40.1 590.0,40.1"/>
+<polyline class="ln violet thick" points="90.0,249.5 96.2,249.4 102.5,249.3 108.7,249.2 115.0,249.1 121.2,248.9 127.5,248.7 133.8,248.5 140.0,248.3 146.2,248.0 152.5,247.7 158.8,247.3 165.0,246.9 171.2,246.4 177.5,245.8 183.8,245.2 190.0,244.4 196.2,243.5 202.5,242.5 208.8,241.4 215.0,240.0 221.2,238.5 227.5,236.8 233.8,234.8 240.0,232.5 246.2,230.0 252.5,227.1 258.8,223.8 265.0,220.2 271.2,216.2 277.5,211.7 283.8,206.8 290.0,201.4 296.2,195.6 302.5,189.3 308.8,182.6 315.0,175.6 321.2,168.2 327.5,160.6 333.8,152.9 340.0,145.0 346.3,137.1 352.5,129.4 358.8,121.8 365.0,114.4 371.2,107.4 377.5,100.7 383.8,94.4 390.0,88.6 396.2,83.2 402.5,78.3 408.8,73.8 415.0,69.8 421.3,66.2 427.5,62.9 433.8,60.0 440.0,57.5 446.2,55.2 452.5,53.2 458.8,51.5 465.0,50.0 471.3,48.6 477.5,47.5 483.8,46.5 490.0,45.6 496.2,44.8 502.5,44.2 508.8,43.6 515.0,43.1 521.2,42.7 527.5,42.3 533.8,42.0 540.0,41.7 546.2,41.5 552.5,41.3 558.8,41.1 565.0,40.9 571.2,40.8 577.5,40.7 583.8,40.6 590.0,40.5"/>
+<polyline class="ln warn thick" points="90.0,249.9 96.2,249.9 102.5,249.8 108.7,249.8 115.0,249.8 121.2,249.8 127.5,249.7 133.8,249.7 140.0,249.6 146.2,249.6 152.5,249.5 158.8,249.4 165.0,249.3 171.2,249.2 177.5,249.1 183.8,248.9 190.0,248.7 196.2,248.5 202.5,248.3 208.8,248.0 215.0,247.7 221.2,247.3 227.5,246.9 233.8,246.4 240.0,245.8 246.2,245.2 252.5,244.4 258.8,243.5 265.0,242.5 271.2,241.4 277.5,240.0 283.8,238.5 290.0,236.8 296.2,234.8 302.5,232.5 308.8,230.0 315.0,227.1 321.2,223.8 327.5,220.2 333.8,216.2 340.0,211.7 346.3,206.8 352.5,201.4 358.8,195.6 365.0,189.3 371.2,182.6 377.5,175.6 383.8,168.2 390.0,160.6 396.2,152.9 402.5,145.0 408.8,137.1 415.0,129.4 421.3,121.8 427.5,114.4 433.8,107.4 440.0,100.7 446.2,94.4 452.5,88.6 458.8,83.2 465.0,78.3 471.3,73.8 477.5,69.8 483.8,66.2 490.0,62.9 496.2,60.0 502.5,57.5 508.8,55.2 515.0,53.2 521.2,51.5 527.5,50.0 533.8,48.6 540.0,47.5 546.2,46.5 552.5,45.6 558.8,44.8 565.0,44.2 571.2,43.6 577.5,43.1 583.8,42.7 590.0,42.3"/>
+<polyline class="ln bad thick" points="90.0,250.0 96.2,250.0 102.5,250.0 108.7,250.0 115.0,250.0 121.2,249.9 127.5,249.9 133.8,249.9 140.0,249.9 146.2,249.9 152.5,249.9 158.8,249.9 165.0,249.8 171.2,249.8 177.5,249.8 183.8,249.8 190.0,249.7 196.2,249.7 202.5,249.6 208.8,249.6 215.0,249.5 221.2,249.4 227.5,249.3 233.8,249.2 240.0,249.1 246.2,248.9 252.5,248.7 258.8,248.5 265.0,248.3 271.2,248.0 277.5,247.7 283.8,247.3 290.0,246.9 296.2,246.4 302.5,245.8 308.8,245.2 315.0,244.4 321.2,243.5 327.5,242.5 333.8,241.4 340.0,240.0 346.3,238.5 352.5,236.8 358.8,234.8 365.0,232.5 371.2,230.0 377.5,227.1 383.8,223.8 390.0,220.2 396.2,216.2 402.5,211.7 408.8,206.8 415.0,201.4 421.3,195.6 427.5,189.3 433.8,182.6 440.0,175.6 446.2,168.2 452.5,160.6 458.8,152.9 465.0,145.0 471.3,137.1 477.5,129.4 483.8,121.8 490.0,114.4 496.2,107.4 502.5,100.7 508.8,94.4 515.0,88.6 521.2,83.2 527.5,78.3 533.8,73.8 540.0,69.8 546.2,66.2 552.5,62.9 558.8,60.0 565.0,57.5 571.2,55.2 577.5,53.2 583.8,51.5 590.0,50.0"/>
+<line class="ln dash accent" x1="392.1" y1="22" x2="392.1" y2="250"/>
+<text x="398.1" y="28" class="sm b t-accent">θ̂ = 0.83</text>
+<circle cx="392.1" cy="43.0" r="4.5" class="fill-good"/>
+<circle cx="392.1" cy="52.6" r="4.5" class="fill-accent"/>
+<circle cx="392.1" cy="86.7" r="4.5" class="fill-violet"/>
+<circle cx="392.1" cy="158.0" r="4.5" class="fill-warn"/>
+<circle cx="392.1" cy="218.9" r="4.5" class="fill-bad"/>
+<rect class="box plain" x="620" y="30" width="190" height="240" rx="10"/>
+<text x="634" y="54" class="b">At θ̂ = 0.83</text>
+<rect x="634" y="71" width="16" height="5" class="fill-good"/><text x="658" y="78" class="sm">tier b = -2</text><text x="796" y="78" text-anchor="end" class="sm b">99%</text>
+<rect x="634" y="95" width="16" height="5" class="fill-accent"/><text x="658" y="102" class="sm">tier b = -1</text><text x="796" y="102" text-anchor="end" class="sm b">94%</text>
+<rect x="634" y="119" width="16" height="5" class="fill-violet"/><text x="658" y="126" class="sm">tier b = 0</text><text x="796" y="126" text-anchor="end" class="sm b">78%</text>
+<rect x="634" y="143" width="16" height="5" class="fill-warn"/><text x="658" y="150" class="sm">tier b = +1</text><text x="796" y="150" text-anchor="end" class="sm b">44%</text>
+<rect x="634" y="167" width="16" height="5" class="fill-bad"/><text x="658" y="174" class="sm">tier b = +2</text><text x="796" y="174" text-anchor="end" class="sm b">15%</text>
+<line class="ln" x1="634" y1="192" x2="796" y2="192"/>
+<text x="634" y="212" class="sm">average of the 5 tiers</text>
+<text x="634" y="234" class="lg t-accent">65.8%</text>
+<text x="634" y="254" class="sm">vs 70% raw on the anchors</text>
+</svg>
+<figcaption><b>Reading the IRT estimate.</b> Illustrative calibration, exact arithmetic from the code above. Each colored curve is one difficulty tier's solve chance as ability grows. The dashed line is the agent's fitted ability; where it crosses each curve is its predicted solve rate on that tier. Averaging the five equal tiers gives 65.8%, lower than the raw 70%, because the anchors under-sampled the extreme tiers and the hardest tier (15%) costs this agent more than the easiest tier (99%) adds.</figcaption>
+</figure>
+
+<p>Two lessons. First, the IRT estimate <b>corrects for an unrepresentative subset</b>: the raw 70% overstates the full score because the anchors were concentrated in the middle, while the real benchmark has twice their share of hardest-tier tasks, where this agent mostly fails. Second, <b>IRT does not create information from nothing</b>. With 10 anchors the 95% range is 45% to 84%, far too wide to rank close systems. With 100 anchors in the same pattern, the same code gives a range of about 59% to 72%. Real anchor sets do better than this toy because they choose tasks with high discrimination, which is how tinyBenchmarks reaches small errors with about 100 examples.</p>
+
+<div class="callout warn"><span class="t">When efficient benchmarking misleads</span>
+<ul>
+<li><b>New systems can break the calibration.</b> The difficulty ordering was learned from past models. A new model, a new tool or a new harness can find some "hard" tasks easy for idiosyncratic reasons, and the anchors will not notice. Periodically run the full set and compare against the estimate.</li>
+<li><b>Anchors become targets.</b> If a small public anchor set becomes what everyone reports, it will be optimized against (Goodhart, <a href="18-benchmark-pitfalls.html">Module 18</a>). Keep anchors private or rotate them.</li>
+<li><b>Agent items are noisy.</b> IRT assumes one result per system per task. With stochastic agents, a single anchor run mixes ability with luck; use a few epochs per anchor or model the per-task success rate.</li>
+<li><b>Use the right tool for the decision.</b> Subsamples and anchor estimates are for fast iteration and screening. Release decisions, public claims and regression gates on critical behavior deserve full runs with confidence intervals.</li>
+</ul>
+</div>
+
 <h2>How to report a result</h2>
 <p>Put everything together. A result that an expert reviewer will accept looks like this:</p>
 
@@ -1142,6 +1504,8 @@ System: model + scaffold version, temperature, tool set · Grader: version, vali
 <li><b>Clustering</b>: tells the reader you accounted for correlated tasks and repeated epochs.</li>
 <li><b>Paired Δ with its own CI</b>: the number decision-makers actually need ("is the new version better?"). Note that the Δ interval (±2.1) is narrower than the single-score interval (±3.4); that is pairing at work.</li>
 <li><b>pass^k, cost, latency, steps</b>: the metrics that decide whether you can actually ship.</li>
+<li><b>Reliability profile</b> (increasingly expected for agents): consistency across runs, the paired drop under meaning-preserving perturbations, calibration of the agent's confidence, and the harmful-failure rate (see "Reliability as its own science").</li>
+<li><b>How the number was obtained</b>: full run or subsample / anchor estimate. An estimated score must say so and carry its own ±.</li>
 <li><b>Versions</b>: evals are only comparable when system, grader and data are pinned (Module 02).</li>
 </ul>
 
@@ -1268,6 +1632,8 @@ print("paired diff CI:", np.percentile(boot_diff, [2.5, 97.5]).round(3))</code><
 <li>Follow the error-bars recipe: CLT standard errors, clustered SEs for grouped tasks, epochs to cut within-task noise, paired differences for comparisons, power analysis before you build.</li>
 <li>The bootstrap gives intervals for any statistic; resample the independent unit (question or cluster), and resample pairs when comparing.</li>
 <li>Many comparisons manufacture false wins. Select on a dev split, confirm once on held-out data, and report every run.</li>
+<li>Reliability is several measurements, not one: consistency (pass^k), robustness (paired drop under perturbation), predictability (calibration, AUROC) and safety (severity of failures). Two agents with the same accuracy can differ on all four.</li>
+<li>Report cost next to accuracy (HAL does it for every cell) and remember that evaluating has a cost too. Stratified, paired subsamples and IRT anchor sets are for fast iteration; full runs with confidence intervals are for decisions and public claims.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1302,6 +1668,16 @@ print("paired diff CI:", np.percentile(boot_diff, [2.5, 97.5]).round(3))</code><
 <button class="opt">Fewer questions with many epochs each</button>
 <button class="opt">It makes no difference</button>
 <div class="why">Epochs only reduce within-question variance. Between-question variance only shrinks with more questions. When difficulty varies a lot, most variance is between questions.</div></div>
+<div class="q" data-answer="1"><p>7. Two agents both score 70% on a single run. Agent B reports "about 90% confident" on every task, including the ones it fails. Which reliability dimension does this reveal a problem with?</p>
+<button class="opt">Consistency</button>
+<button class="opt">Predictability: its confidence cannot tell successes from failures, so it cannot warn you or escalate</button>
+<button class="opt">Robustness</button>
+<div class="why">A constant 90% confidence against 70% actual success is miscalibrated by about 20 points and has no discrimination (AUROC about 0.5). Consistency and robustness need repeated runs and perturbed tasks, which this information does not include.</div></div>
+<div class="q" data-answer="0"><p>8. You fitted an IRT model on past models' full runs and picked 50 anchor tasks from a 500-task benchmark. What is the anchor estimate appropriate for?</p>
+<button class="opt">Quick screening during development, with periodic full runs to check the estimate</button>
+<button class="opt">The headline number in a launch post, since IRT removes the need for a confidence interval</button>
+<button class="opt">Replacing the full benchmark permanently, since the calibration never changes</button>
+<div class="why">An anchor estimate carries its own uncertainty and depends on calibration from past models, which a new system can break. It is ideal for cheap iteration; decisions and public claims deserve full runs with CIs.</div></div>
 </div>
 
 <details>
@@ -1316,6 +1692,8 @@ For statistics without a simple SE formula (medians, percentiles, F1, pass^k ave
 Not on that evidence alone. An unpaired 95% half-width near 50% at n = 198 is about ±7 points per model. A paired analysis on the same questions, several epochs, and ideally a larger or complementary benchmark are needed before claiming a difference.</p>
 <p><b>Q: Why did LMArena move from online Elo to Bradley-Terry?</b><br>
 Online Elo depends on the order of games and is designed for players whose skill changes. Models are static, so fitting a Bradley-Terry model to all votes at once gives order-independent ratings with proper (bootstrap) confidence intervals.</p>
+<p><b>Q: Your team wants to evaluate every nightly build on the full 2,000-task agent suite with 5 epochs, and the bill is too high. What do you propose?</b><br>
+Stratified subsampling for nightly runs (paired against the previous build on the same subset, so small regressions are still detectable), or an IRT anchor set calibrated on past full runs, concentrated on mid-difficulty, high-discrimination tasks. Keep critical-behavior tests in every run regardless. Run the full suite with CIs weekly and before releases, and track how far the cheap estimate drifts from the full score; recalibrate when a new model or harness changes the difficulty ordering.</p>
 </details>
 
 <h2>Sources and further reading</h2>
@@ -1331,6 +1709,13 @@ Online Elo depends on the order of games and is designed for players whose skill
 <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval">Binomial proportion confidence interval</a> (Wald, Wilson and other intervals).</li>
 <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">Bootstrapping (statistics)</a>, and <a href="https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model">Bradley-Terry model</a>.</li>
 <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Multiple_comparisons_problem">Multiple comparisons problem</a>.</li>
+<li>Princeton researchers including Sayash Kapoor and Arvind Narayanan, 2026, <a href="https://arxiv.org/abs/2602.16666">Towards a Science of AI Agent Reliability</a> (consistency, robustness, predictability, safety); authors' post <a href="https://www.normaltech.ai/p/new-paper-towards-a-science-of-ai">New paper: Towards a science of AI agent reliability</a>; Fortune, <a href="https://fortune.com/2026/03/24/ai-agents-are-getting-more-capable-but-reliability-is-lagging-narayanan-kapoor/">AI agents are getting more capable, but reliability is lagging</a> (Mar 2026).</li>
+<li>Kapoor et al., <a href="https://arxiv.org/abs/2510.11977">Holistic Agent Leaderboard: The Missing Infrastructure for AI Agent Evaluation</a> (ICLR 2026); <a href="https://hal.cs.princeton.edu/">HAL leaderboard</a> and <a href="https://hal.cs.princeton.edu/reliability/">HAL reliability dashboard</a>.</li>
+<li>EvalEval Coalition, <a href="https://evalevalai.com/research/2026/04/29/eval-costs-bottleneck/">AI evals are becoming the new compute bottleneck</a> (Apr 29, 2026; also on the <a href="https://huggingface.co/blog/evaleval/eval-costs-bottleneck">Hugging Face blog</a>).</li>
+<li>Polo et al., 2024, <a href="https://arxiv.org/abs/2402.14992">tinyBenchmarks: evaluating LLMs with fewer examples</a> (ICML 2024; <a href="https://github.com/felipemaiapolo/tinyBenchmarks">code</a>).</li>
+<li><a href="https://arxiv.org/abs/2603.23749">Efficient Benchmarking of AI Agents</a> (2026; <a href="https://github.com/fsndzomga/efficient-benchmarking-ai-agents">code: mid-range task selection</a>).</li>
+<li>Epoch AI, <a href="https://epoch.ai/eci">Epoch Capabilities Index</a> (IRT across many benchmarks).</li>
+<li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Item_response_theory">Item response theory</a>.</li>
 </ul>
 
 </article>

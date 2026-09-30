@@ -26,6 +26,7 @@
 <li>Explain how τ-bench grades a whole task by comparing the final database with a goal database, and compute pass^k from repeated trials.</li>
 <li>Separate retrieval metrics (recall@k, precision@k, MRR, nDCG) from generation metrics (faithfulness, answer relevancy) and compute each by hand.</li>
 <li>Choose between turn-level and conversation-level grading, and build a simulated-user test for a conversational agent.</li>
+<li>Measure factuality with abstention (SimpleQA-style three-way grading), instruction following with verifiable checks (IFEval, IFBench), and calibration with a reliability diagram and ECE, and spot each one in an agent trajectory.</li>
 <li>Pick the right public benchmark (BFCL, τ-bench, τ²-bench, AppWorld, ToolBench, ACEBench, GAIA, BrowseComp) for a question, and know each one's weak spots.</li>
 </ul>
 </div>
@@ -746,6 +747,8 @@ for k in (1, 2, 4, 8):
 </ul>
 <p>The post's design advice doubles as a checklist of things to measure: <b>namespacing</b> related tools (e.g. <code>asana_projects_search</code>) to reduce confusion between similar tools; returning <b>meaningful context</b> (names rather than opaque UUIDs); a <code>response_format</code> option so the agent can ask for concise or detailed output (the post reports concise responses using about a third of the tokens); and <b>token efficiency</b> through pagination, filtering and truncation with sensible defaults.</p>
 
+<div class="callout tip"><span class="t">Go deeper</span><p>For tool and MCP depth (large toolsets, parallel calls, testing MCP servers themselves and the MCP benchmarks), see <a href="24-tools-and-mcp-evals.html">Module 24</a>.</p></div>
+
 <h2>Evaluating RAG</h2>
 <p><b>RAG</b> (retrieval-augmented generation) means: before answering, fetch relevant documents and put them in the prompt. It is the most common "tool" of all, and it has its own mature evaluation vocabulary. The single most important idea: <b>a RAG system has two parts that fail differently, so measure them separately.</b> If the final answer is wrong, you need to know whether the retriever never found the right document, or the generator had it and ignored it.</p>
 
@@ -1130,6 +1133,342 @@ def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict
 <p>User simulators have their own failure modes: they reveal the whole hidden goal in the first message, forget details, invent facts, give up early, or become unrealistically cooperative. The τ-bench authors and later work flagged simulator errors as a real source of noise. Mitigations: (1) read a sample of simulated conversations and label simulator mistakes separately from agent mistakes; (2) use a strong model for the simulator and keep it fixed between compared runs; (3) run several trials and report pass^k with intervals; (4) include some <b>adversarial personas</b> (the user who pushes for an out-of-policy refund, the one who changes their mind), because cooperative simulators flatter your agent.</p>
 </div>
 
+<h2>Core quality dimensions: factuality, instruction following, calibration</h2>
+<p>Everything so far graded <em>what the agent did</em>: which tool, which arguments, which end state. Underneath every agent sits a language model with three basic properties that decide whether you can trust anything it says or does. They have their own benchmarks and their own metrics, and each one shows up in agents in a sharper, more expensive form.</p>
+<ul>
+<li><b>Factuality</b>: is what it says true? (And when it does not know, does it say so instead of guessing?)</li>
+<li><b>Instruction following</b>: does it do exactly what it was told, including every constraint, all the way to the end?</li>
+<li><b>Calibration</b>: does its confidence match its accuracy? A calibrated model that says "I'm 80% sure" is right about 80% of the time.</li>
+</ul>
+<div class="callout analogy"><span class="t">Analogy: a new employee</span>
+<p>You judge a new hire on three things long before you judge their projects. Do they tell you true things? Do they follow the brief, including the small print? And do they know the difference between "I checked" and "I think so"? An employee who is wrong but says "not sure, let me check" is safe. One who is wrong and sounds certain is dangerous. The same holds for agents.</p>
+</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 300" role="img" aria-label="Three columns: factuality, instruction following and calibration. For each, a chat-style failure on the middle row and the agent-style version on the bottom row: a false refund claim, editing production after being told not to, and pushing on or claiming success without checking.">
+<defs><marker id="m06a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box accent" x="110" y="14" width="225" height="58" rx="10"/>
+<text x="222" y="38" text-anchor="middle" class="b">Factuality</text>
+<text x="222" y="58" text-anchor="middle" class="sm">Is what it says true?</text>
+<rect class="box violet" x="345" y="14" width="225" height="58" rx="10"/>
+<text x="457" y="38" text-anchor="middle" class="b">Instruction following</text>
+<text x="457" y="58" text-anchor="middle" class="sm">Did it do exactly what was asked?</text>
+<rect class="box warn" x="580" y="14" width="225" height="58" rx="10"/>
+<text x="692" y="38" text-anchor="middle" class="b">Calibration</text>
+<text x="692" y="58" text-anchor="middle" class="sm">Does it know when it doesn't know?</text>
+<text x="15" y="126" class="b sm">in a chat</text>
+<rect class="box plain" x="110" y="94" width="225" height="56" rx="8"/>
+<text x="222" y="117" text-anchor="middle" class="sm">States a wrong date,</text>
+<text x="222" y="135" text-anchor="middle" class="sm">invents a citation</text>
+<rect class="box plain" x="345" y="94" width="225" height="56" rx="8"/>
+<text x="457" y="117" text-anchor="middle" class="sm">Asked for under 100 words,</text>
+<text x="457" y="135" text-anchor="middle" class="sm">writes 180</text>
+<rect class="box plain" x="580" y="94" width="225" height="56" rx="8"/>
+<text x="692" y="117" text-anchor="middle" class="sm">"It is definitely X."</text>
+<text x="692" y="135" text-anchor="middle" class="sm">It is not X.</text>
+<line class="ln" x1="222" y1="150" x2="222" y2="184" marker-end="url(#m06a)"/>
+<line class="ln" x1="457" y1="150" x2="457" y2="184" marker-end="url(#m06a)"/>
+<line class="ln" x1="692" y1="150" x2="692" y2="184" marker-end="url(#m06a)"/>
+<text x="15" y="224" class="b sm">in an agent</text>
+<rect class="box bad" x="110" y="188" width="225" height="62" rx="8"/>
+<text x="222" y="213" text-anchor="middle" class="sm">"Your refund is done!"</text>
+<text x="222" y="233" text-anchor="middle" class="sm">but the API returned an error</text>
+<rect class="box bad" x="345" y="188" width="225" height="62" rx="8"/>
+<text x="457" y="213" text-anchor="middle" class="sm">"Never touch prod" at step 1,</text>
+<text x="457" y="233" text-anchor="middle" class="sm">prod migration at step 23</text>
+<rect class="box bad" x="580" y="188" width="225" height="62" rx="8"/>
+<text x="692" y="213" text-anchor="middle" class="sm">Pushes on instead of asking,</text>
+<text x="692" y="233" text-anchor="middle" class="sm">claims success it never checked</text>
+<text x="457" y="282" text-anchor="middle" class="sm">same flaw, bigger blast radius: in an agent a wrong belief becomes a wrong action</text>
+</svg>
+<figcaption><b>Three properties under every agent.</b> Each column is one quality dimension. The middle row is how it fails in a chat; the bottom row is the same flaw inside an agent, where it turns into a false report, a broken constraint or an unchecked action.</figcaption>
+</figure>
+
+<h3>Factuality and abstention</h3>
+<p>There are two different questions hiding in "is it factual?", and they need different tests.</p>
+<div class="grid2">
+<div class="card accent"><h4>Parametric factuality</h4><p>Does the model know facts from its own weights (its "parametric" memory)? Test: short questions with one indisputable answer and no documents provided. Benchmarks: SimpleQA, SimpleQA Verified.</p></div>
+<div class="card violet"><h4>Grounded factuality</h4><p>Given a document, does the answer stick to it and add nothing unsupported? This is the faithfulness idea from the RAG section, scaled up to long documents. Benchmark: FACTS Grounding.</p></div>
+</div>
+
+<p><b><a href="https://openai.com/index/introducing-simpleqa/">SimpleQA</a></b> (OpenAI, October 2024) is a set of 4,326 short, fact-seeking questions, each written to have a single, indisputable, short answer, and collected adversarially so that strong models of the time often got them wrong. Its key design choice is <b>three grades instead of two</b>. A model-based grader compares each response with the reference and labels it:</p>
+<ul>
+<li><b>correct</b>: the answer matches the reference without contradicting it;</li>
+<li><b>incorrect</b>: the answer contradicts the reference (a hallucination);</li>
+<li><b>not attempted</b>: the model declined or hedged without committing ("I don't know").</li>
+</ul>
+<p>With three grades you can separate "knows a lot" from "knows what it knows". The paper reports overall correct, <b>correct given attempted</b> (accuracy on the questions the model chose to answer), and an F-score, the harmonic mean of those two. A worked example makes the point.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="Two models on 100 short factual questions. Model A answers everything: 42 correct, 58 incorrect. Model B answers half: 38 correct, 12 incorrect, 50 not attempted. A wins on raw accuracy, B wins on correct-given-attempted, F-score and hallucination rate.">
+<rect x="170" y="14" width="14" height="14" class="fill-good" fill-opacity="0.45"/><text x="190" y="26" class="sm">correct</text>
+<rect x="260" y="14" width="14" height="14" class="fill-bad" fill-opacity="0.45"/><text x="280" y="26" class="sm">incorrect (hallucinated)</text>
+<rect x="430" y="14" width="14" height="14" class="fill-muted" fill-opacity="0.3"/><text x="450" y="26" class="sm">not attempted ("I don't know")</text>
+<text x="160" y="72" text-anchor="end" class="b">Model A</text>
+<text x="160" y="88" text-anchor="end" class="sm">always answers</text>
+<rect x="170" y="56" width="210" height="40" class="fill-good" fill-opacity="0.45"/>
+<rect x="380" y="56" width="290" height="40" class="fill-bad" fill-opacity="0.45"/>
+<text x="275" y="81" text-anchor="middle" class="b">42</text>
+<text x="525" y="81" text-anchor="middle" class="b">58</text>
+<text x="160" y="137" text-anchor="end" class="b">Model B</text>
+<text x="160" y="153" text-anchor="end" class="sm">abstains when unsure</text>
+<rect x="170" y="121" width="190" height="40" class="fill-good" fill-opacity="0.45"/>
+<rect x="360" y="121" width="60" height="40" class="fill-bad" fill-opacity="0.45"/>
+<rect x="420" y="121" width="250" height="40" class="fill-muted" fill-opacity="0.3"/>
+<text x="265" y="146" text-anchor="middle" class="b">38</text>
+<text x="390" y="146" text-anchor="middle" class="b">12</text>
+<text x="545" y="146" text-anchor="middle" class="b">50</text>
+<text x="680" y="81" class="sm">100 questions</text>
+<text x="680" y="146" class="sm">100 questions</text>
+<line class="ln" x1="20" y1="184" x2="800" y2="184"/>
+<text x="20" y="206" class="b">metric</text>
+<text x="500" y="206" text-anchor="middle" class="b">Model A</text>
+<text x="660" y="206" text-anchor="middle" class="b">Model B</text>
+<text x="20" y="232" class="sm">overall correct (correct / all)</text>
+<text x="500" y="232" text-anchor="middle" class="b t-good">42%</text>
+<text x="660" y="232" text-anchor="middle">38%</text>
+<text x="20" y="256" class="sm">correct given attempted (correct / answered)</text>
+<text x="500" y="256" text-anchor="middle">42%</text>
+<text x="660" y="256" text-anchor="middle" class="b t-good">76%</text>
+<text x="20" y="280" class="sm">F-score (harmonic mean of the two above)</text>
+<text x="500" y="280" text-anchor="middle">0.42</text>
+<text x="660" y="280" text-anchor="middle" class="b t-good">0.51</text>
+<text x="20" y="304" class="sm">hallucination rate (incorrect / all)</text>
+<text x="500" y="304" text-anchor="middle" class="t-bad">58%</text>
+<text x="660" y="304" text-anchor="middle" class="b t-good">12%</text>
+</svg>
+<figcaption><b>Why abstention needs its own grade.</b> On raw accuracy, the model that always guesses wins by 4 points. Once "I don't know" is graded separately from "wrong", the abstaining model is far more trustworthy: when it answers, it is right 76% of the time, and it hallucinates on 12% of questions instead of 58%. Illustrative numbers, not real model results.</figcaption>
+</figure>
+
+<p>Worked F-score for Model B: 2 × 0.38 × 0.76 / (0.38 + 0.76) = 0.5776 / 1.14 ≈ 0.51. This connects to a bigger argument. OpenAI's September 2025 essay <a href="https://openai.com/index/why-language-models-hallucinate/">"Why language models hallucinate"</a> argues that most benchmarks grade right-or-wrong only, so guessing always scores at least as well as saying "I don't know", and models trained and selected on those scores learn to guess. Its proposed fix is on the eval side: penalize confident errors more than abstentions, for example by telling the model a confidence threshold t and taking off t / (1 − t) points for a wrong answer (at t = 0.75, a wrong answer costs 3 points and "I don't know" costs 0). When you build your own factuality eval, decide up front what an abstention is worth; if you do not, your eval rewards bluffing.</p>
+
+<p><b><a href="https://arxiv.org/abs/2509.07968">SimpleQA Verified</a></b> (Google DeepMind and Google Research, September 2025) is a curated 1,000-prompt subset of SimpleQA, with a <a href="https://www.kaggle.com/benchmarks/deepmind/simpleqa-verified">Kaggle leaderboard</a>. The authors report that the original set has problems such as noisy or incorrect reference answers, topical skew and redundant questions, and filtered and re-checked it to fix them. The lesson is general: any factuality benchmark is only as good as its reference answers, and those go stale as the world changes (<a href="18-benchmark-pitfalls.html">Module 18</a>).</p>
+
+<p><b><a href="https://arxiv.org/abs/2501.03200">FACTS Grounding</a></b> (Google DeepMind, announced December 2024, paper January 2025, <a href="https://www.kaggle.com/benchmarks/google/facts-grounding">Kaggle leaderboard</a>) tests grounded factuality on long inputs. Each example is a document (up to roughly 32,000 tokens), a system instruction to answer only from it, and a user request such as a summary or a question. Grading has two phases: first, is the response <b>eligible</b> (does it actually address the request, rather than dodging with something short and safe)? Then, is every claim <b>grounded</b> in the document? Both are judged by several LLM judges from different model families, and the scores are averaged, which reduces the self-preference bias covered in <a href="13-llm-as-judge.html">Module 13</a>. The eligibility phase is worth copying: without it, a model can score perfectly on "no unsupported claims" by saying almost nothing. DeepMind has since extended the FACTS name into a broader suite of factuality benchmarks, so check which variant a quoted score refers to.</p>
+
+<p><b><a href="https://arxiv.org/abs/2109.07958">TruthfulQA</a></b> (Lin, Hilton and Evans, 2021) is the older classic: 817 questions across 38 categories, built so that a model imitating common human misconceptions ("what happens if you crack your knuckles a lot?") answers falsely. It is still widely quoted, so know its issues:</p>
+<ul>
+<li>It measures <b>imitative falsehoods</b> (repeating popular myths), not general factual accuracy, and not hallucination in the sense of inventing details.</li>
+<li>The original multiple-choice version turned out to be gameable: Alex Turner showed that <a href="https://turntrout.com/original-truthfulqa-weaknesses">simple heuristics that look only at the answer options</a>, never at the question, score surprisingly well. In response, the authors published a <a href="https://www.alignmentforum.org/posts/Bunfwz6JsNd44kgLT/new-improved-multiple-choice-truthfulqa">new binary-choice version</a> (January 2025) and recommend it over the old multiple-choice format.</li>
+<li>The generative version needs a judge (originally a fine-tuned "GPT-judge"), so scores depend on the grader.</li>
+<li>It is old and public, so contamination is likely for recent models.</li>
+</ul>
+
+<h3>Instruction following</h3>
+<p>"Follows instructions well" is vague, so the most useful benchmarks restrict themselves to instructions a program can check. <b><a href="https://arxiv.org/abs/2311.07911">IFEval</a></b> (Zhou et al., Google, November 2023) has about 500 prompts, each carrying one or more <b>verifiable instructions</b> drawn from 25 types: "answer in fewer than N words", "do not use any commas", "include the keyword X at least 3 times", "wrap the whole response in JSON", "end with the exact phrase ...". Each type has a small Python checker, so there is no judge and no ambiguity.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 330" role="img" aria-label="An IFEval-style prompt with three verifiable instructions and a response. Three code checkers run: word count passes, no-commas fails, ending phrase passes. Instruction-level accuracy is 2 of 3; prompt-level accuracy is 0 because not all instructions passed.">
+<defs><marker id="m06c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box plain" x="20" y="16" width="310" height="124" rx="10"/>
+<text x="36" y="40" class="b">Prompt</text>
+<text x="36" y="62" class="sm">Write a blurb for the Aero backpack.</text>
+<text x="36" y="84" class="sm">① Use fewer than 60 words.</text>
+<text x="36" y="104" class="sm">② Do not use any commas.</text>
+<text x="36" y="124" class="sm">③ End with the exact phrase "Any questions?"</text>
+<rect class="box accent" x="20" y="160" width="310" height="124" rx="10"/>
+<text x="36" y="184" class="b">Response</text>
+<text x="36" y="208" class="sm">Meet Aero: light, fast and quiet.</text>
+<text x="36" y="228" class="sm">Built for long days on the road.</text>
+<text x="36" y="248" class="sm">Any questions?</text>
+<text x="36" y="272" class="sm t-muted">(15 words, 1 comma)</text>
+<rect class="box good" x="390" y="16" width="230" height="64" rx="8"/>
+<text x="505" y="42" text-anchor="middle" class="mono">len(words) &lt; 60</text>
+<text x="505" y="64" text-anchor="middle" class="b t-good">15 words ✓</text>
+<rect class="box bad" x="390" y="118" width="230" height="64" rx="8"/>
+<text x="505" y="144" text-anchor="middle" class="mono">"," not in text</text>
+<text x="505" y="166" text-anchor="middle" class="b t-bad">1 comma ✗</text>
+<rect class="box good" x="390" y="220" width="230" height="64" rx="8"/>
+<text x="505" y="246" text-anchor="middle" class="mono">text.endswith(phrase)</text>
+<text x="505" y="268" text-anchor="middle" class="b t-good">ends correctly ✓</text>
+<path class="ln accent flow" d="M330,222 C356,222 356,48 386,48" marker-end="url(#m06c)"/>
+<path class="ln accent flow" d="M330,222 C356,222 356,150 386,150" marker-end="url(#m06c)"/>
+<line class="ln accent flow" x1="330" y1="252" x2="386" y2="252" marker-end="url(#m06c)"/>
+<rect class="box plain" x="660" y="40" width="145" height="90" rx="10"/>
+<text x="732" y="64" text-anchor="middle" class="b">instruction-level</text>
+<text x="732" y="92" text-anchor="middle" class="lg t-warn">2 / 3</text>
+<text x="732" y="114" text-anchor="middle" class="sm">each check counts</text>
+<rect class="box bad" x="660" y="170" width="145" height="90" rx="10"/>
+<text x="732" y="194" text-anchor="middle" class="b">prompt-level</text>
+<text x="732" y="222" text-anchor="middle" class="lg t-bad">0</text>
+<text x="732" y="244" text-anchor="middle" class="sm">all must pass</text>
+<path class="ln" d="M620,48 L638,48 M620,150 L638,150 M620,252 L638,252 M638,48 L638,252"/>
+<line class="ln" x1="638" y1="85" x2="656" y2="85" marker-end="url(#m06c)"/>
+<line class="ln" x1="638" y1="215" x2="656" y2="215" marker-end="url(#m06c)"/>
+<text x="410" y="316" text-anchor="middle" class="sm">strict = check the raw text · loose = also retry after stripping markdown and the first or last line</text>
+</svg>
+<figcaption><b>Verifiable instructions, graded by code.</b> Each instruction in the prompt has a tiny checker. IFEval reports accuracy at the instruction level (fraction of individual instructions followed) and the prompt level (fraction of prompts where every instruction was followed), each in a strict and a loose variant. Illustrative example.</figcaption>
+</figure>
+
+<p>The checkers really are this small, which is why you can copy the idea for your own product's rules:</p>
+<pre data-lang="python"><code>import re
+
+# Each checker takes the response text and returns True if the instruction was followed.
+CHECKERS = {
+    "max_words":   lambda text, n: len(text.split()) &lt; n,
+    "no_commas":   lambda text: "," not in text,
+    "ends_with":   lambda text, phrase: text.strip().endswith(phrase),
+    "keyword_min": lambda text, kw, k: len(re.findall(rf"\b{re.escape(kw)}\b", text, re.I)) &gt;= k,
+}
+
+def grade(response: str, instructions: list[tuple]) -&gt; dict:
+    """instructions: [("max_words", 60), ("no_commas",), ("ends_with", "Any questions?")]"""
+    results = [CHECKERS[name](response, *args) for name, *args in instructions]
+    return {"instruction_level": sum(results) / len(results),   # fraction of instructions followed
+            "prompt_level": float(all(results))}                  # 1.0 only if every one passed
+
+resp = "Meet Aero: light, fast and quiet. Built for long days on the road. Any questions?"
+print(grade(resp, [("max_words", 60), ("no_commas",), ("ends_with", "Any questions?")]))
+# {'instruction_level': 0.666..., 'prompt_level': 0.0}</code></pre>
+
+<p>IFEval became a standard target, and that caused the familiar problem: models got very good at exactly those 25 constraint types. <b><a href="https://arxiv.org/abs/2507.02833">IFBench</a></b> (Pyatkin et al., Ai2, July 2025, NeurIPS 2025 Datasets and Benchmarks) tests <em>generalization</em> instead, with 58 new, diverse constraints chosen to be out of distribution relative to IFEval. The paper reports that most models overfit to the small set of constraint types in existing benchmarks and generalize poorly to unseen ones, which is the signature of optimizing for a benchmark's specific format rather than the skill. The same paper also uses the constraint checkers as rewards for reinforcement learning, a pattern <a href="13-llm-as-judge.html">Module 13</a> returns to.</p>
+
+<div class="callout warn"><span class="t">Single-turn instruction following is the easy case</span>
+<p>IFEval-style prompts put the instruction and the response side by side. Agents receive their most important instructions once, at the start (the system prompt, the user's constraints), and must honor them across dozens of steps, tool results and context compactions. A model that scores 90% on IFEval can still forget "no phone calls" by turn six (the conversation example above) or "don't touch migrations" by step 23. Test instructions <b>at a distance</b>: set the constraint early and check it on every later action.</p>
+</div>
+
+<h3>Calibration</h3>
+<p>A model is <b>calibrated</b> if its stated confidence matches how often it is right. You can get a confidence number three ways: ask for it ("give a confidence from 0 to 100", called <b>verbalized</b> confidence), read the probability the model assigned to its answer tokens (log-probs, when the API exposes them), or sample the same question several times and use the agreement rate (<b>consistency</b>). Then you check the numbers against reality with a <b>reliability diagram</b>: group answers into bins by confidence, and for each bin plot the actual accuracy. A perfectly calibrated model sits on the diagonal. Bars below it mean <b>overconfidence</b>.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 350" role="img" aria-label="Reliability diagram with five confidence bins from 0.5 to 1.0. Every accuracy bar sits below the diagonal of perfect calibration, and the gap grows with confidence: at 95% stated confidence the model is right 75% of the time. A table on the right computes the expected calibration error as 0.14.">
+<rect x="90" y="18" width="12" height="12" class="fill-accent" fill-opacity="0.5"/><text x="108" y="28" class="sm">actual accuracy</text>
+<rect x="210" y="18" width="12" height="12" class="fill-bad" fill-opacity="0.35"/><text x="228" y="28" class="sm">gap = overconfidence</text>
+<line class="ln" x1="80" y1="300" x2="480" y2="300"/>
+<line class="ln" x1="80" y1="300" x2="80" y2="50"/>
+<line class="ln dash" x1="80" y1="260" x2="480" y2="60"/>
+<text x="360" y="62" text-anchor="end" class="sm t-muted">perfect calibration</text>
+<rect x="84" y="260" width="72" height="40" class="fill-accent" fill-opacity="0.5"/>
+<rect x="84" y="240" width="72" height="20" class="fill-bad" fill-opacity="0.35"/>
+<rect x="164" y="220" width="72" height="80" class="fill-accent" fill-opacity="0.5"/>
+<rect x="164" y="200" width="72" height="20" class="fill-bad" fill-opacity="0.35"/>
+<rect x="244" y="200" width="72" height="100" class="fill-accent" fill-opacity="0.5"/>
+<rect x="244" y="160" width="72" height="40" class="fill-bad" fill-opacity="0.35"/>
+<rect x="324" y="180" width="72" height="120" class="fill-accent" fill-opacity="0.5"/>
+<rect x="324" y="120" width="72" height="60" class="fill-bad" fill-opacity="0.35"/>
+<rect x="404" y="160" width="72" height="140" class="fill-accent" fill-opacity="0.5"/>
+<rect x="404" y="80" width="72" height="80" class="fill-bad" fill-opacity="0.35"/>
+<text x="120" y="292" text-anchor="middle" class="sm">n=10</text>
+<text x="200" y="292" text-anchor="middle" class="sm">n=10</text>
+<text x="280" y="292" text-anchor="middle" class="sm">n=20</text>
+<text x="360" y="292" text-anchor="middle" class="sm">n=20</text>
+<text x="440" y="292" text-anchor="middle" class="sm">n=40</text>
+<text x="440" y="124" text-anchor="middle" class="b t-bad">−0.20</text>
+<text x="72" y="304" text-anchor="end" class="sm">0.4</text>
+<text x="72" y="224" text-anchor="end" class="sm">0.6</text>
+<text x="72" y="144" text-anchor="end" class="sm">0.8</text>
+<text x="72" y="64" text-anchor="end" class="sm">1.0</text>
+<text x="80" y="318" text-anchor="middle" class="sm">0.5</text>
+<text x="160" y="318" text-anchor="middle" class="sm">0.6</text>
+<text x="240" y="318" text-anchor="middle" class="sm">0.7</text>
+<text x="320" y="318" text-anchor="middle" class="sm">0.8</text>
+<text x="400" y="318" text-anchor="middle" class="sm">0.9</text>
+<text x="480" y="318" text-anchor="middle" class="sm">1.0</text>
+<text x="280" y="340" text-anchor="middle" class="sm">stated confidence (bin)</text>
+<text x="34" y="180" text-anchor="middle" class="sm" transform="rotate(-90 34 180)">actual accuracy</text>
+<rect class="box plain" x="510" y="40" width="300" height="270" rx="10"/>
+<text x="526" y="64" class="b">ECE = Σ (n_b / N) · |acc_b − conf_b|</text>
+<text x="526" y="92" class="mono b">bin</text><text x="590" y="92" class="mono b">n</text><text x="635" y="92" class="mono b">conf</text><text x="690" y="92" class="mono b">acc</text><text x="745" y="92" class="mono b">gap×w</text>
+<text x="526" y="114" class="mono">.5-.6</text><text x="590" y="114" class="mono">10</text><text x="635" y="114" class="mono">.55</text><text x="690" y="114" class="mono">.50</text><text x="745" y="114" class="mono">.005</text>
+<text x="526" y="134" class="mono">.6-.7</text><text x="590" y="134" class="mono">10</text><text x="635" y="134" class="mono">.65</text><text x="690" y="134" class="mono">.60</text><text x="745" y="134" class="mono">.005</text>
+<text x="526" y="154" class="mono">.7-.8</text><text x="590" y="154" class="mono">20</text><text x="635" y="154" class="mono">.75</text><text x="690" y="154" class="mono">.65</text><text x="745" y="154" class="mono">.020</text>
+<text x="526" y="174" class="mono">.8-.9</text><text x="590" y="174" class="mono">20</text><text x="635" y="174" class="mono">.85</text><text x="690" y="174" class="mono">.70</text><text x="745" y="174" class="mono">.030</text>
+<text x="526" y="194" class="mono">.9-1</text><text x="590" y="194" class="mono">40</text><text x="635" y="194" class="mono">.95</text><text x="690" y="194" class="mono">.75</text><text x="745" y="194" class="mono">.080</text>
+<line class="ln" x1="526" y1="206" x2="794" y2="206"/>
+<text x="526" y="232" class="lg t-bad">ECE = 0.140</text>
+<text x="526" y="258" class="sm">mean confidence 0.82, accuracy 0.68:</text>
+<text x="526" y="276" class="sm">every bin is overconfident, so ECE</text>
+<text x="526" y="294" class="sm">equals that 14-point gap here</text>
+</svg>
+<figcaption><b>A reliability diagram and the ECE behind it.</b> Each bar is one confidence bin; its height is how often answers in that bin were actually right. The red gap up to the diagonal is the overconfidence in that bin, and ECE is the average gap weighted by how many answers fall in each bin. Illustrative data for 100 answers.</figcaption>
+</figure>
+
+<p>The standard summary number is <b>expected calibration error</b> (ECE): the weighted average of |accuracy − confidence| across bins, with each bin weighted by its share of the answers. Here it is in code, reproducing the worked numbers above:</p>
+<pre data-lang="python"><code>import numpy as np
+
+def expected_calibration_error(conf, correct, n_bins=10):
+    """conf: stated confidence per answer (0..1). correct: 1 if the answer was right, else 0."""
+    conf, correct = np.asarray(conf, float), np.asarray(correct, float)
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    idx = np.digitize(conf, edges[1:-1])          # bin index 0..n_bins-1 (1.0 lands in the top bin)
+    ece = 0.0
+    for b in range(n_bins):
+        in_bin = idx == b
+        if not in_bin.any():
+            continue
+        gap = abs(correct[in_bin].mean() - conf[in_bin].mean())
+        ece += in_bin.mean() * gap                # weight = share of all answers in this bin
+    return ece
+
+# The worked example: (confidence, answers in bin, how many were right)
+bins = [(0.55, 10, 5), (0.65, 10, 6), (0.75, 20, 13), (0.85, 20, 14), (0.95, 40, 30)]
+conf, correct = [], []
+for c, n, k in bins:
+    conf += [c] * n
+    correct += [1] * k + [0] * (n - k)
+
+print(f"accuracy={np.mean(correct):.2f} mean_conf={np.mean(conf):.2f} "
+      f"ECE={expected_calibration_error(conf, correct):.3f}")
+# accuracy=0.68 mean_conf=0.82 ECE=0.140</code></pre>
+
+<div class="callout expert"><span class="t">Expert nuance: what ECE hides</span>
+<p>(1) <b>ECE depends on the bins.</b> Change the number of bins, or use equal-count bins instead of equal-width ones, and the value moves; report your binning. (2) <b>Calibrated is not the same as useful.</b> A model that says "68%" for every question in the example above would have an ECE of zero and tell you nothing about <em>which</em> answers to trust. Pair calibration with discrimination: the <b>Brier score</b> (mean of (confidence − correct)², which rewards both) or the AUROC of confidence for separating right from wrong answers. (3) Some benchmarks report <b>RMS calibration error</b> (the square root of the weighted mean squared gap), which punishes big gaps more. (4) Verbalized confidence is often poorly calibrated even when log-probs are decent, so measure the confidence signal you actually use. (5) Judge models have the same issue; see calibration in <a href="13-llm-as-judge.html">Module 13</a>.</p>
+</div>
+
+<h3>How each dimension shows up in agents</h3>
+<p>In agents, all three properties turn into specific, testable behaviors. The most important one has a name: the <b>false success claim</b>, where the agent's final message says the task is done when the environment says otherwise. It is a factuality failure (the claim is false) and a calibration failure (the agent was sure without checking) at once, and users find it more damaging than an honest "I couldn't finish".</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 820 310" role="img" aria-label="An agent trajectory from step 1 to the final message. The user's constraint at step 1 says never edit migrations. At step 23 the agent edits a migration file, which a per-step constraint checker flags. The final message claims all tests pass while the sandbox shows two failures, which a claim-versus-state check flags as a false success claim.">
+<defs><marker id="m06e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="box violet" x="20" y="14" width="300" height="52" rx="10"/>
+<text x="36" y="36" class="b">Step 1 · user constraint</text>
+<text x="36" y="56" class="sm">"Fix the failing test. Never edit migrations/."</text>
+<rect class="box warn" x="520" y="14" width="280" height="52" rx="10"/>
+<text x="536" y="36" class="b">Final message</text>
+<text x="536" y="56" class="sm">"All tests pass. Done!"</text>
+<line class="ln thick" x1="40" y1="104" x2="790" y2="104"/>
+<circle cx="80" cy="104" r="7" class="fill-violet"/>
+<circle cx="230" cy="104" r="7" class="fill-muted"/>
+<circle cx="380" cy="104" r="9" class="fill-bad pulse"/>
+<circle cx="530" cy="104" r="7" class="fill-muted"/>
+<circle cx="660" cy="104" r="9" class="fill-bad pulse"/>
+<text x="80" y="130" text-anchor="middle" class="sm">step 1</text>
+<text x="230" y="130" text-anchor="middle" class="sm">step 8</text>
+<text x="380" y="130" text-anchor="middle" class="sm">step 23</text>
+<text x="530" y="130" text-anchor="middle" class="sm">step 31</text>
+<text x="660" y="130" text-anchor="middle" class="sm">final</text>
+<line class="ln" x1="80" y1="66" x2="80" y2="94" marker-end="url(#m06e)"/>
+<line class="ln" x1="660" y1="66" x2="660" y2="92" marker-end="url(#m06e)"/>
+<rect class="box bad" x="280" y="158" width="200" height="50" rx="8"/>
+<text x="380" y="180" text-anchor="middle" class="mono">edit migrations/0042.py</text>
+<text x="380" y="198" text-anchor="middle" class="sm t-bad">constraint broken mid-run</text>
+<rect class="box bad" x="560" y="158" width="240" height="50" rx="8"/>
+<text x="680" y="180" text-anchor="middle" class="mono">sandbox: pytest → 2 failed</text>
+<text x="680" y="198" text-anchor="middle" class="sm t-bad">the claim is false</text>
+<line class="ln bad" x1="380" y1="137" x2="380" y2="154" marker-end="url(#m06e)"/>
+<line class="ln bad" x1="660" y1="137" x2="660" y2="154" marker-end="url(#m06e)"/>
+<rect class="box good" x="20" y="238" width="380" height="58" rx="10"/>
+<text x="210" y="261" text-anchor="middle" class="b">Per-step constraint checker</text>
+<text x="210" y="281" text-anchor="middle" class="sm">runs on every tool call, flags step 23</text>
+<rect class="box good" x="420" y="238" width="380" height="58" rx="10"/>
+<text x="610" y="261" text-anchor="middle" class="b">Claim-versus-state check</text>
+<text x="610" y="281" text-anchor="middle" class="sm">final claim "tests pass" vs real test run</text>
+<path class="ln good dash" d="M300,238 L300,224 L360,224 L360,212" marker-end="url(#m06e)"/>
+<path class="ln good dash" d="M610,238 L610,212" marker-end="url(#m06e)"/>
+</svg>
+<figcaption><b>Two agent-shaped failures on one run.</b> An instruction given at step 1 is broken at step 23, and the final message reports success that the environment contradicts. Neither shows up in a single-turn benchmark; both are caught by cheap code checks that compare actions and claims with the constraint and the real state. Illustrative trajectory.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>Dimension</th><th>Agent symptom</th><th>How to test</th><th>Metric to report</th></tr>
+<tr><td><b>Factuality</b></td><td>False success claims; wrong facts stated to the user; invented tool results ("the API returned 200")</td><td>Extract the claims in the final message and compare each with the end state and the tool logs (<a href="05-agents-are-different.html">Module 05</a>). For grounded answers, the faithfulness judge from the RAG section.</td><td>False-claim rate; <b>claimed-success precision</b> = P(really succeeded | agent said it succeeded)</td></tr>
+<tr><td><b>Instruction following</b></td><td>Constraint from the system prompt or step 1 broken later; format rules drift after compaction; tool results overriding user instructions</td><td>Encode each constraint as a checker (forbidden paths, forbidden tools, spending caps, language, format) and run it on <em>every</em> action and message, not just the last one. Plant constraints early and test late.</td><td>Constraint-violation rate per run, and the step at which the first violation happens</td></tr>
+<tr><td><b>Calibration</b></td><td>Pushes on when it should ask; escalates when it could handle it; says "done" without verifying</td><td>Ask the agent for a confidence (or a "did you verify?" field) at the end, and compare with the verifier. Include tasks that are impossible or under-specified, where the right move is to ask or stop.</td><td>Reliability diagram of end-of-task confidence; ask/abstain rate on impossible tasks vs possible ones</td></tr>
+</table></div>
+
+<p>Worked example for claimed-success precision: across 100 runs, the agent says "done" in 80. The verifier confirms 60 of those. Claimed-success precision is 60 / 80 = 75%, so one "done" in four is false. Suppose a new prompt makes the agent verify before claiming: it now says "done" in 66 runs and 62 are real (94% precision), while the true success rate barely moves (60 to 62). Measured by success rate alone, that change looks like noise; measured by the thing users experience, it is a large win.</p>
+
 <h2>The benchmark map</h2>
 <p>A summary of the public benchmarks in this module. Sizes and dates are from the original papers or official pages; for current leaderboard numbers, go to the leaderboard itself, since they move monthly.</p>
 <div class="tablewrap"><table>
@@ -1141,6 +1480,9 @@ def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict
 <tr><td><b><a href="https://arxiv.org/abs/2307.16789">ToolBench</a></b> (Tsinghua, 2023)</td><td>Use of 16,464 real RapidAPI APIs</td><td>Pass rate and win rate, LLM-judged</td><td>Live APIs break reproducibility; use <a href="https://arxiv.org/abs/2403.07714">StableToolBench</a></td></tr>
 <tr><td><b><a href="https://arxiv.org/abs/2501.12851">ACEBench</a></b> (Huawei, USTC, 2025)</td><td>Normal, Special (imperfect instructions) and Agent (simulated user) tool use, English and Chinese</td><td>AST-style and end-state checks, no LLM judge</td><td>Newer, less widely reported</td></tr>
 <tr><td><b><a href="https://arxiv.org/abs/2311.12983">GAIA</a></b> (Meta, HF, 2023)</td><td>General assistants: browsing, files, multimodal reasoning, 3 levels</td><td>Quasi-exact match on short answers</td><td>Public validation answers; some stale questions</td></tr>
+<tr><td><b><a href="https://openai.com/index/introducing-simpleqa/">SimpleQA</a></b> (OpenAI, 2024) and <b><a href="https://arxiv.org/abs/2509.07968">SimpleQA Verified</a></b> (Google DeepMind, 2025)</td><td>Short-form parametric factuality and abstention (4,326 and 1,000 questions)</td><td>Model-graded correct / incorrect / not attempted; correct given attempted; F-score</td><td>Reference answers go stale or are wrong; the Verified subset exists because of that</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2501.03200">FACTS Grounding</a></b> (Google DeepMind, 2025)</td><td>Long-form answers grounded in a provided document up to about 32k tokens</td><td>Eligibility check, then grounding, judged by a panel of LLM judges from different families</td><td>Judge-dependent; check which FACTS variant a score refers to</td></tr>
+<tr><td><b><a href="https://arxiv.org/abs/2311.07911">IFEval</a></b> (Google, 2023) and <b><a href="https://arxiv.org/abs/2507.02833">IFBench</a></b> (Ai2, 2025)</td><td>Verifiable instruction following: 25 constraint types (IFEval), 58 new out-of-distribution ones (IFBench)</td><td>Code checkers; prompt-level and instruction-level accuracy, strict and loose</td><td>Single-turn only; models overfit to IFEval's constraint types</td></tr>
 <tr><td><b><a href="https://arxiv.org/abs/2504.12516">BrowseComp</a></b> (OpenAI, 2025)</td><td>Persistent, creative web search for hard-to-find facts (1,266 questions)</td><td>Model-graded accuracy vs short reference; calibration</td><td>Live web drifts; BrowseComp-Plus fixes the corpus</td></tr>
 </table></div>
 
@@ -1202,6 +1544,8 @@ def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict
 <li>pass^k measures consistency; the gap between pass@k and pass^k is a direct picture of how unreliable an agent is.</li>
 <li>For RAG, measure retrieval (recall@k, nDCG, context recall) and generation (faithfulness, relevancy) separately; together they tell you which stage to fix.</li>
 <li>Conversations need conversation-level checks, and a user simulator is part of your measuring instrument: pin it, audit it and include adversarial personas.</li>
+<li>Grade factuality with three outcomes (correct, incorrect, not attempted) and decide what an abstention is worth; binary right-or-wrong grading rewards bluffing. Separate parametric factuality (SimpleQA) from grounded factuality (FACTS Grounding).</li>
+<li>Instruction following is best tested with code-checkable constraints (IFEval, IFBench), and in agents it must be checked at a distance: constraint set early, checked on every later action. Calibration is measured with a reliability diagram and ECE; in agents it shows up as false success claims, so report claimed-success precision.</li>
 </ol></div>
 
 <h2>Check yourself</h2>
@@ -1236,6 +1580,16 @@ def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict
 <button class="opt">That the model ignores irrelevant parts of a tool result</button>
 <button class="opt">That the model can call functions in any order</button>
 <div class="why">Relevance detection checks that the model abstains from calling when the tools don't apply, instead of forcing the closest-looking tool, which would be a hallucinated action.</div></div>
+<div class="q" data-answer="1"><p>7. Model X answers every SimpleQA-style question and gets 45% right. Model Y answers 60% of questions and gets 40% of all questions right. Which statement is correct?</p>
+<button class="opt">X is more factual, because 45% beats 40%</button>
+<button class="opt">Y is right about 67% of the time when it answers and hallucinates on 20% of questions, versus 55% for X, so Y is far more trustworthy</button>
+<button class="opt">They are equivalent, because both got under half right</button>
+<div class="why">Y: correct given attempted = 0.40 / 0.60 ≈ 0.67; incorrect = 60% − 40% = 20% of all questions. X: 55% incorrect. Raw accuracy rewards guessing, which is exactly why SimpleQA grades "not attempted" separately.</div></div>
+<div class="q" data-answer="2"><p>8. In 200 runs your coding agent ends with "All tests pass" 150 times. The sandbox shows tests really pass in 120 of those. What is the claimed-success precision, and which dimension is failing?</p>
+<button class="opt">60%, instruction following</button>
+<button class="opt">75%, retrieval</button>
+<button class="opt">80%, factuality and calibration: 30 runs made a confident, false success claim</button>
+<div class="why">120 / 150 = 0.80. A claim that contradicts the environment is a factuality failure, and making it without verifying is a calibration failure. A claim-versus-state check catches it cheaply.</div></div>
 </div>
 
 <details><summary>Interview questions (with model answers)</summary>
@@ -1259,6 +1613,14 @@ def simulate(agent_reply_fn, scenario: str, max_turns: int = 12) -&gt; list[dict
 <li>Anthropic, <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents, with agents</a> (September 2025).</li>
 <li>Anthropic docs, <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview">Tool use with Claude</a>.</li>
 <li>Ragas docs: <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/">Faithfulness</a>, <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/answer_relevance/">Answer relevancy</a>, <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_precision/">Context precision</a>, <a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_recall/">Context recall</a>.</li>
+<li>Wei et al. (OpenAI), <a href="https://openai.com/index/introducing-simpleqa/">Introducing SimpleQA</a> (October 2024; paper <a href="https://arxiv.org/abs/2411.04368">arXiv:2411.04368</a>).</li>
+<li>Google DeepMind and Google Research, <a href="https://arxiv.org/abs/2509.07968">SimpleQA Verified: A Reliable Factuality Benchmark to Measure Parametric Knowledge</a> (September 2025); <a href="https://www.kaggle.com/benchmarks/deepmind/simpleqa-verified">Kaggle leaderboard</a>.</li>
+<li>Jacovi et al. (Google DeepMind), <a href="https://arxiv.org/abs/2501.03200">The FACTS Grounding Leaderboard: Benchmarking LLMs' Ability to Ground Responses to Long-Form Input</a> (January 2025); <a href="https://deepmind.google/blog/facts-grounding-a-new-benchmark-for-evaluating-the-factuality-of-large-language-models/">DeepMind blog</a>; <a href="https://www.kaggle.com/benchmarks/google/facts-grounding">Kaggle leaderboard</a>.</li>
+<li>Lin, Hilton, Evans, <a href="https://arxiv.org/abs/2109.07958">TruthfulQA: Measuring How Models Mimic Human Falsehoods</a> (2021); Evans, Chua, Lin, <a href="https://www.alignmentforum.org/posts/Bunfwz6JsNd44kgLT/new-improved-multiple-choice-truthfulqa">New, improved multiple-choice TruthfulQA</a>; Turner, <a href="https://turntrout.com/original-truthfulqa-weaknesses">Gaming TruthfulQA: simple heuristics exposed dataset weaknesses</a>.</li>
+<li>Zhou et al. (Google), <a href="https://arxiv.org/abs/2311.07911">Instruction-Following Evaluation for Large Language Models</a> (IFEval, November 2023).</li>
+<li>Pyatkin et al. (Ai2), <a href="https://arxiv.org/abs/2507.02833">Generalizing Verifiable Instruction Following</a> (IFBench, July 2025).</li>
+<li>OpenAI, <a href="https://openai.com/index/why-language-models-hallucinate/">Why language models hallucinate</a> (September 2025).</li>
+<li>Guo, Pleiss, Sun, Weinberger, <a href="https://arxiv.org/abs/1706.04599">On Calibration of Modern Neural Networks</a> (2017): reliability diagrams and ECE.</li>
 <li>Chen et al. (OpenAI), <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> (the pass@k estimator).</li>
 </ul>
 
